@@ -1,3 +1,4 @@
+export function initPrototype() {
 const appConfig = window.QRTALKIE_CONFIG || {};
 const sipDomain = appConfig.SIP_DOMAIN || "sip.qrtalkie.org";
 
@@ -143,3 +144,4 @@ document.querySelector("#new-username").addEventListener("input", (event) => {
 applySipDomain();
 renderUsers();
 renderRegistrations();
+}
