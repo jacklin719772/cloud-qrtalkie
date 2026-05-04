@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QRTalkie Cloud</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <section class="landing" id="landing">
+      <header class="landing-nav">
+        <div class="brand">
+          <span class="brand-mark">F</span>
+          <div>
+            <strong>QRTalkie Cloud</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="hero">
+        <div class="hero-copy">
+          <h1>私密型企業專屬即時通訊系統 安全·高效· 跨終端適配</h1>
+          <p>
+            面向 VoIP、軟電話和 WebRTC 場景，提供租戶註冊、SIP 帳號開通、線上狀態查詢、註冊日誌、問題回饋等自助服務。
+          </p>
+        </div>
+
+        <div class="auth-panel" aria-label="帳號入口">
+          <div class="auth-tabs" role="tablist">
+            <button class="selected" data-mode="login">登入</button>
+            <button data-mode="signup">註冊</button>
+          </div>
+
+          <form class="auth-form active" id="login-form">
+            <h2>登入控制台</h2>
+            <label>信箱<input type="email" placeholder="admin@company.com" /></label>
+            <label>密碼<input type="password" placeholder="請輸入密碼" /></label>
+            <div class="form-row">
+              <label class="checkbox"><input type="checkbox" /> 記住我</label>
+              <button type="button" class="link-btn" data-mode="forgot">忘記密碼？</button>
+            </div>
+            <button type="button" class="primary-btn full" id="enter-console">登入</button>
+          </form>
+
+          <form class="auth-form" id="signup-form">
+            <h2>註冊租戶</h2>
+            <label>公司名稱<input placeholder="Acme Voice" /></label>
+            <label>管理員信箱<input type="email" placeholder="admin@company.com" /></label>
+            <label>密碼<input type="password" placeholder="至少 8 位字元" /></label>
+            <label>確認密碼<input type="password" placeholder="再次輸入密碼" /></label>
+            <button type="button" class="primary-btn full" id="signup-enter">註冊並進入</button>
+          </form>
+
+          <form class="auth-form" id="forgot-form">
+            <h2>找回密碼</h2>
+            <p class="muted">輸入管理員信箱，我們將發送密碼重設連結。</p>
+            <label>信箱<input type="email" placeholder="admin@company.com" /></label>
+            <button type="button" class="primary-btn full">發送重設郵件</button>
+            <button type="button" class="link-btn center" data-mode="login">返回登入</button>
+          </form>
+        </div>
+      </main>
+    </section>
+
+    <div class="app-shell hidden" id="console">
+      <aside class="sidebar" aria-label="主導覽">
+        <div class="brand">
+          <span class="brand-mark">F</span>
+          <div>
+            <strong>QRTalkie Cloud</strong>
+            <span>註冊管理控制台</span>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="dashboard"><span>首頁</span></button>
+          <button class="nav-item" data-view="users"><span>SIP 使用者</span></button>
+          <button class="nav-item" data-view="registrations"><span>註冊狀態</span></button>
+          <button class="nav-item" data-view="domain"><span>域名設定</span></button>
+          <button class="nav-item" data-view="tenant"><span>租戶設定</span></button>
+        </nav>
+
+        <div class="sidebar-foot">
+          <span>目前租戶</span>
+          <strong>Acme Voice</strong>
+          <small data-sip-domain>sip.qrtalkie.org</small>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="page-title">控制台</h1>
+          </div>
+          <button class="primary-btn" id="open-create-user">建立使用者</button>
+        </header>
+
+        <section class="view active" id="dashboard">
+          <div class="metrics">
+            <article class="metric"><span>SIP 使用者</span><strong>1,248</strong><small>方案上限 2,000</small></article>
+            <article class="metric"><span>線上註冊</span><strong>894</strong><small class="ok">成功率 99.2%</small></article>
+            <article class="metric"><span>今日失敗</span><strong>37</strong><small class="warn">多來自密碼錯誤</small></article>
+            <article class="metric"><span>Flexisip 節點</span><strong>3/3</strong><small class="ok">全部健康</small></article>
+          </div>
+        </section>
+
+        <section class="view" id="users">
+          <div class="section-head">
+            <div>
+              <h2>SIP 使用者</h2>
+              <p>建立、停用、重設密碼，並查看使用者目前註冊狀態。</p>
+            </div>
+            <div class="toolbar">
+              <input type="search" placeholder="搜尋使用者名稱、SIP URI、信箱" />
+              <button class="ghost-btn">匯入</button>
+              <button class="primary-btn" id="open-create-user-2">建立</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>使用者</th><th>SIP URI</th><th>狀態</th><th>裝置</th><th>最近註冊</th><th></th></tr>
+              </thead>
+              <tbody id="user-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="registrations">
+          <div class="section-head">
+            <div>
+              <h2>註冊狀態</h2>
+              <p>查看 REGISTER 結果、Contact、傳輸協定和到期時間。</p>
+            </div>
+          </div>
+          <div class="registration-list" id="registration-list"></div>
+        </section>
+
+        <section class="view" id="domain">
+          <div class="section-head"><div><h2>域名與連線</h2><p>提供軟電話接入所需的伺服器、連接埠和 DNS 狀態。</p></div></div>
+          <div class="settings-grid">
+            <section class="panel">
+              <h2>SIP 接入位址</h2>
+              <dl class="spec-list">
+                <dt>域名</dt><dd data-sip-domain>sip.qrtalkie.org</dd>
+                <dt>UDP/TCP</dt><dd>5060</dd>
+                <dt>TLS</dt><dd>5061</dd>
+                <dt>WSS</dt><dd>7443</dd>
+              </dl>
+            </section>
+            <section class="panel">
+              <h2>DNS 檢查</h2>
+              <ul class="check-list">
+                <li><span class="dot ok-dot"></span>A 記錄已設定</li>
+                <li><span class="dot ok-dot"></span>SRV _sip._tcp 已設定</li>
+                <li><span class="dot warn-dot"></span>NAPTR 未設定</li>
+              </ul>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="tenant">
+          <div class="section-head"><div><h2>租戶設定</h2><p>公司、管理員、SIP 域名和容量限制。</p></div></div>
+          <form class="tenant-form">
+            <label>公司名稱<input value="Acme Voice" /></label>
+            <label>管理員信箱<input value="admin@qrtalkie.org" /></label>
+            <label>SIP 域名<input id="tenant-sip-domain" value="sip.qrtalkie.org" /></label>
+            <label>使用者額度<input type="number" value="2000" /></label>
+            <button class="primary-btn" type="button">儲存設定</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="create-user-dialog">
+      <form method="dialog" class="dialog-card user-register-card">
+        <div class="panel-head">
+          <h2>使用者註冊</h2>
+          <button class="icon-btn dialog-close" type="button" title="關閉">x</button>
+        </div>
+        <div class="user-form-grid">
+          <label><span class="field-label">使用者名稱 <b>*</b></span><input id="new-username" placeholder="使用者名稱" required /></label>
+          <label><span class="field-label">域名</span><select id="sip-domain-select"><option>sip.qrtalkie.org</option></select></label>
+          <label><span class="field-label">顯示名稱</span><input placeholder="John Doe" /></label>
+          <span></span>
+          <label><span class="field-label">密碼 <b>*</b></span><input type="password" placeholder="密碼" required /><small>填寫以變更</small></label>
+          <label><span class="field-label">確認密碼 <b>*</b></span><input type="password" placeholder="再次輸入密碼" required /><small aria-hidden="true"></small></label>
+          <label><span class="field-label">電子郵件 <b>*</b></span><input type="email" placeholder="電子郵件" required /></label>
+          <label><span class="field-label">電話號碼</span><input type="tel" placeholder="+12123123" /></label>
+        </div>
+        <section class="other-info">
+          <h3>其他資訊</h3>
+          <div class="toggle-grid">
+            <label class="toggle-row">停用<input type="checkbox" role="switch" /></label>
+            <label class="toggle-row">啟用<input type="checkbox" role="switch" checked /></label>
+          </div>
+        </section>
+        <menu>
+          <button class="ghost-btn dialog-close" type="button">取消</button>
+          <button class="primary-btn" value="default">建立使用者</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
