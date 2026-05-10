@@ -11,6 +11,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.out.log
+*.err.log
+.chrome-debug*/
 
 .DS_Store
 Thumbs.db

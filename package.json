@@ -6,15 +6,25 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start:services": "node scripts/start-services.js",
+    "check:db": "node scripts/check-db.js",
+    "db:migrate": "node scripts/migrate.js",
+    "api:dev": "node server/index.js",
+    "test:register": "node scripts/test-register-flow.js",
+    "check:smtp": "node scripts/check-smtp.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",
-    "vite": "^7.2.7",
-    "typescript": "^5.9.3",
+    "axios": "^1.16.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lucide-react": "^0.561.0",
+    "mariadb": "^3.5.2",
+    "nodemailer": "^8.0.7",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "lucide-react": "^0.561.0"
-  },
-  "devDependencies": {}
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7"
+  }
 }

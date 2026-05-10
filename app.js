@@ -1,147 +1,352 @@
+import { createApiClient } from "./src/core/api.js";
+import { formatSipUri } from "./src/core/formatters.js";
+import { createMessageController } from "./src/core/messages.js";
+import { createSessionStore } from "./src/core/session.js";
+import { applySipDomain as applySipDomainView, showConsole, showLanding, switchConsoleView } from "./src/app/appShellView.js";
+import { bindPrototypeEvents as bindPrototypeEventsView } from "./src/app/prototypeEvents.js";
+import { pageTitles, prototypeRegistrations, prototypeUsers } from "./src/data/prototypeData.js";
+import { createAuthApi } from "./src/features/auth/authApi.js";
+import { createAuthController } from "./src/features/auth/authController.js";
+import { createBillingApi } from "./src/features/billing/billingApi.js";
+import { hideFloatingOrderMenu, showFloatingOrderMenu } from "./src/features/billing/billingOrdersView.js";
+import { createBillingOrdersController } from "./src/features/billing/billingOrdersController.js";
+import { createPurchaseController } from "./src/features/billing/purchaseController.js";
+import { createTenantApi } from "./src/features/tenant/tenantApi.js";
+import { renderRegistrations as renderRegistrationsView, renderUsers as renderUsersView } from "./src/features/prototype/prototypeListsView.js";
+import { setTenantForm as setTenantFormView } from "./src/features/tenant/tenantView.js";
+import { createTenantController } from "./src/features/tenant/tenantController.js";
+
 export function initPrototype() {
-const appConfig = window.QRTALKIE_CONFIG || {};
-const sipDomain = appConfig.SIP_DOMAIN || "sip.qrtalkie.org";
+  if (window.__QRTALKIE_PROTOTYPE_INITIALIZED__) return;
+  window.__QRTALKIE_PROTOTYPE_INITIALIZED__ = true;
 
-const users = [
-  { name: "Alice Chen", username: "alice", status: "online", devices: "2 台", lastSeen: "1 分鐘前" },
-  { name: "Bob Li", username: "bob", status: "online", devices: "1 台", lastSeen: "4 分鐘前" },
-  { name: "Support Desk", username: "support", status: "failed", devices: "0 台", lastSeen: "密碼錯誤" },
-  { name: "Nina Wang", username: "nina", status: "offline", devices: "0 台", lastSeen: "昨天 18:42" },
-];
-
-const registrations = [
-  { username: "alice", contact: "sip:alice@10.10.2.14:5060", agent: "Linphone iOS 5.3", transport: "TLS", expires: "3580 秒", state: "online" },
-  { username: "bob", contact: "sip:bob@198.51.100.18:7443", agent: "WebRTC Client", transport: "WSS", expires: "1210 秒", state: "online" },
-  { username: "support", contact: "203.0.113.42", agent: "Zoiper 5", transport: "TCP", expires: "403 Forbidden", state: "failed" },
-];
-
-const titles = {
-  dashboard: "控制台",
-  users: "SIP 使用者",
-  registrations: "註冊狀態",
-  domain: "域名設定",
-  tenant: "租戶設定",
-};
-
-function sipUri(username) {
-  return `sip:${username}@${sipDomain}`;
-}
-
-function applySipDomain() {
-  document.querySelectorAll("[data-sip-domain]").forEach((node) => {
-    node.textContent = sipDomain;
+  const appConfig = window.QRTALKIE_CONFIG || {};
+  const sipDomain = appConfig.SIP_DOMAIN || "sip.qrtalkie.org";
+  const apiBaseUrl = appConfig.API_BASE_URL || "http://127.0.0.1:3001";
+  const sessionStorageKey = "qrtalkieAdminToken";
+  const { getAuthToken, setAuthToken } = createSessionStore(sessionStorageKey);
+  const { apiFetch } = createApiClient({ apiBaseUrl, getAuthToken });
+  const { hideInlineMessage, showInlineMessage, showAuthMessage } = createMessageController();
+  const authApi = createAuthApi({ apiBaseUrl, apiFetch });
+  const billingApi = createBillingApi({ apiBaseUrl, apiFetch, getAuthToken });
+  const tenantApi = createTenantApi(apiFetch);
+  let tenantSnapshot = null;
+  const billingPageSize = 10;
+  const users = prototypeUsers;
+  const registrations = prototypeRegistrations;
+  const titles = pageTitles;
+  const authController = createAuthController({
+    authApi,
+    enterConsole,
+    returnToLogin,
+    setAuthToken,
+    showAuthMessage,
+  });
+  const tenantController = createTenantController({
+    getTenantSnapshot: () => tenantSnapshot,
+    hideInlineMessage,
+    loadTenantSettings,
+    setAuthToken,
+    setTenantForm,
+    showInlineMessage,
+    tenantApi,
+  });
+  const billingOrdersController = createBillingOrdersController({
+    apiBaseUrl,
+    billingApi,
+    hideInlineMessage,
+    pageSize: billingPageSize,
+    showInlineMessage,
+  });
+  const purchaseController = createPurchaseController({
+    billingApi,
+    getTenantSnapshot: () => tenantSnapshot,
+    hideInlineMessage,
+    loadBillingOrders,
+    loadTenantSettings,
+    showInlineMessage,
+    tenantApi,
+    titles,
   });
 
-  const tenantDomainInput = document.querySelector("#tenant-sip-domain");
-  if (tenantDomainInput) tenantDomainInput.value = sipDomain;
-
-  const sipUriInput = document.querySelector("#sip-uri");
-  if (sipUriInput) sipUriInput.value = sipUri("alice");
-
-  const sipDomainSelect = document.querySelector("#sip-domain-select");
-  if (sipDomainSelect) {
-    sipDomainSelect.innerHTML = `<option>${sipDomain}</option>`;
+  function sipUri(username) {
+    return formatSipUri(username, sipDomain);
   }
-}
 
-function setAuthMode(mode) {
-  document.querySelectorAll(".auth-tabs button").forEach((button) => {
-    button.classList.toggle("selected", button.dataset.mode === mode);
-  });
-  document.querySelectorAll(".auth-form").forEach((form) => form.classList.remove("active"));
-  document.querySelector(`#${mode}-form`).classList.add("active");
-}
+  function setAuthMode(mode) {
+    authController.setAuthMode(mode);
+  }
+  async function enterConsole() {
+    showConsole();
+    await loadTenantSettings();
+    await loadBillingOrders();
+  }
 
-function enterConsole() {
-  document.querySelector("#landing").classList.add("hidden");
-  document.querySelector("#console").classList.remove("hidden");
-}
+  function returnToLogin() {
+    showLanding();
+    setAuthMode("login");
+    tenantSnapshot = null;
+  }
 
-function statusLabel(status) {
-  if (status === "online") return "線上";
-  if (status === "failed") return "失敗";
-  return "離線";
-}
+  function applySipDomain() {
+    applySipDomainView(sipDomain);
+  }
+  async function handleSignup() {
+    return authController.handleSignup();
+  }
+  async function handleLogin() {
+    return authController.handleLogin();
+  }
+  function openLegalDialog(type) {
+    authController.openLegalDialog(type);
+  }
+  async function verifyEmailFromUrl() {
+    return authController.verifyEmailFromUrl();
+  }
+  function setTenantForm(data) {
+    setTenantFormView(data, sipDomain);
+    syncPurchaseBillingAddress();
+  }
 
-function renderUsers() {
-  const tbody = document.querySelector("#user-table");
-  tbody.innerHTML = users
-    .map(
-      (user) => `
-        <tr>
-          <td>
-            <div class="user-cell">
-              <span class="avatar">${user.name.slice(0, 1)}</span>
-              <div><strong>${user.name}</strong><br><small>${user.username}</small></div>
-            </div>
-          </td>
-          <td>${sipUri(user.username)}</td>
-          <td><span class="status ${user.status}">${statusLabel(user.status)}</span></td>
-          <td>${user.devices}</td>
-          <td>${user.lastSeen}</td>
-          <td><button class="ghost-btn">詳情</button></td>
-        </tr>
-      `,
-    )
-    .join("");
-}
+  function syncPurchaseBillingAddress() {
+    purchaseController.syncPurchaseBillingAddress();
+  }
+  function toggleAddonService(button) {
+    purchaseController.toggleAddonService(button);
+  }
 
-function renderRegistrations() {
-  const list = document.querySelector("#registration-list");
-  list.innerHTML = registrations
-    .map(
-      (item) => `
-        <article class="registration-card">
-          <div><strong>${item.username}@${sipDomain}</strong><span>${item.contact}</span></div>
-          <div><strong>${item.agent}</strong><span>${item.transport}</span></div>
-          <div><small>到期/結果</small><strong>${item.expires}</strong></div>
-          <button class="ghost-btn">${item.state === "online" ? "強制登出" : "查看日誌"}</button>
-        </article>
-      `,
-    )
-    .join("");
-}
+  function editPurchaseBillingAddress() {
+    purchaseController.editPurchaseBillingAddress();
+  }
 
-document.querySelectorAll("[data-auth]").forEach((button) => {
-  button.addEventListener("click", () => setAuthMode(button.dataset.auth));
-});
+  function cancelPurchaseBillingAddressEdit() {
+    purchaseController.cancelPurchaseBillingAddressEdit();
+  }
 
-document.querySelectorAll("[data-mode]").forEach((button) => {
-  button.addEventListener("click", () => setAuthMode(button.dataset.mode));
-});
+  async function confirmSyncBillingAddress() {
+    return purchaseController.confirmSyncBillingAddress();
+  }
 
-document.querySelectorAll("#enter-console, #signup-enter").forEach((button) => {
-  button.addEventListener("click", enterConsole);
-});
+  function getPurchaseFormValues() {
+    return purchaseController.getFormValues();
+  }
 
-document.querySelectorAll(".nav-item").forEach((button) => {
-  button.addEventListener("click", () => {
-    const viewName = button.dataset.view;
-    document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
-    document.querySelectorAll(".view").forEach((view) => view.classList.remove("active"));
-    button.classList.add("active");
-    document.querySelector(`#${viewName}`).classList.add("active");
-    document.querySelector("#page-title").textContent = titles[viewName];
-  });
-});
+  function renderBillingDetail() {
+    purchaseController.renderDetail();
+  }
 
-const createDialog = document.querySelector("#create-user-dialog");
-document.querySelectorAll("#open-create-user, #open-create-user-2").forEach((button) => {
-  button.addEventListener("click", () => createDialog.showModal());
-});
+  function refreshAddonPricesForSelectedPlan() {
+    purchaseController.refreshAddonPrices();
+  }
 
-document.querySelectorAll(".dialog-close").forEach((button) => {
-  button.addEventListener("click", () => {
-    button.closest("dialog").close();
-  });
-});
+  async function applyCouponCode() {
+    return purchaseController.applyCouponCode();
+  }
 
-document.querySelector("#new-username").addEventListener("input", (event) => {
-  const clean = event.target.value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
-  document.querySelector("#sip-uri").value = sipUri(clean || "alice");
-});
+  function selectPaymentType(button) {
+    purchaseController.selectPaymentType(button);
+  }
 
-applySipDomain();
-renderUsers();
-renderRegistrations();
+  async function loadTenantSettings() {
+    const messageNode = document.querySelector("#tenant-message");
+    try {
+      tenantSnapshot = await authApi.getCurrentUser();
+      setTenantForm(tenantSnapshot);
+      hideInlineMessage(messageNode);
+    } catch (error) {
+      showInlineMessage(messageNode, error.message || "无法读取租户资料。", "error");
+    }
+  }
+
+  async function loadBillingOrders() {
+    return billingOrdersController.loadOrders();
+  }
+
+  async function deleteBillingOrder(orderId) {
+    return billingOrdersController.deleteOrder(orderId);
+  }
+
+  async function openPaymentProofDialog(orderId) {
+    return billingOrdersController.openPaymentProofDialog(orderId);
+  }
+
+  async function handlePaymentProofFile(file) {
+    return billingOrdersController.handlePaymentProofFile(file);
+  }
+
+  function handlePaymentProofPaste(event) {
+    billingOrdersController.handlePaymentProofPaste(event);
+  }
+
+  function handlePaymentProofDrag(event) {
+    billingOrdersController.handlePaymentProofDrag(event);
+  }
+
+  function handlePaymentProofDrop(event) {
+    billingOrdersController.handlePaymentProofDrop(event);
+  }
+
+  async function submitPaymentProof(event) {
+    return billingOrdersController.submitPaymentProof(event);
+  }
+
+  async function updateOrderReviewSubmission(orderId, action) {
+    return billingOrdersController.updateReviewSubmission(orderId, action);
+  }
+
+  async function saveTenantSettings(event) {
+    return tenantController.saveTenantSettings(event);
+  }
+
+  function resetTenantSettings() {
+    tenantController.resetTenantSettings();
+  }
+
+  function openLoginEmailDialog() {
+    tenantController.showLoginEmailDialog();
+  }
+  async function sendLoginEmailCode() {
+    return tenantController.sendLoginEmailCode();
+  }
+
+  async function confirmLoginEmailChange(event) {
+    return tenantController.confirmLoginEmailChange(event);
+  }
+
+  async function handleLogout() {
+    return authController.handleLogout();
+  }
+
+  async function openPurchasePlanDialog(orderId = null, mode = "create") {
+    return purchaseController.openPurchasePlan(orderId, mode);
+  }
+
+  async function submitPurchasePlan(event) {
+    return purchaseController.submitPurchasePlan(event);
+  }
+
+  function returnToBilling() {
+    purchaseController.returnToBilling();
+  }
+
+  function scrollPurchasePlans(direction) {
+    purchaseController.scrollPurchasePlans(direction);
+  }
+
+  function selectChoiceInGroup(target, selector) {
+    return purchaseController.selectChoiceInGroup(target, selector);
+  }
+
+  function stepNumberInput(button) {
+    purchaseController.stepNumberInput(button);
+  }
+
+  function renderUsers() {
+    renderUsersView({ users, sipUri });
+  }
+
+  function renderRegistrations() {
+    renderRegistrationsView({ registrations, sipDomain });
+  }
+
+  function handleOrderActionButton(button) {
+    if (!button || button.disabled) return;
+    hideFloatingOrderMenu();
+    const action = button.dataset.orderAction;
+    const orderId = button.dataset.orderId;
+    if (action === "edit") {
+      openPurchasePlanDialog(orderId, "edit");
+      return;
+    }
+    if (action === "repurchase") {
+      openPurchasePlanDialog(orderId, "repurchase");
+      return;
+    }
+    if (action === "delete") {
+      deleteBillingOrder(orderId);
+      return;
+    }
+    if (action === "upload-proof") {
+      openPaymentProofDialog(orderId);
+      return;
+    }
+    if (action === "submit-review") {
+      updateOrderReviewSubmission(orderId, "submit");
+      return;
+    }
+    if (action === "revoke-review") {
+      updateOrderReviewSubmission(orderId, "revoke");
+      return;
+    }
+    const messageNode = document.querySelector("#billing-message") || document.querySelector("#purchase-page-message") || document.querySelector("#tenant-message");
+    const actionLabels = {
+      detail: "订单详情正在建设中.....",
+      "upload-proof": "支付凭证正在建设中.....",
+      "payment-info": "付款资讯正在建设中.....",
+      renew: "续订正在建设中.....",
+      repurchase: "重新购买正在建设中.....",
+      delete: "订单删除正在建设中.....",
+    };
+    showInlineMessage(messageNode, actionLabels[action] || "正在建设中.....", "info");
+  }
+
+  function bindPrototypeEvents() {
+    bindPrototypeEventsView({
+      setAuthMode,
+      handleLogin,
+      handleSignup,
+      saveTenantSettings,
+      resetTenantSettings,
+      openLoginEmailDialog,
+      sendLoginEmailCode,
+      confirmLoginEmailChange,
+      handleLogout,
+      openPurchasePlanDialog,
+      submitPurchasePlan,
+      returnToBilling,
+      scrollPurchasePlans,
+      selectChoiceInGroup,
+      refreshAddonPricesForSelectedPlan,
+      renderBillingDetail,
+      toggleAddonService,
+      selectPaymentType,
+      stepNumberInput,
+      resetCoupon: purchaseController.resetCoupon,
+      editPurchaseBillingAddress,
+      cancelPurchaseBillingAddressEdit,
+      confirmSyncBillingAddress,
+      applyCouponCode,
+      showFloatingOrderMenu,
+      handleOrderActionButton,
+      hideFloatingOrderMenu,
+      updateBillingPage: (delta) => {
+        billingOrdersController.updatePage(delta);
+      },
+      openLegalDialog,
+      handleConsoleNavigation: (button) => {
+        const viewName = switchConsoleView({ button, titles });
+        if (viewName === "domain") loadBillingOrders();
+      },
+      handleCreateUserDialog: () => document.querySelector("#create-user-dialog")?.showModal(),
+      choosePaymentProofFile: () => document.querySelector("#payment-proof-file")?.click(),
+      handlePaymentProofFile,
+      clearPaymentProof: billingOrdersController.clearProofFromEvent,
+      submitPaymentProof,
+      handlePaymentProofPaste,
+      handlePaymentProofDrag,
+      handlePaymentProofDrop,
+      updateSipUriPreview: (event) => {
+        const clean = event.target.value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+        const sipUriInput = document.querySelector("#sip-uri");
+        if (sipUriInput) sipUriInput.value = sipUri(clean || "alice");
+      },
+    });
+  }
+
+  bindPrototypeEvents();
+  applySipDomain();
+  renderUsers();
+  renderRegistrations();
+  verifyEmailFromUrl();
+  if (getAuthToken()) enterConsole().catch(() => setAuthToken(""));
 }

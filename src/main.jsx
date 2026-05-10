@@ -1,17 +1,5 @@
-import React from "react";
 import { createRoot } from "react-dom/client";
 import "../styles.css";
-import { initPrototype } from "../app.js";
+import App from "./App.jsx";
 
-function StaticPrototype() {
-  return (
-    <div
-      dangerouslySetInnerHTML={{
-        __html: document.querySelector("#static-prototype").innerHTML,
-      }}
-    />
-  );
-}
-
-createRoot(document.querySelector("#root")).render(<StaticPrototype />);
-queueMicrotask(initPrototype);
+createRoot(document.querySelector("#root")).render(<App />);
