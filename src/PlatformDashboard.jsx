@@ -144,10 +144,7 @@ export default function PlatformDashboard() {
               <div className="pdb-metric-sub">5分钟平均负载：{health.load?.load5 ?? '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div className="pdb-metric-label">内存使用率</div>
-                <span style={{ fontSize: '11px', color: '#2563eb', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff' }}>重启</span>
-              </div>
+              <div className="pdb-metric-label">内存使用率</div>
               <div className="pdb-metric-value">{health.memory?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.memory?.usage || 0}%` }} /></div>
               <div className="pdb-metric-sub">已用 14.7GB / 32GB</div>
