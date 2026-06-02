@@ -1,6 +1,7 @@
 ﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "dotenv/config";
 import express from "express";
 import { mkdir, unlink, writeFile, readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -11174,7 +11175,7 @@ app.delete("/api/platform/admins/:id", requireAdmin, async (request, response) =
 // ==========================================
 
 function readProcFile(filePath) {
-  try { return require("fs").readFileSync(filePath, "utf8"); } catch { return ""; }
+  try { return readFileSync(filePath, "utf8"); } catch { return ""; }
 }
 
 function parseCpuUsage() {

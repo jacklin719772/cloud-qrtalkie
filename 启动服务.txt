@@ -59,6 +59,12 @@ sudo ufw reload
 gcloud compute ssh instance-20250524-150049 --zone=asia-east1-c
 
 服务端更新代码指令：
+
+本地提交代码：
+# 在你本地（已经改好了，直接推送）
+cd "d:/项目/flybirdchat/google服务器/saas"
+git add -A && git commit -m "fix: platform health API CPU/memory/disk readings" && git push
+服务器更新代码：
 cd /opt/saas && git pull && npm install --silent && pkill -f "node server/index.js" && nohup node server/index.js > /tmp/api.log 2>&1 &
 
 
