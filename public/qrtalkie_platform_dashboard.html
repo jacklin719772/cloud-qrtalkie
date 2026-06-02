@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QRTalkie Cloud 平台管理员 Dashboard</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#263238;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;font-size:13px;font-weight:400}.page{max-width:1280px;margin:0 auto;padding:18px 22px 28px}.title-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}.title h1{margin:0;font-size:20px;font-weight:500;letter-spacing:.2px}.title p{margin:5px 0 0;color:#7b8794;font-size:12px}.time{color:#7b8794;font-size:12px}.section{margin-top:14px}.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}.section-title{font-size:14px;font-weight:500;color:#263238}.section-note{font-size:11px;color:#8a94a6}.grid{display:grid;gap:12px}.resources{grid-template-columns:repeat(4,1fr)}.services{grid-template-columns:repeat(4,1fr)}.business{grid-template-columns:repeat(3,1fr)}.overview{grid-template-columns:repeat(4,1fr)}.main-grid{grid-template-columns:1.05fr .95fr}.card{background:#fff;border:1px solid #e8edf4;border-radius:14px;box-shadow:0 6px 18px rgba(38,50,56,.04);padding:14px}.metric{min-height:96px}.metric-label{color:#778295;font-size:12px;margin-bottom:8px}.metric-value{font-size:24px;font-weight:400;line-height:1.1;color:#1f2937}.metric-sub{margin-top:8px;font-size:11px;color:#8a94a6}.progress{height:6px;background:#edf2f7;border-radius:99px;overflow:hidden;margin-top:13px}.bar{height:100%;border-radius:99px;background:#6aa6ff}.bar.green{background:#5fc89f}.bar.orange{background:#f6b25d}.bar.red{background:#ee7070}.service-card{display:flex;align-items:center;gap:12px;min-height:74px}.dot{width:10px;height:10px;border-radius:50%;background:#59c98d;box-shadow:0 0 0 4px rgba(89,201,141,.12);flex:none}.dot.warn{background:#f6b25d;box-shadow:0 0 0 4px rgba(246,178,93,.15)}.service-name{font-size:13px;font-weight:500;margin-bottom:4px}.service-status{font-size:12px;color:#6b7788}.business-card{text-align:left}.business-value{font-size:22px;font-weight:400;margin-top:6px}.business-label{font-size:12px;color:#778295}.alert-card{padding:0;overflow:hidden}.alert-header{padding:13px 14px;border-bottom:1px solid #edf1f6;display:flex;justify-content:space-between;align-items:center}.alert-count{font-size:11px;color:#7b8794}.alert-list{padding:4px 0}.alert-item{display:grid;grid-template-columns:82px 1fr 80px;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid #f1f4f8}.alert-item:last-child{border-bottom:none}.tag{display:inline-flex;align-items:center;justify-content:center;height:22px;border-radius:99px;font-size:11px}.tag.critical{background:#fff0f0;color:#d94a4a}.tag.warning{background:#fff8e8;color:#b97710}.tag.info{background:#eff6ff;color:#4178c0}.alert-text{font-size:12px;color:#344054}.alert-time{text-align:right;font-size:11px;color:#98a2b3}.chart{height:190px;position:relative;padding:12px 10px 0}.chart-bars{height:135px;display:flex;align-items:end;gap:12px;border-left:1px solid #e8edf4;border-bottom:1px solid #e8edf4;padding-left:10px}.chart-bars span{width:100%;max-width:34px;background:linear-gradient(180deg,#8bbcff,#dbeaff);border-radius:8px 8px 0 0}.chart-labels{display:flex;gap:12px;padding-left:11px;margin-top:8px;color:#98a2b3;font-size:10px}.chart-labels span{width:34px;text-align:center}.activity{padding:2px 0}.activity-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f1f4f8}.activity-item:last-child{border-bottom:none}.activity-time{width:44px;color:#98a2b3;font-size:11px}.activity-text{font-size:12px;color:#344054}.footer-grid{grid-template-columns:1fr 1fr}.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.pill{background:#f4f7fb;border:1px solid #e8edf4;border-radius:999px;padding:6px 10px;font-size:11px;color:#667085}@media(max-width:980px){.resources,.services,.overview{grid-template-columns:repeat(2,1fr)}.business,.main-grid,.footer-grid{grid-template-columns:1fr}}@media(max-width:560px){.page{padding:14px}.resources,.services,.business,.overview{grid-template-columns:1fr}.title-row{display:block}.time{margin-top:8px}.alert-item{grid-template-columns:70px 1fr}.alert-time{display:none}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="title-row">
+      <div class="title">
+        <h1>QRTalkie Cloud 平台管理员 Dashboard</h1>
+        <p>平台健康状态优先展示，统计数值使用正常字体。</p>
+      </div>
+      <div class="time">最后更新：2026-06-01 09:32</div>
+    </div>
+
+    <section class="section">
+      <div class="section-head"><div class="section-title">平台健康状态</div><div class="section-note">Ubuntu / 核心服务 / 通信业务</div></div>
+      <div class="grid resources">
+        <div class="card metric"><div class="metric-label">CPU 使用率</div><div class="metric-value">23%</div><div class="progress"><div class="bar green" style="width:23%"></div></div><div class="metric-sub">5分钟平均负载：0.42</div></div>
+        <div class="card metric"><div class="metric-label">内存使用率</div><div class="metric-value">46%</div><div class="progress"><div class="bar green" style="width:46%"></div></div><div class="metric-sub">已用 14.7GB / 32GB</div></div>
+        <div class="card metric"><div class="metric-label">磁盘使用率</div><div class="metric-value">62%</div><div class="progress"><div class="bar orange" style="width:62%"></div></div><div class="metric-sub">/data 剩余 186GB</div></div>
+        <div class="card metric"><div class="metric-label">系统运行时间</div><div class="metric-value">35天</div><div class="metric-sub">Ubuntu 24.04 · NTP 正常</div><div class="pill-row"><span class="pill">Load 0.42</span><span class="pill">稳定</span></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="grid services">
+        <div class="card service-card"><span class="dot"></span><div><div class="service-name">Flexisip</div><div class="service-status">运行正常</div></div></div>
+        <div class="card service-card"><span class="dot"></span><div><div class="service-name">Asterisk</div><div class="service-status">运行正常</div></div></div>
+        <div class="card service-card"><span class="dot"></span><div><div class="service-name">PostgreSQL</div><div class="service-status">连接正常</div></div></div>
+        <div class="card service-card"><span class="dot"></span><div><div class="service-name">Redis</div><div class="service-status">PONG</div></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div class="section-title">通信业务状态</div><div class="section-note">真实可采集指标</div></div>
+      <div class="grid business">
+        <div class="card business-card"><div class="business-label">SIP 注册账号数</div><div class="business-value">18,367</div><div class="metric-sub">较昨日 +2.1%</div></div>
+        <div class="card business-card"><div class="business-label">在线设备数</div><div class="business-value">3,925</div><div class="metric-sub">最近5分钟心跳有效</div></div>
+        <div class="card business-card"><div class="business-label">当前活跃通话</div><div class="business-value">18</div><div class="metric-sub">Asterisk channels</div></div>
+      </div>
+    </section>
+
+    <section class="section grid main-grid">
+      <div class="card alert-card">
+        <div class="alert-header"><div class="section-title">告警中心</div><div class="alert-count">严重 0 · 警告 2 · 信息 3</div></div>
+        <div class="alert-list">
+          <div class="alert-item"><span class="tag warning">警告</span><div class="alert-text">CPU 使用率连续 5 分钟超过 80%</div><div class="alert-time">规则启用</div></div>
+          <div class="alert-item"><span class="tag warning">警告</span><div class="alert-text">SIP 注册数较昨日下降 20% 以上</div><div class="alert-time">规则启用</div></div>
+          <div class="alert-item"><span class="tag critical">严重</span><div class="alert-text">PostgreSQL / Redis / Flexisip / Asterisk 离线检测</div><div class="alert-time">实时</div></div>
+          <div class="alert-item"><span class="tag critical">严重</span><div class="alert-text">磁盘使用率超过 85%</div><div class="alert-time">规则启用</div></div>
+          <div class="alert-item"><span class="tag info">信息</span><div class="alert-text">数据库备份完成、系统升级完成、服务重启完成</div><div class="alert-time">最近24小时</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head"><div class="section-title">平台核心指标</div><div class="section-note">运营概览</div></div>
+        <div class="grid overview">
+          <div><div class="metric-label">总租户</div><div class="business-value">286</div></div>
+          <div><div class="metric-label">活跃租户</div><div class="business-value">218</div></div>
+          <div><div class="metric-label">总设备</div><div class="business-value">4,812</div></div>
+          <div><div class="metric-label">本月收入</div><div class="business-value">$18.6k</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section grid footer-grid">
+      <div class="card">
+        <div class="section-head"><div class="section-title">租户增长趋势</div><div class="section-note">最近 7 天</div></div>
+        <div class="chart"><div class="chart-bars"><span style="height:48%"></span><span style="height:58%"></span><span style="height:42%"></span><span style="height:66%"></span><span style="height:74%"></span><span style="height:61%"></span><span style="height:82%"></span></div><div class="chart-labels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><div class="section-title">最近活动</div><div class="section-note">平台事件</div></div>
+        <div class="activity">
+          <div class="activity-item"><div class="activity-time">09:21</div><div class="activity-text">新租户注册成功</div></div>
+          <div class="activity-item"><div class="activity-time">09:10</div><div class="activity-text">Asterisk 服务健康检查通过</div></div>
+          <div class="activity-item"><div class="activity-time">08:48</div><div class="activity-text">数据库自动备份完成</div></div>
+          <div class="activity-item"><div class="activity-time">08:30</div><div class="activity-text">Flexisip 注册数同步完成</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -8,6 +8,14 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
+      },
+      '/payment-method-icons': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+      '/ecard-images': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
       }
     }
   }

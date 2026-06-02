@@ -83,6 +83,16 @@ export default function OfflinePaymentAccount() {
     };
   }, []);
 
+  useEffect(() => {
+    const mainElement = document.querySelector('.main');
+    if (mainElement) {
+      mainElement.classList.add('offline-account-mode');
+    }
+    return () => {
+      if (mainElement) mainElement.classList.remove('offline-account-mode');
+    };
+  }, []);
+
   const updateField = (field) => (event) => {
     setFormData((current) => ({ ...current, [field]: event.target.value }));
   };
@@ -147,7 +157,7 @@ export default function OfflinePaymentAccount() {
             <>
               <section className="settings-block">
                 <div className="settings-block-head">
-                  <h3>收款帳戶</h3>
+                  <h3>收款账号资讯</h3>
                 </div>
                 <div className="tenant-field-grid">
                   <label>帳戶代碼<input value={formData.accountCode} onChange={updateField('accountCode')} /></label>

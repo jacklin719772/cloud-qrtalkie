@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>門禁管理系統 — 靜態展示頁</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --bg: #f1f5f9;
+      --card: #fff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --green: #16a34a;
+      --red: #dc2626;
+      --amber: #b45309;
+      --shadow: 0 2px 12px rgba(15,23,42,0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.5;
+    }
+
+    /* ───── Layout ───── */
+    .page {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ───── Toolbar ───── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 24px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+    }
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      position: relative;
+      width: 260px;
+    }
+    .search-box input {
+      width: 100%;
+      height: 42px;
+      padding: 0 16px 0 42px;
+      border: 1px solid #d8e2ef;
+      border-radius: 9px;
+      font-size: 13px;
+      outline: none;
+      color: var(--text);
+      background: #fff;
+    }
+    .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    .search-box .icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      pointer-events: none;
+    }
+
+    .toolbar-stats {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .pill strong { color: var(--text); font-size: 13px; font-weight: 700; }
+
+    /* ───── Tabs ───── */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      background: var(--card);
+      border-radius: 14px 14px 0 0;
+      padding: 0 20px;
+      overflow: hidden;
+    }
+    .tab {
+      padding: 14px 22px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ───── Panel ───── */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 0 0 14px 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    /* ───── Community Card ───── */
+    .community-card {
+      border-bottom: 1px solid var(--border);
+    }
+    .community-card:last-child { border-bottom: none; }
+
+    .cc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .cc-header:hover { background: #f8fafc; }
+    .cc-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .cc-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+    .cc-name { font-size: 16px; font-weight: 600; }
+    .cc-addr { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .cc-meta {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .cc-meta-item {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .cc-body {
+      border-top: 1px solid var(--border);
+      background: #f8fafc;
+      padding: 0;
+      display: none;
+    }
+    .cc-body.open { display: block; }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 16px 24px 8px;
+    }
+    .section-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px 8px;
+    }
+
+    /* ───── Table ───── */
+    .table-wrap {
+      overflow-x: auto;
+      padding: 0 24px 16px;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    .table-wrap::-webkit-scrollbar { height: 6px; }
+    .table-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+    table {
+      width: 100%;
+      min-width: 700px;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      background: #f1f5f9;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+      padding: 10px 14px;
+      text-align: left;
+      white-space: nowrap;
+      letter-spacing: 0.03em;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tbody td {
+      padding: 10px 14px;
+      border-top: 1px solid #f1f5f9;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    tbody tr:hover td { background: #f8fafc; }
+
+    /* ───── Badges ───── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    .badge-online { background: #f0fdf4; color: #16a34a; }
+    .badge-online .badge-dot { background: #16a34a; }
+    .badge-offline { background: #fef2f2; color: #dc2626; }
+    .badge-offline .badge-dot { background: #dc2626; }
+    .badge-none { background: #f8fafc; color: #94a3b8; }
+    .badge-none .badge-dot { background: #cbd5e1; }
+    .badge-warn { background: #fef3c7; color: #b45309; }
+    .badge-warn .badge-dot { background: #b45309; }
+
+    /* ───── Building Card ───── */
+    .building-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 0 24px 12px;
+      overflow: hidden;
+    }
+    .bld-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .bld-header:hover { background: #f8fafc; }
+    .bld-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+
+    /* ───── Buttons ───── */
+    .btn-sm {
+      height: 32px;
+      padding: 0 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover { background: #f1f5f9; color: var(--text); }
+    .btn-sm.btn-primary {
+      background: linear-gradient(90deg, #2563eb 0%, #4f46e5 100%);
+      color: #fff;
+      border: 0;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.22);
+    }
+    .btn-sm.btn-danger { color: var(--red); }
+    .btn-sm.btn-danger:hover { background: #fef2f2; }
+
+    .actions-cell {
+      display: flex;
+      gap: 4px;
+    }
+    .ghost-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .ghost-btn:hover { background: #f1f5f9; color: var(--text); }
+
+    /* ───── Dropdown ───── */
+    .dropdown-wrap { position: relative; display: inline-block; }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(15,23,42,0.15);
+      z-index: 10;
+      min-width: 130px;
+      overflow: hidden;
+    }
+    .dropdown-wrap.open .dropdown-menu { display: block; }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 14px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .dropdown-item:hover { background: #f8fafc; }
+    .dropdown-item.danger { color: var(--red); }
+
+    /* ───── Empty ───── */
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    /* ───── Device Tab ───── */
+    .device-table { min-width: 900px; }
+
+    /* ───── Responsive ───── */
+    @media (max-width: 768px) {
+      .page { padding: 12px 8px 40px; gap: 12px; }
+      .toolbar { padding: 12px 16px; }
+      .search-box { width: 100%; }
+      .cc-meta { flex-wrap: wrap; gap: 8px; }
+      .cc-header { padding: 14px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ========== Toolbar ========== -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="search-box">
+        <span class="icon">🔍</span>
+        <input type="search" placeholder="搜尋社區名稱或地址..." />
+      </div>
+    </div>
+    <div class="toolbar-stats">
+      <span class="pill">社區 <strong>2</strong></span>
+      <span class="pill">樓宇 <strong style="color:#16a34a">5</strong></span>
+      <span class="pill">房間 <strong style="color:#ca8a04">48</strong></span>
+      <span class="pill">入口 <strong style="color:#3b82f6">8</strong></span>
+      <span class="pill">設備 <strong style="color:#16a34a">6/10</strong></span>
+    </div>
+  </div>
+
+  <!-- ========== Tabs ========== -->
+  <div class="tabs">
+    <button class="tab active">社區列表</button>
+    <button class="tab">樓宇管理</button>
+    <button class="tab">入口管理</button>
+    <button class="tab">權限設置</button>
+    <button class="tab">門控設備</button>
+  </div>
+
+  <!-- ========== Panel ========== -->
+  <div class="panel">
+
+    <!-- ─── Community 1 ─── -->
+    <div class="community-card">
+      <div class="cc-header" onclick="this.parentElement.querySelector('.cc-body').classList.toggle('open')">
+        <div class="cc-info">
+          <div class="cc-icon">🏢</div>
+          <div>
+            <div class="cc-name">太域科技園區</div>
+            <div class="cc-addr">香港九龍灣宏照道 39 號企業廣場三期 6 樓</div>
+          </div>
+        </div>
+        <div class="cc-meta">
+          <div class="dropdown-wrap" onclick="event.stopPropagation(); this.classList.toggle('open')">
+            <button class="btn-sm">⋯</button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item">✎ 編輯</button>
+              <button class="dropdown-item">📋 複製 URL</button>
+              <button class="dropdown-item">🔐 授權</button>
+              <hr style="margin:4px 0;border-color:#e2e8f0">
+              <button class="dropdown-item danger">✕ 刪除</button>
+            </div>
+          </div>
+          <span class="cc-meta-item">🏗️ 3 棟樓宇</span>
+          <span class="cc-meta-item">🚪 28 房間</span>
+          <span class="cc-meta-item">🛡️ 5 入口</span>
+          <span style="color:#94a3b8">▼</span>
+        </div>
+      </div>
+      <div class="cc-body">
+        <!-- Community Entrances -->
+        <div class="section-row">
+          <div class="section-label">社區級入口</div>
+          <button class="btn-sm btn-primary">＋ 添加入口</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>入口名稱</th>
+                <th>綁定設備</th>
+                <th>設備狀態</th>
+                <th>狀態</th>
+                <th>授權用戶</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-weight:600">正門入口</td>
+                <td style="font-family:monospace;font-size:11px">evhq1e13gv...</td>
+                <td><span class="badge badge-none"><span class="badge-dot"></span>—</span></td>
+                <td><span class="badge badge-online"><span class="badge-dot"></span>已啟用</span></td>
+                <td style="text-align:center">12</td>
+                <td class="actions-cell">
+                  <button class="ghost-btn">✎</button>
+                  <button class="ghost-btn">🔑</button>
+                  <button class="ghost-btn">📡</button>
+                  <button class="ghost-btn">🧪</button>
+                </td>
+              </tr>
+              <tr>
+                <td style="font-weight:600">側門入口</td>
+                <td style="font-family:monospace;font-size:11px">k6gytkk8ci...</td>
+                <td><span class="badge badge-none"><span class="badge-dot"></span>—</span></td>
+                <td><span class="badge badge-offline"><span class="badge-dot"></span>已停用</span></td>
+                <td style="text-align:center">5</td>
+                <td class="actions-cell">
+                  <button class="ghost-btn">✎</button>
+                  <button class="ghost-btn">🔑</button>
+                  <button class="ghost-btn">📡</button>
+                  <button class="ghost-btn">🧪</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Buildings -->
+        <div class="section-row">
+          <div class="section-label">樓宇</div>
+          <button class="btn-sm btn-primary">＋ 添加樓宇</button>
+        </div>
+
+        <!-- Building A -->
+        <div class="building-card">
+          <div class="bld-header" onclick="this.parentElement.querySelector('.bld-body').classList.toggle('open')">
+            <span class="bld-name">🏗️ A 座</span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:11px;color:#94a3b8">10 房間 · 2 入口</span>
+              <button class="btn-sm">＋ 添加入口</button>
+              <span style="color:#94a3b8">▼</span>
+            </div>
+          </div>
+          <div class="bld-body" style="display:none;border-top:1px solid var(--border);padding:12px 16px">
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <!-- Rooms -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-size:12px;font-weight:600;color:var(--muted)">🚪 房間列表</span>
+                  <button class="btn-sm">＋ 添加房間</button>
+                </div>
+                <div class="table-wrap" style="max-height:200px;overflow-y:auto">
+                  <table style="min-width:500px">
+                    <thead><tr><th style="width:36px">☑</th><th>房間號</th><th>樓層</th><th>SIP 帳號</th><th>住戶</th><th>操作</th></tr></thead>
+                    <tbody>
+                      <tr><td><input type="checkbox"></td><td style="font-weight:600">A101</td><td>1F</td><td style="font-family:monospace;font-size:11px">101</td><td>陳大文</td><td class="actions-cell"><button class="ghost-btn">✎</button><button class="ghost-btn">🔑</button><button class="ghost-btn">🔐</button></td></tr>
+                      <tr><td><input type="checkbox"></td><td style="font-weight:600">A102</td><td>1F</td><td style="font-family:monospace;font-size:11px">102</td><td>李小華</td><td class="actions-cell"><button class="ghost-btn">✎</button><button class="ghost-btn">🔑</button><button class="ghost-btn">🔐</button></td></tr>
+                      <tr><td><input type="checkbox"></td><td style="font-weight:600">A201</td><td>2F</td><td style="font-family:monospace;font-size:11px">201</td><td>張美麗</td><td class="actions-cell"><button class="ghost-btn">✎</button><button class="ghost-btn">🔑</button><button class="ghost-btn">🔐</button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- Entrances -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-size:12px;font-weight:600;color:var(--muted)">🛡️ 入口列表</span>
+                  <div style="display:flex;gap:8px">
+                    <button class="btn-sm">📡 批量分配設備</button>
+                    <button class="btn-sm btn-danger">📡 批量取消設備</button>
+                    <button class="btn-sm">🧪 測試</button>
+                    <button class="btn-sm btn-primary">＋ 添加入口</button>
+                  </div>
+                </div>
+                <div class="table-wrap" style="max-height:200px;overflow-y:auto">
+                  <table style="min-width:550px">
+                    <thead><tr><th style="width:36px">☑</th><th>入口名稱</th><th>綁定設備</th><th>狀態</th><th>授權用戶</th><th>操作</th></tr></thead>
+                    <tbody>
+                      <tr>
+                        <td><input type="checkbox"></td>
+                        <td style="font-weight:600">A座大堂入口</td>
+                        <td style="font-family:monospace;font-size:11px">lzjn5vk3bh...</td>
+                        <td><span class="badge badge-none"><span class="badge-dot"></span>—</span></td>
+                        <td style="text-align:center">3</td>
+                        <td class="actions-cell"><button class="ghost-btn">✎</button><button class="ghost-btn">🔑</button><button class="ghost-btn">📡</button><button class="ghost-btn">🧪</button></td>
+                      </tr>
+                      <tr>
+                        <td><input type="checkbox"></td>
+                        <td style="font-weight:600">A座側門</td>
+                        <td style="font-family:monospace;font-size:11px">tn6eerijxv...</td>
+                        <td><span class="badge badge-none"><span class="badge-dot"></span>—</span></td>
+                        <td style="text-align:center">8</td>
+                        <td class="actions-cell"><button class="ghost-btn">✎</button><button class="ghost-btn">🔑</button><button class="ghost-btn">📡</button><button class="ghost-btn">🧪</button></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Community 2 ─── -->
+    <div class="community-card">
+      <div class="cc-header" onclick="this.parentElement.querySelector('.cc-body').classList.toggle('open')">
+        <div class="cc-info">
+          <div class="cc-icon">🏢</div>
+          <div>
+            <div class="cc-name">海濱花園</div>
+            <div class="cc-addr">香港薄扶林數碼港道 100 號</div>
+          </div>
+        </div>
+        <div class="cc-meta">
+          <div class="dropdown-wrap" onclick="event.stopPropagation(); this.classList.toggle('open')">
+            <button class="btn-sm">⋯</button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item">✎ 編輯</button>
+              <button class="dropdown-item">📋 複製 URL</button>
+              <button class="dropdown-item">🔐 授權</button>
+              <hr style="margin:4px 0;border-color:#e2e8f0">
+              <button class="dropdown-item danger">✕ 刪除</button>
+            </div>
+          </div>
+          <span class="cc-meta-item">🏗️ 2 棟樓宇</span>
+          <span class="cc-meta-item">🚪 20 房間</span>
+          <span class="cc-meta-item">🛡️ 3 入口</span>
+          <span style="color:#94a3b8">▼</span>
+        </div>
+      </div>
+      <div class="cc-body">
+        <div class="empty">（展開後顯示該社區的入口與樓宇列表）</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Close dropdowns on outside click
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.dropdown-wrap.open').forEach(d => d.classList.remove('open'));
+  });
+</script>
+
+</body>
+</html>

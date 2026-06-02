@@ -19,29 +19,19 @@ export function formatSipUri(username, sipDomain) {
 }
 
 export function orderStatusLabel(status) {
-  const labels = {
-    draft: "草稿",
-    pending_payment: "未支付",
-    payment_submitted: "已支付",
-    pending_review: "已提交",
-    review_approved: "通过审核",
-    review_rejected: "未通过审核",
-    cancelled: "已取消",
-  };
-  return labels[status] || status || "-";
+  if (status === "pending_review") return "待审核";
+  if (status === "review_approved") return "已生效";
+  if (status === "cancelled") return "已取消";
+  return "未生效";
 }
-
 export function packageStatus(order) {
   if (order.orderStatus !== "review_approved") return { label: "未生效", className: "pending" };
   const today = new Date();
-  const start = order.effectiveAt ? new Date(`${order.effectiveAt}T00:00:00`) : null;
   const end = order.expiresAt ? new Date(`${order.expiresAt}T23:59:59`) : null;
-  if (start && today < start) return { label: "未生效", className: "pending" };
-  if (end && today > end) return { label: "已过期", className: "expired" };
+  if (end && today > end) return { label: "过期", className: "expired" };
   if (end && end.getTime() - today.getTime() <= 30 * 24 * 60 * 60 * 1000) return { label: "即将过期", className: "expiring" };
-  return { label: "生效中", className: "online" };
+  return { label: "已生效", className: "online" };
 }
-
 export function paymentMethodLabel(order) {
   if (order.paymentMethod === "offline") return "线下支付";
   if (order.paymentMethod === "online") return order.paymentChannel ? `线上支付 / ${order.paymentChannel}` : "线上支付";

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import net from "node:net";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import * as mariadb from "mariadb";
 
 const rootDir = process.cwd();
@@ -12,6 +12,7 @@ const appHost = appUrl.hostname || "127.0.0.1";
 const dbHost = process.env.DB_HOST || "127.0.0.1";
 const dbPort = Number(process.env.DB_PORT || 3306);
 const nodeCommand = process.execPath;
+const isRestart = process.argv.includes("--restart");
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -53,6 +54,40 @@ function canConnect(host, port, timeoutMs = 1500) {
     socket.once("timeout", () => done(false));
     socket.once("error", () => done(false));
   });
+}
+
+function killProcessOnPort(port, label) {
+  try {
+    if (process.platform === "win32") {
+      const output = execSync(`netstat -ano | findstr :${port}`).toString();
+      const pids = new Set();
+      for (const line of output.split("\n")) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 5 && parts[1].endsWith(`:${port}`)) {
+          const pid = parts[parts.length - 1];
+          if (pid !== "0") pids.add(pid);
+        }
+      }
+      for (const pid of pids) {
+        log(`Killing ${label} process (PID ${pid}) on port ${port}...`);
+        execSync(`taskkill /PID ${pid} /F`, { stdio: "ignore" });
+      }
+    } else {
+      try {
+        const output = execSync(`lsof -t -i:${port}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+        if (output) {
+          for (const pid of output.split("\n").filter(Boolean)) {
+            log(`Killing ${label} process (PID ${pid}) on port ${port}...`);
+            execSync(`kill -9 ${pid}`, { stdio: "ignore" });
+          }
+        }
+      } catch {
+        // Ignore if lsof finds no processes or is not installed
+      }
+    }
+  } catch (err) {
+    // Ignore other errors
+  }
 }
 
 async function checkDatabase() {
@@ -136,6 +171,30 @@ async function startDatabase() {
 }
 
 async function ensureDatabase() {
+  if (isRestart) {
+    log("Restarting database...");
+    if (process.env.DB_RESTART_COMMAND) {
+      log("Trying DB_RESTART_COMMAND from .env...");
+      await runCommand(process.env.DB_RESTART_COMMAND, []);
+    } else if (process.platform === "win32") {
+      const serviceNames = [
+        process.env.DB_SERVICE_NAME,
+        "MariaDB",
+        "mariadb",
+        "MySQL",
+        "mysql",
+        "MySQL80",
+      ].filter(Boolean);
+
+      for (const serviceName of serviceNames) {
+        log(`Trying Windows service restart: ${serviceName}...`);
+        const command = `if (Get-Service -Name '${serviceName}' -ErrorAction SilentlyContinue) { Restart-Service -Name '${serviceName}' -Force -ErrorAction SilentlyContinue }`;
+        await runCommand("powershell", ["-NoProfile", "-Command", command]);
+      }
+    }
+    await wait(2000);
+  }
+
   try {
     const version = await checkDatabase();
     log(`Database is ready: MariaDB ${version}`);
@@ -178,6 +237,11 @@ async function httpStatus(url) {
 }
 
 async function ensureApi() {
+  if (isRestart) {
+    killProcessOnPort(apiPort, "API");
+    await wait(1000);
+  }
+
   const status = await httpStatus(`http://127.0.0.1:${apiPort}/api/health`);
   if (status === 200) {
     log(`API is ready on http://127.0.0.1:${apiPort} (status ${status})`);
@@ -205,6 +269,11 @@ async function ensureApi() {
 }
 
 async function ensureWeb() {
+  if (isRestart) {
+    killProcessOnPort(appPort, "Web app");
+    await wait(1000);
+  }
+
   const status = await httpStatus(appUrl.href);
   if (status > 0 && status < 500) {
     log(`Web app is ready on ${appUrl.href} (status ${status})`);

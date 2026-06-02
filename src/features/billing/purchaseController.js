@@ -45,6 +45,15 @@ export function createPurchaseController({
     cancelButton?.classList.add("hidden");
   }
 
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   function editPurchaseBillingAddress() {
     const addressInput = document.querySelector("#purchase-billing-address");
     const editButton = document.querySelector("#edit-purchase-billing-address");
@@ -279,7 +288,14 @@ export function createPurchaseController({
       if (!logos) return;
       logos.innerHTML = paymentMethods
         .filter((method) => method.methodType === "online")
-        .map((method) => `<span class="payment-logo ${method.logoClass}">${method.displayName.replace(" ", "<br />")}</span>`)
+        .map((method) => {
+          const displayName = escapeHtml(method.displayName);
+          const logoClass = escapeHtml(method.logoClass);
+          if (method.iconUrl) {
+            return `<span class="payment-logo with-icon ${logoClass}"><img src="${escapeHtml(method.iconUrl)}" alt="${displayName}" /></span>`;
+          }
+          return `<span class="payment-logo ${logoClass}">${displayName.replace(" ", "<br />")}</span>`;
+        })
         .join("");
     } catch (error) {
       console.warn("Failed to load payment methods:", error.message);

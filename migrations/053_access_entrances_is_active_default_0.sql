@@ -1,0 +1,2 @@
+ALTER TABLE access_entrances
+  MODIFY COLUMN is_active TINYINT(1) NOT NULL DEFAULT 0;

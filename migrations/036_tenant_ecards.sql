@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS tenant_ecards (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  tenant_id BIGINT UNSIGNED NOT NULL,
+  sip_user_id BIGINT UNSIGNED NOT NULL,
+  ecard_style_background_id BIGINT UNSIGNED NULL COMMENT '使用的模板背景',
+  avatar_url VARCHAR(500) NULL COMMENT '用户上传的独立头像',
+  logo_url VARCHAR(500) NULL COMMENT '覆盖公司的独立Logo',
+  card_data_json JSON NULL COMMENT '姓名/手机号/职位等个性化数据',
+  local_style_json JSON NULL COMMENT '字号和颜色自定义配置',
+  thumbnail_url VARCHAR(500) NULL COMMENT '生成的用于分享的图片链接',
+  access_slug VARCHAR(32) NOT NULL UNIQUE COMMENT 'URL访问短链后缀',
+  status VARCHAR(32) NOT NULL DEFAULT 'active' COMMENT '名片状态: active / disabled',
+  valid_from DATE NULL,
+  valid_to DATE NULL,
+  created_by_admin_id BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY idx_ecard_sip (sip_user_id),
+  KEY idx_ecard_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

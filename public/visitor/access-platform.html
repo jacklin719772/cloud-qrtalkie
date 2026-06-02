@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>社區智慧門禁服務平台</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --primary-light: #eff6ff;
+      --primary-soft: #dbeafe;
+
+      --bg: #eef5ff;
+      --panel: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-body: #334155;
+      --muted: #64748b;
+      --muted-light: #94a3b8;
+      --border: #e2e8f0;
+
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --teal: #0f766e;
+      --teal-light: #f0fdfa;
+
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 14px;
+      --transition: 0.2s ease;
+
+      /* Typography */
+      --font-xs: 12px;
+      --font-sm: 13px;
+      --font-base: 14px;
+      --font-md: 15px;
+      --font-lg: 16px;
+      --font-xl: 22px;
+      --font-hero: 32px;
+      --font-room: 14px;
+
+      --weight-regular: 400;
+      --weight-medium: 500;
+      --weight-semibold: 600;
+      --weight-bold: 700;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "PingFang SC",
+        "Hiragino Sans GB",
+        "Microsoft YaHei",
+        "Noto Sans SC",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      background: var(--bg);
+      color: var(--text-body);
+      font-size: var(--font-base);
+      font-weight: var(--weight-regular);
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: geometricPrecision;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 16px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1120px;
+      height: calc(100vh - 24px);
+      max-height: 900px;
+      background: var(--panel);
+      border-radius: 20px;
+      box-shadow: 0 12px 42px rgba(15, 23, 42, 0.10);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════ Hero ═══════════════ */
+    .hero {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 118px;
+      padding: 18px 36px;
+      flex-shrink: 0;
+      background: url('banner.png') center/cover no-repeat;
+      border-radius: 20px 20px 0 0;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background:
+        linear-gradient(
+          to right,
+          rgba(15, 23, 42, 0.72) 0%,
+          rgba(15, 23, 42, 0.38) 46%,
+          rgba(15, 23, 42, 0.08) 100%
+        );
+    }
+
+    .hero-left {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .hero-logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 19px;
+      box-shadow: 0 6px 14px rgba(37, 99, 235, 0.30);
+    }
+
+    .hero-logo-text {
+      font-size: var(--font-sm);
+      font-weight: var(--weight-semibold);
+      color: rgba(255, 255, 255, 0.92);
+      letter-spacing: 0.03em;
+    }
+
+    .hero-title {
+      font-size: var(--font-hero);
+      font-weight: var(--weight-bold);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .hero-tagline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+      margin-top: 8px;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .tagline-separator {
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: var(--weight-regular);
+    }
+
+    /* ═══════════════ Alert Strip ═══════════════ */
+    .alert-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 28px 2px;
+      padding: 8px 18px;
+      background: #fff;
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      font-size: var(--font-base);
+      font-weight: var(--weight-regular);
+      line-height: 1.45;
+      color: var(--text-body);
+      flex-shrink: 0;
+    }
+
+    .alert-strip strong {
+      font-weight: var(--weight-semibold);
+      color: var(--primary-strong);
+    }
+
+    .alert-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-base);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════ Main Layout ═══════════════ */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      margin: 16px 20px 12px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ═══════════════ Left: Building List ═══════════════ */
+    .left-panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: #fafbfc;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel-title {
+      font-size: var(--font-lg);
+      font-weight: var(--weight-bold);
+      line-height: 1.25;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .left-header {
+      padding: 18px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .left-header-icon,
+    .right-header-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-base);
+      flex-shrink: 0;
+    }
+
+    .left-header-icon {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .right-header-icon {
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .building-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .building-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .building-item {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: 2px;
+      border: 1px solid transparent;
+    }
+
+    .building-item:hover {
+      background: #f1f5f9;
+    }
+
+    .building-item.active {
+      background: var(--primary-light);
+      border-color: #bfdbfe;
+    }
+
+    .bld-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+
+    .building-item.active .bld-icon {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .bld-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .bld-name {
+      font-size: var(--font-base);
+      font-weight: var(--weight-semibold);
+      color: var(--text);
+      line-height: 1.28;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .building-item.active .bld-name {
+      color: var(--primary);
+      font-weight: var(--weight-bold);
+    }
+
+    .bld-meta {
+      margin-top: 3px;
+      font-size: var(--font-xs);
+      font-weight: var(--weight-regular);
+      line-height: 1.25;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bld-arrow {
+      font-size: 12px;
+      color: #cbd5e1;
+      transition: all var(--transition);
+    }
+
+    .building-item.active .bld-arrow {
+      color: var(--primary);
+    }
+
+    .left-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .left-footer-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: var(--font-xs);
+      font-weight: var(--weight-regular);
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.55;
+    }
+
+    .left-footer-card strong {
+      display: inline-block;
+      margin-bottom: 2px;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--text-body);
+    }
+
+    .left-footer-card .q-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: var(--muted);
+      font-size: 11px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .mobile-building-select-wrap {
+      display: none;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .building-mobile-select {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      display: block;
+    }
+
+    /* ═══════════════ Right: Rooms ═══════════════ */
+    .right-panel {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .mobile-step { display: none; }
+
+    .right-header {
+      padding: 18px 24px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .room-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 24px 20px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .room-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .room-row {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all var(--transition);
+    }
+
+    .room-row:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .room-row-left {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .room-number {
+      flex-shrink: 0;
+      font-size: var(--font-room);
+      font-weight: var(--weight-bold);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .room-contact {
+      min-width: 0;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-regular);
+      line-height: 1.3;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .call-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1.5px solid #4ade80;
+      background: #fff;
+      color: #16a34a;
+      font-size: var(--font-base);
+      font-weight: var(--weight-semibold);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+
+    .call-icon-btn:hover {
+      background: var(--green-light);
+      border-color: #22c55e;
+      transform: translateY(-1px);
+    }
+
+    .call-icon-btn:disabled {
+      cursor: default;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    /* ═══════════════ Footer ═══════════════ */
+    .footer {
+      text-align: center;
+      padding: 13px 24px;
+      border-top: 1px solid var(--border);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-regular);
+      color: var(--muted-light);
+      line-height: 1.4;
+      border-radius: 0 0 20px 20px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .footer-icon {
+      margin-right: 4px;
+    }
+
+    /* ═══════════════ Responsive ═══════════════ */
+    
+
+    
+  
+
+  /* ═══════════════════════════════════════════
+     MOBILE STYLES (max-width: 768px)
+     ═══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body { padding: 6px; overflow-x: hidden; }
+    .app-shell { width: 100%; max-width: 100%; overflow-x: hidden; border-radius: 12px; height: calc(100vh - 12px); }
+    .main-layout { width: 100%; max-width: 100%; overflow-x: hidden; grid-template-columns: 1fr; margin: 10px; }
+
+    /* Hide PC panels, show mobile step views */
+    .left-panel { display: none; }
+    .right-header { display: none !important; }
+    .pc-room-scroll { display: none; }
+    .mobile-step { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+
+    .mobile-step-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px 10px; flex-shrink: 0;
+    }
+
+    .mobile-back-btn {
+      border: none; background: none; font-size: 14px; font-weight: 600;
+      color: var(--primary); cursor: pointer; padding: 4px 0; margin-right: 16px;
+      flex-shrink: 0;
+    }
+
+    .mobile-building-list {
+      flex: 1; overflow-y: auto; padding: 4px 8px;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .mobile-building-list::-webkit-scrollbar { display: none; }
+
+    .room-grid { width: 100%; max-width: 100%; min-width: 0; grid-template-columns: 1fr; gap: 6px; }
+    .room-scroll { width: 100%; max-width: 100%; overflow-x: hidden; padding: 12px; }
+
+    .hero {
+      min-height: 90px; padding: 14px 18px;
+      border-radius: 12px 12px 0 0; gap: 12px;
+    }
+    .hero-title { font-size: 20px !important; }
+    .hero-logo { margin-bottom: 4px; }
+    .hero-logo-icon { width: 32px; height: 32px; font-size: 14px; }
+    .hero-logo-text { font-size: 11px; }
+    .hero-tagline { font-size: 11px; gap: 5px; }
+
+    .alert-strip { margin: 6px 12px 0; padding: 6px 12px; font-size: 12px; }
+
+    .room-row { padding: 10px 12px; gap: 6px; }
+    .room-row-left { gap: 8px; }
+    .room-number { font-size: 14px; }
+    .room-contact { font-size: 12px; }
+    .call-icon-btn { width: 32px; height: 32px; font-size: 12px; }
+
+    .footer { font-size: 11px; white-space: normal; padding: 10px 12px; }
+  }
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>社區智慧門禁服務平台</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --primary-light: #eff6ff;
+      --primary-soft: #dbeafe;
+
+      --bg: #eef5ff;
+      --panel: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-body: #334155;
+      --muted: #64748b;
+      --muted-light: #94a3b8;
+      --border: #e2e8f0;
+
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --teal: #0f766e;
+      --teal-light: #f0fdfa;
+
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 14px;
+      --transition: 0.2s ease;
+
+      /* Typography */
+      --font-xs: 12px;
+      --font-sm: 13px;
+      --font-base: 14px;
+      --font-md: 15px;
+      --font-lg: 16px;
+      --font-xl: 22px;
+      --font-hero: 32px;
+      --font-room: 14px;
+
+      --weight-regular: 400;
+      --weight-medium: 500;
+      --weight-semibold: 600;
+      --weight-bold: 700;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "PingFang SC",
+        "Hiragino Sans GB",
+        "Microsoft YaHei",
+        "Noto Sans SC",
+        "Helvetica Neue",
+        Arial,
+        sans-serif;
+      background: var(--bg);
+      color: var(--text-body);
+      font-size: var(--font-base);
+      font-weight: var(--weight-regular);
+      line-height: 1.5;
+      letter-spacing: 0.01em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: geometricPrecision;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 16px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1120px;
+      height: calc(100vh - 24px);
+      max-height: 900px;
+      background: var(--panel);
+      border-radius: 20px;
+      box-shadow: 0 12px 42px rgba(15, 23, 42, 0.10);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ═══════════════ Hero ═══════════════ */
+    .hero {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 118px;
+      padding: 18px 36px;
+      flex-shrink: 0;
+      background: url('banner.png') center/cover no-repeat;
+      border-radius: 20px 20px 0 0;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background:
+        linear-gradient(
+          to right,
+          rgba(15, 23, 42, 0.72) 0%,
+          rgba(15, 23, 42, 0.38) 46%,
+          rgba(15, 23, 42, 0.08) 100%
+        );
+    }
+
+    .hero-left {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .hero-logo-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 19px;
+      box-shadow: 0 6px 14px rgba(37, 99, 235, 0.30);
+    }
+
+    .hero-logo-text {
+      font-size: var(--font-sm);
+      font-weight: var(--weight-semibold);
+      color: rgba(255, 255, 255, 0.92);
+      letter-spacing: 0.03em;
+    }
+
+    .hero-title {
+      font-size: var(--font-hero);
+      font-weight: var(--weight-bold);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .hero-tagline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+      margin-top: 8px;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-medium);
+      line-height: 1.4;
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .tagline-separator {
+      color: rgba(255, 255, 255, 0.42);
+      font-weight: var(--weight-regular);
+    }
+
+    /* ═══════════════ Alert Strip ═══════════════ */
+    .alert-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 28px 2px;
+      padding: 8px 18px;
+      background: #fff;
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      font-size: var(--font-base);
+      font-weight: var(--weight-regular);
+      line-height: 1.45;
+      color: var(--text-body);
+      flex-shrink: 0;
+    }
+
+    .alert-strip strong {
+      font-weight: var(--weight-semibold);
+      color: var(--primary-strong);
+    }
+
+    .alert-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-base);
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════ Main Layout ═══════════════ */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      margin: 16px 20px 12px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ═══════════════ Left: Building List ═══════════════ */
+    .left-panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: #fafbfc;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .panel-title {
+      font-size: var(--font-lg);
+      font-weight: var(--weight-bold);
+      line-height: 1.25;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .left-header {
+      padding: 18px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .left-header-icon,
+    .right-header-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-base);
+      flex-shrink: 0;
+    }
+
+    .left-header-icon {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .right-header-icon {
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .building-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .building-list::-webkit-scrollbar {
+      display: none;
+    }
+
+    .building-item {
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all var(--transition);
+      margin-bottom: 2px;
+      border: 1px solid transparent;
+    }
+
+    .building-item:hover {
+      background: #f1f5f9;
+    }
+
+    .building-item.active {
+      background: var(--primary-light);
+      border-color: #bfdbfe;
+    }
+
+    .bld-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+
+    .building-item.active .bld-icon {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    }
+
+    .bld-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .bld-name {
+      font-size: var(--font-base);
+      font-weight: var(--weight-semibold);
+      color: var(--text);
+      line-height: 1.28;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .building-item.active .bld-name {
+      color: var(--primary);
+      font-weight: var(--weight-bold);
+    }
+
+    .bld-meta {
+      margin-top: 3px;
+      font-size: var(--font-xs);
+      font-weight: var(--weight-regular);
+      line-height: 1.25;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bld-arrow {
+      font-size: 12px;
+      color: #cbd5e1;
+      transition: all var(--transition);
+    }
+
+    .building-item.active .bld-arrow {
+      color: var(--primary);
+    }
+
+    .left-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .left-footer-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: var(--font-xs);
+      font-weight: var(--weight-regular);
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.55;
+    }
+
+    .left-footer-card strong {
+      display: inline-block;
+      margin-bottom: 2px;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--text-body);
+    }
+
+    .left-footer-card .q-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: var(--muted);
+      font-size: 11px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .mobile-building-select-wrap {
+      display: none;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .building-mobile-select {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      display: block;
+    }
+
+    /* ═══════════════ Right: Rooms ═══════════════ */
+    .right-panel {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .right-header {
+      padding: 18px 24px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .room-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 16px 24px 20px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .room-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .room-row {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: all var(--transition);
+    }
+
+    .room-row:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .room-row-left {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .room-number {
+      flex-shrink: 0;
+      font-size: var(--font-room);
+      font-weight: var(--weight-bold);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .room-contact {
+      min-width: 0;
+      font-size: var(--font-sm);
+      font-weight: var(--weight-regular);
+      line-height: 1.3;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .call-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1.5px solid #4ade80;
+      background: #fff;
+      color: #16a34a;
+      font-size: var(--font-base);
+      font-weight: var(--weight-semibold);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+
+    .call-icon-btn:hover {
+      background: var(--green-light);
+      border-color: #22c55e;
+      transform: translateY(-1px);
+    }
+
+    .call-icon-btn:disabled {
+      cursor: default;
+      opacity: 0.7;
+      transform: none;
+    }
+
+    /* ═══════════════ Footer ═══════════════ */
+    .footer {
+      text-align: center;
+      padding: 13px 24px;
+      border-top: 1px solid var(--border);
+      font-size: var(--font-sm);
+      font-weight: var(--weight-regular);
+      color: var(--muted-light);
+      line-height: 1.4;
+      border-radius: 0 0 20px 20px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .footer-icon {
+      margin-right: 4px;
+    }
+
+    /* ═══════════════ Responsive ═══════════════ */
+    
+
+    
+  
+
+  /* ═══════════════════════════════════════════
+     MOBILE STYLES (max-width: 768px)
+     ═══════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body { padding: 6px; overflow-x: hidden; }
+    .app-shell { width: 100%; max-width: 100%; overflow-x: hidden; border-radius: 12px; height: calc(100vh - 12px); }
+    .main-layout { width: 100%; max-width: 100%; overflow-x: hidden; grid-template-columns: 1fr; margin: 10px; }
+
+    /* Hide left panel, show mobile dropdown */
+    .left-panel { display: none; }
+    .mobile-building-select-wrap { display: block; padding: 12px 16px 4px; }
+
+    .building-mobile-select {
+      display: block; width: 100%; max-width: 100%; min-width: 0;
+      height: 40px; padding: 0 36px 0 14px;
+      border: 1px solid #dbe3ef; border-radius: 10px;
+      background: #fff; color: #0f172a;
+      font-size: 13px; font-weight: 500; line-height: 1.4;
+      outline: none; appearance: auto; box-sizing: border-box;
+    }
+    .building-mobile-select option { font-size: 13px; line-height: 1.4; color: #0f172a; }
+
+    .left-panel, .right-panel { width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden; }
+    .room-scroll { width: 100%; max-width: 100%; overflow-x: hidden; padding: 12px; }
+    .room-grid { width: 100%; max-width: 100%; min-width: 0; grid-template-columns: 1fr; gap: 6px; }
+
+    .hero {
+      min-height: 90px; padding: 14px 18px;
+      border-radius: 12px 12px 0 0; gap: 12px;
+    }
+    .hero-title { font-size: 20px !important; }
+    .hero-logo { margin-bottom: 4px; }
+    .hero-logo-icon { width: 32px; height: 32px; font-size: 14px; }
+    .hero-logo-text { font-size: 11px; }
+    .hero-tagline { font-size: 11px; gap: 5px; }
+
+    .alert-strip { margin: 6px 12px 0; padding: 6px 12px; font-size: 12px; }
+
+    .room-row { padding: 10px 12px; gap: 6px; }
+    .room-row-left { gap: 8px; }
+    .room-number { font-size: 14px; }
+    .room-contact { font-size: 12px; }
+    .call-icon-btn { width: 32px; height: 32px; font-size: 12px; }
+
+    .footer { font-size: 11px; white-space: normal; padding: 10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ═══════════════ Hero ═══════════════ -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-logo">
+        <div class="hero-logo-icon">🏛️</div>
+        <span class="hero-logo-text" id="heroLogoText">QRTalkie Cloud</span>
+      </div>
+      <div class="hero-title" id="heroTitle">社區智慧門禁服務平台</div>
+      <div class="hero-tagline">
+        <span>🛡️ 安全</span>
+        <span class="tagline-separator">·</span>
+        <span>⚡ 便捷</span>
+        <span class="tagline-separator">·</span>
+        <span>🧠 智能</span>
+        <span class="tagline-separator">·</span>
+        <span>🚀 高效</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ Alert Strip ═══════════════ -->
+  <div class="alert-strip">
+    <div class="alert-icon">📢</div>
+    <span><strong>溫馨提示：</strong>如遇門禁問題或需要幫助，請聯繫對應樓宇或房間服務人員。</span>
+  </div>
+
+  <!-- ═══════════════ Main Layout ═══════════════ -->
+  <div class="main-layout">
+
+    <!-- Left: Building List -->
+    <div class="left-panel">
+      <div class="left-header">
+        <div class="left-header-icon">🏗️</div>
+        <div class="panel-title">樓宇列表</div>
+      </div>
+
+      <div class="building-list" id="buildingList">
+        <div class="building-item active" data-bld="1">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區1號樓</div>
+            <div class="bld-meta">3個單元 · 256戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="2">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區2號樓</div>
+            <div class="bld-meta">3個單元 · 248戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="3">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區3號樓</div>
+            <div class="bld-meta">2個單元 · 192戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="4">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區4號樓</div>
+            <div class="bld-meta">2個單元 · 168戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="5">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區5號樓</div>
+            <div class="bld-meta">3個單元 · 224戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="6">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區6號樓</div>
+            <div class="bld-meta">2個單元 · 176戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+        <div class="building-item" data-bld="7">
+          <div class="bld-info">
+            <div class="bld-name">幸福里小區7號樓</div>
+            <div class="bld-meta">2個單元 · 154戶</div>
+          </div>
+          <div class="bld-arrow">▶</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Room Cards -->
+    <div class="right-panel">
+      <div class="right-header">
+        <div class="right-header-icon">🚪</div>
+        <div class="panel-title">房間列表</div>
+      </div>
+
+      <!-- ═══ Mobile: Step 1 - Building List ═══ -->
+      <div class="mobile-step mobile-step-buildings" id="mobileStepBuildings">
+        <div class="mobile-step-header">
+          <div class="panel-title" style="font-size:var(--font-lg);font-weight:var(--weight-bold);color:var(--text);">選擇樓宇</div>
+        </div>
+        <div class="mobile-building-list">
+          <div class="building-item active" data-bld="1" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區1號樓</div><div class="bld-meta">3個單元 · 256戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="2" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區2號樓</div><div class="bld-meta">3個單元 · 248戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="3" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區3號樓</div><div class="bld-meta">2個單元 · 192戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="4" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區4號樓</div><div class="bld-meta">2個單元 · 168戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="5" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區5號樓</div><div class="bld-meta">3個單元 · 224戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="6" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區6號樓</div><div class="bld-meta">2個單元 · 176戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+          <div class="building-item" data-bld="7" onclick="selectMobileBuilding(this)">
+            <div class="bld-info"><div class="bld-name">幸福里小區7號樓</div><div class="bld-meta">2個單元 · 154戶</div></div>
+            <div class="bld-arrow">▶</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Mobile: Step 2 - Room List ═══ -->
+      <div class="mobile-step mobile-step-rooms" id="mobileStepRooms" style="display:none">
+        <div class="mobile-step-header" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="right-header-icon">🚪</div>
+            <div class="panel-title">房間列表</div>
+          </div>
+          <button class="mobile-back-btn" onclick="goBackToBuildings()">返回首頁</button>
+        </div>
+        <div class="room-scroll" style="flex:1;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;">
+          <div class="room-grid" id="mobileRoomGrid"></div>
+        </div>
+      </div>
+
+      <div class="room-scroll pc-room-scroll">
+        <div class="room-grid pc-room-grid">
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">101室</span>
+              <span class="room-contact">張先生</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">102室</span>
+              <span class="room-contact">李女士</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">103室</span>
+              <span class="room-contact">王先生</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">201室</span>
+              <span class="room-contact">陳女士</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">202室</span>
+              <span class="room-contact">劉先生</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">203室</span>
+              <span class="room-contact">趙女士</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">301室</span>
+              <span class="room-contact">周先生</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">302室</span>
+              <span class="room-contact">吳女士</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+
+          <div class="room-row">
+            <div class="room-row-left">
+              <span class="room-number">303室</span>
+              <span class="room-contact">孫先生</span>
+            </div>
+            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Call Popup ═══ -->
+  <div id="callPopup" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.5);align-items:center;justify-content:center;" onclick="closeCallPopup()">
+    <div style="background:#fff;border-radius:18px;padding:28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(15,23,42,0.2);" onclick="event.stopPropagation()">
+      <div style="font-size:40px;margin-bottom:12px;">📞</div>
+      <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;" id="popupRoom"></div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px;" id="popupResident"></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#334155;line-height:1.8;">
+        <div><strong>SIP 帳號：</strong><span id="popupSip"></span></div>
+        <div><strong>Web 帳號：</strong><span id="popupWeb"></span></div>
+        <div><strong>設備 UUID：</strong><span id="popupDevice" style="font-family:monospace;font-size:11px;"></span></div>
+      </div>
+      <button onclick="closeCallPopup()" style="margin-top:18px;padding:10px 32px;border-radius:10px;border:none;background:#f1f5f9;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;">關閉</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ Footer ═══════════════ -->
+  <div class="footer">
+    <span class="footer-icon">🛡️</span>安全守護 &nbsp; 便捷出入 &nbsp;&nbsp; Copyright &copy; 2024 社區智慧門禁服務平台
+  </div>
+
+</div>
+
+<script>
+
+  // ─── Load data from server or use static demo ───
+  const ACCESS = window.__ACCESS_DATA__ || null;
+  if (ACCESS) {
+    document.getElementById('heroTitle').textContent = ACCESS.name;
+    document.getElementById('heroLogoText').textContent = ACCESS.tenantName || ACCESS.name;
+    if (ACCESS.bannerUrl) {
+      document.querySelector('.hero').style.backgroundImage = "url('" + ACCESS.bannerUrl + "')";
+    }
+    if (ACCESS.logoUrl) {
+      var logoIcon = document.querySelector('.hero-logo-icon');
+      if (logoIcon) {
+        logoIcon.style.backgroundImage = "url('" + ACCESS.logoUrl + "')";
+        logoIcon.style.backgroundSize = 'contain';
+        logoIcon.style.backgroundPosition = 'center';
+        logoIcon.style.backgroundRepeat = 'no-repeat';
+        logoIcon.textContent = '';
+      }
+    }
+    // Tips strip
+    if (!ACCESS.showTips) {
+      var strip = document.querySelector('.alert-strip');
+      if (strip) strip.style.display = 'none';
+    } else if (ACCESS.tipsText) {
+      var span = document.querySelector('.alert-strip span');
+      if (span) span.innerHTML = '<strong>溫馨提示：</strong>' + esc(ACCESS.tipsText);
+    }
+    // Populate PC building list
+    var pcBld = document.querySelector('.left-panel .building-list');
+    if (pcBld && ACCESS.buildings) {
+      pcBld.innerHTML = ACCESS.buildings.map(function(b,i){ return '<div class="building-item'+(i===0?' active':'')+'" data-bld="'+b.id+'"><div class="bld-info"><div class="bld-name">'+esc(b.name)+'</div></div><div class="bld-arrow">▶</div></div>'; }).join('');
+    }
+    // Populate mobile building list
+    var mbBld = document.querySelector('#mobileStepBuildings .mobile-building-list');
+    if (mbBld && ACCESS.buildings) {
+      mbBld.innerHTML = ACCESS.buildings.map(function(b,i){ return '<div class="building-item'+(i===0?' active':'')+'" data-bld="'+b.id+'" onclick="selectMobileBuilding(this)"><div class="bld-info"><div class="bld-name">'+esc(b.name)+'</div></div><div class="bld-arrow">▶</div></div>'; }).join('');
+    }
+    // Populate room cards
+    if (ACCESS.rooms) {
+      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button></div>'; }).join('');
+      document.querySelectorAll('.pc-room-grid').forEach(function(g){ g.innerHTML = rh; });
+      // Filter rooms by first building
+      var firstBld = ACCESS.buildings && ACCESS.buildings[0] ? ACCESS.buildings[0].id : null;
+      if (firstBld) filterRooms(firstBld);
+    }
+  }
+  function esc(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function filterRooms(buildingId) {
+    document.querySelectorAll('.pc-room-grid .room-row, #mobileRoomGrid .room-row').forEach(function(r) {
+      r.style.display = (r.dataset.bld === String(buildingId)) ? '' : 'none';
+    });
+  }
+
+  // Building click: activate + filter rooms
+  document.querySelectorAll('.left-panel .building-item, #mobileStepBuildings .building-item').forEach(function(el){
+    el.addEventListener('click',function(){
+      var p = el.closest('.building-list, .mobile-building-list');
+      if(p) p.querySelectorAll('.building-item').forEach(function(i){i.classList.remove('active')});
+      el.classList.add('active');
+      var bldId = el.dataset.bld;
+      if (bldId) filterRooms(bldId);
+    });
+  });
+
+
+  // Building selection: sync list + dropdown
+  const items = document.querySelectorAll('.building-item');
+  const mobileSelect = document.getElementById('mobileBldSelect');
+
+  items.forEach((item) => {
+    item.addEventListener('click', () => {
+      items.forEach((i) => i.classList.remove('active'));
+      item.classList.add('active');
+      if (mobileSelect) mobileSelect.value = item.dataset.bld;
+    });
+  });
+
+  if (mobileSelect) {
+    mobileSelect.addEventListener('change', () => {
+      const val = mobileSelect.value;
+      items.forEach((item) => {
+        if (item.dataset.bld === val) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+    });
+  }
+
+  // Call button feedback: static demo only, no real call.
+  function handleCall(btn) {
+    var row = btn.closest('.room-row');
+    var roomNumber = row ? (row.querySelector('.room-number')?.textContent || '') : '';
+    var resident = row ? (row.querySelector('.room-contact')?.textContent || '') : '';
+    var sipAccount = '—', webAccount = '—', displayName = resident || '—';
+    if (ACCESS && ACCESS.sipAccounts) {
+      var match = ACCESS.sipAccounts.find(function(s) { return s.roomNumber === roomNumber.replace('室',''); });
+      if (match) { sipAccount = match.sipAccount || '—'; webAccount = match.webAccount || '—'; displayName = match.displayName || resident || '—'; }
+    }
+    document.getElementById('popupRoom').textContent = roomNumber;
+    document.getElementById('popupResident').textContent = resident ? '住戶：' + resident : '';
+    document.getElementById('popupSip').textContent = sipAccount;
+    document.getElementById('popupWeb').textContent = webAccount;
+    document.getElementById('popupDevice').textContent = (new URLSearchParams(location.search)).get('lockId') || '—';
+    document.getElementById('callPopup').style.display = 'flex';
+  }
+
+  function closeCallPopup() {
+    document.getElementById('callPopup').style.display = 'none';
+  }
+
+  function selectMobileBuilding(el) {
+    document.querySelectorAll('#mobileStepBuildings .building-item').forEach(i => i.classList.remove('active'));
+    el.classList.add('active');
+    // Clone room cards from PC grid to mobile grid
+    var grid = document.getElementById('mobileRoomGrid');
+    if (grid && grid.children.length === 0) {
+      var pcCards = document.querySelectorAll('.pc-room-grid .room-row');
+      pcCards.forEach(function(card) { grid.appendChild(card.cloneNode(true)); });
+    }
+    var bldId = el.dataset.bld;
+    if (bldId) filterRooms(bldId);
+    document.getElementById('mobileStepBuildings').style.display = 'none';
+    document.getElementById('mobileStepRooms').style.display = 'flex';
+  }
+  function goBackToBuildings() {
+    document.getElementById('mobileStepRooms').style.display = 'none';
+    document.getElementById('mobileStepBuildings').style.display = 'flex';
+  }
+</script>
+
+</body>
+</html>

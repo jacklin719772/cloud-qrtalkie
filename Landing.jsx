@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import apiClient from './src/apiClient';
-import { openLegalDialog } from './src/features/auth/authView.js';
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 export default function Landing({ onLogin }) {
   // 使用 React State 控制目前顯示的表單模式：'login', 'signup', 或 'forgot'
   const initialResetToken = new URLSearchParams(window.location.search).get('resetPasswordToken') || '';
@@ -10,7 +11,16 @@ export default function Landing({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // 新增：法律條款彈窗狀態
+  const [legalModal, setLegalModal] = useState({
+    isOpen: false,
+    title: '',
+    content: '',
+    isLoading: false
+  });
   const messageTimerRef = useRef(null);
+  const [loadingPhase, setLoadingPhase] = useState('show'); // 'show' | 'fade' | 'done'
 
   useEffect(() => {
     return () => {
@@ -18,6 +28,12 @@ export default function Landing({ onLogin }) {
         clearTimeout(messageTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setLoadingPhase('fade'), 2600);
+    const removeTimer = setTimeout(() => setLoadingPhase('done'), 3200);
+    return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
   }, []);
 
   const clearMessages = () => {
@@ -76,16 +92,12 @@ export default function Landing({ onLogin }) {
     clearMessages();
 
     const formData = new FormData(e.target);
-    const email = formData.get('email')?.toString().trim();
+    const username = formData.get('username')?.toString().trim();
     const password = formData.get('password')?.toString();
     const rememberMe = formData.get('rememberMe') === 'on';
 
-    if (!email) {
-      showTimedError('請輸入登入信箱。');
-      return;
-    }
-    if (!isValidEmail(email)) {
-      showTimedError('請輸入有效的郵件格式。');
+    if (!username) {
+      showTimedError('請輸入登入帳號。');
       return;
     }
     if (!password) {
@@ -95,11 +107,16 @@ export default function Landing({ onLogin }) {
 
     setIsLoading(true);
     try {
-      const result = await apiClient.post('/auth/login', { email, password });
+      const result = await apiClient.post('/auth/login', { username, password });
       const primaryStorage = rememberMe ? localStorage : sessionStorage;
       const secondaryStorage = rememberMe ? sessionStorage : localStorage;
       primaryStorage.setItem('qrtalkieAdminToken', result.token);
       secondaryStorage.removeItem('qrtalkieAdminToken');
+      // Store userType for UI differentiation
+      if (result.userType) {
+        primaryStorage.setItem('qrtalkieUserType', result.userType);
+        secondaryStorage.removeItem('qrtalkieUserType');
+      }
       onLogin();
     } catch (error) {
       // 优先获取后端返回的自定义错误信息，防止显示默认的 HTTP 状态报错
@@ -234,10 +251,36 @@ export default function Landing({ onLogin }) {
     }
   };
 
+  // 動態拉取隱私政策/服務條款
+  const handleOpenLegal = async (type) => {
+    const title = type === 'privacy' ? '隱私權政策' : '會員服務條款';
+    // 注意：這裡假設後端提供了一個免登入的 /public API，請根據實際後端路由調整
+    const endpoint = type === 'privacy' ? '/public/settings/privacy-policy' : '/public/settings/terms-of-service';
+    
+    setLegalModal({ isOpen: true, title, content: '', isLoading: true });
+    try {
+      const data = await apiClient.get(endpoint);
+      setLegalModal({ 
+        isOpen: true, 
+        title, 
+        content: data?.content || '暫無內容，請聯絡管理員。', 
+        isLoading: false 
+      });
+    } catch (error) {
+      setLegalModal({ isOpen: true, title, content: '內容載入失敗，請稍後再試。', isLoading: false });
+    }
+  };
+
   const homePageUrl = import.meta.env.VITE_HOME_PAGE_URL || 'https://www.qrtalkie.org';
 
   return (
     <section className="landing" id="landing">
+      {loadingPhase !== 'done' && (
+        <div className={`landing-loader${loadingPhase === 'fade' ? ' landing-loader--fade' : ''}`}>
+          <img src="/assets/landing-animation.gif" alt="載入中..." onError={(e) => { e.target.style.display = 'none'; }} />
+          <p className="landing-loader-title">Cloud QRTalkie</p>
+        </div>
+      )}
       <header className="landing-nav">
         <div className="brand">
           <span className="brand-mark">
@@ -291,7 +334,7 @@ export default function Landing({ onLogin }) {
               {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
               
               {/* 加入 name 屬性與 required 驗證 */}
-              <label>信箱<input name="email" type="email" placeholder="admin@company.com" required /></label>
+              <label>帳號<input name="username" type="text" placeholder="信箱或 SIP 帳號" required /></label>
               <label>密碼<input name="password" type="password" placeholder="請輸入密碼" required /></label>
               <div className="form-row">
                 <label className="checkbox"><input name="rememberMe" type="checkbox" /> 記住我</label>
@@ -320,8 +363,8 @@ export default function Landing({ onLogin }) {
                 <input id="terms-consent" name="termsConsent" type="checkbox" required />
                 <span>
                   我已閱讀並同意
-                  <button type="button" className="text-link" onClick={() => openLegalDialog('terms')}>會員服務條款</button>、
-                  <button type="button" className="text-link" onClick={() => openLegalDialog('privacy')}>隱私權政策</button>
+                  <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>會員服務條款</button>、
+                  <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>隱私權政策</button>
                 </span>
               </label>
             </form>
@@ -357,16 +400,33 @@ export default function Landing({ onLogin }) {
           )}
         </div>
       </main>
-      <dialog id="legal-dialog" className="legal-dialog">
-        <form method="dialog" className="dialog-card legal-card">
-          <div className="panel-head">
-            <h2 id="legal-title">會員服務條款</h2>
-            <button className="icon-btn" value="cancel" title="關閉">x</button>
+
+      {/* 動態渲染的法律條款彈窗 */}
+      {legalModal.isOpen && (
+        <div className="modal-backdrop" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>
+          <div className="dialog-card legal-card" onClick={e => e.stopPropagation()}>
+            <div className="panel-head">
+              <h2>{legalModal.title}</h2>
+              <button className="icon-btn" type="button" title="關閉" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>x</button>
+            </div>
+            <div className="legal-content" style={{ padding: '16px 0' /* Removed lineHeight: '1.6' here, as it will be handled by .policy-markdown-preview */ }}>
+              {legalModal.isLoading ? (
+                <p style={{ color: '#64748b', textAlign: 'center' }}>內容載入中...</p>
+              ) : (
+                // 使用 ReactMarkdown 渲染 Markdown 内容
+                <div className="policy-markdown-preview">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {legalModal.content || ''}
+                  </ReactMarkdown>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button className="primary-btn" type="button" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>我知道了</button>
+            </div>
           </div>
-          <div className="legal-content" id="legal-content"></div>
-          <button className="primary-btn" value="default">我知道了</button>
-        </form>
-      </dialog>
+        </div>
+      )}
     </section>
   );
 }

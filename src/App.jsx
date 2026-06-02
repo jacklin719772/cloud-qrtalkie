@@ -50,7 +50,9 @@ export default function App() {
       {isLoggedIn ? (
         <ConsoleLayout onLogout={() => {
           localStorage.removeItem('qrtalkieAdminToken');
+          localStorage.removeItem('qrtalkieUserType');
           sessionStorage.removeItem('qrtalkieAdminToken');
+          sessionStorage.removeItem('qrtalkieUserType');
           setIsLoggedIn(false);
         }} />
       ) : (
