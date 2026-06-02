@@ -2,6 +2,7 @@
 import express from "express";
 import { mkdir, unlink, writeFile, readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -11215,7 +11216,6 @@ function getMemoryUsage() {
 
 function getDiskUsage() {
   try {
-    const { execSync } = require("child_process");
     // Try df --output=pcent first (GNU), fall back to parsing standard df output
     let out = "";
     try { out = execSync("df / --output=pcent 2>/dev/null | tail -1", { encoding: "utf8", timeout: 3000 }).trim(); }
