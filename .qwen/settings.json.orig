@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(d:\\项目\\flybirdchat\\google 服务器\\saas\\src/**)",
+      "Read(D:\\项目\\flybirdchat\\google 服务器\\saas\\src/**)",
+      "Read(D:/项目/flybirdchat/google 服务器/saas/src/**)",
+      "Read(D:/项目/flybirdchat/google 服务器/saas/**)",
+      "Bash(powershell *)",
+      "Read(d:\\项目\\flybirdchat\\google 服务器\\saas/**)",
+      "Read(d:\\项目\\flybirdchat\\google 服务器\\saas\\styles.css/**)",
+      "Bash(del *)",
+      "Bash(get-content *)",
+      "Bash(findstr *)",
+      "Bash(chcp *)"
+    ]
+  },
+  "$version": 4
+}

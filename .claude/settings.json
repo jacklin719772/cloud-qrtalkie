@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://127.0.0.1:3001/api/access-communities)",
+      "Bash(node -e ' *)",
+      "Bash(npx eslint *)",
+      "Bash(curl -s http://127.0.0.1:3001/api/admin/tenants/with-active-sip -H \"Content-Type: application/json\")",
+      "Bash(node \"d:/项目/flybirdchat/google服务器/saas/server/index.js\")",
+      "Bash(node -c \"d:/项目/flybirdchat/google服务器/saas/server/index.js\")",
+      "Bash(node \"d:/项目/flybirdchat/google服务器/saas/scripts/start-services.js\" --restart)",
+      "Bash(node server/index.js)"
+    ]
+  }
+}

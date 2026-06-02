@@ -1,0 +1,76 @@
+node scripts/start-services.js --restart
+
+npm run db:migrate
+
+qwen code：sk-f7a277c171f34a81a08d0333a011948c
+
+门禁url格式：
+https://cc.qrtalkie.org/visitor?type=02&lockId=mm1mrkmmjm5dl6b9i5
+
+vscode，google虚拟机专属名字：instance-20250524-150049.asia-east1-c.freepbx-460704
+gcloud compute ssh instance-20250524-150049 --zone=asia-east1-c
+
+
+
+在 VM 上创建一个快速更新脚本：
+
+
+cat > /opt/saas/update.sh << 'EOF'
+#!/bin/bash
+cd /opt/saas
+git pull
+npm install --silent
+pkill -f "node server/index.js" 2>/dev/null
+node server/index.js &
+echo "Updated and restarted"
+EOF
+chmod +x /opt/saas/update.sh
+本地修改完成后执行：
+
+
+# 本地（VS Code 终端）
+git add -A && git commit -m "update" && git push
+
+# VM 上测试
+/opt/saas/update.sh
+
+服务器数据库创建：
+sudo mysql -u root << SQL
+CREATE DATABASE qrtalkie_cloud DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'qrtalkie'@'localhost' IDENTIFIED BY 'Lin1971wn719772';
+GRANT ALL PRIVILEGES ON qrtalkie_cloud.* TO 'qrtalkie'@'localhost';
+FLUSH PRIVILEGES;
+SQL
+
+数据库迁移：
+mkdir -p /opt/saas/assets/ecard-images
+mkdir -p /opt/saas/assets/payment-proofs
+mkdir -p /opt/saas/assets/call-center-images
+mkdir -p /opt/saas/assets/community-images
+
+node scripts/migrate.js
+
+开放端口：
+sudo ufw allow 3001/tcp
+sudo ufw allow 5173/tcp
+sudo ufw reload
+
+终端连接服务器：
+gcloud compute ssh instance-20250524-150049 --zone=asia-east1-c
+
+服务端更新代码指令：
+cd /opt/saas && git pull && npm install --silent && pkill -f "node server/index.js" && nohup node server/index.js > /tmp/api.log 2>&1 &
+
+
+
+
+
+启用api：
+node server/index.js &
+
+测试：
+curl http://127.0.0.1:3001/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"imflybird719772@gmail.com","password":"Lin1971wn719772"}'
+
+
+启动前端
+cd /opt/saas && npx vite --host 0.0.0.0 --port 5173 &

@@ -11188,6 +11188,8 @@ function parseCpuUsage() {
 }
 
 let cpuSnapshot = null;
+// Initialize snapshot immediately, then refresh every second
+cpuSnapshot = parseCpuUsage();
 setInterval(() => { cpuSnapshot = parseCpuUsage(); }, 1000);
 
 function getCpuUsage() {
@@ -11213,8 +11215,12 @@ function getMemoryUsage() {
 function getDiskUsage() {
   try {
     const { execSync } = require("child_process");
-    const out = execSync("df / --output=pcent | tail -1", { encoding: "utf8", timeout: 3000 }).trim();
-    return parseInt(out.replace("%", ""), 10) || null;
+    // Try df --output=pcent first (GNU), fall back to parsing standard df output
+    let out = "";
+    try { out = execSync("df / --output=pcent 2>/dev/null | tail -1", { encoding: "utf8", timeout: 3000 }).trim(); }
+    catch { out = execSync("df / | tail -1 | awk '{print $5}'", { encoding: "utf8", timeout: 3000, shell: true }).trim(); }
+    const pct = parseInt(out.replace(/%/g, ""), 10);
+    return isNaN(pct) ? null : pct;
   } catch { return null; }
 }
 

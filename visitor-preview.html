@@ -1,0 +1,586 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>呼叫中心 - 訪客端預覽</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-color: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+    }
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+    * { box-sizing: border-box; }
+
+    #app {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 顶部横幅 */
+    .hero {
+      position: relative;
+      flex: 0 0 160px;
+      height: auto;
+      background-size: cover;
+      background-position: center;
+      background-color: #cbd5e1;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.6));
+    }
+    .hero-content {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px 20px 16px;
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-end;
+      gap: 20px;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      background: #fff;
+      padding: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      object-fit: contain;
+    }
+    .center-info {
+      color: #fff;
+      padding-bottom: 4px;
+    }
+    .center-name { margin: 0 0 6px 0; font-size: 22px; font-weight: 700; }
+    .center-desc { margin: 0; font-size: 13px; opacity: 0.9; max-width: 600px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* 主体内容区 */
+    .main-container {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      box-sizing: border-box;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .welcome-banner {
+      flex: 0 0 auto;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      padding: 10px 40px 10px 14px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      position: relative;
+    }
+    .welcome-banner-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: #93c5fd;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+    .welcome-banner-close:hover { color: #2563eb; }
+
+    .mobile-step { display: none; }
+
+    /* 主体左右布局 */
+    .content-layout {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 24px;
+      align-items: stretch;
+      transition: grid-template-columns 0.3s ease, gap 0.3s ease;
+    }
+    .content-layout.collapsed {
+      grid-template-columns: 0px 1fr;
+      gap: 0;
+    }
+
+    /* 左侧侧边栏 */
+    .category-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 100%;
+      overflow-y: auto;
+      scrollbar-width: none;
+      transition: opacity 0.2s ease;
+      border-right: 1px solid var(--border-color);
+      padding-right: 16px;
+    }
+    .category-sidebar::-webkit-scrollbar { display: none; }
+    .content-layout.collapsed .category-sidebar {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .sidebar-btn {
+      background: transparent;
+      border: none;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .sidebar-btn:hover { color: var(--primary); background: #f8fafc; }
+    .sidebar-btn.active { background: #eff6ff; color: var(--primary); }
+    .sidebar-btn.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background-color: var(--primary);
+    }
+
+    .agents-main {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+    .agents-header {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn-toggle-sidebar {
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .btn-toggle-sidebar:hover {
+      background: #f8fafc;
+      color: var(--text-main);
+    }
+    .current-category-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 0; }
+      #app { border-radius: 0; }
+      .hero { flex-basis: 120px; padding: 16px; }
+      .hero .logo { width: 40px; height: 40px; }
+      .center-name { font-size: 20px; }
+      .center-desc { font-size: 12px; }
+      .main-container { padding: 10px; }
+        .welcome-banner { display: none; }
+      .site-footer { font-size: 11px; padding: 10px; }
+      .content-layout { display: none !important; }
+      .mobile-step { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+      .mobile-step-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border-color); }
+      .mobile-step-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
+      .mobile-back-btn { border: none; background: none; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; padding: 4px 0; }
+      .mobile-cat-list { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: none; -ms-overflow-style: none; }
+      .mobile-cat-list::-webkit-scrollbar { display: none; }
+      .mobile-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; margin-bottom: 6px; border-radius: 12px; background: #fff; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s; }
+      .mobile-cat-item:active { background: #eff6ff; border-color: #93c5fd; }
+      .mobile-cat-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
+      .mobile-cat-count { font-size: 12px; color: var(--text-muted); }
+      .mobile-agents-area { flex: 1; overflow-y: auto; padding: 12px 16px; scrollbar-width: none; -ms-overflow-style: none; display: flex; flex-direction: column; gap: 10px; }
+      .mobile-agents-area::-webkit-scrollbar { display: none; }
+      .mobile-agent-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; background: #fff; border: 1px solid var(--border-color); }
+      .mobile-agent-avatar { width: 48px; height: 48px; border-radius: 50%; background: #e2e8f0; flex-shrink: 0; background-size: cover; background-position: center; }
+      .mobile-agent-info { flex: 1; min-width: 0; }
+      .mobile-agent-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
+      .mobile-agent-title { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+      .mobile-agent-call { width: 44px; height: 44px; border-radius: 12px; border: none; background: #16a34a; color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    }
+
+    /* 坐席网格 */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 4px;
+      min-width: 0;
+      scrollbar-width: none;
+    }
+    .agents-grid::-webkit-scrollbar { display: none; }
+    .agent-card {
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .agent-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    }
+    .agent-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .agent-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #f1f5f9;
+      border: 1px solid var(--border-color);
+    }
+    .agent-info h4 { margin: 0 0 2px 0; font-size: 15px; color: var(--text-main); }
+    .agent-info p { margin: 0; font-size: 12px; color: var(--text-muted); }
+    
+    .agent-contact {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 0;
+      border-top: 1px dashed var(--border-color);
+      border-bottom: 1px dashed var(--border-color);
+    }
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .contact-item svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      color: #94a3b8;
+    }
+    .agent-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .btn-call {
+      flex: 1;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-call:hover { background: var(--primary-hover); }
+
+    /* 页脚 */
+    .site-footer {
+      flex: 0 0 44px;
+      margin-top: 0;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid var(--border-color);
+    }
+    .footer-divider {
+      display: none;
+    }
+    .site-footer p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .site-footer a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .site-footer a:hover { text-decoration: underline; }
+
+    /* 访客登记弹窗 */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(4px);
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-content {
+      background: #fff; width: 100%; max-width: 440px;
+      border-radius: 16px; padding: 32px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    }
+    .modal-title { margin: 0 0 8px 0; font-size: 20px; color: var(--text-main); text-align: center; }
+    .modal-desc { margin: 0 0 24px 0; font-size: 14px; color: var(--text-muted); text-align: center; }
+    .form-group { margin-bottom: 16px; display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 13px; font-weight: 600; color: #334155; }
+    .form-group label span { color: #ef4444; margin-left: 4px; }
+    .form-group input, .form-group textarea {
+      padding: 12px; border: 1px solid var(--border-color); border-radius: 8px;
+      font-size: 14px; outline: none; font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
+    .btn-submit {
+      width: 100%; background: var(--primary); color: #fff; border: none;
+      padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 访客登记弹窗 -->
+  <div id="visitorModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2 id="modalTitle" class="modal-title"></h2>
+      <p id="modalDesc" class="modal-desc"></p>
+      <form id="visitorForm">
+        <div id="formFields"></div>
+        <button type="submit" class="btn-submit">開始諮詢</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 页面主结构 -->
+  <div id="app" style="display: none;">
+    <header class="hero" id="heroBanner">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <img id="centerLogo" class="logo" src="" alt="Logo">
+        <div class="center-info">
+          <h1 id="centerName" class="center-name"></h1>
+          <p id="centerDesc" class="center-desc"></p>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-container">
+      <div id="welcomeBanner" class="welcome-banner"></div>
+      
+      <div class="content-layout" id="contentLayout">
+        <aside id="categorySidebar" class="category-sidebar"></aside>
+        <div class="agents-main">
+          <div class="agents-header">
+            <button class="btn-toggle-sidebar" onclick="document.getElementById('contentLayout').classList.toggle('collapsed')" title="收起/展開分類">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+            <h2 id="currentCategoryTitle" class="current-category-title"></h2>
+          </div>
+          <div id="agentsContainer" class="agents-grid"></div>
+        </div>
+      </div>
+    
+      <!-- ═══ Mobile: Step 1 - Categories ═══ -->
+      <div class="mobile-step" id="mobileStepCats">
+        <div class="mobile-step-header"><div class="mobile-step-title">選擇服務分類</div></div>
+        <div class="mobile-cat-list" id="mobileCatList"></div>
+      </div>
+      <!-- ═══ Mobile: Step 2 - Agents ═══ -->
+      <div class="mobile-step" id="mobileStepAgents">
+        <div class="mobile-step-header">
+          <div class="mobile-step-title" id="mobileAgentTitle">坐席列表</div>
+          <button class="mobile-back-btn" onclick="goBackToMobileCats()">返回</button>
+        </div>
+        <div class="mobile-agents-area" id="mobileAgentsArea"></div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <hr class="footer-divider">
+      <p>技術支援：<a href="https://www.qrtalkie.org" target="_blank" rel="noopener noreferrer">QRTalkie Team</a></p>
+    </footer>
+  </div>
+
+  <div id="callPopup" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.5);align-items:center;justify-content:center;" onclick="closeCallPopup()">
+    <div style="background:#fff;border-radius:18px;padding:28px 24px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(15,23,42,0.2);" onclick="event.stopPropagation()">
+      <div style="font-size:40px;margin-bottom:12px;">📞</div>
+      <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:2px;" id="callName"></div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px;" id="callTitle"></div>
+      <div style="background:#f8fafc;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#334155;line-height:1.8;">
+        <div><strong>SIP 帳號：</strong><span id="callSip"></span></div>
+        <div><strong>Web 帳號：</strong><span id="callWeb"></span></div>
+      </div>
+      <button onclick="closeCallPopup()" style="margin-top:18px;padding:10px 32px;border-radius:10px;border:none;background:#f1f5f9;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;">關閉</button>
+    </div>
+  </div>
+
+  <script>
+    const data = window.__CALL_CENTER_DATA__ || {
+      name: "QRTalkie 全球技術支援中心",
+      logoDataUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=QRTalkie&backgroundColor=2563eb",
+      coverDataUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200&h=300",
+      description: "致力於為您提供專業、高效、貼心的產品諮詢與技術支援服務。",
+      welcomeMessage: "您好！歡迎來到 QRTalkie 企業服務中心。",
+      visitorEnabled: true, visitorTitle: "歡迎諮詢 QRTalkie",
+      visitorDescription: "請先填寫以下基礎資訊。",
+      requiredFields: ["name", "phone"], optionalFields: ["company", "content"],
+      categories: [
+        { id: 1, name: "售前諮詢與購買", agents: [
+          { name: "林小雨", title: "資深產品顧問", sip: "1001", web: "9001", phone: "13800138001", email: "a@b.com", avatarDataUrl: "https://i.pravatar.cc/150?u=1" },
+          { name: "王大拿", title: "技術方案專家", sip: "1002", web: "9002", phone: "13800138002", email: "b@c.com", avatarDataUrl: "https://i.pravatar.cc/150?u=2" }
+        ]},
+        { id: 2, name: "售後技術支援", agents: [
+          { name: "Sarah Connor", title: "高級系統工程師", sip: "2001", web: "9101", phone: "", email: "s@c.com", avatarDataUrl: "https://i.pravatar.cc/150?u=3" },
+          { name: "李雷", title: "實施交付專家", sip: "2002", web: "9102", phone: "13900139000", email: "", avatarDataUrl: "https://i.pravatar.cc/150?u=4" },
+          { name: "韓梅梅", title: "客戶成功經理", sip: "2003", web: "9103", phone: "13700137000", email: "h@m.com", avatarDataUrl: "https://i.pravatar.cc/150?u=5" }
+        ]}
+      ]
+    };
+
+    function esc(s) { if (!s) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+    function render() {
+      // Show visitor registration modal if enabled
+      if (data.visitorEnabled) {
+        document.getElementById('modalTitle').textContent = data.visitorTitle || '訪客登記';
+        document.getElementById('modalDesc').textContent = data.visitorDescription || '';
+        var fields = '';
+        (data.requiredFields || []).forEach(function(f) {
+          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:#334155;">' + (f === 'name' ? '姓名' : f === 'phone' ? '電話' : f === 'company' ? '公司' : f === 'content' ? '諮詢內容' : f) + ' <span style="color:#dc2626;">*</span></span><input name="' + f + '" required style="width:100%;height:40px;padding:0 12px;border:1px solid #d8e2ef;border-radius:8px;font-size:13px;margin-top:4px;"></label>';
+        });
+        (data.optionalFields || []).forEach(function(f) {
+          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:#334155;">' + (f === 'company' ? '公司' : f === 'content' ? '諮詢內容' : f) + '</span><input name="' + f + '" style="width:100%;height:40px;padding:0 12px;border:1px solid #d8e2ef;border-radius:8px;font-size:13px;margin-top:4px;"></label>';
+        });
+        document.getElementById('formFields').innerHTML = fields;
+        document.getElementById('visitorModal').classList.remove('hidden');
+        document.getElementById('app').style.display = '';
+        return; // Wait for form submission
+      }
+
+      renderMain();
+    }
+
+    document.getElementById('visitorForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      document.getElementById('visitorModal').classList.add('hidden');
+      renderMain();
+    });
+
+    function renderMain() {
+      document.getElementById('app').style.display = '';
+      document.getElementById('heroBanner').style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
+      var logo = document.getElementById('centerLogo');
+      if (data.logoDataUrl) { logo.src = data.logoDataUrl; logo.style.display = ''; }
+      document.getElementById('centerName').textContent = data.name;
+      document.getElementById('centerDesc').textContent = data.description || '';
+      if (data.welcomeMessage) document.getElementById('welcomeBanner').innerHTML = data.welcomeMessage;
+
+      var sidebar = document.getElementById('categorySidebar');
+      sidebar.innerHTML = (data.categories || []).map(function(c, i) {
+        return '<button class="sidebar-btn' + (i === 0 ? ' active' : '') + '" onclick="selectCategory(' + c.id + ', this)">' + esc(c.name) + '</button>';
+      }).join('');
+
+      // Mobile categories
+      var mcl = document.getElementById('mobileCatList');
+      mcl.innerHTML = (data.categories || []).map(function(c) {
+        return '<div class="mobile-cat-item" onclick="selectMobileCat(this, ' + c.id + ', \'' + esc(c.name) + '\')"><div><div class="mobile-cat-name">' + esc(c.name) + '</div><div class="mobile-cat-count">' + (c.agents || []).length + ' 位坐席</div></div><span style="color:#94a3b8;">▶</span></div>';
+      }).join('');
+
+      // Hide mobile step 2 initially
+      document.getElementById('mobileStepAgents').style.display = 'none';
+
+      selectCategory((data.categories || [])[0]?.id, sidebar.querySelector('.sidebar-btn'));
+    }
+
+    function selectCategory(catId, btn) {
+      document.querySelectorAll('.sidebar-btn').forEach(function(b) { b.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+      var cat = (data.categories || []).find(function(c) { return c.id === catId; });
+      document.getElementById('currentCategoryTitle').textContent = cat ? cat.name : '';
+      document.getElementById('agentsContainer').innerHTML = (cat?.agents || []).map(function(a) {
+        return '<div class="agent-card"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div><div class="agent-contact">' +
+          (a.sip ? '<div class="contact-item">SIP: ' + a.sip + '</div>' : '') +
+          (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '') +
+          (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '') +
+        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞 語音呼叫</button></div></div>';
+      }).join('');
+    }
+
+    function showCallPopup(name, sip, web, title) {
+      document.getElementById('callName').textContent = name;
+      document.getElementById('callTitle').textContent = title || '';
+      document.getElementById('callSip').textContent = sip;
+      document.getElementById('callWeb').textContent = web;
+      document.getElementById('callPopup').style.display = 'flex';
+    }
+    function closeCallPopup() { document.getElementById('callPopup').style.display = 'none'; }
+
+    function selectMobileCat(el, catId, catName) {
+      document.getElementById('mobileAgentTitle').textContent = catName;
+      var agents = (data.categories || []).find(function(c) { return c.id === catId; })?.agents || [];
+      document.getElementById('mobileAgentsArea').innerHTML = agents.map(function(a) {
+        return '<div class="mobile-agent-card"><div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div></div><button class="mobile-agent-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞</button></div>';
+      }).join('');
+      document.getElementById('mobileStepCats').style.display = 'none';
+      document.getElementById('mobileStepAgents').style.display = 'flex';
+    }
+    function goBackToMobileCats() {
+      document.getElementById('mobileStepAgents').style.display = 'none';
+      document.getElementById('mobileStepCats').style.display = 'flex';
+    }
+
+    render();
+  </script>
+</body>
+</html>

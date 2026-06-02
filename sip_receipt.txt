@@ -1,0 +1,4 @@
+      // Also create receipt for the SIP user
+      if (row.sip_user_id) {
+        await connection.query("INSERT IGNORE INTO notification_receipts (event_id, sip_user_id, receiver_type) VALUES (?, ?, 'sip')", [ev.id, row.sip_user_id]);
+      }

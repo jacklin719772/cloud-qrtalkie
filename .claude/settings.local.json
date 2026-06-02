@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue)",
+      "PowerShell(npm run db:migrate)",
+      "PowerShell(npm run server)",
+      "PowerShell(node scripts/start-services.js --restart)",
+      "PowerShell(npx vite --host 127.0.0.1 --port 5173)",
+      "Bash(curl -s http://127.0.0.1:3001/api/access-communities -H \"Content-Type: application/json\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \"3001\")",
+      "Bash(curl -s http://127.0.0.1:3001/api/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@test.com\\\\\",\\\\\"password\\\\\":\\\\\"test\\\\\"}\")",
+      "PowerShell(node -e \"const m=require\\('mariadb'\\);require\\('dotenv'\\).config\\(\\);\\(async\\(\\)=>{const p=m.createPool\\({host:process.env.DB_HOST,port:Number\\(process.env.DB_PORT\\),database:process.env.DB_NAME,user:process.env.DB_USER,password:process.env.DB_PASSWORD,connectionLimit:1}\\);const c=await p.getConnection\\(\\);const r=await c.query\\('SHOW COLUMNS FROM gate_devices'\\);r.forEach\\(x=>console.log\\(x.Field,x.Type\\)\\);c.release\\(\\);await p.end\\(\\);}\\)\\(\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const serverPath='d:/项目/flybirdchat/google服务器/saas/server/index.js'; const lines=fs.readFileSync\\(serverPath,'utf8'\\).split\\('\\\\n'\\); console.log\\('Line 745:', lines[744].substring\\(0,60\\)\\); console.log\\('Line 801:', lines[800].substring\\(0,60\\)\\);\")",
+      "Bash(node scripts/migrate.js)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const path='d:/项目/flybirdchat/google服务器/saas/server/index.js';let c=fs.readFileSync\\(path,'utf8'\\);c=c.replace\\('account_type = \\\\\"platform\\\\\"','account_type = \\\\\\\\'platform\\\\\\\\''\\);fs.writeFileSync\\(path,c,'utf8'\\);console.log\\('Done'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const path='d:/项目/flybirdchat/google服务器/saas/server/index.js';let c=fs.readFileSync\\(path,'utf8'\\);c=c.replace\\(/\\\\\"platform\\\\\"/g,\\\\\"'platform'\\\\\"\\);c=c.replace\\(/\\\\\"active\\\\\"/g,\\\\\"'active'\\\\\"\\);fs.writeFileSync\\(path,c,'utf8'\\);console.log\\('Done'\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);const p='d:/项目/flybirdchat/google服务器/saas/server/index.js';let c=fs.readFileSync\\(p,'utf8'\\);c=c.replace\\(/\\\\\"platform\\\\\"/g,\\\\\"'platform'\\\\\"\\);fs.writeFileSync\\(p,c,'utf8'\\);console.log\\('Fixed quotes'\\)\")",
+      "Bash(node -c \"d:/项目/flybirdchat/谷歌服务器/saas/server/index.js\")",
+      "Bash(curl -s -X POST http://127.0.0.1:3001/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"qrtalkie@gmail.com\",\"password\":\"12345678\"}')",
+      "Bash(node -e \"process.stdin.on\\('data',d=>{try{const j=JSON.parse\\(d\\);console.log\\(j.token?'TOKEN_OK':'NO_TOKEN'\\)}catch{console.log\\('LOGIN_ERR:',d.toString\\(\\).substring\\(0,50\\)\\)}}\\)\")"
+    ]
+  }
+}
