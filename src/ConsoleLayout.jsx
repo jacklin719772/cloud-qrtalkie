@@ -91,6 +91,9 @@ export default function ConsoleLayout({ onLogout }) {
   const [ecardGenerationMode, setEcardGenerationMode] = useState('list');
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAdminHelp, setShowAdminHelp] = useState(false);
+  const [showLegalHelp, setShowLegalHelp] = useState(false);
+  const [legalHelpTitle, setLegalHelpTitle] = useState('');
+  const [legalHelpType, setLegalHelpType] = useState('');
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -622,6 +625,12 @@ export default function ConsoleLayout({ onLogout }) {
       const cbStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
       return (<button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleCreate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增通訊錄</button>);
     }
+    if (currentView === 'terms-of-service') {
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('服務條款'); setLegalHelpType('terms'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
+    }
+    if (currentView === 'privacy-policy') {
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('隱私政策'); setLegalHelpType('privacy'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
+    }
     return null;
   };
 
@@ -809,6 +818,54 @@ export default function ConsoleLayout({ onLogout }) {
                   <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>审计</span> — 负责安全审计和合规检查</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLegalHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowLegalHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>{legalHelpTitle} 使用說明</h2>
+              <button onClick={() => setShowLegalHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              {legalHelpType === "terms" ? (<>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128196; 服務條款的作用</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>服務條款是用戶使用 QRTalkie 服務前必須同意的基本規則和約定。它定義了平台與用戶之間的權利義務關係。</p>
+                </div>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128269; 用戶註冊時的展示方式</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>用戶在註冊頁面（Landing Page）點擊「註冊」時，必須勾選「我已閱讀並同意服務條款」複選框。點擊服務條款連結後，會彈出視窗顯示此處編輯的完整內容。用戶必須同意服務條款才能完成註冊。</p>
+                </div>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9998; 編輯建議</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>使用 Markdown 格式編輯。點擊「導入模板」載入預設模板後修改。主要章節包括：服務說明、帳號規則、用戶行為規範、通信服務、知識產權、免責聲明等。</p>
+                </div>
+                <div>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 前端接入位置</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>註冊頁面（Landing.jsx）中的「服務條款」連結調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/public/settings/terms-of-service</code></p>
+                </div>
+              </>) : (<>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128274; 隱私政策的作用</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>隱私政策說明 QRTalkie 如何收集、使用、存儲和保護用戶的個人資訊，是法律合規的必要文件。</p>
+                </div>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128269; 用戶註冊時的展示方式</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>用戶在註冊頁面（Landing Page）點擊「註冊」時，必須勾選「我已閱讀並同意隱私政策」複選框。點擊隱私政策連結後，會彈出視窗顯示此處編輯的完整內容。</p>
+                </div>
+                <div style={{ marginBottom: "24px" }}>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9998; 編輯建議</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>使用 Markdown 格式編輯。點擊「導入模板」載入預設模板後修改。主要章節：適用範圍、資訊收集、使用方式、共享、權限說明、用戶權利等。</p>
+                </div>
+                <div>
+                  <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 前端接入位置</h3>
+                  <p style={{ color: "#9ca3af", margin: 0 }}>註冊頁面（Landing.jsx）中的「隱私政策」連結調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/public/settings/privacy-policy</code></p>
+                </div>
+              </>)}
             </div>
           </div>
         </div>
