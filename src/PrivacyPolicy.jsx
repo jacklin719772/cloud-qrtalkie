@@ -74,6 +74,7 @@ export default function PrivacyPolicy() {
                   style={{
                     flex: 1,
                     width: '100%',
+                    minHeight: '500px',
                     padding: '16px',
                     borderRadius: '8px',
                     border: '1px solid #374151',
@@ -82,6 +83,8 @@ export default function PrivacyPolicy() {
                     fontSize: '14px',
                     fontFamily: 'inherit',
                     lineHeight: '1.6',
+                    backgroundColor: '#0f172a',
+                    color: '#f3f4f6',
                     color: '#e5e7eb',
                     boxSizing: 'border-box'
                   }}
