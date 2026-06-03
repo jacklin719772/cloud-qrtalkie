@@ -11408,6 +11408,44 @@ app.post("/api/platform/health/restart-ai", requireAdmin, async (request, respon
   }
 });
 
+
+
+// POST /api/platform/health/clean-logs - clean Asterisk and Flexisip logs safely
+app.post("/api/platform/health/clean-logs", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理员可以清理日志。" });
+  }
+  try {
+    const { execSync } = await import("node:child_process");
+    const results = { deleted: [], truncated: [], freedMB: 0 };
+
+    // Clean Asterisk logs
+    const asteriskDir = "/var/log/asterisk";
+    try {
+      execSync("find " + asteriskDir + " -type f \\( -name '*.gz' -o -name 'backup-*.log' -o -name '*.log.1' -o -name '*_log.1' -o -name 'queue_log.1' -o -name 'fwjobs.log' -o -name 'core-*.log.1' \\) -delete", { timeout: 5000 });
+      const truncFiles = ["full", "full.0", "full.1", "ucp_err.log", "ucp_out.log"];
+      for (const f of truncFiles) {
+        try { execSync("truncate -s 0 " + asteriskDir + "/" + f, { timeout: 3000 }); results.truncated.push(f); } catch {}
+      }
+      results.freedMB = Math.round(Number(execSync("du -sm " + asteriskDir + " 2>/dev/null | cut -f1", { encoding: "utf8", timeout: 3000 }).trim() || 0));
+    } catch {}
+
+    // Clean Flexisip logs
+    const flexisipDir = "/var/opt/belledonne-communications/log/flexisip";
+    try {
+      execSync("find " + flexisipDir + " -type f -name '*.log.*.gz' -delete", { timeout: 5000 });
+      const patterns = ["flexisip-proxy.log", "flexisip-presence.log", "flexisip-conference.log", "flexisip-regevent.log", "flexisip-b2bua.log"];
+      for (const p of patterns) {
+        try { execSync("truncate -s 0 " + flexisipDir + "/" + p, { timeout: 3000 }); results.truncated.push(p); } catch {}
+      }
+    } catch {}
+
+    return response.json({ message: "日志清理完成。当前日志已清空，归档文件已删除。", ...results });
+  } catch (error) {
+    console.error("Failed to clean logs:", error);
+    return response.status(500).json({ message: "清理日志失败：" + (error.message || "") });
+  }
+});
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {

@@ -80,6 +80,17 @@ export default function PlatformDashboard() {
       alert('重启失败：' + (e.message || '未知错误'));
     }
   };
+
+  const handleCleanLogs = async () => {
+    if (!window.confirm('确定要清理 Asterisk 和 Flexisip 日志吗？\n\n安全清理策略：\n- 当前日志文件：truncate 清空（不影响服务运行）\n- 旧归档文件（.gz）：直接删除\n- .log.1 缓冲区：保留')) return;
+    try {
+      const res = await apiClient.post('/platform/health/clean-logs');
+      alert(res.message || '日志清理完成');
+      fetchHealth();
+    } catch (e) {
+      alert('清理失败：' + (e.message || '未知错误'));
+    }
+  };
   return (
     <section className="view active" id="platform-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none' }}>
       <style>{`
@@ -176,7 +187,7 @@ export default function PlatformDashboard() {
             <div className="pdb-card pdb-metric">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div className="pdb-metric-label">磁盘使用率</div>
-                <span style={{ fontSize: '11px', color: '#2563eb', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff' }}>清理</span>
+                <span onClick={handleCleanLogs} style={{ fontSize: '11px', color: '#2563eb', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff' }}>清理</span>
               </div>
               <div className="pdb-metric-value">{health.disk?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className={`pdb-bar ${(health.disk?.usage || 0) > 80 ? 'red' : (health.disk?.usage || 0) > 60 ? 'orange' : 'green'}`} style={{ width: `${health.disk?.usage || 0}%` }} /></div>
