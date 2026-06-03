@@ -11329,6 +11329,22 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { limeStatus = "not_installed"; }
 
+    let ftsStatus = "error";
+    try {
+      const confExists = execSync("test -f /etc/apache2/sites-available/fts.qrtalkie.org.conf && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+      if (confExists === "yes") {
+        const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+        if (apacheRunning === "active") {
+          const ftsResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/flexisip-http-file-transfer-server/hft.php -H 'Host: fts.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+          ftsStatus = ftsResp === "200" || ftsResp === "401" ? "running" : "error";
+        } else {
+          ftsStatus = "stopped";
+        }
+      } else {
+        ftsStatus = "not_installed";
+      }
+    } catch { ftsStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11344,6 +11360,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       mqtt: mqttStatus,
       aiservice: aiServiceStatus,
       lime: limeStatus,
+      fts: ftsStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
