@@ -11350,7 +11350,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
       if (apacheRunning === "active") {
         const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/ -H 'Host: account.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
-        accountManagerStatus = resp === "200" || resp === "401" ? "running" : "not_installed";
+        accountManagerStatus = (resp === "200" || resp === "401" || resp === "302") ? "running" : "not_installed";
       } else {
         accountManagerStatus = "stopped";
       }
