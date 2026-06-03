@@ -84,7 +84,7 @@ export default function PrivacyPolicy() {
                     fontFamily: 'inherit',
                     lineHeight: '1.6',
                     backgroundColor: '#0f172a',
-                    color: '#f3f4f6',
+                    color: '#ffffff',
                     color: '#e5e7eb',
                     boxSizing: 'border-box'
                   }}
