@@ -1686,10 +1686,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           gap: 12px;
           padding: 22px 24px;
           margin-bottom: 12px;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.2);
           flex-shrink: 0;
         }
         .ecard-generation-filter-left {
@@ -1807,7 +1807,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         }
         .ecard-generation-action-cell {
           z-index: 1;
-          background: #ffffff;
+          background: #111827;
         }
         .ecard-generation-table tr:hover td { background: #1a2332; }
         .ecard-generation-table tr:hover .ecard-generation-action-cell { background: #1a2332; }
@@ -1845,7 +1845,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
         .dropdown-menu-portal {
           position: fixed;
-          background-color: #fff;
+          background-color: #111827;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
           box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
