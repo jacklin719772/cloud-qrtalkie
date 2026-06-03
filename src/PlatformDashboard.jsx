@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
 
@@ -49,7 +49,7 @@ function buildChartBars(trend, valueKey) {
   return { bars, labels: bars.map(b => b.label), max };
 }
 
-export default function PlatformDashboard() {
+const PlatformDashboard = forwardRef((props, ref) => {
   const [, setTick] = useState(0);
   const [health, setHealth] = useState(MOCK_HEALTH);
   const [stats, setStats] = useState(MOCK_STATS);
@@ -68,7 +68,10 @@ export default function PlatformDashboard() {
     } catch { /* keep mock */ }
   };
 
-  useEffect(() => { fetchHealth(); fetchStats(); }, []);
+    useEffect(() => { fetchHealth(); fetchStats(); }, []);
+
+  const refresh = () => { setTick(t => t + 1); fetchHealth(); fetchStats(); };
+  useImperativeHandle(ref, () => ({ refresh }));
 
   const handleRestartAi = async () => {
     if (!window.confirm('确定要重启 Web AI 服务吗？')) return;
@@ -361,4 +364,6 @@ export default function PlatformDashboard() {
       </div>
     </section>
   );
-}
+});
+
+export default PlatformDashboard;

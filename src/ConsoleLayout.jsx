@@ -117,6 +117,7 @@ export default function ConsoleLayout({ onLogout }) {
   const tenantAccountManagementRef = useRef(null);
   const domainRef = useRef(null);
   const platformAdminRef = useRef(null);
+  const platformDashboardRef = useRef(null);
 
   const openCreateUserDialog = () => createUserDialogRef.current?.showModal();
   const openLoginEmailDialog = (email = '') => {
@@ -195,7 +196,7 @@ export default function ConsoleLayout({ onLogout }) {
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7b8794', fontSize: '12px' }}>
           最后更新：{new Date().toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\//g, '-')}
-          <RefreshCw size={14} style={{ cursor: 'pointer', color: '#7b8794' }} onClick={() => window.location.reload()} />
+          <RefreshCw size={14} style={{ cursor: 'pointer', color: '#7b8794' }} onClick={() => platformDashboardRef.current?.refresh()} />
         </div>
       );
     }
