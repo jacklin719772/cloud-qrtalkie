@@ -228,6 +228,10 @@ export default function PlatformDashboard() {
               <span className={`pdb-dot ${health.mongodb === 'running' ? 'green' : 'warn'}`} />
               <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '运行正常' : health.mongodb === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '运行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+            </div>
           </div>
         </div>
 
