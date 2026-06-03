@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import apiClient from './apiClient';
+import policyTemplate from '../PRIVACY_POLICY.md?raw';
 
 export default function PrivacyPolicy() {
   const [content, setContent] = useState('');
@@ -37,6 +38,8 @@ export default function PrivacyPolicy() {
       if (mainElement) mainElement.classList.remove('privacy-policy-mode');
     };
   }, []);
+
+  const handleImportTemplate = () => { if (!content.trim() || window.confirm("导入模板将覆盖当前内容，确定继续？")) { setContent(policyTemplate); } };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -85,7 +88,6 @@ export default function PrivacyPolicy() {
                     lineHeight: '1.6',
                     backgroundColor: '#0f172a',
                     color: '#ffffff',
-                    color: '#e5e7eb',
                     boxSizing: 'border-box'
                   }}
                   onFocus={e => e.target.style.borderColor = '#3b82f6'}
@@ -95,12 +97,13 @@ export default function PrivacyPolicy() {
             )}
           </div>
           
-          <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+          <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#111827', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             {message.text && (
               <p style={{ marginRight: 'auto', alignSelf: 'center', margin: 0, fontSize: '13px', color: message.type === 'error' ? '#ef4444' : '#10b981' }}>
                 {message.text}
               </p>
             )}
+            <button type="button" onClick={handleImportTemplate} style={{ padding: "8px 24px", borderRadius: "6px", backgroundColor: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb", cursor: "pointer", fontSize: "14px", fontWeight: 500 }}>导入模板</button>
             <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
               预览
             </button>
