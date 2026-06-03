@@ -34,6 +34,12 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
 
   useEffect(() => { loadAdmins(); }, []);
 
+  useEffect(() => {
+    if (!message.text) return;
+    const t = setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    return () => clearTimeout(t);
+  }, [message]);
+
   const openAdd = () => {
     setDialogMode('add');
     setEditTarget(null);
