@@ -120,6 +120,7 @@ export default function PrivacyPolicy() {
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6' }}>隐私政策预览</h2>
                 <button className="icon-btn" type="button" title="关闭" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
               </div>              <div className="legal-content policy-markdown-preview" style={{ overflowY: 'auto', flex: 1, color: '#e5e7eb' }}>
+                <style>{`.policy-markdown-preview a { color: #93c5fd !important; } .policy-markdown-preview a:hover { color: #ffffff !important; }`}</style>
                 {content ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {content || ''}
