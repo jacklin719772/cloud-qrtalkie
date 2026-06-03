@@ -11283,6 +11283,12 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       flexisipStatus = running === 4 ? "running" : running > 0 ? "partial" : "stopped";
     } catch { flexisipStatus = "not_installed"; }
 
+    let redisStatus = "error";
+    try {
+      const out = execSync("systemctl is-active redis-server 2>/dev/null || systemctl is-active redis 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      redisStatus = out === "active" ? "running" : "stopped";
+    } catch { redisStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11293,6 +11299,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       mongodb: mongoStatus,
       asterisk: asteriskStatus,
       flexisip: flexisipStatus,
+      redis: redisStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);

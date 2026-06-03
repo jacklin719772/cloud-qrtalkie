@@ -17,6 +17,7 @@ const MOCK_HEALTH = {
   mongodb: 'running',
   asterisk: 'running',
   flexisip: 'running',
+  redis: 'running',
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -75,6 +76,7 @@ export default function PlatformDashboard() {
         .pdb-section-note { font-size: 11px; color: #8a94a6; }
         .pdb-grid { display: grid; gap: 12px; }
         .pdb-grid-4 { grid-template-columns: repeat(4, 1fr); }
+        .pdb-grid-5 { grid-template-columns: repeat(5, 1fr); }
         .pdb-grid-3 { grid-template-columns: repeat(3, 1fr); }
         .pdb-grid-2 { grid-template-columns: 1.05fr .95fr; }
         .pdb-grid-2-eq { grid-template-columns: 1fr 1fr; }
@@ -172,7 +174,7 @@ export default function PlatformDashboard() {
 
         {/* 核心服务状态 */}
         <div className="pdb-section">
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
               <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">{health.flexisip === 'running' ? '运行正常' : health.flexisip === 'partial' ? '部分运行' : '已停止'}</div></div>
@@ -188,6 +190,10 @@ export default function PlatformDashboard() {
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mongodb === 'running' ? 'green' : 'warn'}`} />
               <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '运行正常' : health.mongodb === 'stopped' ? '已停止' : '未安装'}</div></div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '运行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
           </div>
         </div>
