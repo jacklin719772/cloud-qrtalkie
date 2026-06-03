@@ -74,7 +74,7 @@ export default function PrivacyPolicy() {
                   style={{
                     flex: 1,
                     width: '100%',
-                    minHeight: '500px',
+                    minHeight: '300px',
                     padding: '16px',
                     borderRadius: '8px',
                     border: '1px solid #374151',
