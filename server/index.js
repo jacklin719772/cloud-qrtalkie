@@ -11313,6 +11313,22 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { aiServiceStatus = "not_installed"; }
 
+    let limeStatus = "error";
+    try {
+      const confExists = execSync("test -f /etc/apache2/sites-available/lime.qrtalkie.org.conf && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+      if (confExists === "yes") {
+        const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+        if (apacheRunning === "active") {
+          const limeResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k -X POST -H 'From: sip:test@sip.qrtalkie.org;gr=test' -H 'Content-Type: application/x-lime+xml' -d '<request><getKeys/></request>' https://127.0.0.1/lime-server.php -H 'Host: lime.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+          limeStatus = limeResp === "401" ? "running" : "error";
+        } else {
+          limeStatus = "stopped";
+        }
+      } else {
+        limeStatus = "not_installed";
+      }
+    } catch { limeStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11327,6 +11343,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       coturn: coturnStatus,
       mqtt: mqttStatus,
       aiservice: aiServiceStatus,
+      lime: limeStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);

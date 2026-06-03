@@ -21,6 +21,7 @@ const MOCK_HEALTH = {
   coturn: 'running',
   mqtt: 'running',
   aiservice: 'running',
+  lime: 'running',
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -216,8 +217,8 @@ export default function PlatformDashboard() {
               <div><div className="pdb-service-name">账号管理 API</div><div className="pdb-service-status">运行正常</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
-              <span className="pdb-dot green" />
-              <div><div className="pdb-service-name">加密服务 API</div><div className="pdb-service-status">运行正常</div></div>
+              <span className={`pdb-dot ${health.lime === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">加密服务</div><div className="pdb-service-status">{health.lime === 'running' ? '运行正常' : health.lime === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className="pdb-dot green" />
