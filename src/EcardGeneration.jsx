@@ -1053,7 +1053,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           }
           .ecard-form-group {
             background: #111827;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #1f2937;
             border-radius: 12px;
             padding: 24px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
@@ -1071,7 +1071,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
           .ecard-form-grid.single-column { grid-template-columns: 1fr; }
           .ecard-form-grid label { display: flex; flex-direction: column; gap: 8px; }
-          .ecard-form-grid label span { font-size: 13px; font-weight: 500; color: #475569; }
+          .ecard-form-grid label span { font-size: 13px; font-weight: 500; color: #9ca3af; }
           .ecard-form-grid input, .ecard-form-grid select {
             padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827;
           }
