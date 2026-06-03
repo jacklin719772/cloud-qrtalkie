@@ -731,12 +731,12 @@ export default function EcardStyles() {
         .ecard-page-header h2 {
           margin: 0 0 6px 0;
           font-size: 24px;
-          color: #0f172a;
+          color: #f3f4f6;
           font-weight: 700;
         }
         .ecard-page-header p {
           margin: 0;
-          color: #64748b;
+          color: #9ca3af;
           font-size: 14px;
         }
         .ecard-primary-btn {
@@ -805,12 +805,12 @@ export default function EcardStyles() {
         }
         .ecard-search input, .ecard-select {
           height: 46px;
-          border: 1px solid #d8e2ef;
+          border: 1px solid #1f2937;
           border-radius: 9px;
           font-size: 12px;
           outline: none;
           background: #111827;
-          color: #334155;
+          color: #e5e7eb;
           box-sizing: border-box;
         }
         .ecard-search input {
@@ -840,9 +840,9 @@ export default function EcardStyles() {
           height: 34px;
           padding: 0 12px;
           border-radius: 999px;
-          background: #f8fafc;
+          background: #1a2332;
           border: 1px solid #e2e8f0;
-          color: #475569;
+          color: #9ca3af;
           font-size: 12px;
           display: inline-flex;
           align-items: center;
@@ -891,7 +891,7 @@ export default function EcardStyles() {
         }
         .ecard-table td {
           padding: 14px 20px;
-          border-bottom: 1px solid #f1f5f9;
+          border-bottom: 1px solid #1f2937;
           color: #334155;
           font-size: 14px;
           vertical-align: middle;
@@ -900,7 +900,7 @@ export default function EcardStyles() {
         .ecard-action-head, .ecard-action-cell {
           position: sticky;
           right: 0;
-          box-shadow: -1px 0 0 #e2e8f0;
+          box-shadow: -1px 0 0 #1f2937;
           width: 140px;
           min-width: 140px;
           text-align: center;
@@ -913,8 +913,8 @@ export default function EcardStyles() {
           z-index: 1;
           background: #111827;
         }
-        .ecard-table tr:hover td { background: #f8fafc; }
-        .ecard-table tr:hover .ecard-action-cell { background: #f8fafc; }
+        .ecard-table tr:hover td { background: #1a2332; }
+        .ecard-table tr:hover .ecard-action-cell { background: #1a2332; }
         .ecard-preview-box {
           width: 64px;
           height: 42px;
