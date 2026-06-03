@@ -194,11 +194,6 @@ export default function PlatformDashboard() {
               <div className="pdb-metric-sub">/ 剩余 {(health.disk?.usage != null) ? `${((100 - health.disk.usage) * 1.0).toFixed(0)}%` : '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div className="pdb-metric-label">系统运行时间</div>
-              <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
-              <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
-            </div>
-            <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">SSL 证书到期</div>
               <div className="pdb-metric-value" style={{ color: (health.ssl?.daysLeft ?? 90) <= 7 ? '#dc2626' : (health.ssl?.daysLeft ?? 90) <= 30 ? '#f59e0b' : '#1f2937' }}>
                 {health.ssl ? `${health.ssl.daysLeft} 天` : '-'}
@@ -206,12 +201,17 @@ export default function PlatformDashboard() {
               <div className="pdb-progress"><div className={`pdb-bar ${(health.ssl?.daysLeft ?? 90) <= 7 ? 'red' : (health.ssl?.daysLeft ?? 90) <= 30 ? 'orange' : 'green'}`} style={{ width: `${Math.min(100, ((health.ssl?.daysLeft ?? 90) / 90) * 100)}%` }} /></div>
               <div className="pdb-metric-sub">{health.ssl ? `到期日：${health.ssl.date}` : '-'}</div>
             </div>
+            <div className="pdb-card pdb-metric">
+              <div className="pdb-metric-label">系统运行时间</div>
+              <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
+              <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
+            </div>
           </div>
         </div>
 
         {/* 核心服务状态 */}
         <div className="pdb-section">
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
               <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">{health.flexisip === 'running' ? '运行正常' : health.flexisip === 'partial' ? '部分运行' : '已停止'}</div></div>
