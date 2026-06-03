@@ -98,7 +98,7 @@ export default function PrivacyPolicy() {
                 {message.text}
               </p>
             )}
-            <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#111827', color: '#475569', border: '1px solid #1f2937', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+            <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
               预览
             </button>
             <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>
