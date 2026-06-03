@@ -120,7 +120,20 @@ export default function PrivacyPolicy() {
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6' }}>隐私政策预览</h2>
                 <button className="icon-btn" type="button" title="关闭" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
               </div>              <div className="legal-content policy-markdown-preview" style={{ overflowY: 'auto', flex: 1, color: '#e5e7eb' }}>
-                <style>{`.policy-markdown-preview a { color: #93c5fd !important; } .policy-markdown-preview a:hover { color: #ffffff !important; }`}</style>
+                <style>{`
+                  .policy-markdown-preview * { color: #e5e7eb !important; }
+                  .policy-markdown-preview h1, .policy-markdown-preview h2, .policy-markdown-preview h3,
+                  .policy-markdown-preview h4, .policy-markdown-preview h5, .policy-markdown-preview h6 { color: #f3f4f6 !important; }
+                  .policy-markdown-preview a { color: #93c5fd !important; }
+                  .policy-markdown-preview a:hover { color: #ffffff !important; }
+                  .policy-markdown-preview strong, .policy-markdown-preview b { color: #ffffff !important; }
+                  .policy-markdown-preview code { color: #fbbf24 !important; background: #1f2937 !important; padding: 2px 6px; border-radius: 4px; }
+                  .policy-markdown-preview blockquote { border-left: 3px solid #374151; padding-left: 12px; margin-left: 0; }
+                  .policy-markdown-preview hr { border-color: #374151; }
+                  .policy-markdown-preview table { border-collapse: collapse; width: 100%; }
+                  .policy-markdown-preview th, .policy-markdown-preview td { border: 1px solid #374151; padding: 8px 12px; text-align: left; }
+                  .policy-markdown-preview th { background: #1a2332; }
+                `}</style>
                 {content ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {content || ''}
@@ -129,7 +142,7 @@ export default function PrivacyPolicy() {
                   <span style={{ color: '#94a3b8' }}>暂无内容，请先在编辑区输入隐私政策。</span>
                 )}
               </div>
-              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
+              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #1f2937' }}>
                 <button className="primary-btn" type="button" onClick={() => setIsPreviewOpen(false)}>关闭预览</button>
               </div>
             </div>
