@@ -306,33 +306,37 @@ const PlatformDashboard = forwardRef((props, ref) => {
           <div className="pdb-section-head">
             <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>运营情况</div>
           </div>
-          <div className="pdb-grid pdb-grid-5">
-          <div className="pdb-card pdb-alert-card" style={{ gridColumn: 'span 2' }}>
-            <div className="pdb-alert-list" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gridTemplateColumns: 'none' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已注册租户</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.tenantCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已销售套餐</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.orderCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>待审核订单</div><div style={{ fontWeight: 500, color: stats.pendingReviewCount > 0 ? '#dc2626' : '#1f2937', whiteSpace: 'nowrap' }}>{stats.pendingReviewCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>待付款订单</div><div style={{ fontWeight: 500, color: stats.pendingPaymentCount > 0 ? '#b45309' : '#1f2937', whiteSpace: 'nowrap' }}>{stats.pendingPaymentCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已收款总额</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>${stats.paidTotal?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已分配 SIP 账号</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.sipAssigned?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已分配 Web 账号</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.webAssigned?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>电子名片数量</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.ecardCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>门控设备数量</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.deviceCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>管控社区数量</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.communityCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>管控房间数量</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.roomCount?.toLocaleString()}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>销量最高套餐</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.topPlan}</div></div>
-              <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'none' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>销量最低套餐</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.bottomPlan}</div></div>
+          <div className="pdb-grid pdb-grid-2">
+            <div className="pdb-card" style={{ padding: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {[
+                  { label: '已注册租户', value: stats.tenantCount?.toLocaleString() },
+                  { label: '已销售套餐', value: stats.orderCount?.toLocaleString() },
+                  { label: '待审核订单', value: stats.pendingReviewCount?.toLocaleString(), color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' },
+                  { label: '待付款订单', value: stats.pendingPaymentCount?.toLocaleString(), color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' },
+                  { label: '已收款总额', value: '$' + (stats.paidTotal?.toLocaleString()) },
+                  { label: '已分配 SIP 账号', value: stats.sipAssigned?.toLocaleString() },
+                  { label: '已分配 Web 账号', value: stats.webAssigned?.toLocaleString() },
+                  { label: '电子名片数量', value: stats.ecardCount?.toLocaleString() },
+                  { label: '门控设备数量', value: stats.deviceCount?.toLocaleString() },
+                  { label: '管控社区数量', value: stats.communityCount?.toLocaleString() },
+                  { label: '管控房间数量', value: stats.roomCount?.toLocaleString() },
+                  { label: '销量最高套餐', value: stats.topPlan },
+                  { label: '销量最低套餐', value: stats.bottomPlan },
+                ].map((item, i) => (
+                  <div key={i} style={{ background: '#1a2332', borderRadius: '8px', padding: '12px 14px', border: '1px solid #1f2937' }}>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>{item.label}</div>
+                    <div style={{ fontSize: '16px', fontWeight: 500, color: item.color || '#f3f4f6', whiteSpace: 'nowrap' }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="pdb-card" style={{ gridColumn: 'span 2' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
-              <div>
-                <div className="pdb-section-head">
-                  <div className="pdb-section-title" style={{ color: "#f3f4f6" }}>近7日租户注册数量</div>
-                </div>
-                <div className="pdb-chart" style={{ height: '150px' }}>
-                  <div className="pdb-chart-bars" style={{ height: '110px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日租户注册数量</div>
+                <div className="pdb-chart" style={{ height: '140px' }}>
+                  <div className="pdb-chart-bars" style={{ height: '100px' }}>
                     {buildChartBars(stats.tenantTrend, 'count').bars.map((b, i) => (
                       <span key={i} style={{ height: b.pct + '%' }} title={b.label + ': ' + (stats.tenantTrend[i]?.count || 0)} />
                     ))}
@@ -342,12 +346,10 @@ const PlatformDashboard = forwardRef((props, ref) => {
                   </div>
                 </div>
               </div>
-              <div>
-                <div className="pdb-section-head">
-                  <div className="pdb-section-title" style={{ color: "#f3f4f6" }}>近7日用户付款金额</div>
-                </div>
-                <div className="pdb-chart" style={{ height: '150px' }}>
-                  <div className="pdb-chart-bars" style={{ height: '110px' }}>
+              <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日用户付款金额</div>
+                <div className="pdb-chart" style={{ height: '140px' }}>
+                  <div className="pdb-chart-bars" style={{ height: '100px' }}>
                     {buildChartBars(stats.paymentTrend, 'amount').bars.map((b, i) => (
                       <span key={i} style={{ height: b.pct + '%', background: 'linear-gradient(180deg, #5fc89f, #b7ebd0)' }} title={b.label + ': $' + (stats.paymentTrend[i]?.amount || 0).toFixed(2)} />
                     ))}
@@ -359,7 +361,6 @@ const PlatformDashboard = forwardRef((props, ref) => {
               </div>
             </div>
           </div>
-        </div>
       </div>
       </div>
     </section>
