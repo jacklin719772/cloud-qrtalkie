@@ -233,7 +233,7 @@ export default function PlatformDashboard() {
 
         {/* API 服务状态 */}
         <div className="pdb-section">
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.accountManager === 'running' ? 'green' : 'warn'}`} />
               <div><div className="pdb-service-name">账号管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '运行正常' : health.accountManager === 'stopped' ? '已停止' : '未安装'}</div></div>
@@ -278,7 +278,7 @@ export default function PlatformDashboard() {
           <div className="pdb-section-head">
             <div className="pdb-section-title" style={{ fontWeight: 700 }}>通信业务状态</div>
           </div>
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-biz-card">
               <div className="pdb-biz-label">已创建 SIP 账号</div>
               <div className="pdb-biz-value">{stats.sipCreated?.toLocaleString()}</div>
@@ -303,7 +303,7 @@ export default function PlatformDashboard() {
           <div className="pdb-section-head">
             <div className="pdb-section-title" style={{ fontWeight: 700 }}>运营情况</div>
           </div>
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
           <div className="pdb-card pdb-alert-card" style={{ gridColumn: 'span 2' }}>
             <div className="pdb-alert-list" style={{ display: 'flex', flexDirection: 'column' }}>
               <div className="pdb-alert-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gridTemplateColumns: 'none' }}><div className="pdb-alert-text" style={{ fontWeight: 500 }}>已注册租户</div><div style={{ fontWeight: 500, color: '#1f2937', whiteSpace: 'nowrap' }}>{stats.tenantCount?.toLocaleString()}</div></div>
