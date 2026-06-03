@@ -171,7 +171,7 @@ export default function PlatformDashboard() {
             <div className="pdb-section-title" style={{ fontWeight: 700 }}>平台健康状态</div>
             <div className="pdb-section-note">Ubuntu / 核心服务 / 通信业务</div>
           </div>
-          <div className="pdb-grid pdb-grid-4">
+          <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">CPU 使用率</div>
               <div className="pdb-metric-value">{health.cpu?.usage ?? '-'}%</div>
