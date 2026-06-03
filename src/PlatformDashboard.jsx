@@ -24,6 +24,7 @@ const MOCK_HEALTH = {
   lime: 'running',
   fts: 'running',
   accountManager: 'running',
+  ssl: { daysLeft: 83, date: '2026-08-25' },
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -185,6 +186,14 @@ export default function PlatformDashboard() {
               <div className="pdb-metric-label">系统运行时间</div>
               <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
               <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
+            </div>
+            <div className="pdb-card pdb-metric">
+              <div className="pdb-metric-label">SSL 证书到期</div>
+              <div className="pdb-metric-value" style={{ color: (health.ssl?.daysLeft ?? 90) <= 7 ? '#dc2626' : (health.ssl?.daysLeft ?? 90) <= 30 ? '#f59e0b' : '#1f2937' }}>
+                {health.ssl ? `${health.ssl.daysLeft} 天` : '-'}
+              </div>
+              <div className="pdb-progress"><div className={`pdb-bar ${(health.ssl?.daysLeft ?? 90) <= 7 ? 'red' : (health.ssl?.daysLeft ?? 90) <= 30 ? 'orange' : 'green'}`} style={{ width: `${Math.min(100, ((health.ssl?.daysLeft ?? 90) / 90) * 100)}%` }} /></div>
+              <div className="pdb-metric-sub">{health.ssl ? `到期日：${health.ssl.date}` : '-'}</div>
             </div>
           </div>
         </div>

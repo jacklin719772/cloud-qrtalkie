@@ -11356,6 +11356,18 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { accountManagerStatus = "not_installed"; }
 
+    let sslExpiry = null;
+    try {
+      const sslDomain = process.env.SSL_CHECK_DOMAIN || "www.qrtalkie.org";
+      const out = execSync(`openssl s_client -servername ${sslDomain} -connect 127.0.0.1:443 </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
+      const match = out.match(/notAfter=(.+)/);
+      if (match) {
+        const expDate = new Date(match[1]);
+        const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
+        sslExpiry = { date: expDate.toISOString().slice(0, 10), daysLeft, domain: sslDomain };
+      }
+    } catch { sslExpiry = null; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11373,6 +11385,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       lime: limeStatus,
       fts: ftsStatus,
       accountManager: accountManagerStatus,
+      ssl: sslExpiry,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
