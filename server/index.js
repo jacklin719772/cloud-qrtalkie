@@ -11334,6 +11334,21 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
   }
 });
 
+// POST /api/platform/health/restart-ai - restart Web AI Docker service
+app.post("/api/platform/health/restart-ai", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理员可以重启服务。" });
+  }
+  try {
+    const { execSync } = await import("node:child_process");
+    execSync("docker compose -p asterisk-ai-voice-agent restart admin_ui 2>&1", { encoding: "utf8", timeout: 15000 });
+    return response.json({ message: "Web AI 服务已重启。" });
+  } catch (error) {
+    console.error("Failed to restart AI service:", error);
+    return response.status(500).json({ message: "重启 Web AI 服务失败：" + (error.message || "") });
+  }
+});
+
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
