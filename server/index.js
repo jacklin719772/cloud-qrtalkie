@@ -19,6 +19,17 @@ const webrtcDomain = process.env.WEBRTC_DOMAIN || process.env.webrtc_domain || "
 const callCenterBaseUrl = process.env.CALL_CENTER_BASE_URL || appUrl;
 const accessBaseUrl = process.env.ACCESS_BASE_URL || appUrl;
 const couponCurrencyCodes = new Set(["TWD", "CNY", "USD", "EUR"]);
+const healthInternalHost = process.env.HEALTH_INTERNAL_HOST || "127.0.0.1";
+const healthSslPort = Number(process.env.HEALTH_SSL_PORT || 443);
+const limeDomain = process.env.LIME_DOMAIN || "lime.qrtalkie.org";
+const ftsDomain = process.env.FTS_DOMAIN || "fts.qrtalkie.org";
+const accountDomain = process.env.ACCOUNT_DOMAIN || "account.qrtalkie.org";
+const sslCheckDomain = process.env.SSL_CHECK_DOMAIN || "www.qrtalkie.org";
+const asteriskLogDir = process.env.ASTERISK_LOG_DIR || "/var/log/asterisk";
+const flexisipLogDir = process.env.FLEXISIP_LOG_DIR || "/var/opt/belledonne-communications/log/flexisip";
+const aiComposeProject = process.env.AI_COMPOSE_PROJECT || "asterisk-ai-voice-agent";
+const limeApacheConf = process.env.LIME_APACHE_CONF || "/etc/apache2/sites-available/lime.qrtalkie.org.conf";
+const ftsApacheConf = process.env.FTS_APACHE_CONF || "/etc/apache2/sites-available/fts.qrtalkie.org.conf";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const paymentProofsDir = path.join(projectRoot, "assets/payment-proofs");
 const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icons");
@@ -11303,7 +11314,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let aiServiceStatus = "error";
     try {
-      const out = execSync("docker compose -p asterisk-ai-voice-agent ps --format json 2>/dev/null || echo ''", { encoding: "utf8", timeout: 5000 }).trim();
+      const out = execSync("docker compose -p " + aiComposeProject + " ps --format json 2>/dev/null || echo ''", { encoding: "utf8", timeout: 5000 }).trim();
       if (out) {
         const containers = JSON.parse(out.startsWith("[") ? out : "[" + out.split("\n").filter(Boolean).join(",") + "]");
         const adminUi = Array.isArray(containers) ? containers.find(c => c.Name && c.Name.includes("admin_ui")) : null;
@@ -11315,11 +11326,11 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let limeStatus = "error";
     try {
-      const confExists = execSync("test -f /etc/apache2/sites-available/lime.qrtalkie.org.conf && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+      const confExists = execSync("test -f " + limeApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
       if (confExists === "yes") {
         const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
         if (apacheRunning === "active") {
-          const limeResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k -X POST -H 'From: sip:test@sip.qrtalkie.org;gr=test' -H 'Content-Type: application/x-lime+xml' -d '<request><getKeys/></request>' https://127.0.0.1/lime-server.php -H 'Host: lime.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+          const limeResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k -X POST -H 'From: sip:test@" + sipDomain + ";gr=test' -H 'Content-Type: application/x-lime+xml' -d '<request><getKeys/></request>' https://" + healthInternalHost + "/lime-server.php -H 'Host: " + limeDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
           limeStatus = limeResp === "401" ? "running" : "error";
         } else {
           limeStatus = "stopped";
@@ -11331,11 +11342,11 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let ftsStatus = "error";
     try {
-      const confExists = execSync("test -f /etc/apache2/sites-available/fts.qrtalkie.org.conf && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+      const confExists = execSync("test -f " + ftsApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
       if (confExists === "yes") {
         const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
         if (apacheRunning === "active") {
-          const ftsResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/flexisip-http-file-transfer-server/hft.php -H 'Host: fts.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+          const ftsResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/flexisip-http-file-transfer-server/hft.php -H 'Host: " + ftsDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
           ftsStatus = ftsResp === "200" || ftsResp === "401" ? "running" : "error";
         } else {
           ftsStatus = "stopped";
@@ -11349,7 +11360,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     try {
       const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
       if (apacheRunning === "active") {
-        const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/ -H 'Host: account.qrtalkie.org' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+        const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/ -H 'Host: " + accountDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
         accountManagerStatus = (resp === "200" || resp === "401" || resp === "302") ? "running" : "not_installed";
       } else {
         accountManagerStatus = "stopped";
@@ -11359,7 +11370,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     let sslExpiry = null;
     try {
       const sslDomain = process.env.SSL_CHECK_DOMAIN || "www.qrtalkie.org";
-      const out = execSync(`openssl s_client -servername ${sslDomain} -connect 127.0.0.1:443 </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
+      const out = execSync(`openssl s_client -servername ${sslDomain} -connect ${healthInternalHost}:${healthSslPort} </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
       const match = out.match(/notAfter=(.+)/);
       if (match) {
         const expDate = new Date(match[1]);
@@ -11400,7 +11411,7 @@ app.post("/api/platform/health/restart-ai", requireAdmin, async (request, respon
   }
   try {
     const { execSync } = await import("node:child_process");
-    execSync("docker compose -p asterisk-ai-voice-agent restart admin_ui 2>&1", { encoding: "utf8", timeout: 15000 });
+    execSync("docker compose -p " + aiComposeProject + " restart admin_ui 2>&1", { encoding: "utf8", timeout: 15000 });
     return response.json({ message: "Web AI 服务已重启。" });
   } catch (error) {
     console.error("Failed to restart AI service:", error);
@@ -11420,7 +11431,7 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
     const results = { deleted: [], truncated: [], freedMB: 0 };
 
     // Clean Asterisk logs
-    const asteriskDir = "/var/log/asterisk";
+    const asteriskDir = asteriskLogDir;
     try {
       execSync("find " + asteriskDir + " -type f \\( -name '*.gz' -o -name 'backup-*.log' -o -name '*.log.1' -o -name '*_log.1' -o -name 'queue_log.1' -o -name 'fwjobs.log' -o -name 'core-*.log.1' \\) -delete", { timeout: 5000 });
       const truncFiles = ["full", "full.0", "full.1", "ucp_err.log", "ucp_out.log"];
@@ -11431,7 +11442,7 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
     } catch {}
 
     // Clean Flexisip logs
-    const flexisipDir = "/var/opt/belledonne-communications/log/flexisip";
+    const flexisipDir = flexisipLogDir;
     try {
       execSync("find " + flexisipDir + " -type f -name '*.log.*.gz' -delete", { timeout: 5000 });
       const patterns = ["flexisip-proxy.log", "flexisip-presence.log", "flexisip-conference.log", "flexisip-regevent.log", "flexisip-b2bua.log"];
