@@ -11249,12 +11249,22 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     const disk = getDiskUsage();
     const uptime = getUptime();
     const load = getLoadAvg();
+
+    let dbStatus = "error";
+    try {
+      const conn = await pool.getConnection();
+      await conn.query("SELECT 1");
+      conn.release();
+      dbStatus = "running";
+    } catch { dbStatus = "error"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
       disk: { usage: disk },
       uptime: uptime,
       load: load,
+      mariadb: dbStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
