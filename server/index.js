@@ -11258,6 +11258,13 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       dbStatus = "running";
     } catch { dbStatus = "error"; }
 
+    let mongoStatus = "error";
+    try {
+      const { execSync } = await import("node:child_process");
+      const out = execSync("systemctl is-active mongod 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      mongoStatus = out === "active" ? "running" : "stopped";
+    } catch { mongoStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11265,6 +11272,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       uptime: uptime,
       load: load,
       mariadb: dbStatus,
+      mongodb: mongoStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
