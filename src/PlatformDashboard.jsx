@@ -16,6 +16,7 @@ const MOCK_HEALTH = {
   mariadb: 'running',
   mongodb: 'running',
   asterisk: 'running',
+  flexisip: 'running',
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -173,8 +174,8 @@ export default function PlatformDashboard() {
         <div className="pdb-section">
           <div className="pdb-grid pdb-grid-4">
             <div className="pdb-card pdb-service-card">
-              <span className="pdb-dot green" />
-              <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">运行正常</div></div>
+              <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
+              <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">{health.flexisip === 'running' ? '运行正常' : health.flexisip === 'partial' ? '部分运行' : '已停止'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.asterisk === 'running' ? 'green' : 'warn'}`} />

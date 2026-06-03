@@ -11271,6 +11271,18 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       asteriskStatus = out === "active" ? "running" : "stopped";
     } catch { asteriskStatus = "not_installed"; }
 
+    let flexisipStatus = "error";
+    try {
+      const { execSync } = await import("node:child_process");
+      const services = ["flexisip-proxy", "flexisip-presence", "flexisip-conference", "flexisip-regevent"];
+      let running = 0;
+      for (const svc of services) {
+        const out = execSync(`systemctl is-active ${svc} 2>/dev/null || echo inactive`, { encoding: "utf8", timeout: 3000 }).trim();
+        if (out === "active") running++;
+      }
+      flexisipStatus = running === 4 ? "running" : running > 0 ? "partial" : "stopped";
+    } catch { flexisipStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11280,6 +11292,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       mariadb: dbStatus,
       mongodb: mongoStatus,
       asterisk: asteriskStatus,
+      flexisip: flexisipStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
