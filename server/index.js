@@ -11265,6 +11265,12 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       mongoStatus = out === "active" ? "running" : "stopped";
     } catch { mongoStatus = "not_installed"; }
 
+    let asteriskStatus = "error";
+    try {
+      const out = execSync("systemctl is-active asterisk 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      asteriskStatus = out === "active" ? "running" : "stopped";
+    } catch { asteriskStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11273,6 +11279,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       load: load,
       mariadb: dbStatus,
       mongodb: mongoStatus,
+      asterisk: asteriskStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);

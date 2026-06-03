@@ -15,6 +15,7 @@ const MOCK_HEALTH = {
   uptime: { days: 35, text: '35 天' },
   mariadb: 'running',
   mongodb: 'running',
+  asterisk: 'running',
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -176,8 +177,8 @@ export default function PlatformDashboard() {
               <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">运行正常</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
-              <span className="pdb-dot green" />
-              <div><div className="pdb-service-name">Web 呼叫服务</div><div className="pdb-service-status">运行正常</div></div>
+              <span className={`pdb-dot ${health.asterisk === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">Web 呼叫服务</div><div className="pdb-service-status">{health.asterisk === 'running' ? '运行正常' : health.asterisk === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mariadb === 'running' ? 'green' : 'warn'}`} />
