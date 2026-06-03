@@ -11301,6 +11301,18 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       mqttStatus = out === "active" ? "running" : "stopped";
     } catch { mqttStatus = "not_installed"; }
 
+    let aiServiceStatus = "error";
+    try {
+      const out = execSync("docker compose -p asterisk-ai-voice-agent ps --format json 2>/dev/null || echo ''", { encoding: "utf8", timeout: 5000 }).trim();
+      if (out) {
+        const containers = JSON.parse(out.startsWith("[") ? out : "[" + out.split("\n").filter(Boolean).join(",") + "]");
+        const adminUi = Array.isArray(containers) ? containers.find(c => c.Name && c.Name.includes("admin_ui")) : null;
+        aiServiceStatus = adminUi && adminUi.State === "running" ? "running" : adminUi ? "stopped" : "not_found";
+      } else {
+        aiServiceStatus = "not_installed";
+      }
+    } catch { aiServiceStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11314,6 +11326,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       redis: redisStatus,
       coturn: coturnStatus,
       mqtt: mqttStatus,
+      aiservice: aiServiceStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
