@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw } from 'lucide-react';
+import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw, HelpCircle } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Dashboard from './Dashboard';
@@ -90,6 +90,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [deviceManagementMode, setDeviceManagementMode] = useState('list');
   const [ecardGenerationMode, setEcardGenerationMode] = useState('list');
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showAdminHelp, setShowAdminHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -589,9 +590,14 @@ export default function ConsoleLayout({ onLogout }) {
     }
     if (currentView === 'platform-admin-management') {
       return (
-        <button className="primary-btn" type="button" onClick={() => platformAdminRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
-          + 新增管理員
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => platformAdminRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
+            + 新增管理員
+          </button>
+          <button type="button" onClick={() => setShowAdminHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助">
+            <HelpCircle size={18} />
+          </button>
+        </div>
       );
     }
     if (currentView === 'access-control') {
@@ -756,6 +762,57 @@ export default function ConsoleLayout({ onLogout }) {
       <BillingAddressSyncDialog ref={billingAddressSyncDialogRef} />
 
       {showChangePassword && <ChangePasswordDialog onClose={() => setShowChangePassword(false)} identity={identity} />}
+
+      {showAdminHelp && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'flex-end' }} onClick={() => setShowAdminHelp(false)}>
+          <div style={{ width: 'min(420px, 90vw)', height: '100%', background: '#111827', borderLeft: '1px solid #1f2937', overflow: 'auto', padding: '28px 24px', scrollbarWidth: 'none' }} onClick={e => e.stopPropagation()}>
+            <style>{`.help-drawer::-webkit-scrollbar { display: none; }`}</style>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>操作指南</h2>
+              <button onClick={() => setShowAdminHelp(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>&#10005;</button>
+            </div>
+
+            <div style={{ color: '#e5e7eb', fontSize: '13px', lineHeight: 1.8 }}>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#128100; 新增管理员</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击"新增管理員"按钮，填写邮箱、密码、显示名称、电话和角色。平台管理员可以登录系统进行订单审核、租户管理等后台操作。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#9998; 编辑管理员</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"编辑"按钮，可修改管理员的邮箱、显示名称、电话和角色。密码留空则不修改。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#128273; 重置密码</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"重置密码"按钮，输入新密码和确认密码。密码至少需要 6 个字符，两次输入需一致。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#9888; 啟用 / 停用</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"啟用"或"停用"按钮，控制管理员的登录权限。停用后该管理员无法登录系统。超级管理员不可停用。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#10060; 删除管理员</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"删除"按钮可永久删除管理员账号。此操作不可恢复。超级管理员不可删除。</p>
+              </div>
+
+              <div>
+                <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#128274; 角色说明</h3>
+                <div style={{ color: '#9ca3af', fontSize: '12px' }}>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>超级管理员</span> — 系统预设，拥有全部权限，不可删除或停用</div>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>管理员</span> — 可管理租户、订单审核、系统配置</div>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>运营</span> — 负责日常运营操作和用户服务</div>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>财务</span> — 负责订单收款审核和财务管理</div>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>客服</span> — 负责用户咨询和故障处理</div>
+                  <div style={{ padding: '4px 0' }}><span style={{ color: '#f3f4f6' }}>审计</span> — 负责安全审计和合规检查</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
