@@ -11345,6 +11345,17 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { ftsStatus = "not_installed"; }
 
+    let accountManagerStatus = "error";
+    try {
+      const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      if (apacheRunning === "active") {
+        const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/account-manager/ -H 'Host: account.qrtalkie.org' 2>/dev/null || curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://127.0.0.1/ -H 'Host: account-manager.qrtalkie.org' 2>/dev/null || echo 000", { encoding: "utf8", timeout: 8000 }).trim();
+        accountManagerStatus = resp === "200" || resp === "401" ? "running" : (resp === "000" ? "not_installed" : "error");
+      } else {
+        accountManagerStatus = "stopped";
+      }
+    } catch { accountManagerStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11361,6 +11372,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       aiservice: aiServiceStatus,
       lime: limeStatus,
       fts: ftsStatus,
+      accountManager: accountManagerStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
