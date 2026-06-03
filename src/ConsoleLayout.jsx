@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart } from 'lucide-react';
+import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Dashboard from './Dashboard';
@@ -191,6 +191,14 @@ export default function ConsoleLayout({ onLogout }) {
   }, [identity, userType]);
 
   const renderPageAction = () => {
+    if (currentView === 'dashboard') {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7b8794', fontSize: '12px' }}>
+          最后更新：{new Date().toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\//g, '-')}
+          <RefreshCw size={14} style={{ cursor: 'pointer', color: '#7b8794' }} onClick={() => window.location.reload()} />
+        </div>
+      );
+    }
     if (currentView === 'payment-methods') {
       const actionBaseStyle = {
         display: 'inline-flex',

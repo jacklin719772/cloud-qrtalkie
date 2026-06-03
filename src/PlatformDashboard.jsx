@@ -159,10 +159,6 @@ export default function PlatformDashboard() {
 
       <div className="pdb-page">
         <div className="pdb-title-row" style={{ marginBottom: '14px' }}>
-          <div className="pdb-time" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            最后更新：{formatTime()}
-            <RefreshCw size={14} style={{ cursor: 'pointer', color: '#7b8794' }} onClick={() => { setTick(t => t + 1); fetchHealth(); fetchStats(); }} />
-          </div>
         </div>
 
         {/* 平台健康状态 */}
