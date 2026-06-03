@@ -131,14 +131,15 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
   return (
     <section className="view active" id="platform-admin-management">
       <style>{`
-        .pam-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 10px 26px rgba(15,23,42,0.06); overflow: hidden; }
+        .pam-panel { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.2); overflow: hidden; }
         .pam-table-wrap { overflow: auto; }
         .pam-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
-        .pam-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-        .pam-table td { padding: 12px 16px; color: #334155; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
-        .pam-table th:last-child, .pam-table td:last-child { position: sticky; right: 0; z-index: 1; background: #fff; box-shadow: -2px 0 4px rgba(15,23,42,0.04); }
-        .pam-table thead th:last-child { z-index: 3; background: #f8fafc; }
-        .pam-table tr:hover td:last-child { background: #f8fafc; }
+        .pam-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #9ca3af; background: #1a2332; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+        .pam-table td { padding: 12px 16px; color: #e5e7eb; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+        .pam-table th:last-child, .pam-table td:last-child { position: sticky; right: 0; z-index: 1; background: #111827; box-shadow: -2px 0 4px rgba(0,0,0,0.2); }
+        .pam-table thead th:last-child { z-index: 3; background: #1a2332; }
+        .pam-table tr:hover td { background: #1a2332; }
+        .pam-table tr:hover td:last-child { background: #1a2332; }
         .pam-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
         .pam-badge.active { background: #dcfce7; color: #15803d; }
         .pam-badge.disabled { background: #fee2e2; color: #dc2626; }
