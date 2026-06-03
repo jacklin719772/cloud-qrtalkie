@@ -880,8 +880,8 @@ export default function EcardStyles() {
         .ecard-table th {
           position: sticky;
           top: 0;
-          background: #f8fafc;
-          color: #64748b;
+          background: #1a2332;
+          color: #9ca3af;
           font-weight: 600;
           font-size: 13px;
           padding: 14px 20px;
