@@ -65,6 +65,17 @@ export default function PlatformDashboard() {
   };
 
   useEffect(() => { fetchHealth(); fetchStats(); }, []);
+
+  const handleRestartAi = async () => {
+    if (!window.confirm('确定要重启 Web AI 服务吗？')) return;
+    try {
+      await apiClient.post('/platform/health/restart-ai');
+      alert('Web AI 服务已重启');
+      fetchHealth();
+    } catch (e) {
+      alert('重启失败：' + (e.message || '未知错误'));
+    }
+  };
   return (
     <section className="view active" id="platform-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none' }}>
       <style>{`
@@ -214,7 +225,15 @@ export default function PlatformDashboard() {
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.aiservice === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Web AI 服务</div><div className="pdb-service-status">{health.aiservice === 'running' ? '运行正常' : health.aiservice === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div style={{ flex: 1 }}>
+                <div className="pdb-service-name">Web AI 服务</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="pdb-service-status">{health.aiservice === 'running' ? '运行正常' : health.aiservice === 'stopped' ? '已停止' : '未安装'}</div>
+                  {health.aiservice !== 'running' && (
+                    <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重启</span>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
