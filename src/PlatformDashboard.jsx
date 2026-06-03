@@ -167,7 +167,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 平台健康状态 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 700 }}>平台健康状态</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800 }}>平台健康状态</div>
             <div className="pdb-section-note">Ubuntu / 核心服务 / 通信业务</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
@@ -279,7 +279,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 通信业务状态 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 700 }}>通信业务状态</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800 }}>通信业务状态</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-biz-card">
@@ -304,7 +304,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 告警中心 + 平台核心指标 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 700 }}>运营情况</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800 }}>运营情况</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
           <div className="pdb-card pdb-alert-card" style={{ gridColumn: 'span 2' }}>
