@@ -104,7 +104,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-time { color: #9ca3af; font-size: 12px; }
         .pdb-section { margin-top: 14px; }
         .pdb-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-        .pdb-section-title { font-size: 14px; font-weight: 500; color: #f3f4f6; }
+        .pdb-section-title { font-size: 14px; font-weight: 500; color: #0f172a; }
         .pdb-section-note { font-size: 11px; color: #9ca3af; }
         .pdb-grid { display: grid; gap: 12px; }
         .pdb-grid-4 { grid-template-columns: repeat(4, 1fr); }
@@ -167,7 +167,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 平台健康状态 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800 }}>平台健康状态</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>平台健康状态</div>
             <div className="pdb-section-note">Ubuntu / 核心服务 / 通信业务</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
@@ -279,7 +279,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 通信业务状态 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800 }}>通信业务状态</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>通信业务状态</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-biz-card">
@@ -304,7 +304,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 告警中心 + 平台核心指标 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800 }}>运营情况</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>运营情况</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
           <div className="pdb-card pdb-alert-card" style={{ gridColumn: 'span 2' }}>
@@ -329,7 +329,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: '100%' }}>
               <div>
                 <div className="pdb-section-head">
-                  <div className="pdb-section-title">近7日租户注册数量</div>
+                  <div className="pdb-section-title" style={{ color: "#f3f4f6" }}>近7日租户注册数量</div>
                 </div>
                 <div className="pdb-chart" style={{ height: '150px' }}>
                   <div className="pdb-chart-bars" style={{ height: '110px' }}>
@@ -344,7 +344,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
               </div>
               <div>
                 <div className="pdb-section-head">
-                  <div className="pdb-section-title">近7日用户付款金额</div>
+                  <div className="pdb-section-title" style={{ color: "#f3f4f6" }}>近7日用户付款金额</div>
                 </div>
                 <div className="pdb-chart" style={{ height: '150px' }}>
                   <div className="pdb-chart-bars" style={{ height: '110px' }}>
