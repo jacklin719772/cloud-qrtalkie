@@ -18,6 +18,8 @@ const MOCK_HEALTH = {
   asterisk: 'running',
   flexisip: 'running',
   redis: 'running',
+  coturn: 'running',
+  mqtt: 'running',
   load: { load1: 0.38, load5: 0.42, load15: 0.35 },
 };
 
@@ -216,6 +218,14 @@ export default function PlatformDashboard() {
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
               <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '运行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${health.coturn === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '运行正常' : health.coturn === 'stopped' ? '已停止' : '未安装'}</div></div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${health.mqtt === 'running' ? 'green' : 'warn'}`} />
+              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '运行正常' : health.mqtt === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
           </div>
         </div>

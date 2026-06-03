@@ -11289,6 +11289,18 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       redisStatus = out === "active" ? "running" : "stopped";
     } catch { redisStatus = "not_installed"; }
 
+    let coturnStatus = "error";
+    try {
+      const out = execSync("systemctl is-active coturn 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      coturnStatus = out === "active" ? "running" : "stopped";
+    } catch { coturnStatus = "not_installed"; }
+
+    let mqttStatus = "error";
+    try {
+      const out = execSync("systemctl is-active mosquitto 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      mqttStatus = out === "active" ? "running" : "stopped";
+    } catch { mqttStatus = "not_installed"; }
+
     return response.json({
       cpu: { usage: cpu, loadAvg: load.load5 },
       memory: { usage: memory },
@@ -11300,6 +11312,8 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       asterisk: asteriskStatus,
       flexisip: flexisipStatus,
       redis: redisStatus,
+      coturn: coturnStatus,
+      mqtt: mqttStatus,
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
