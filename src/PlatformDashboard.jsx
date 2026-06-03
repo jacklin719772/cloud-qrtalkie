@@ -99,24 +99,24 @@ const PlatformDashboard = forwardRef((props, ref) => {
       <style>{`
         .pdb-page { max-width: 1280px; }
         .pdb-title-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
-        .pdb-title h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: .2px; color: #0f172a; }
-        .pdb-title p { margin: 5px 0 0; color: #7b8794; font-size: 12px; }
-        .pdb-time { color: #7b8794; font-size: 12px; }
+        .pdb-title h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: .2px; color: #f3f4f6; }
+        .pdb-title p { margin: 5px 0 0; color: #9ca3af; font-size: 12px; }
+        .pdb-time { color: #9ca3af; font-size: 12px; }
         .pdb-section { margin-top: 14px; }
         .pdb-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-        .pdb-section-title { font-size: 14px; font-weight: 500; color: #0f172a; }
-        .pdb-section-note { font-size: 11px; color: #8a94a6; }
+        .pdb-section-title { font-size: 14px; font-weight: 500; color: #f3f4f6; }
+        .pdb-section-note { font-size: 11px; color: #9ca3af; }
         .pdb-grid { display: grid; gap: 12px; }
         .pdb-grid-4 { grid-template-columns: repeat(4, 1fr); }
         .pdb-grid-5 { grid-template-columns: repeat(5, 1fr); }
         .pdb-grid-3 { grid-template-columns: repeat(3, 1fr); }
         .pdb-grid-2 { grid-template-columns: 1.05fr .95fr; }
         .pdb-grid-2-eq { grid-template-columns: 1fr 1fr; }
-        .pdb-card { background: #fff; border: 1px solid #e8edf4; border-radius: 14px; box-shadow: 0 6px 18px rgba(38,50,56,.04); padding: 14px; }
+        .pdb-card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.2); padding: 14px; }
         .pdb-metric { min-height: 76px; }
-        .pdb-metric-label { color: #778295; font-size: 12px; margin-bottom: 6px; }
-        .pdb-metric-value { font-size: 18px; font-weight: 400; line-height: 1.1; color: #1f2937; }
-        .pdb-metric-sub { margin-top: 6px; font-size: 11px; color: #8a94a6; }
+        .pdb-metric-label { color: #9ca3af; font-size: 12px; margin-bottom: 6px; }
+        .pdb-metric-value { font-size: 18px; font-weight: 400; line-height: 1.1; color: #f3f4f6; }
+        .pdb-metric-sub { margin-top: 6px; font-size: 11px; color: #9ca3af; }
         .pdb-progress { height: 5px; background: #edf2f7; border-radius: 99px; overflow: hidden; margin-top: 10px; }
         .pdb-bar { height: 100%; border-radius: 99px; }
         .pdb-bar.green { background: #5fc89f; }
@@ -127,35 +127,35 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
         .pdb-dot.green { background: #59c98d; box-shadow: 0 0 0 4px rgba(89,201,141,.12); }
         .pdb-dot.warn { background: #f6b25d; box-shadow: 0 0 0 4px rgba(246,178,93,.15); }
-        .pdb-service-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #1f2937; }
-        .pdb-service-status { font-size: 12px; color: #6b7788; }
+        .pdb-service-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #f3f4f6; }
+        .pdb-service-status { font-size: 12px; color: #9ca3af; }
         .pdb-biz-card { text-align: left; }
-        .pdb-biz-value { font-size: 18px; font-weight: 400; margin-top: 6px; color: #1f2937; }
-        .pdb-biz-label { font-size: 12px; color: #778295; }
+        .pdb-biz-value { font-size: 18px; font-weight: 400; margin-top: 6px; color: #f3f4f6; }
+        .pdb-biz-label { font-size: 12px; color: #9ca3af; }
         .pdb-alert-card { padding: 0; overflow: hidden; }
         .pdb-alert-header { padding: 13px 14px; border-bottom: 1px solid #edf1f6; display: flex; justify-content: space-between; align-items: center; }
-        .pdb-alert-count { font-size: 11px; color: #7b8794; }
+        .pdb-alert-count { font-size: 11px; color: #9ca3af; }
         .pdb-alert-list { padding: 4px 0; }
-        .pdb-alert-item { display: grid; grid-template-columns: 82px 1fr 80px; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f1f4f8; }
+        .pdb-alert-item { display: grid; grid-template-columns: 82px 1fr 80px; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1f2937; }
         .pdb-alert-item:last-child { border-bottom: none; }
         .pdb-tag { display: inline-flex; align-items: center; justify-content: center; height: 22px; border-radius: 99px; font-size: 11px; padding: 0 10px; }
-        .pdb-tag.critical { background: #fff0f0; color: #d94a4a; }
-        .pdb-tag.warning { background: #fff8e8; color: #b97710; }
+        .pdb-tag.critical { background: #1118270f0; color: #d94a4a; }
+        .pdb-tag.warning { background: #1118278e8; color: #b97710; }
         .pdb-tag.info { background: #eff6ff; color: #4178c0; }
-        .pdb-alert-text { font-size: 12px; color: #344054; }
-        .pdb-alert-time { text-align: right; font-size: 11px; color: #98a2b3; }
+        .pdb-alert-text { font-size: 12px; color: #e5e7eb; }
+        .pdb-alert-time { text-align: right; font-size: 11px; color: #9ca3af; }
         .pdb-chart { height: 190px; position: relative; padding: 12px 10px 0; }
         .pdb-chart-bars { height: 135px; display: flex; align-items: end; gap: 12px; border-left: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4; padding-left: 10px; }
         .pdb-chart-bars span { width: 100%; max-width: 34px; background: linear-gradient(180deg, #8bbcff, #dbeaff); border-radius: 8px 8px 0 0; }
-        .pdb-chart-labels { display: flex; gap: 12px; padding-left: 11px; margin-top: 8px; color: #98a2b3; font-size: 10px; }
+        .pdb-chart-labels { display: flex; gap: 12px; padding-left: 11px; margin-top: 8px; color: #9ca3af; font-size: 10px; }
         .pdb-chart-labels span { width: 34px; text-align: center; }
         .pdb-activity { padding: 2px 0; }
-        .pdb-activity-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f1f4f8; }
+        .pdb-activity-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1f2937; }
         .pdb-activity-item:last-child { border-bottom: none; }
-        .pdb-activity-time { width: 44px; color: #98a2b3; font-size: 11px; flex-shrink: 0; }
-        .pdb-activity-text { font-size: 12px; color: #344054; }
+        .pdb-activity-time { width: 44px; color: #9ca3af; font-size: 11px; flex-shrink: 0; }
+        .pdb-activity-text { font-size: 12px; color: #e5e7eb; }
         .pdb-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .pdb-pill { background: #f4f7fb; border: 1px solid #e8edf4; border-radius: 999px; padding: 6px 10px; font-size: 11px; color: #667085; }
+        .pdb-pill { background: #f4f7fb; border: 1px solid #1f2937; border-radius: 999px; padding: 6px 10px; font-size: 11px; color: #667085; }
         .pdb-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         #platform-dashboard::-webkit-scrollbar { display: none; }
       `}</style>
