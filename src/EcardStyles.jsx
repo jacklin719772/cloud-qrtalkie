@@ -851,7 +851,7 @@ export default function EcardStyles() {
           white-space: nowrap;
         }
         .ecard-stat-pill strong {
-          color: #0f172a;
+          color: #f3f4f6;
           font-size: 13px;
           font-weight: 700;
         }
