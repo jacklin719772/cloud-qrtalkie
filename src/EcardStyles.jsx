@@ -731,7 +731,7 @@ export default function EcardStyles() {
         .ecard-page-header h2 {
           margin: 0 0 6px 0;
           font-size: 24px;
-          color: #f3f4f6;
+          color: #0f172a;
           font-weight: 700;
         }
         .ecard-page-header p {
