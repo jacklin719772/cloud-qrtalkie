@@ -97,6 +97,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showOfflineAccountHelp, setShowOfflineAccountHelp] = useState(false);
   const [showPaymentMethodsHelp, setShowPaymentMethodsHelp] = useState(false);
   const [showDiscountDataHelp, setShowDiscountDataHelp] = useState(false);
+  const [showPlansHelp, setShowPlansHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -535,6 +536,7 @@ export default function ConsoleLayout({ onLogout }) {
           >
             批量啟用
           </button>
+          <button type="button" onClick={() => setShowPlansHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1012,6 +1014,52 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>取得/更新折扣設定：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/billing/coupon-settings</code><br/>刪除單一折扣：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/billing/coupon-settings/:id</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPlansHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowPlansHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>套餐資料 操作說明</h2>
+              <button onClick={() => setShowPlansHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128230; 套餐資料的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>套餐資料是平台的核心定價設定，定義租戶可購買的各種套餐方案。每個套餐包含帳戶數量、價格階梯、功能摘要等資訊。租戶在購買頁面（Domain 頁）選擇套餐進行訂購，系統依據此處的設定計算費用。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增套餐</strong> — 點擊「新增套餐」按鈕進入新增頁面，填寫套餐代碼、名稱、帳戶數量、價格和功能摘要等資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯套餐</strong> — 點擊表格行中的下拉選單選擇「編輯」，在彈出視窗中修改套餐設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 選擇「詳情」以唯讀模式查看套餐的所有設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量操作</strong> — 勾選多個套餐後，使用「批量停用」或「批量啟用」按鈕一次性修改多個套餐的狀態。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>快速切換狀態</strong> — 在下拉選單中選擇「啟用/停用」可快速切換單個套餐的狀態。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 使用頂部搜尋欄搜尋套餐 ID、代碼或名稱；使用下拉選單按狀態篩選。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>套餐代碼</strong> — 唯一識別碼，用於系統內部和 API 調用。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>套餐名稱</strong> — 租戶端顯示的套餐名稱。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳戶數量</strong> — 套餐包含的 SIP/Web 帳戶數量上限。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用（租戶可購買）/ 停用（隱藏）。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>排序</strong> — 數字越小越靠前，控制套餐在購買頁面的顯示順序。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>增值服務列表</strong> — 此套餐可選配的增值服務代碼，用逗號分隔。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>描述</strong> — 套餐的文字說明。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>功能摘要</strong> — 套餐功能的簡短摘要，顯示在購買頁面。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>價格階梯</strong> — 設定不同帳戶數量對應的單價和幣種，支援多個階梯。第一個階梯為基礎價格。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>套餐列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/plans</code><br/>建立/更新套餐：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/billing/plans</code><br/>批量操作：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/plans/batch</code></p>
               </div>
             </div>
           </div>
