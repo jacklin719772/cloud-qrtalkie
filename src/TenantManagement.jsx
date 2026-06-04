@@ -593,7 +593,7 @@ export default function TenantManagement() {
           #tenant-management .tenant-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
           #tenant-management .tenant-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
           #tenant-management .tenant-stat-pill strong { color: #ffffff; }
-          #tenant-management .tenant-table-card { background: #111827; border-color: #1f2937; box-shadow: none; }
+          #tenant-management .tenant-table-card { background: #111827; border-color: #1f2937; box-shadow: none; border-radius: 14px; min-height: 300px; }
           #tenant-management .tenant-table thead { background: #1a2332; }
           #tenant-management .tenant-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
           #tenant-management .tenant-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
@@ -658,6 +658,13 @@ export default function TenantManagement() {
           </div>
 
           <div className="tenant-table-card">
+            {isLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#9ca3af', fontSize: '14px' }}>載入租戶列表中...</div>
+            ) : paginatedTenants.length === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#9ca3af', fontSize: '14px' }}>
+                {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的租戶' : '目前尚無租戶資料'}
+              </div>
+            ) : (
             <div className="tenant-table-wrapper">
               <table className="tenant-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
@@ -737,9 +744,9 @@ export default function TenantManagement() {
                     </tr>
                   ))}
                 </tbody>
-              )}
               </table>
             </div>
+          )}
 
             <div className="tenant-table-footer">
               <div className="tenant-total">共 {filteredTenants.length} 筆資料</div>
