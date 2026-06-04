@@ -94,6 +94,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showLegalHelp, setShowLegalHelp] = useState(false);
   const [legalHelpTitle, setLegalHelpTitle] = useState('');
   const [legalHelpType, setLegalHelpType] = useState('');
+  const [showOfflineAccountHelp, setShowOfflineAccountHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -625,6 +626,9 @@ export default function ConsoleLayout({ onLogout }) {
       const cbStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
       return (<button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleCreate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增通訊錄</button>);
     }
+    if (currentView === 'offline-account') {
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowOfflineAccountHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="帮助"><HelpCircle size={18} /></button></div>);
+    }
     if (currentView === 'terms-of-service') {
       return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('服務條款'); setLegalHelpType('terms'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
     }
@@ -866,6 +870,48 @@ export default function ConsoleLayout({ onLogout }) {
                   <p style={{ color: "#9ca3af", margin: 0 }}>註冊頁面（Landing.jsx）中的「隱私政策」連結調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/public/settings/privacy-policy</code></p>
                 </div>
               </>)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOfflineAccountHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowOfflineAccountHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>收款帳戶 使用說明</h2>
+              <button onClick={() => setShowOfflineAccountHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127974; 收款帳戶的作用</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>收款帳戶是平台提供給租戶的線下付款銀行帳戶資訊。當租戶選擇線下匯款方式支付時，系統會顯示此處設定的銀行帳戶資料。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128269; 租戶端的展示方式</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>租戶在購買套餐或續訂時，選擇「線下付款」方式後，系統會在付款頁面顯示此收款帳戶的所有資訊，包括銀行名稱、帳號、SWIFT 代碼等。租戶需按照顯示的帳戶資訊完成匯款。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9998; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳戶代碼</strong> — 系統內部使用的唯一識別碼，預設為 default-usd-bank。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳戶名稱</strong> — 收款帳戶的顯示名稱，例如「公司主要帳戶」。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>收款單位</strong> — 收款方的公司或個人名稱。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>開戶銀行</strong> — 銀行名稱，例如「HSBC Taiwan」。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>銀行帳號</strong> — 完整的銀行帳戶號碼。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>銀行分行</strong> — 開戶分行的名稱或代碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>SWIFT</strong> — 國際匯款用的 SWIFT/BIC 代碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>幣別</strong> — 3 位 ISO 貨幣代碼，例如 USD、TWD。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>聯絡人</strong> — 收款相關事宜的聯絡人姓名。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>聯絡電話</strong> — 聯絡人電話號碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>聯絡信箱</strong> — 聯絡人電子郵件地址。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>付款提示</strong> — 附加的付款注意事項或說明，會顯示給租戶參考。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 前端接入位置</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>租戶購買頁面調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/offline-payment-account</code> 取得收款帳戶資訊，保存時調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/offline-payment-account</code>。</p>
+              </div>
             </div>
           </div>
         </div>
