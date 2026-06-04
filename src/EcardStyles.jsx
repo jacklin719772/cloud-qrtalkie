@@ -1215,29 +1215,29 @@ export default function EcardStyles() {
 
       {previewItem && createPortal(
         <div className="modal-overlay" onClick={() => setPreviewItem(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(800px, 90vw)', maxHeight: '90vh', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>「{previewItem.styleName}」預覽</h3>
-              <button type="button" onClick={() => setPreviewItem(null)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>×</button>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(800px, 90vw)', maxHeight: '90vh', backgroundColor: '#ffffff', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>「{previewItem.styleName}」預覽</h3>
+              <button type="button" onClick={() => setPreviewItem(null)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#f3f4f6', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#0f172a', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片</h4>
               {previewItem.samples && previewItem.samples.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                   {previewItem.samples.map(s => (
-                    <div key={s.id} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #1f2937', aspectRatio: '16/9', position: 'relative' }}>
+                    <div key={s.id} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0', aspectRatio: '16/9', position: 'relative' }}>
                        <img src={getFullImageUrl(s.imageUrl)} alt="Sample" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                        {s.isCover && <span style={{ position: 'absolute', top: '8px', left: '8px', backgroundColor: '#3b82f6', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>封面</span>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无範例圖片</p>
+                <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #d8e2ef', borderRadius: '8px' }}>暂无範例圖片</p>
               )}
 
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
 
-              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#f3f4f6', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#0f172a', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
               {previewItem.backgrounds && previewItem.backgrounds.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                   {previewItem.backgrounds.map(b => (
