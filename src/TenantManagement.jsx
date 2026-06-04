@@ -658,14 +658,6 @@ export default function TenantManagement() {
           </div>
 
           <div className="tenant-table-card">
-            {isLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#9ca3af', fontSize: '14px' }}>載入租戶列表中...</div>
-            ) : paginatedTenants.length === 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#9ca3af', fontSize: '14px' }}>
-                {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的租戶' : '目前尚無租戶資料'}
-              </div>
-            ) : (
-            <>
             <div className="tenant-table-wrapper">
               <table className="tenant-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
@@ -688,7 +680,18 @@ export default function TenantManagement() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedTenants.map((tenant) => (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>載入租戶列表中...</td>
+                    </tr>
+                  ) : paginatedTenants.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>
+                        {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的租戶' : '目前尚無租戶資料'}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedTenants.map((tenant) => (
                     <tr key={tenant.id || tenant.tenantNumber}>
                       <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || tenant.id || '-'}</td>
                       <td>{tenant.companyName || '-'}</td>
@@ -736,7 +739,7 @@ export default function TenantManagement() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
