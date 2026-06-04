@@ -96,6 +96,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [legalHelpType, setLegalHelpType] = useState('');
   const [showOfflineAccountHelp, setShowOfflineAccountHelp] = useState(false);
   const [showPaymentMethodsHelp, setShowPaymentMethodsHelp] = useState(false);
+  const [showDiscountDataHelp, setShowDiscountDataHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -244,9 +245,12 @@ export default function ConsoleLayout({ onLogout }) {
         whiteSpace: 'nowrap',
       };
       return (
-        <button className="primary-btn" type="button" onClick={() => discountDataRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
-          <Plus size={14} /> 新增折扣
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => discountDataRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
+            <Plus size={14} /> 新增折扣
+          </button>
+          <button type="button" onClick={() => setShowDiscountDataHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
       );
     }
     if (currentView === 'call-center') {
@@ -957,6 +961,57 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>取得/更新付款方式：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/billing/payment-method-settings</code><br/>刪除單一付款方式：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/billing/payment-method-settings/:id</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDiscountDataHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowDiscountDataHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>折扣資料 操作說明</h2>
+              <button onClick={() => setShowDiscountDataHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127991; 折扣資料的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>折扣資料（優惠碼）管理讓平台管理員建立和管理折扣規則。租戶在購買套餐時可輸入折扣碼享受優惠。支援百分比折扣和固定金額減免兩種模式，並可設定有效期限和使用次數上限。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128260; 頁面佈局說明</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>頁面分為左右兩欄：<strong style={{ color: "#e5e7eb" }}>左側</strong>為折扣列表，顯示所有已建立的折扣碼，可搜尋和篩選；<strong style={{ color: "#e5e7eb" }}>右側</strong>為折扣詳情編輯面板，點擊左側任一折扣即可查看和編輯其規則。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作流程</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>1. 新增折扣</strong> — 點擊右上角「新增折扣」按鈕，在右側面板填寫折扣規則。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>2. 設定折扣代碼</strong> — 輸入唯一的大寫英文代碼（如 SAVE20），租戶結帳時輸入此代碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>3. 選擇折扣類型</strong> — 百分比折扣（如 20%）或固定金額減免（如 TWD 500）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>4. 設定有效期限</strong> — 可選設定生效日期和到期日期，到期後自動標記為過期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>5. 設定使用上限</strong> — 限制折扣碼可被使用的總次數，留空表示不限。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>6. 儲存並啟用</strong> — 點擊「建立折扣」儲存，狀態設為「啟用」後租戶即可使用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>7. 管理現有折扣</strong> — 在左側列表點擊折扣進行編輯；使用開關快速啟用/停用；點擊「刪除」移除。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>折扣代碼</strong> — 租戶結帳時輸入的代碼，必須是英文大寫字母和數字，不可重複。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 管理後台顯示的名稱，用於識別折扣。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>折扣類型</strong> — 百分比折扣（按訂單金額比例折扣）或固定金額減免（直接扣除指定金額）。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>折扣值</strong> — 百分比模式輸入 1-100 數字，固定金額模式輸入金額。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>幣種</strong> — 僅固定金額模式需要，選擇折扣適用的貨幣。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用（可使用）、停用（暫停使用）、過期（已超過到期日）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>生效日期</strong> — 可為空，表示不限制起始日期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>到期日期</strong> — 折扣的有效截止日期。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>使用上限</strong> — 限制折扣碼的總使用次數，留空表示不限次數。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>取得/更新折扣設定：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/billing/coupon-settings</code><br/>刪除單一折扣：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/billing/coupon-settings/:id</code></p>
               </div>
             </div>
           </div>
