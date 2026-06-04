@@ -149,6 +149,22 @@ export default function OfflinePaymentAccount() {
 
   return (
     <section className="view active settings-form-page" id="offline-account">
+      <style>{`
+        #offline-account .settings-block { background: #111827; border: 1px solid #1f2937; }
+        #offline-account .settings-block-head h3 { color: #f3f4f6; }
+        #offline-account .settings-block-head { border-bottom-color: #1f2937; }
+        #offline-account .field-label { color: #9ca3af; }
+        #offline-account .tenant-field-grid label { color: #9ca3af; }
+        #offline-account .tenant-field-grid input,
+        #offline-account .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #offline-account .tenant-field-grid input:focus,
+        #offline-account .tenant-field-grid textarea:focus { border-color: #3b82f6; }
+        #offline-account .tenant-field-grid input::placeholder,
+        #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
+        #offline-account .settings-divider { border-color: #1f2937; }
+        #offline-account .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
+        #offline-account .ghost-btn { color: #9ca3af; }
+      `}</style>
       <form className="tenant-settings-form" onSubmit={handleSubmit}>
         <div className="tenant-scroll-area">
           {isLoading && <p className="form-message">載入收款帳戶中...</p>}
