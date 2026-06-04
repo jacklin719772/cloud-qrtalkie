@@ -333,11 +333,11 @@ const Plans = forwardRef((props, ref) => {
     if (!editingPlan) return;
 
     if (!(editingPlan.planCode || '').trim()) {
-      alert('请输入套餐代码');
+      alert('请输入套餐代碼');
       return;
     }
     if (!(editingPlan.name || '').trim()) {
-      alert('请输入套餐名称');
+      alert('请输入套餐名稱');
       return;
     }
 
@@ -709,7 +709,7 @@ const Plans = forwardRef((props, ref) => {
                 <div className="form-grid" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignContent: 'start', alignItems: 'start' }}>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐代码<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐代碼<RequiredMark /></span>
                     <input
                       value={editingPlan?.planCode || ''}
                       onChange={(e) => setEditingPlan({
@@ -720,7 +720,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐名称<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐名稱<RequiredMark /></span>
                     <input
                       value={editingPlan?.name || ''}
                       onChange={(e) => setEditingPlan({
@@ -731,7 +731,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>账户数量<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>帳戶數量<RequiredMark /></span>
                     <input
                       type="number"
                       min="1"
@@ -744,7 +744,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>状态<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>狀態<RequiredMark /></span>
                       <select
                         value={editingPlan?.status || 'active'}
                         onChange={(e) => setEditingPlan({
@@ -752,7 +752,7 @@ const Plans = forwardRef((props, ref) => {
                           status: e.target.value,
                         })}
                       >
-                        <option value="active">启用</option>
+                        <option value="active">啟用</option>
                         <option value="disabled">停用</option>
                       </select>
                     </label>
@@ -772,14 +772,14 @@ const Plans = forwardRef((props, ref) => {
                   </div>
                   <div style={{ display: 'grid', gap: '8px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>增值服务列表</span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>增值服務列表</span>
                       <input
                         value={editingPlan?.addonServices || ''}
                         onChange={(e) => setEditingPlan({
                           ...editingPlan,
                           addonServices: e.target.value,
                         })}
-                        placeholder="输入增值服务代码，用逗号分隔"
+                        placeholder="輸入增值服務代碼，用逗號分隔"
                       />
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingLeft: '4px' }}>
@@ -840,7 +840,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>单价/月<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>單價/月<RequiredMark /></span>
                       <input
                         type="number"
                         min="0"
@@ -859,7 +859,7 @@ const Plans = forwardRef((props, ref) => {
                       />
                     </label>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>币种<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>幣種<RequiredMark /></span>
                       <select
                         value={editingPlan?.priceTiers?.[0]?.currency || 'TWD'}
                         onChange={(e) => {
@@ -882,24 +882,24 @@ const Plans = forwardRef((props, ref) => {
                 </div>
                 </div>
 
-                <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', paddingBottom: '32px', borderTop: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
+                <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', paddingBottom: '32px', borderTop: '1px solid #1f2937', backgroundColor: '#111827' }}>
                   {message.text && <p className={`form-message ${message.type}`} style={{ marginRight: 'auto', alignSelf: 'center', margin: 0, padding: 0, background: 'transparent' }}>{message.text}</p>}
                   <button className="ghost-btn" type="button" onClick={() => onReturnToList?.()} disabled={isSaving}>取消</button>
-                  <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '创建中...' : '创建套餐'}</button>
+                  <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '建立中...' : '建立套餐'}</button>
                 </div>
               </form>
             </section>
           ) : (
             <section className="settings-block" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
-            <div className="payment-method-filter" style={{ flexShrink: 0, display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px', backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>
+            <div className="payment-method-filter" style={{ flexShrink: 0, display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px', backgroundColor: '#1a2332', padding: '12px 16px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>
               <label className="payment-method-search" style={{ position: 'relative', width: '260px', flex: '0 0 260px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} aria-hidden="true" />
                 <input
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#f3f4f6', backgroundColor: '#ffffff', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#f3f4f6', backgroundColor: '#ffffff', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜索套餐 ID、代码或名称..."
+                  placeholder="搜尋套餐 ID、代碼或名稱..."
                   onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
                   onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'; }}
                 />
@@ -921,12 +921,12 @@ const Plans = forwardRef((props, ref) => {
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 aria-label="筛选状态"
-                style={{ padding: '10px 32px 10px 16px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', backgroundColor: '#ffffff', outline: 'none', cursor: 'pointer', transition: 'all 0.2s ease', color: '#334155', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px 16px' }}
+                style={{ padding: '10px 32px 10px 16px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', backgroundColor: '#ffffff', outline: 'none', cursor: 'pointer', transition: 'all 0.2s ease', color: '#334155', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px 16px' }}
                 onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
                 onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
               >
-                <option value="all">全部状态</option>
-                <option value="active">启用</option>
+                <option value="all">全部狀態</option>
+                <option value="active">啟用</option>
                 <option value="disabled">停用</option>
               </select>
               <div className="plan-stats" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flex: 1, whiteSpace: 'nowrap' }}>
@@ -935,7 +935,7 @@ const Plans = forwardRef((props, ref) => {
                   ['已启用', planStats.active],
                   ['已停用', planStats.disabled],
                 ].map(([label, value]) => (
-                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', color: '#9ca3af', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
+                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#ffffff', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
                 ))}
               </div>
             </div>
@@ -955,11 +955,11 @@ const Plans = forwardRef((props, ref) => {
                       />
                     </th>
                     <th>ID</th>
-                    <th>套餐代码</th>
-                    <th>套餐名称</th>
-                    <th>状态</th>
-                    <th>账户数量</th>
-                    <th>基础价格</th>
+                    <th>套餐代碼</th>
+                    <th>套餐名稱</th>
+                    <th>狀態</th>
+                    <th>帳戶數量</th>
+                    <th>基礎價格</th>
                     <th>功能摘要</th>
                     <th style={{ width: '110px', textAlign: 'center' }}>操作</th>
                   </tr>
@@ -1042,7 +1042,7 @@ const Plans = forwardRef((props, ref) => {
                                 <button type="button" className="dropdown-item" onClick={() => { handleDetails(plan); setOpenDropdownId(null); }}>详情</button>
                                 <button type="button" className="dropdown-item" onClick={() => { handleEdit(plan); setOpenDropdownId(null); }}>编辑</button>
                                 <button type="button" className="dropdown-item" onClick={(e) => { handleToggleStatus(plan, e); setOpenDropdownId(null); }}>{plan.status === 'active' ? '停用' : '启用'}</button>
-                                <button type="button" className="dropdown-item dropdown-item-danger" onClick={(e) => { handleDelete(plan, e); setOpenDropdownId(null); }}>删除</button>
+                                <button type="button" className="dropdown-item dropdown-item-danger" onClick={(e) => { handleDelete(plan, e); setOpenDropdownId(null); }}>刪除</button>
                               </div>,
                               document.body
                             ) : null}
@@ -1057,12 +1057,12 @@ const Plans = forwardRef((props, ref) => {
 
             {/* 分页控制 */}
             {filteredPlans.length > 0 && (
-              <div className="device-table-footer" style={{ minHeight: '74px', padding: '0 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderTop: '1px solid #e2e8f0' }}>
-                <div className="device-total" style={{ color: '#64748b', fontSize: '12px' }}>
-                  共 {filteredPlans.length} 条
+              <div className="device-table-footer" style={{ minHeight: '74px', padding: '0 30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#111827', borderTop: '1px solid #1f2937' }}>
+                <div className="device-total" style={{ color: '#9ca3af', fontSize: '12px' }}>
+                  共 {filteredPlans.length} 條
                 </div>
                 <div className="device-pagination" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className="device-page-size" style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid #d8e2ef', backgroundColor: '#fff', color: '#9ca3af', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>{pageSize} 条/页</span>
+                  <span className="device-page-size" style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid #4b5563', backgroundColor: '#1a2332', color: '#9ca3af', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>{pageSize} 條/頁</span>
                   <button
                     className="device-page-btn"
                     type="button"
@@ -1078,7 +1078,7 @@ const Plans = forwardRef((props, ref) => {
                     type="button"
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #d8e2ef', backgroundColor: currentPage >= totalPages ? '#f8fafc' : '#fff', color: currentPage >= totalPages ? '#cbd5e1' : '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', lineHeight: 1, cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', padding: 0 }}
+                    style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #4b5563', backgroundColor: currentPage >= totalPages ? '#1a2332' : '#1f2937', color: currentPage >= totalPages ? '#4b5563' : '#9ca3af', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', lineHeight: 1, cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', padding: 0 }}
                   >
                     ›
                   </button>
@@ -1095,8 +1095,8 @@ const Plans = forwardRef((props, ref) => {
         <div className="modal-overlay" onClick={closeModal} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', backgroundColor: '#fff', borderRadius: '12px', overflow: 'hidden' }}>
             <form onSubmit={savePlan} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-              <div className="modal-header" style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3>{modalMode === 'add' ? '新增套餐' : modalMode === 'edit' ? '编辑套餐' : '套餐详情'}</h3>
+              <div className="modal-header" style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3>{modalMode === 'add' ? '新增套餐' : modalMode === 'edit' ? '編輯套餐' : '套餐詳情'}</h3>
                 <button
                   className="modal-close"
                   type="button"
@@ -1110,7 +1110,7 @@ const Plans = forwardRef((props, ref) => {
               <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px' }}>
                 <div className="form-grid">
                   <label>
-                    <span>套餐代码<RequiredMark /></span>
+                    <span>套餐代碼<RequiredMark /></span>
                     <input
                       value={editingPlan.planCode}
                       onChange={(e) =>
@@ -1124,7 +1124,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label>
-                    <span>套餐名称<RequiredMark /></span>
+                    <span>套餐名稱<RequiredMark /></span>
                     <input
                       value={editingPlan.name}
                       onChange={(e) =>
@@ -1152,7 +1152,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label>
-                    <span>账户数量<RequiredMark /></span>
+                    <span>帳戶數量<RequiredMark /></span>
                     <input
                       type="number"
                       min="1"
@@ -1168,7 +1168,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label>
-                      <span>单价/月<RequiredMark /></span>
+                      <span>單價/月<RequiredMark /></span>
                       <input
                         type="number"
                         min="0"
@@ -1188,7 +1188,7 @@ const Plans = forwardRef((props, ref) => {
                       />
                     </label>
                     <label>
-                      <span>币种<RequiredMark /></span>
+                      <span>幣種<RequiredMark /></span>
                       <select
                         value={editingPlan.priceTiers?.[0]?.currency || 'TWD'}
                         onChange={(e) => {
@@ -1225,7 +1225,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label>
-                      <span>状态<RequiredMark /></span>
+                      <span>狀態<RequiredMark /></span>
                       <select
                         value={editingPlan.status}
                         onChange={(e) =>
@@ -1236,7 +1236,7 @@ const Plans = forwardRef((props, ref) => {
                         }
                         disabled={isDetails}
                       >
-                        <option value="active">启用</option>
+                        <option value="active">啟用</option>
                         <option value="disabled">停用</option>
                       </select>
                     </label>
@@ -1259,7 +1259,7 @@ const Plans = forwardRef((props, ref) => {
                   </div>
                   <div className="span-2" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <label>
-                      <span>增值服务列表</span>
+                      <span>增值服務列表</span>
                       <input
                         value={editingPlan.addonServices || ''}
                         onChange={(e) =>
@@ -1268,7 +1268,7 @@ const Plans = forwardRef((props, ref) => {
                             addonServices: e.target.value,
                           })
                         }
-                        placeholder="输入增值服务代码，用逗号分隔"
+                        placeholder="輸入增值服務代碼，用逗號分隔"
                         readOnly={isDetails}
                       />
                     </label>
@@ -1309,7 +1309,7 @@ const Plans = forwardRef((props, ref) => {
               </div>
 
               {!isDetails && (
-                <div className="modal-footer" style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <div className="modal-footer" style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                   {message.text && <p className={`form-message ${message.type}`} style={{ marginRight: 'auto', alignSelf: 'center' }}>{message.text}</p>}
                   <button className="ghost-btn" type="button" onClick={closeModal} disabled={isSaving}>
                     取消
