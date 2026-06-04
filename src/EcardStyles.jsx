@@ -324,7 +324,7 @@ export default function EcardStyles() {
           <form className="panel" onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#111827', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#ffffff', fontWeight: '600' }}>{viewMode === 'edit' ? '編輯 Ecard 樣式' : '新增 Ecard 樣式'}</h3>
-              <button className="ghost-btn" type="button" onClick={() => setViewMode('list')} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', color: '#9ca3af' }}>返回列表</button>
+              <button type="button" onClick={() => setViewMode('list')} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>返回列表</button>
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
