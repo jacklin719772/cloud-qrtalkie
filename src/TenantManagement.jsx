@@ -665,6 +665,7 @@ export default function TenantManagement() {
                 {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的租戶' : '目前尚無租戶資料'}
               </div>
             ) : (
+            <>
             <div className="tenant-table-wrapper">
               <table className="tenant-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
@@ -746,7 +747,6 @@ export default function TenantManagement() {
                 </tbody>
               </table>
             </div>
-          )}
 
             <div className="tenant-table-footer">
               <div className="tenant-total">共 {filteredTenants.length} 筆資料</div>
@@ -760,6 +760,8 @@ export default function TenantManagement() {
                 <span className="tenant-page-jump">前往<input className="tenant-page-input" value={currentPage} readOnly />頁</span>
               </div>
             </div>
+          </>
+          )}
           </div>
       </div>
 
