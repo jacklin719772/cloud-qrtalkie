@@ -1309,8 +1309,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div className="ecard-form-group" style={{ marginBottom: '20px' }}>
                 <h4 className="ecard-form-title" style={{ margin: 0 }}>電子名片设计</h4>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#475569' }}>樣式模板</span>
-                  <select value={selectedTemplateId} onChange={e => handleTemplateChange(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '13px', color: '#334155', outline: 'none', background: '#fff', cursor: 'pointer' }} disabled={templatesLoading || !!templatesError || templates.length === 0}>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>樣式模板</span>
+                  <select value={selectedTemplateId} onChange={e => handleTemplateChange(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #374151', borderRadius: '6px', fontSize: '13px', color: '#e5e7eb', outline: 'none', background: '#111827', cursor: 'pointer' }} disabled={templatesLoading || !!templatesError || templates.length === 0}>
                     {templatesLoading && <option value="">載入中...</option>}
                     {templatesError && <option value="">{templatesError}</option>}
                     {!templatesLoading && !templatesError && templates.length === 0 && <option value="">暂无可用模板</option>}
@@ -1379,7 +1379,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div>
                   <div className="ecard-template-section-header">
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#475569' }}>背景模板</span>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>背景模板</span>
                     <div className="ecard-template-nav-btns">
                       <button type="button" className="ecard-template-nav-btn" onClick={() => handleScrollTemplates('left')}>‹</button>
                       <button type="button" className="ecard-template-nav-btn" onClick={() => handleScrollTemplates('right')}>›</button>
@@ -1412,32 +1412,32 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '8px' }}>显示控制</span>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af', display: 'block', marginBottom: '8px' }}>显示控制</span>
                   <div style={{ display: 'flex', gap: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showEnJobTitle')}>
-                      <span className="ecard-static-switch" style={{ background: localDisplayConfig.showEnJobTitle ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showEnJobTitle ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
-                      <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>英文职位</span>
+                      <span className="ecard-static-switch" style={{ background: localDisplayConfig.showEnJobTitle ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showEnJobTitle ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
+                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>英文职位</span>
                     </div>
                     {showCompanyInfo && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showEnCompanyName')}>
-                        <span className="ecard-static-switch" style={{ background: localDisplayConfig.showEnCompanyName ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showEnCompanyName ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
-                        <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>英文公司名</span>
+                        <span className="ecard-static-switch" style={{ background: localDisplayConfig.showEnCompanyName ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showEnCompanyName ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
+                        <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>英文公司名</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showQrCodeDesc')}>
-                      <span className="ecard-static-switch" style={{ background: localDisplayConfig.showQrCodeDesc ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showQrCodeDesc ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
-                      <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>二维码说明</span>
+                      <span className="ecard-static-switch" style={{ background: localDisplayConfig.showQrCodeDesc ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showQrCodeDesc ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
+                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>二维码说明</span>
                     </div>
                     {showCompanyInfo && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showSlogan')}>
-                        <span className="ecard-static-switch" style={{ background: localDisplayConfig.showSlogan ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showSlogan ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#fff', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
-                        <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>Slogan</span>
+                        <span className="ecard-static-switch" style={{ background: localDisplayConfig.showSlogan ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showSlogan ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
+                        <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>Slogan</span>
                       </div>
                     )}
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '8px' }}>颜色配置</span>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af', display: 'block', marginBottom: '8px' }}>颜色配置</span>
                   <div className="ecard-style-config-grid">
                     {[
                       { label: '姓名', key: 'name', defaultColor: '#ffffff', defaultWeight: '700', defaultSize: 24, show: true },
@@ -1500,7 +1500,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               value={currentSize}
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontSize', Number(e.target.value))}
                               title="字号 (px)"
-                              style={{ width: '48px', height: '32px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', padding: '0 4px', outline: 'none', textAlign: 'center' }}
+                              style={{ width: '48px', height: '32px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', padding: '0 4px', outline: 'none', textAlign: 'center' }}
                             />
                             <select 
                               value={currentWeight} 
@@ -1523,7 +1523,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               value={hexColor} 
                               onChange={(e) => handleLocalStyleChange(field.key, 'color', e.target.value)}
                               title="颜色"
-                              style={{ width: '32px', height: '32px', padding: '0', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
+                              style={{ width: '32px', height: '32px', padding: '0', border: '1px solid #374151', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
                             />
                           </div>
                         </div>
@@ -1638,7 +1638,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div className="ecard-template-preview-content" style={{ flexDirection: 'column', gap: '16px', padding: '24px' }} onClick={e => e.stopPropagation()}>
               <button className="ecard-template-preview-close" onClick={() => setShowTestPreviewModal(false)}>×</button>
               <img src={testPreviewImageUrl} alt="Ecard Preview & Test" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
-              <div style={{ textAlign: 'center', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
+              <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
                 请扫描名片中的二维码测试通话功能是否正常
               </div>
             </div>
@@ -2175,7 +2175,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 setPageSize(val === 'all' ? 'all' : Number(val));
                 setCurrentPage(1);
               }}
-              style={{ height: '38px', padding: '0 32px 0 14px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', outline: 'none', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', backgroundSize: '14px 14px' }}
+              style={{ height: '38px', padding: '0 32px 0 14px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#111827', color: '#9ca3af', fontSize: '11px', outline: 'none', cursor: 'pointer', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', backgroundSize: '14px 14px' }}
             >
               <option value={10}>10 条/页</option>
               <option value={20}>20 条/页</option>
@@ -2200,7 +2200,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div className="ecard-template-preview-content" style={{ flexDirection: 'column', gap: '16px', padding: '24px' }} onClick={e => e.stopPropagation()}>
               <button className="ecard-template-preview-close" onClick={() => setPreviewImageModalOpen(false)}>×</button>
               <img src={previewImageUrl} alt="Ecard Preview" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
-              <div style={{ textAlign: 'center', color: '#475569', fontSize: '14px', fontWeight: 500 }}>
+              <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
                 请扫描名片中的二维码测试通话功能是否正常
               </div>
             </div>
