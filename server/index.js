@@ -3193,7 +3193,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
 
 app.put("/api/billing/offline-payment-account", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ョ董璀锋敹娆惧赋鎴躲€?" });
+    return response.status(403).json({ message: "只有平台管理員可以管理收款帳戶。" });
   }
 
   const payload = request.body || {};
@@ -3210,12 +3210,12 @@ app.put("/api/billing/offline-payment-account", requireAdmin, async (request, re
   const contactEmail = normalizeEmail(payload.contactEmail);
   const paymentNotice = sanitizeString(payload.paymentNotice, 255);
 
-  if (!displayName) return response.status(400).json({ message: "璜嬭几鍏ュ赋鎴跺悕绋便€?" });
-  if (!payeeName) return response.status(400).json({ message: "璜嬭几鍏ユ敹娆惧柈浣嶃€?" });
-  if (!bankName) return response.status(400).json({ message: "璜嬭几鍏ラ枊鎴堕妧琛屻€?" });
-  if (!bankAccountNo) return response.status(400).json({ message: "璜嬭几鍏ラ妧琛屽赋铏熴€?" });
-  if (!/^[A-Z]{3}$/.test(currency)) return response.status(400).json({ message: "骞ｅ垾闇€鐐?3 浣嶈嫳鏂囦唬纰笺€?" });
-  if (contactEmail && !isValidEmail(contactEmail)) return response.status(400).json({ message: "璜嬭几鍏ユ湁鏁堢殑鑱怠淇＄銆?" });
+  if (!displayName) return response.status(400).json({ message: "請輸入帳戶名稱。" });
+  if (!payeeName) return response.status(400).json({ message: "請輸入收款單位。" });
+  if (!bankName) return response.status(400).json({ message: "請輸入開戶銀行。" });
+  if (!bankAccountNo) return response.status(400).json({ message: "請輸入銀行帳號。" });
+  if (!/^[A-Z]{3}$/.test(currency)) return response.status(400).json({ message: "幣別需為 3 位英文代碼。" });
+  if (contactEmail && !isValidEmail(contactEmail)) return response.status(400).json({ message: "請輸入有效的聯絡信箱。" });
 
   let connection;
   try {
@@ -3259,10 +3259,10 @@ app.put("/api/billing/offline-payment-account", requireAdmin, async (request, re
       ],
     );
 
-    return response.json({ message: "鏀舵甯虫埗宸插劜瀛樸€?" });
+    return response.json({ message: "收款帳戶已儲存。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鍎插瓨鏀舵甯虫埗銆?" });
+    return response.status(500).json({ message: "無法儲存收款帳戶。" });
   } finally {
     if (connection) connection.release();
   }
