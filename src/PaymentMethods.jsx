@@ -369,8 +369,34 @@ const PaymentMethods = forwardRef((props, ref) => {
   if (viewMode === 'add' || viewMode === 'edit') {
     return (
       <section className="view active settings-form-page" id="payment-methods">
-        <form className="tenant-settings-form" onSubmit={handleDraftSubmit}>
-          <div className="tenant-scroll-area">
+        <style>{`
+          #payment-methods .settings-block { background: #111827; border: 1px solid #1f2937; }
+          #payment-methods .settings-block-head h3 { color: #f3f4f6; }
+          #payment-methods .settings-block-head { border-bottom-color: #1f2937; }
+          #payment-methods .field-label { color: #d1d5db; }
+          #payment-methods .tenant-field-grid label { color: #d1d5db; }
+          #payment-methods .tenant-field-grid input,
+          #payment-methods .tenant-field-grid select,
+          #payment-methods .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #payment-methods .tenant-field-grid input:focus,
+          #payment-methods .tenant-field-grid select:focus,
+          #payment-methods .tenant-field-grid textarea:focus { border-color: #3b82f6; }
+          #payment-methods .tenant-field-grid input::placeholder,
+          #payment-methods .tenant-field-grid textarea::placeholder { color: #6b7280; }
+          #payment-methods .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
+          #payment-methods .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+          #payment-methods .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+          #payment-methods .form-message { color: #d1d5db; }
+          #payment-methods .form-message.error { background: #3b1111; color: #ef4444; }
+          #payment-methods .form-message.success { background: #0d2818; color: #22c55e; }
+          #payment-methods .payment-icon-upload { background: #1a2332; border-color: #374151; }
+          #payment-methods .payment-icon-controls small { color: #9ca3af; }
+          #payment-methods .payment-icon-meta { color: #9ca3af; }
+          #payment-methods .payment-icon-preview { background: #0f172a; border-color: #374151; }
+          #payment-methods .payment-icon-preview span { color: #6b7280; }
+        `}</style>
+        <form className="tenant-settings-form" onSubmit={handleDraftSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
+          <div className="tenant-scroll-area" style={{ background: '#111827' }}>
             <section className="settings-block">
               <div className="settings-block-head payment-methods-head">
                 <h3>{isEditing ? '编辑付款方式' : '新增付款方式'}</h3>
@@ -442,7 +468,7 @@ const PaymentMethods = forwardRef((props, ref) => {
               </div>
             </section>
           </div>
-          <div className="tenant-fixed-actions">
+          <div className="tenant-fixed-actions" style={{ background: '#111827', borderTopColor: '#1f2937' }}>
             {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
             <menu className="form-actions">
               <button className="ghost-btn" type="button" onClick={cancelEdit} disabled={isSaving}>取消</button>
@@ -459,8 +485,35 @@ const PaymentMethods = forwardRef((props, ref) => {
   if (viewMode === 'list') {
     return (
       <section className="view active settings-form-page" id="payment-methods">
-        <div className="tenant-settings-form">
-          <div className="tenant-scroll-area" style={{ paddingBottom: '96px' }}>
+        <style>{`
+          #payment-methods .payment-method-row { background: #111827; border-color: #1f2937; }
+          #payment-methods .payment-method-row:hover { border-color: #374151; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+          #payment-methods .payment-logo-box { background: #1a2332; border-color: #374151; }
+          #payment-methods .payment-name { color: #f3f4f6; }
+          #payment-methods .payment-code { color: #9ca3af; }
+          #payment-methods .payment-desc { color: #9ca3af; }
+          #payment-methods .payment-tag-blue { background: #1e3a5f; color: #93c5fd; }
+          #payment-methods .payment-tag-green { background: #0d2818; color: #4ade80; }
+          #payment-methods .payment-tag-gray { background: #1f2937; color: #d1d5db; }
+          #payment-methods .payment-status-text { color: #d1d5db; }
+          #payment-methods .payment-status-text.enabled { color: #4ade80; }
+          #payment-methods .payment-status-text.disabled { color: #9ca3af; }
+          #payment-methods .payment-edit-btn { background: #1e3a5f; color: #93c5fd; border-color: #2563eb; }
+          #payment-methods .payment-edit-btn:hover:not(:disabled) { background: #2563eb; color: #fff; }
+          #payment-methods .payment-delete-btn { background: #3b1111; color: #fca5a5; border-color: #dc2626; }
+          #payment-methods .payment-delete-btn:hover:not(:disabled) { background: #dc2626; color: #fff; }
+          #payment-methods .empty-state { background: #1a2332 !important; border-color: #374151 !important; }
+          #payment-methods .empty-state-title { color: #f3f4f6; }
+          #payment-methods .empty-state-desc { color: #9ca3af; }
+          #payment-methods .empty-state-icon { filter: grayscale(0.3); }
+          #payment-methods .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
+          #payment-methods .form-message { color: #d1d5db; }
+          #payment-methods .form-message.error { background: #3b1111; color: #ef4444; }
+          #payment-methods .form-message.success { background: #0d2818; color: #22c55e; }
+          #payment-methods .settings-block { background: #111827; border: 1px solid #1f2937; }
+        `}</style>
+        <div className="tenant-settings-form" style={{ background: '#111827', borderColor: '#1f2937' }}>
+          <div className="tenant-scroll-area" style={{ background: '#111827', paddingBottom: '96px' }}>
             {isLoading && <p className="form-message">载入付款方式中...</p>}
 
             {!isLoading && (
@@ -557,7 +610,7 @@ const PaymentMethods = forwardRef((props, ref) => {
             )}
           </div>
 
-          <div className="tenant-fixed-actions">
+          <div className="tenant-fixed-actions" style={{ background: '#111827', borderTopColor: '#1f2937' }}>
             {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
           </div>
         </div>
