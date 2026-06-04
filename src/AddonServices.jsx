@@ -3,9 +3,9 @@ import { Boxes, CircleDollarSign, PackagePlus, Search, ToggleRight, Trash2 } fro
 
 const currencyOptions = [
   { value: 'TWD', label: '新台币 TWD' },
-  { value: 'CNY', label: '人民币 CNY' },
+  { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
-  { value: 'EUR', label: '欧元 EUR' },
+  { value: 'EUR', label: '歐元 EUR' },
 ];
 
 const demoPlans = [
@@ -57,13 +57,13 @@ const emptyAddon = {
 };
 
 function statusText(status) {
-  return status === 'disabled' ? '停用' : '启用';
+  return status === 'disabled' ? '停用' : '啟用';
 }
 
 function billingUnitText(unit) {
-  if (unit === 'tenant') return '租户';
+  if (unit === 'tenant') return '租戶';
   if (unit === 'unit') return '固定';
-  return '账号';
+  return '帳號';
 }
 
 function priceForPlan(addon, planId) {
@@ -190,7 +190,7 @@ const AddonServices = forwardRef((props, ref) => {
 
   const handleDelete = (addonId, event) => {
     event.stopPropagation(); // 阻止事件冒泡，避免触发选择addon
-    if (window.confirm('确定要删除这个增值服务吗？')) {
+    if (window.confirm('確定要刪除這個增值服務嗎？')) {
       setAddons((current) => current.filter((addon) => addon.id !== addonId));
       if (selectedId === addonId) {
         setSelectedId(null);
@@ -202,22 +202,77 @@ const AddonServices = forwardRef((props, ref) => {
 
   return (
     <section className="view active addon-data-page" id="addon-services">
+      <style>{`
+        #addon-services .addon-shell { background: #111827; border-color: #1f2937; }
+        #addon-services .addon-scroll-area { background: #111827; }
+        #addon-services .addon-summary-card { background: #1a2332; border-color: #374151; }
+        #addon-services .addon-summary-card svg { color: #60a5fa; background: #1e3a5f; }
+        #addon-services .addon-summary-card span { color: #9ca3af; }
+        #addon-services .addon-summary-card strong { color: #ffffff; }
+        #addon-services .addon-list-panel,
+        #addon-services .addon-detail-panel { background: #111827; border-color: #1f2937; }
+        #addon-services .addon-detail-panel { scrollbar-width: none; }
+        #addon-services .addon-detail-panel::-webkit-scrollbar { display: none; }
+        #addon-services .addon-toolbar { border-bottom-color: #1f2937; }
+        #addon-services .addon-search { background: #1a2332; border-color: #374151; color: #9ca3af; }
+        #addon-services .addon-search input,
+        #addon-services .addon-toolbar select { color: #e5e7eb; }
+        #addon-services .addon-toolbar select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #addon-services .addon-list-item { background: #1e293b; border-color: transparent; }
+        #addon-services .addon-list-item:hover,
+        #addon-services .addon-list-item.active { background: #1e3a5f; border-color: #2563eb; }
+        #addon-services .addon-code { color: #f3f4f6; }
+        #addon-services .addon-name { color: #9ca3af; }
+        #addon-services .addon-list-meta b { color: #60a5fa; }
+        #addon-services .addon-status { background: #0d2818; color: #4ade80; }
+        #addon-services .addon-status.disabled { background: #1f2937; color: #9ca3af; }
+        #addon-services .discount-mini-switch.is-off { background: #4b5563; }
+        #addon-services .addon-detail-head span { color: #9ca3af; }
+        #addon-services .addon-detail-head h3 { color: #f3f4f6; }
+        #addon-services .addon-preview { background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%); border-color: #1f2937; }
+        #addon-services .addon-preview small,
+        #addon-services .addon-preview span { color: #9ca3af; }
+        #addon-services .addon-preview strong { color: #f3f4f6; }
+        #addon-services .addon-preview svg { color: #60a5fa; }
+        #addon-services .addon-field-grid label { color: #d1d5db; }
+        #addon-services .addon-field-grid input,
+        #addon-services .addon-field-grid select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #addon-services .addon-field-grid input:focus,
+        #addon-services .addon-field-grid select:focus { border-color: #3b82f6; }
+        #addon-services .addon-field-grid input::placeholder { color: #6b7280; }
+        #addon-services .addon-price-panel { background: #1a2332; border-color: #1f2937; }
+        #addon-services .addon-price-head h4 { color: #f3f4f6; }
+        #addon-services .addon-price-head span { color: #9ca3af; }
+        #addon-services .addon-price-row { background: #111827; border-color: #1f2937; }
+        #addon-services .addon-price-row strong { color: #f3f4f6; }
+        #addon-services .addon-price-row span { color: #9ca3af; }
+        #addon-services .addon-price-row input,
+        #addon-services .addon-price-row select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #addon-services .addon-price-row input:focus,
+        #addon-services .addon-price-row select:focus { border-color: #3b82f6; }
+        #addon-services .addon-sync-toggle span { color: #d1d5db; }
+        #addon-services .addon-actions .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #addon-services .addon-actions .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #addon-services .addon-delete-btn { color: #9ca3af; }
+        #addon-services .addon-delete-btn:hover { color: #fca5a5; background: #3b1111; }
+        #addon-services .addon-item-content { flex: 1; }
+      `}</style>
       <div className="addon-shell">
         <div className="addon-scroll-area">
-          <section className="addon-summary-grid" aria-label="增值服务概览">
+          <section className="addon-summary-grid" aria-label="增值服務概覽">
             <div className="addon-summary-card">
               <PackagePlus size={20} aria-hidden="true" />
-              <span>服务总数</span>
+              <span>服務總數</span>
               <strong>{addons.length}</strong>
             </div>
             <div className="addon-summary-card">
               <ToggleRight size={20} aria-hidden="true" />
-              <span>启用中</span>
+              <span>啟用中</span>
               <strong>{activeCount}</strong>
             </div>
             <div className="addon-summary-card">
               <CircleDollarSign size={20} aria-hidden="true" />
-              <span>定价规则</span>
+              <span>定價規則</span>
               <strong>{planPriceCount}</strong>
             </div>
           </section>
@@ -227,11 +282,11 @@ const AddonServices = forwardRef((props, ref) => {
               <div className="addon-toolbar">
                 <label className="addon-search">
                   <Search size={16} aria-hidden="true" />
-                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索代码或名称" style={{ fontSize: '14px' }} />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋代碼或名稱" style={{ fontSize: '14px' }} />
                 </label>
-                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="筛选状态" style={{ fontSize: '14px' }}>
-                  <option value="all">全部状态</option>
-                  <option value="active">启用</option>
+                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="篩選狀態" style={{ fontSize: '14px' }}>
+                  <option value="all">全部狀態</option>
+                  <option value="active">啟用</option>
                   <option value="disabled">停用</option>
                 </select>
               </div>
@@ -248,13 +303,13 @@ const AddonServices = forwardRef((props, ref) => {
                     <span className="addon-code" style={{ fontSize: '14px' }}>{addon.addonCode}</span>
                     <span className="addon-name" style={{ fontSize: '14px' }}>{addon.name}</span>
                         <span className="addon-list-meta">
-                      <b style={{ fontSize: '14px' }}>{firstPrice ? `${firstPrice.currency} ${Number(firstPrice.unitPrice).toFixed(2)} / ${billingUnitText(addon.billingUnit)} / 月` : '未定价'}</b>
+                      <b style={{ fontSize: '14px' }}>{firstPrice ? `${firstPrice.currency} ${Number(firstPrice.unitPrice).toFixed(2)} / ${billingUnitText(addon.billingUnit)} / 月` : '未定價'}</b>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <button
                               type="button"
                               className={`discount-mini-switch ${addon.status === 'active' ? 'is-on' : 'is-off'}`}
                               onClick={(event) => toggleAddonStatus(addon.id, addon.status, event)}
-                              aria-label={addon.status === 'active' ? '已启用' : '已停用'}
+                              aria-label={addon.status === 'active' ? '已啟用' : '已停用'}
                             >
                               <span className="discount-mini-switch-dot" />
                             </button>
@@ -266,7 +321,7 @@ const AddonServices = forwardRef((props, ref) => {
                         className="addon-delete-btn"
                         type="button"
                         onClick={(event) => handleDelete(addon.id, event)}
-                        title="删除增值服务"
+                        title="刪除增值服務"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -279,7 +334,7 @@ const AddonServices = forwardRef((props, ref) => {
             <form className="addon-detail-panel" onSubmit={saveDraft}>
               <div className="addon-detail-head">
                 <div className="addon-detail-title">
-                  <span>{mode === 'add' ? '新增服务' : '服务资料'}</span>
+                  <span>{mode === 'add' ? '新增服務' : '服務資料'}</span>
                   {(draftAddon.addonCode || selectedAddon?.addonCode) && <h3 style={{ fontSize: '14px', margin: 0 }}>{draftAddon.addonCode || selectedAddon?.addonCode}</h3>}
                 </div>
                 <em className={`addon-status ${draftAddon.status}`}>{statusText(draftAddon.status)}</em>
@@ -287,41 +342,41 @@ const AddonServices = forwardRef((props, ref) => {
 
               <div className="addon-preview">
                 <div>
-                  <small>购买页展示</small>
-                  <strong style={{ fontSize: '14px' }}>{draftAddon.name || '服务名称'}</strong>
-                  <span style={{ fontSize: '14px' }}>{draftAddon.description || '服务说明'}</span>
+                  <small>購買頁展示</small>
+                  <strong style={{ fontSize: '14px' }}>{draftAddon.name || '服務名稱'}</strong>
+                  <span style={{ fontSize: '14px' }}>{draftAddon.description || '服務說明'}</span>
                 </div>
                 <Boxes size={28} aria-hidden="true" />
               </div>
 
               <div className="tenant-field-grid addon-field-grid">
                 <label>
-                  服务代码
+                  服務代碼
                   <input value={draftAddon.addonCode} onChange={updateDraft('addonCode')} placeholder="ecard" />
                 </label>
                 <label>
-                  显示名称
+                  顯示名稱
                   <input value={draftAddon.name} onChange={updateDraft('name')} placeholder="Ecard" />
                 </label>
                 <label className="span-2">
-                  服务说明
+                  服務說明
                   <input value={draftAddon.description} onChange={updateDraft('description')} placeholder="Electronic business card add-on" />
                 </label>
                 <label>
-                  计费单位
+                  計費單位
                   <select value={draftAddon.billingUnit} onChange={updateDraft('billingUnit')}>
-                    <option value="account">账号</option>
-                    <option value="tenant">租户</option>
+                    <option value="account">帳號</option>
+                    <option value="tenant">租戶</option>
                     <option value="unit">固定</option>
                   </select>
                 </label>
                 <label>
-                  单价
+                  單價
                   <input type="number" min="0" step="0.01" value={primaryPrice.unitPrice} onChange={updateDefaultPrice('unitPrice')} />
                 </label>
                 <div className="addon-inline-fields span-2">
                   <label>
-                    币种
+                    幣種
                     <select value={primaryPrice.currency} onChange={updateDefaultPrice('currency')}>
                       {currencyOptions.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
@@ -330,9 +385,9 @@ const AddonServices = forwardRef((props, ref) => {
                   </label>
                   <div className="addon-inline-pair">
                     <label>
-                      状态
+                      狀態
                       <select value={draftAddon.status} onChange={updateDraft('status')}>
-                        <option value="active">启用</option>
+                        <option value="active">啟用</option>
                         <option value="disabled">停用</option>
                       </select>
                     </label>
@@ -346,8 +401,8 @@ const AddonServices = forwardRef((props, ref) => {
 
               <section className="addon-price-panel">
                 <div className="addon-price-head">
-                  <h4>套餐定价</h4>
-                  <span>每个套餐可设置不同单价与币种</span>
+                  <h4>套餐定價</h4>
+                  <span>每個套餐可設定不同單價與幣種</span>
                 </div>
                 <div className="addon-price-list">
                   {demoPlans.map((plan) => {
@@ -358,15 +413,15 @@ const AddonServices = forwardRef((props, ref) => {
                           <strong>{plan.name}</strong>
                           <span>{plan.planCode}</span>
                         </div>
-                        <select value={price.currency} onChange={updatePrice(plan.id, 'currency')} aria-label={`${plan.name} 币种`}>
+                        <select value={price.currency} onChange={updatePrice(plan.id, 'currency')} aria-label={`${plan.name} 幣種`}>
                           {currencyOptions.map((option) => (
                             <option key={option.value} value={option.value}>{option.value}</option>
                           ))}
                         </select>
-                        <input type="number" min="0" step="0.01" value={price.unitPrice} onChange={updatePrice(plan.id, 'unitPrice')} aria-label={`${plan.name} 单价`} />
+                        <input type="number" min="0" step="0.01" value={price.unitPrice} onChange={updatePrice(plan.id, 'unitPrice')} aria-label={`${plan.name} 單價`} />
                         <label className="addon-sync-toggle">
                           <input type="checkbox" checked={price.syncWithPlanTerm} onChange={updatePrice(plan.id, 'syncWithPlanTerm')} />
-                          <span>随套餐期限</span>
+                          <span>隨套餐期限</span>
                         </label>
                       </div>
                     );
@@ -376,7 +431,7 @@ const AddonServices = forwardRef((props, ref) => {
 
               <menu className="form-actions addon-actions">
                 <button className="ghost-btn" type="button" onClick={() => selectedAddon && selectAddon(selectedAddon)}>取消</button>
-                <button className="primary-btn" type="submit">{mode === 'add' ? '建立服务' : '保存修改'}</button>
+                <button className="primary-btn" type="submit">{mode === 'add' ? '建立服務' : '儲存修改'}</button>
               </menu>
             </form>
           </section>
