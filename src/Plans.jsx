@@ -24,7 +24,7 @@ const emptyPlan = {
 };
 
 function statusText(status) {
-  return status === 'disabled' ? '停用' : '启用';
+  return status === 'disabled' ? '停用' : '啟用';
 }
 
 function getBasePriceText(plan) {
@@ -86,7 +86,7 @@ const Plans = forwardRef((props, ref) => {
       const data = await apiClient.get('/billing/plans');
       setPlans(data.plans || []);
     } catch (error) {
-      showMessage('error', error.message || '无法读取套餐资料。');
+      showMessage('error', error.message || '無法讀取套餐資料。');
     } finally {
       if (!isAddPage) setIsLoading(false);
     }
@@ -116,7 +116,7 @@ const Plans = forwardRef((props, ref) => {
       .then(data => {
         setAvailableAddons(data?.addons || data || []);
       })
-      .catch(err => console.warn('获取增值服务列表失败:', err));
+      .catch(err => console.warn('取得增值服務列表失敗:', err));
   }, []);
 
   const filteredPlans = useMemo(() => {
@@ -658,17 +658,58 @@ const Plans = forwardRef((props, ref) => {
           justify-content: flex-end;
           gap: 12px;
         }
+
+        /* === Dark theme overrides === */
+        #plans .billing-table { background: #111827; border-color: #1f2937; }
+        #plans .billing-table thead th { background: #1a2332; color: #e5e7eb; border-bottom-color: #1f2937; }
+        #plans .billing-table tbody td { color: #e5e7eb; border-bottom-color: #1f2937; }
+        #plans .billing-table tbody tr { background: #111827; }
+        #plans .billing-table tbody tr:hover { background: #1e293b; }
+        #plans .billing-table .status-active { background: #0d2818 !important; color: #4ade80 !important; }
+        #plans .billing-table .status-disabled { background: #1f2937 !important; color: #9ca3af !important; }
+        #plans .pagination-info { color: #9ca3af !important; }
+        #plans .pagination-info b { color: #f3f4f6; }
+        #plans .dropdown-menu { background: #1e293b; border-color: #374151; }
+        #plans .dropdown-item { color: #d1d5db; }
+        #plans .dropdown-item:hover { background: #374151; }
+        #plans .dropdown-item-danger:hover { background: #3b1111; }
+        .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
+        .dropdown-menu-portal .dropdown-item { color: #d1d5db; }
+        .dropdown-menu-portal .dropdown-item:hover { background: #374151; }
+        #plans .modal-content { background: #111827; }
+        #plans .modal-header { background: #1a2332; border-bottom-color: #1f2937; }
+        #plans .modal-header h3 { color: #f3f4f6; }
+        #plans .modal-close { color: #9ca3af; }
+        #plans .modal-close:hover { color: #f3f4f6; }
+        #plans .modal-body { background: #111827; }
+        #plans .modal-footer { background: #111827; border-top-color: #1f2937; }
+        #plans .form-grid label span { color: #9ca3af; }
+        #plans .price-tier-item { background: #1a2332; border-color: #374151; }
+        #plans .price-tier-item strong { color: #f3f4f6; }
+        #plans .price-tier-item span { color: #60a5fa; }
+        #plans .settings-block { background: #111827; border-color: #1f2937; }
+        #plans .settings-block-head h3 { color: #f3f4f6; }
+        #plans .field-label { color: #d1d5db; }
+        #plans input, #plans select, #plans textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #plans input:focus, #plans select:focus, #plans textarea:focus { border-color: #3b82f6; }
+        #plans input::placeholder { color: #6b7280; }
+        #plans .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
+        #plans .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #plans .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #plans .form-message { color: #d1d5db; }
+        #plans .form-message.error { background: #3b1111; color: #ef4444; }
+        #plans .form-message.success { background: #0d2818; color: #22c55e; }
       `}</style>
       <section className="view active settings-form-page" id="plans" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="tenant-settings-form" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'transparent' }}>
-        <div className="tenant-scroll-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="tenant-settings-form" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#111827', borderColor: '#1f2937' }}>
+        <div className="tenant-scroll-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#111827' }}>
           {isAddPage ? (
             <section className="settings-block" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               <form onSubmit={savePlan} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="form-grid" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignContent: 'start', alignItems: 'start' }}>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>套餐代码<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐代码<RequiredMark /></span>
                     <input
                       value={editingPlan?.planCode || ''}
                       onChange={(e) => setEditingPlan({
@@ -679,7 +720,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>套餐名称<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐名称<RequiredMark /></span>
                     <input
                       value={editingPlan?.name || ''}
                       onChange={(e) => setEditingPlan({
@@ -690,7 +731,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>账户数量<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>账户数量<RequiredMark /></span>
                     <input
                       type="number"
                       min="1"
@@ -703,7 +744,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>状态<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>状态<RequiredMark /></span>
                       <select
                         value={editingPlan?.status || 'active'}
                         onChange={(e) => setEditingPlan({
@@ -716,7 +757,7 @@ const Plans = forwardRef((props, ref) => {
                       </select>
                     </label>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>排序<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>排序<RequiredMark /></span>
                       <input
                         type="number"
                         min="0"
@@ -731,7 +772,7 @@ const Plans = forwardRef((props, ref) => {
                   </div>
                   <div style={{ display: 'grid', gap: '8px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>增值服务列表</span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>增值服务列表</span>
                       <input
                         value={editingPlan?.addonServices || ''}
                         onChange={(e) => setEditingPlan({
@@ -766,7 +807,7 @@ const Plans = forwardRef((props, ref) => {
                               }}
                               style={{ width: 'auto', height: 'auto', margin: 0, padding: 0, flexShrink: 0 }}
                             />
-                            <span style={{ fontSize: '13px', fontWeight: 400, color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{addon.name} - {addon.description}</span>
+                            <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{addon.name} - {addon.description}</span>
                           </label>
                         );
                       })}
@@ -776,7 +817,7 @@ const Plans = forwardRef((props, ref) => {
 
                 <div style={{ display: 'grid', gap: '16px' }}>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>描述</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>描述</span>
                     <input
                       value={editingPlan?.description || ''}
                       onChange={(e) => setEditingPlan({
@@ -787,7 +828,7 @@ const Plans = forwardRef((props, ref) => {
                     />
                   </label>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>功能摘要</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>功能摘要</span>
                     <input
                       value={editingPlan?.featureSummary || ''}
                       onChange={(e) => setEditingPlan({
@@ -799,7 +840,7 @@ const Plans = forwardRef((props, ref) => {
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>单价/月<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>单价/月<RequiredMark /></span>
                       <input
                         type="number"
                         min="0"
@@ -818,7 +859,7 @@ const Plans = forwardRef((props, ref) => {
                       />
                     </label>
                     <label style={{ display: 'grid', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>币种<RequiredMark /></span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>币种<RequiredMark /></span>
                       <select
                         value={editingPlan?.priceTiers?.[0]?.currency || 'TWD'}
                         onChange={(e) => {
@@ -855,7 +896,7 @@ const Plans = forwardRef((props, ref) => {
               <label className="payment-method-search" style={{ position: 'relative', width: '260px', flex: '0 0 260px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} aria-hidden="true" />
                 <input
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#0f172a', backgroundColor: '#ffffff', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#f3f4f6', backgroundColor: '#ffffff', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="搜索套餐 ID、代码或名称..."
@@ -894,7 +935,7 @@ const Plans = forwardRef((props, ref) => {
                   ['已启用', planStats.active],
                   ['已停用', planStats.disabled],
                 ].map(([label, value]) => (
-                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', color: '#475569', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#0f172a', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
+                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', color: '#9ca3af', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
                 ))}
               </div>
             </div>
@@ -1021,17 +1062,17 @@ const Plans = forwardRef((props, ref) => {
                   共 {filteredPlans.length} 条
                 </div>
                 <div className="device-pagination" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className="device-page-size" style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid #d8e2ef', backgroundColor: '#fff', color: '#475569', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>{pageSize} 条/页</span>
+                  <span className="device-page-size" style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid #d8e2ef', backgroundColor: '#fff', color: '#9ca3af', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>{pageSize} 条/页</span>
                   <button
                     className="device-page-btn"
                     type="button"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #d8e2ef', backgroundColor: currentPage <= 1 ? '#f8fafc' : '#fff', color: currentPage <= 1 ? '#cbd5e1' : '#475569', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', lineHeight: 1, cursor: currentPage <= 1 ? 'not-allowed' : 'pointer', padding: 0 }}
+                    style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #4b5563', backgroundColor: currentPage <= 1 ? '#1a2332' : '#1f2937', color: currentPage <= 1 ? '#4b5563' : '#9ca3af', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', lineHeight: 1, cursor: currentPage <= 1 ? 'not-allowed' : 'pointer', padding: 0 }}
                   >
                     ‹
                   </button>
-                  <span className="device-page-current" style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #2563eb', backgroundColor: '#eff6ff', color: '#2563eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }}>{currentPage}</span>
+                  <span className="device-page-current" style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid #3b82f6', backgroundColor: '#1e3a5f', color: '#60a5fa', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }}>{currentPage}</span>
                   <button
                     className="device-page-btn"
                     type="button"
@@ -1257,7 +1298,7 @@ const Plans = forwardRef((props, ref) => {
                               style={{ width: 'auto', height: 'auto', flex: 'none', margin: 0, flexShrink: 0 }}
                               disabled={isDetails}
                             />
-                            <span style={{ fontSize: '13px', fontWeight: 400, color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{addon.name} - {addon.description}</span>
+                            <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{addon.name} - {addon.description}</span>
                           </label>
                         );
                       })}
