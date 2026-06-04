@@ -252,6 +252,58 @@ const DiscountData = forwardRef((props, ref) => {
 
   return (
     <section className="view active discount-data-page" id="discount-data">
+      <style>{`
+        #discount-data .discount-shell { background: #111827; border-color: #1f2937; }
+        #discount-data .discount-scroll-area { background: #111827; }
+        #discount-data .discount-summary-card { background: #1a2332; border-color: #374151; }
+        #discount-data .discount-summary-card svg { color: #60a5fa; background: #1e3a5f; }
+        #discount-data .discount-summary-card span { color: #9ca3af; }
+        #discount-data .discount-summary-card strong { color: #f3f4f6; }
+        #discount-data .discount-list-panel,
+        #discount-data .discount-detail-panel { background: #111827; border-color: #1f2937; }
+        #discount-data .discount-toolbar { border-bottom-color: #1f2937; }
+        #discount-data .discount-search { background: #1a2332; border-color: #374151; color: #9ca3af; }
+        #discount-data .discount-search input,
+        #discount-data .discount-toolbar select { color: #e5e7eb; }
+        #discount-data .discount-toolbar select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #discount-data .discount-list-item { background: #1e293b; border-color: transparent; }
+        #discount-data .discount-list-item:hover,
+        #discount-data .discount-list-item.active { background: #1e3a5f; border-color: #2563eb; }
+        #discount-data .discount-code { color: #f3f4f6; }
+        #discount-data .discount-name { color: #9ca3af; }
+        #discount-data .discount-list-meta b { color: #60a5fa; }
+        #discount-data .discount-status { background: #0d2818; color: #4ade80; }
+        #discount-data .discount-status.disabled { background: #1f2937; color: #9ca3af; }
+        #discount-data .discount-status.expired { background: #3b1111; color: #fca5a5; }
+        #discount-data .discount-mini-switch.is-off { background: #4b5563; }
+        #discount-data .discount-list-arrow { color: #6b7280; }
+        #discount-data .discount-detail-head span { color: #9ca3af; }
+        #discount-data .discount-detail-head h3 { color: #f3f4f6; }
+        #discount-data .discount-preview { background: linear-gradient(135deg, #1a2332 0%, #0f172a 100%); border-color: #1f2937; }
+        #discount-data .discount-preview small,
+        #discount-data .discount-preview span { color: #9ca3af; }
+        #discount-data .discount-preview strong { color: #f3f4f6; }
+        #discount-data .discount-preview svg { color: #60a5fa; }
+        #discount-data .discount-field-grid label { color: #d1d5db; }
+        #discount-data .discount-field-grid input,
+        #discount-data .discount-field-grid select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #discount-data .discount-field-grid input:focus,
+        #discount-data .discount-field-grid select:focus { border-color: #3b82f6; }
+        #discount-data .discount-field-grid input::placeholder { color: #6b7280; }
+        #discount-data .discount-field-hint { color: #9ca3af; }
+        #discount-data .discount-rule-strip { background: #1a2332; border-color: #374151; color: #d1d5db; }
+        #discount-data .discount-rule-strip b { color: #f3f4f6; }
+        #discount-data .discount-rule-strip svg { color: #60a5fa; }
+        #discount-data .discount-actions .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #discount-data .discount-actions .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #discount-data .discount-actions .ghost-btn.danger { background: #3b1111; color: #fca5a5; border-color: #dc2626; }
+        #discount-data .discount-actions .ghost-btn.danger:hover { background: #dc2626; color: #fff; }
+        #discount-data .form-message { color: #d1d5db; }
+        #discount-data .form-message.error { background: #3b1111; color: #ef4444; }
+        #discount-data .form-message.success { background: #0d2818; color: #22c55e; }
+        #discount-data .discount-summary-card strong { color: #ffffff; }
+        #discount-data .discount-list-item-actions .discount-mini-switch-dot { background: #e5e7eb; }
+      `}</style>
       <div className="discount-shell">
         <div className="discount-scroll-area">
           <section className="discount-summary-grid" aria-label="折扣概览">
