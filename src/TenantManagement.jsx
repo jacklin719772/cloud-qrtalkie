@@ -652,7 +652,7 @@ export default function TenantManagement() {
           <div className="tenant-table-card">
             <div className="tenant-table-wrapper">
               <table className="tenant-table">
-                <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                   <tr>
                     {[
                       ['tenantNumber', '租戶編號', '150px'],
@@ -668,7 +668,7 @@ export default function TenantManagement() {
                         </button>
                       </th>
                     ))}
-                    <th style={{ position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center' }}>操作</th>
+                    <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
