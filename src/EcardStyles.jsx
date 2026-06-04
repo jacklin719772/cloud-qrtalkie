@@ -384,7 +384,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
                   暂无範例圖片，请點击右上角「上傳展示圖片」。支持 JPG, PNG, WEBP，建议尺寸 1920x1080（横版），单张不超过 5MB。
                 </div>
               )}
@@ -453,7 +453,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
                   暂无背景圖片，请點击右上角「上傳背景圖片」补充图库。用户在使用该模板时可任选其中一张作为背景。
                 </div>
               )}
@@ -470,7 +470,7 @@ export default function EcardStyles() {
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(960px, 95vw)', height: '80vh', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', position: 'relative' }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>背景图 JSON 配置</h3>
-                <button type="button" onClick={() => setCodeModalOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
+                <button type="button" onClick={() => setCodeModalOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>×</button>
               </div>
               
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
@@ -589,7 +589,7 @@ export default function EcardStyles() {
                   />
                   <div style={{ marginTop: '16px', padding: '10px 16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #1f2937', flexShrink: 0 }}>
                     <h5 style={{ margin: '0 0 8px', fontSize: '13px', color: '#f3f4f6', fontWeight: 600 }}>说明</h5>
-                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
                       <li>直接粘贴已经调试好的 JSON 内容</li>
                       <li>支持 layout_json / default_style_json / display_config_json</li>
                       <li>儲存后用于 Ecard 預覽和圖片產生</li>
@@ -601,7 +601,7 @@ export default function EcardStyles() {
               </div>
 
               <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '13px', color: '#64748b' }}>
+                <div style={{ fontSize: '13px', color: '#9ca3af' }}>
                   当前配置：<strong style={{ color: '#f3f4f6' }}>{activeJsonType}</strong>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -761,7 +761,7 @@ export default function EcardStyles() {
         .ecard-card {
           background: #111827;
           border-radius: 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #374151;
           box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
           display: flex;
           flex-direction: column;
@@ -971,14 +971,14 @@ export default function EcardStyles() {
           transition: all 0.2s;
         }
         .ecard-action-btn:hover {
-          border-color: #cbd5e1;
+          border-color: #4b5563;
           color: #0f172a;
           background: #f8fafc;
         }
         .ecard-action-btn.delete:hover {
           color: #ef4444;
           border-color: #fca5a5;
-          background: #fef2f2;
+          background: #7f1d1d;
         }
       `}</style>
 
@@ -1065,7 +1065,7 @@ export default function EcardStyles() {
                     </td>
                     <td>{item.sampleCount} 张</td>
                     <td>{item.createdByName}</td>
-                    <td style={{ color: '#64748b' }}>{item.createdAt}</td>
+                    <td style={{ color: '#9ca3af' }}>{item.createdAt}</td>
                     <td className="ecard-action-cell">
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', whiteSpace: 'nowrap', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => openPreview(item)}>預覽</button>
@@ -1116,7 +1116,7 @@ export default function EcardStyles() {
                               zIndex: 2147483647,
                               minWidth: '160px',
                               padding: '6px',
-                              background: '#ffffff',
+                              background: '#111827',
                               border: '1px solid #1f2937',
                               borderRadius: '10px',
                               boxShadow: '0 12px 28px rgba(15, 23, 42, 0.18)',
@@ -1219,7 +1219,7 @@ export default function EcardStyles() {
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(800px, 90vw)', maxHeight: '90vh', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>「{previewItem.styleName}」預覽</h3>
-              <button type="button" onClick={() => setPreviewItem(null)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
+              <button type="button" onClick={() => setPreviewItem(null)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
               <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#f3f4f6', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片</h4>
@@ -1233,7 +1233,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无範例圖片</p>
+                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无範例圖片</p>
               )}
 
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
@@ -1249,7 +1249,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无背景圖片</p>
+                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无背景圖片</p>
               )}
             </div>
           </div>
