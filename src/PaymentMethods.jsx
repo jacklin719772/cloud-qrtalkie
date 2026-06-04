@@ -456,12 +456,14 @@ const PaymentMethods = forwardRef((props, ref) => {
                         accept="image/png,image/jpeg,image/webp,image/svg+xml,.png,.jpg,.jpeg,.webp,.svg"
                         onChange={handleIconFileChange}
                       />
-                      <button className="ghost-btn" type="button" onClick={openIconPicker}>
-                        {draftIconSrc ? '更換圖示' : '上傳圖示'}
-                      </button>
-                      {draftIconSrc && <button className="ghost-btn" type="button" onClick={clearDraftIcon}>移除圖示</button>}
-                      {draftIconDetails && <span className="payment-icon-meta">{draftIconDetails}</span>}
-                      <small>建議尺寸 160x64px，透明 PNG/WebP 或 SVG 最佳，檔案不超過 512KB。也可以把圖片拖到預覽框。</small>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <button className="ghost-btn" type="button" onClick={openIconPicker}>
+                          {draftIconSrc ? '更換圖示' : '上傳圖示'}
+                        </button>
+                        {draftIconSrc && <button className="ghost-btn" type="button" onClick={clearDraftIcon}>移除圖示</button>}
+                        {draftIconDetails && <span className="payment-icon-meta">{draftIconDetails}</span>}
+                        <small>建議尺寸 160x64px，透明 PNG/WebP 或 SVG 最佳，檔案不超過 512KB。也可以把圖片拖到預覽框。</small>
+                      </div>
                     </div>
                   </div>
                 </div>
