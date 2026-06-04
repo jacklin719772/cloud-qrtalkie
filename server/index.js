@@ -3755,7 +3755,7 @@ function mapCoupon(row) {
 app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
-    return response.status(403).json({ message: "只有平台管理員可以維護折扣資料。" });
+  }
 
   let connection;
   try {
@@ -3774,7 +3774,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
   } catch (error) {
     console.error(error);
     return response.status(500).json({ message: "鏃犳硶璇诲彇鎶樻墸璧勬枡銆?" });
-    return response.status(500).json({ message: "無法讀取折扣資料。" });
+  } finally {
     if (connection) connection.release();
   }
 });
@@ -3782,7 +3782,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
-    return response.status(403).json({ message: "只有平台管理員可以維護折扣資料。" });
+  }
 
   const payload = request.body || {};
   const id = Number(payload.id || 0);
@@ -3798,18 +3798,18 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
   const status = sanitizeString(payload.status, 20);
 
   if (!couponCode) return response.status(400).json({ message: "璇疯緭鍏ユ姌鎵ｄ唬鐮併€?" });
-  if (!couponCode) return response.status(400).json({ message: "請輸入折扣代碼。" });
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "折扣代碼只能使用英文大寫字母、數字、底線或連字符，且至少 2 個字元。" });
-  if (!displayName) return response.status(400).json({ message: "請輸入顯示名稱。" });
-  if (!["percent", "fixed_amount"].includes(discountType)) return response.status(400).json({ message: "請選擇折扣類型。" });
-  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "折扣值必須大於 0。" });
-  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "百分比折扣不可超過 100%。" });
-  if (discountType === "fixed_amount" && !couponCurrencyCodes.has(currency)) return response.status(400).json({ message: "請選擇有效幣種。" });
-  if (!validUntil) return response.status(400).json({ message: "請選擇到期日期。" });
-  if (payload.validFrom && !validFrom) return response.status(400).json({ message: "生效日期格式無效。" });
-  if (payload.validUntil && !validUntil) return response.status(400).json({ message: "到期日期格式無效。" });
-  if (validFrom && validUntil < validFrom) return response.status(400).json({ message: "到期日期不可早於生效日期。" });
-  if (!['active', 'disabled', "expired"].includes(status)) return response.status(400).json({ message: "請選擇狀態。" });
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "鎶樻墸浠ｇ爜鍙兘浣跨敤鑻辨枃澶у啓瀛楁瘝銆佹暟瀛椼€佸簳绾挎垨杩炲瓧绗︼紝涓旇嚦灏?2 涓瓧绗︺€?" });
+  if (!displayName) return response.status(400).json({ message: "璇疯緭鍏ユ樉绀哄悕绉般€?" });
+  if (!["percent", "fixed_amount"].includes(discountType)) return response.status(400).json({ message: "璇烽€夋嫨鎶樻墸绫诲瀷銆?" });
+  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "鎶樻墸鍊煎繀椤诲ぇ浜?0銆?" });
+  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "鐧惧垎姣旀姌鎵ｄ笉鍙秴杩?100%銆?" });
+  if (discountType === "fixed_amount" && !couponCurrencyCodes.has(currency)) return response.status(400).json({ message: "璇烽€夋嫨鏈夋晥甯佺銆?" });
+  if (!validUntil) return response.status(400).json({ message: "璇烽€夋嫨鍒版湡鏃ユ湡銆?" });
+  if (payload.validFrom && !validFrom) return response.status(400).json({ message: "鐢熸晥鏃ユ湡鏍煎紡鏃犳晥銆?" });
+  if (payload.validUntil && !validUntil) return response.status(400).json({ message: "鍒版湡鏃ユ湡鏍煎紡鏃犳晥銆?" });
+  if (validFrom && validUntil < validFrom) return response.status(400).json({ message: "鍒版湡鏃ユ湡涓嶅彲鏃╀簬鐢熸晥鏃ユ湡銆?" });
+  if (!['active', 'disabled', "expired"].includes(status)) return response.status(400).json({ message: "璇烽€夋嫨鐘舵€併€?" });
+
   let connection;
   try {
     connection = await pool.getConnection();
@@ -3834,7 +3834,7 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
         ],
       );
       if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
-      if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "折扣資料不存在。" });
+    } else {
       const result = await connection.query(
         `INSERT INTO billing_coupons (
            tenant_id, coupon_code, display_name, discount_type, discount_value,
@@ -3857,11 +3857,11 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
     }
 
     return response.json({ message: "鎶樻墸璧勬枡宸蹭繚瀛樸€?", id: savedId });
-    return response.json({ message: "折扣資料已儲存。", id: savedId });
+  } catch (error) {
     console.error(error);
     if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "鎶樻墸浠ｇ爜宸插瓨鍦紝璇锋洿鎹㈠悗鍐嶄繚瀛樸€?" });
-    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "折扣代碼已存在，請更換後再儲存。" });
-    return response.status(500).json({ message: "無法儲存折扣資料。" });
+    return response.status(500).json({ message: "鏃犳硶淇濆瓨鎶樻墸璧勬枡銆?" });
+  } finally {
     if (connection) connection.release();
   }
 });
@@ -3869,24 +3869,24 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 app.delete("/api/billing/coupon-settings/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
-    return response.status(403).json({ message: "只有平台管理員可以維護折扣資料。" });
+  }
 
   const couponId = Number(request.params.id || 0);
   if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
-  if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "折扣資料不存在。" });
+
   let connection;
   try {
     connection = await pool.getConnection();
     const result = await connection.query(`DELETE FROM billing_coupons WHERE id = ?`, [couponId]);
     if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "折扣資料不存在。" });
-    return response.json({ message: "折扣資料已刪除。" });
+    return response.json({ message: "鎶樻墸璧勬枡宸插垹闄ゃ€?" });
+  } catch (error) {
     console.error(error);
     if (error?.code === "ER_ROW_IS_REFERENCED_2") {
       return response.status(409).json({ message: "姝ゆ姌鎵ｅ凡琚鍗曚娇鐢紝涓嶈兘鍒犻櫎锛涘彲鏀逛负鍋滅敤銆?" });
-      return response.status(409).json({ message: "此折扣已被訂單使用，不能刪除；可改為停用。" });
+    }
     return response.status(500).json({ message: "鏃犳硶鍒犻櫎鎶樻墸璧勬枡銆?" });
-    return response.status(500).json({ message: "無法刪除折扣資料。" });
+  } finally {
     if (connection) connection.release();
   }
 });
