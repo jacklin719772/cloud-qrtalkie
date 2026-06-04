@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Image as ImageIcon, Plus, Upload, Trash2, FileCode } from 'lucide-react';
+import { Search, Image as ImageIcon, Plus, Upload, Trash2, FileCode, HelpCircle } from 'lucide-react';
 import apiClient from './apiClient';
 
 function readFileAsDataUrl(file) {
@@ -59,6 +59,7 @@ export default function EcardStyles() {
   const [jsonConfigs, setJsonConfigs] = useState({ layoutJson: '{}', defaultStyleJson: '{}', displayConfigJson: '{}' });
   const [originalJsonConfigs, setOriginalJsonConfigs] = useState({ layoutJson: '{}', defaultStyleJson: '{}', displayConfigJson: '{}' });
   const [jsonError, setJsonError] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
   const [activeJsonType, setActiveJsonType] = useState('layout_json');
   const [pendingJsonType, setPendingJsonType] = useState(null);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
@@ -1017,6 +1018,7 @@ export default function EcardStyles() {
           <span className="ecard-stat-pill">樣式总数<strong>{totalCount}</strong></span>
           <span className="ecard-stat-pill">包含企业名稱<strong style={{ color: '#16a34a' }}>{withCompanyCount}</strong></span>
           <span className="ecard-stat-pill">不包含企业名稱<strong style={{ color: '#3b82f6' }}>{withoutCompanyCount}</strong></span>
+          <button type="button" onClick={() => setShowHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', width: '36px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af', marginLeft: '8px' }} title="操作說明"><HelpCircle size={16} /></button>
         </div>
       </div>
 
@@ -1254,6 +1256,49 @@ export default function EcardStyles() {
           </div>
         </div>,
         document.body
+      )}
+
+      {showHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>電子名片樣式 操作說明</h2>
+              <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 電子名片樣式的作用</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>電子名片樣式庫是平台級別的名片設計模板管理。管理員在此建立並管理名片樣式，每個樣式可設定不同的排版、背景圖片和 JSON 配置。租戶在生成名片時從樣式庫中選擇套用。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增樣式</strong> — 點擊「新增Ecard樣式」按鈕建立新樣式，填寫基本資訊、上傳範例圖片和背景圖庫。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯樣式</strong> — 點擊表格行內的「編輯」按鈕修改現有樣式的所有設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>預覽樣式</strong> — 點擊「預覽」按鈕查看樣式的範例圖片和背景圖庫的完整展示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>JSON 配置</strong> — 每個背景圖片可設定 layoutJson（佈局）、defaultStyleJson（預設樣式）和 displayConfigJson（顯示配置），點擊「CODE」按鈕編輯 JSON。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>樣式代碼</strong> — 唯一識別碼，用於 API 調用時的樣式參照。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>樣式名稱</strong> — 顯示名稱，租戶選擇樣式時可見。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>樣式類型</strong> — 包含企业名稱 / 不包含企业名稱，決定名片是否顯示公司欄位。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用 / 停用，停用的樣式不會在租戶端顯示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>描述</strong> — 樣式的文字說明。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>排序</strong> — 數字越小越靠前，控制樣式在選擇列表中的排列順序。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>範例圖片</strong> — 最多 5 張，展示樣式效果。第一張設為封面。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>名片背景图库</strong> — 名片可選用的背景圖片，每張可設定獨立的 JSON 配置。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>樣式列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/ecard-styles</code><br/>建立/更新：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/ecard-styles</code><br/>租戶端取得可用樣式：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/ecard-styles/active</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
