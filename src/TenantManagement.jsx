@@ -577,9 +577,45 @@ export default function TenantManagement() {
             #tenant-management .tenant-table-footer { padding: 14px 20px; flex-wrap: wrap; }
             #tenant-management .tenant-pagination { flex-wrap: wrap; }
           }
+
+          /* === Dark theme overrides === */
+          #tenant-management .tenant-content { background: #111827; }
+          #tenant-management .tenant-toolbar { background: #111827; border-color: #1f2937; box-shadow: none; }
+          #tenant-management .tenant-search input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management .tenant-search input::placeholder { color: #6b7280; }
+          #tenant-management .tenant-search input:focus { border-color: #3b82f6; }
+          #tenant-management .tenant-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management .tenant-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
+          #tenant-management .tenant-stat-pill strong { color: #ffffff; }
+          #tenant-management .tenant-table-card { background: #111827; border-color: #1f2937; box-shadow: none; }
+          #tenant-management .tenant-table thead { background: #1a2332; }
+          #tenant-management .tenant-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
+          #tenant-management .tenant-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
+          #tenant-management .tenant-table tbody tr { background: #111827; }
+          #tenant-management .tenant-table tbody tr:hover { background: #1e293b; }
+          #tenant-management .tenant-table td a,
+          #tenant-management .tenant-table td span { color: inherit; }
+          #tenant-management .tenant-table .status-active { background: #0d2818; color: #4ade80; }
+          #tenant-management .tenant-table .status-inactive { background: #1f2937; color: #9ca3af; }
+          #tenant-management .tenant-table .status-pending { background: #1e3a5f; color: #93c5fd; }
+          #tenant-management .tenant-table .status-expiring { background: #3b2508; color: #fbbf24; }
+          #tenant-management .tenant-table .status-expired { background: #3b1111; color: #fca5a5; }
+          #tenant-management .tenant-table-footer { background: #111827; border-top-color: #1f2937; }
+          #tenant-management .tenant-pagination-info { color: #9ca3af; }
+          #tenant-management .tenant-pagination-info b { color: #f3f4f6; }
+          #tenant-management .tenant-pagination button { background: #1f2937; border-color: #4b5563; color: #9ca3af; }
+          #tenant-management .tenant-pagination button:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+          #tenant-management .tenant-pagination button:disabled { opacity: 0.4; }
+          #tenant-management .tenant-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+          #tenant-management .tenant-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management .tenant-table-wrapper { scrollbar-width: none; }
+          #tenant-management .tenant-table-wrapper::-webkit-scrollbar { display: none; }
+          #tenant-management .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
+          #tenant-management .dropdown-menu-portal button { color: #d1d5db; }
+          #tenant-management .dropdown-menu-portal button:hover { background: #374151; }
       `}</style>
-      <section className="view active" id="tenant-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
+      <section className="view active" id="tenant-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
+        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
           
           <div className="tenant-toolbar">
             <div className="tenant-filter-left">
@@ -652,13 +688,13 @@ export default function TenantManagement() {
                     </tr>
                   ) : paginatedTenants.map((tenant) => (
                     <tr key={tenant.id || tenant.tenantNumber}>
-                      <td style={{ color: '#0f172a', fontWeight: 500 }}>{tenant.tenantNumber || tenant.id || '-'}</td>
+                      <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || tenant.id || '-'}</td>
                       <td>{tenant.companyName || '-'}</td>
                       <td>{formatDate(tenant.createdAt)}</td>
                       <td>{tenant.userLimit || tenant.subscriptionQuantity || tenant.accountQuantity || tenant.seats || 0}</td>
                       <td>{tenant.totalPaid !== undefined ? tenant.totalPaid : '-'}</td>
                       <td>{getStatusBadge(tenant.status)}</td>
-                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                           <button 
                             className="ghost-btn" 
@@ -719,75 +755,75 @@ export default function TenantManagement() {
 
       {detailsModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setDetailsModalOpen(false)}>
-          <div className="modal-content" style={{ backgroundColor: '#fff', borderRadius: '12px', width: '500px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" style={{ backgroundColor: '#111827', borderRadius: '12px', width: '500px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }} onClick={e => e.stopPropagation()}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '600' }}>租戶詳細資訊</h3>
-              <button className="ghost-btn" onClick={() => setDetailsModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#64748b', padding: '0 4px' }}>&times;</button>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>租戶詳細資訊</h3>
+              <button className="ghost-btn" onClick={() => setDetailsModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0 }}>
             {isDetailsLoading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>載入中...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
             ) : selectedTenantDetails ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>租戶編號:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 500 }}>{selectedTenantDetails.tenantNumber || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>租戶編號:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px', fontWeight: 500 }}>{selectedTenantDetails.tenantNumber || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>公司名稱:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px', fontWeight: 500 }}>{selectedTenantDetails.companyName || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>公司名稱:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px', fontWeight: 500 }}>{selectedTenantDetails.companyName || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>SIP 網域:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.sipDomain || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>SIP 網域:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.sipDomain || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>企業信箱:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.enterpriseEmail || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>企業信箱:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.enterpriseEmail || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>聯絡人:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.contactPerson || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>聯絡人:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.contactPerson || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>聯絡電話:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.contactPhone || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>聯絡電話:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.contactPhone || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>帳單地址:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.billingAddress || '-'}</span>
-                </div>
-                <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }}></div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>管理員信箱:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.loginEmail || '-'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>管理員電話:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.adminPhone || '-'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>帳單地址:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.billingAddress || '-'}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }}></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>訂閱數量:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.userLimit || 0}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>管理員信箱:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.loginEmail || '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>累計支付:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{selectedTenantDetails.totalPaid ? `$ ${selectedTenantDetails.totalPaid.toFixed(2)}` : '0'}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>管理員電話:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.adminPhone || '-'}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }}></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>訂閱數量:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.userLimit || 0}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>註冊時間:</span>
-                  <span style={{ color: '#0f172a', fontSize: '14px' }}>{formatDate(selectedTenantDetails.createdAt)}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>累計支付:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.totalPaid ? `$ ${selectedTenantDetails.totalPaid.toFixed(2)}` : '0'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>目前狀態:</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>註冊時間:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{formatDate(selectedTenantDetails.createdAt)}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>目前狀態:</span>
                   <div style={{ display: 'flex' }}>{getStatusBadge(selectedTenantDetails.status)}</div>
                 </div>
               </div>
             ) : null}
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', textAlign: 'right' }}>
-              <button onClick={() => setDetailsModalOpen(false)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>關閉</button>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#111827', textAlign: 'right' }}>
+              <button onClick={() => setDetailsModalOpen(false)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>關閉</button>
             </div>
           </div>
         </div>,
@@ -796,50 +832,50 @@ export default function TenantManagement() {
 
       {editModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setEditModalOpen(false)}>
-          <div className="modal-content" style={{ backgroundColor: '#fff', borderRadius: '12px', width: '600px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" style={{ backgroundColor: '#111827', borderRadius: '12px', width: '600px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }} onClick={e => e.stopPropagation()}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '600' }}>編輯租戶資訊</h3>
-              <button className="ghost-btn" onClick={() => setEditModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#64748b', padding: '0 4px' }}>&times;</button>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>編輯租戶資訊</h3>
+              <button className="ghost-btn" onClick={() => setEditModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
             </div>
             <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0 }}>
                 {isDetailsLoading ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>載入中...</div>
+                  <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
                 ) : editingTenantData ? (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>租戶編號</span>
-                      <input value={editingTenantData.tenantNumber || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', outline: 'none' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>租戶編號</span>
+                      <input value={editingTenantData.tenantNumber || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#9ca3af', outline: 'none' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>公司名稱 <span style={{ color: '#ef4444' }}>*</span></span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司名稱 <span style={{ color: '#ef4444' }}>*</span></span>
                       <input required value={editingTenantData.companyName || ''} onChange={e => setEditingTenantData({...editingTenantData, companyName: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>企業信箱</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>企業信箱</span>
                       <input type="email" value={editingTenantData.enterpriseEmail || ''} onChange={e => setEditingTenantData({...editingTenantData, enterpriseEmail: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>企業聯絡人</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>企業聯絡人</span>
                       <input value={editingTenantData.contactPerson || ''} onChange={e => setEditingTenantData({...editingTenantData, contactPerson: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>聯絡電話</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>聯絡電話</span>
                       <input type="tel" value={editingTenantData.contactPhone || ''} onChange={e => setEditingTenantData({...editingTenantData, contactPhone: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>郵遞區號</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵遞區號</span>
                       <input value={editingTenantData.postalCode || ''} onChange={e => setEditingTenantData({...editingTenantData, postalCode: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>帳單郵寄地址</span>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>帳單郵寄地址</span>
                       <textarea rows="3" value={editingTenantData.billingAddress || ''} onChange={e => setEditingTenantData({...editingTenantData, billingAddress: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', resize: 'vertical', outline: 'none', fontFamily: 'inherit' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
                     </label>
                   </div>
                 ) : null}
               </div>
-              <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setEditModalOpen(false)} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: isSaving ? 0.7 : 1 }}>取消</button>
+              <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#111827', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" onClick={() => setEditModalOpen(false)} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: isSaving ? 0.7 : 1 }}>取消</button>
                 <button type="submit" disabled={isSaving || isDetailsLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isDetailsLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isDetailsLoading) ? 0.7 : 1 }}>{isSaving ? '儲存中...' : '儲存修改'}</button>
               </div>
             </form>
