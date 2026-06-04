@@ -732,7 +732,7 @@ export default function EcardStyles() {
         .ecard-page-header h2 {
           margin: 0 0 6px 0;
           font-size: 24px;
-          color: #0f172a;
+          color: #f3f4f6;
           font-weight: 700;
         }
         .ecard-page-header p {
@@ -987,9 +987,12 @@ export default function EcardStyles() {
         <div>
           <h2>Ecard樣式管理</h2>
         </div>
-        <button className="ecard-primary-btn" onClick={openAddPage}>
-          <Plus size={16} /> 新增Ecard樣式
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button type="button" onClick={() => setShowHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '42px', width: '42px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+          <button className="ecard-primary-btn" onClick={openAddPage}>
+            <Plus size={16} /> 新增Ecard樣式
+          </button>
+        </div>
       </div>
 
       <div className="ecard-toolbar">
@@ -1018,7 +1021,6 @@ export default function EcardStyles() {
           <span className="ecard-stat-pill">樣式总数<strong>{totalCount}</strong></span>
           <span className="ecard-stat-pill">包含企业名稱<strong style={{ color: '#16a34a' }}>{withCompanyCount}</strong></span>
           <span className="ecard-stat-pill">不包含企业名稱<strong style={{ color: '#3b82f6' }}>{withoutCompanyCount}</strong></span>
-          <button type="button" onClick={() => setShowHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', width: '36px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af', marginLeft: '8px' }} title="操作說明"><HelpCircle size={16} /></button>
         </div>
       </div>
 
