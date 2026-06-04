@@ -687,13 +687,6 @@ export default function TenantManagement() {
                     <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
                   </tr>
                 </thead>
-                {isLoading ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px', color: '#9ca3af', fontSize: '14px' }}>載入租戶列表中...</div>
-                ) : paginatedTenants.length === 0 ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px', color: '#9ca3af', fontSize: '14px' }}>
-                    {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的租戶' : '目前尚無租戶資料'}
-                  </div>
-                ) : (
                 <tbody>
                   {paginatedTenants.map((tenant) => (
                     <tr key={tenant.id || tenant.tenantNumber}>
