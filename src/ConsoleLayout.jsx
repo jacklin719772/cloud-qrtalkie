@@ -95,6 +95,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [legalHelpTitle, setLegalHelpTitle] = useState('');
   const [legalHelpType, setLegalHelpType] = useState('');
   const [showOfflineAccountHelp, setShowOfflineAccountHelp] = useState(false);
+  const [showPaymentMethodsHelp, setShowPaymentMethodsHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -220,9 +221,12 @@ export default function ConsoleLayout({ onLogout }) {
         whiteSpace: 'nowrap',
       };
       return (
-        <button className="primary-btn" type="button" onClick={() => paymentMethodsRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
-          <Plus size={14} /> 新增在線支付
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button type="button" onClick={() => setShowPaymentMethodsHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+          <button className="primary-btn" type="button" onClick={() => paymentMethodsRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
+            <Plus size={14} /> 新增在線支付
+          </button>
+        </div>
       );
     }
     if (currentView === 'discount-data') {
@@ -911,6 +915,48 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 前端接入位置</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>租戶購買頁面調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/offline-payment-account</code> 取得收款帳戶資訊，保存時調用 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/offline-payment-account</code>。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentMethodsHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowPaymentMethodsHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>在線支付 操作說明</h2>
+              <button onClick={() => setShowPaymentMethodsHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128179; 在線支付的作用</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>在線支付管理讓平台管理員設定租戶可選擇的付款方式。每種付款方式可設定名稱、類型（線上/線下）、圖示和啟用狀態。租戶購買套餐時可從已啟用的付款方式中選擇。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增付款方式</strong> — 點擊「新增在線支付」按鈕，填寫代碼、名稱、類型等資訊，並上傳付款方式圖示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯付款方式</strong> — 點擊卡片上的「編輯」按鈕修改現有付款方式的設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用切換</strong> — 使用開關按鈕快速啟用或停用某個付款方式，無需進入編輯頁面。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除付款方式</strong> — 移除不再使用的付款方式。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>方式代碼</strong> — 唯一識別碼，用於系統內部識別。留空將自動由顯示名稱生成。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 租戶端顯示的付款方式名稱，例如「信用卡」、「銀行轉帳」。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>付款類型</strong> — 線上付款（即時處理）或線下付款（人工確認）。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用狀態</strong> — 設為啟用後，租戶才能在付款頁面看到此付款方式。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Logo 樣式</strong> — CSS class 名稱，用於顯示預設的付款品牌圖示，例如 paypal、visa、mastercard。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>排序</strong> — 數字越小越靠前，控制付款方式在選擇列表中的顯示順序。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>付款方式圖示</strong> — 上傳自訂圖示圖片。建議尺寸 160x64px，支援 PNG/JPG/WebP/SVG。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>取得/更新付款方式：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/billing/payment-method-settings</code><br/>刪除單一付款方式：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/billing/payment-method-settings/:id</code></p>
               </div>
             </div>
           </div>
