@@ -459,8 +459,8 @@ export default function EcardStyles() {
               )}
             </div>
             
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button type="button" onClick={() => setViewMode('list')} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#111827', color: '#9ca3af', border: '1px solid #1f2937', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>取消</button>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#111827', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button type="button" onClick={() => setViewMode('list')} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: 500, opacity: isSaving ? 0.7 : 1 }}>{isSaving ? '儲存中...' : (viewMode === 'add' ? '儲存新建' : '儲存修改')}</button>
             </div>
           </form>
