@@ -2,7 +2,7 @@
 # QRTalkie Cloud - 重启前后台服务
 # 用法: bash restart.sh [项目目录路径，默认为 /root/cloud-qrtalkie]
 
-PROJECT_DIR="${1:-/root/cloud-qrtalkie}"
+PROJECT_DIR="${1:-/opt/saas}"
 
 echo "=== 进入项目目录: $PROJECT_DIR ==="
 cd "$PROJECT_DIR" || { echo "错误: 目录不存在"; exit 1; }
