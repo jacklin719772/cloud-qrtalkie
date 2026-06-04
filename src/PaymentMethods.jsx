@@ -486,9 +486,9 @@ const PaymentMethods = forwardRef((props, ref) => {
     return (
       <section className="view active settings-form-page" id="payment-methods">
         <style>{`
-          #payment-methods .payment-method-row { background: #111827; border-color: #1f2937; }
-          #payment-methods .payment-method-row:hover { border-color: #374151; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-          #payment-methods .payment-logo-box { background: #1a2332; border-color: #374151; }
+          #payment-methods .payment-method-row { background: #1e293b; border-color: #1f2937; }
+          #payment-methods .payment-method-row:hover { border-color: #3b82f6; box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
+          #payment-methods .payment-logo-box { background: #111827; border-color: #374151; }
           #payment-methods .payment-name { color: #f3f4f6; }
           #payment-methods .payment-code { color: #9ca3af; }
           #payment-methods .payment-desc { color: #9ca3af; }
