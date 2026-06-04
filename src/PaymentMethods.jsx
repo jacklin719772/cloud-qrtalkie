@@ -120,7 +120,7 @@ const PaymentMethods = forwardRef((props, ref) => {
       const nextMethods = (data.methods || []).map(normalizeMethod);
       setMethods(nextMethods);
     } catch (error) {
-      showMessage('error', error.message || '无法载入付款方式。');
+      showMessage('error', error.message || '無法載入付款方式。');
     } finally {
       setIsLoading(false);
     }
@@ -163,11 +163,11 @@ const PaymentMethods = forwardRef((props, ref) => {
   const applyIconFile = (file) => {
     if (!file) return;
     if (!isAllowedIconFile(file)) {
-      showMessage('error', '请上传 PNG、JPG、WebP 或 SVG 图标。');
+      showMessage('error', '請上傳 PNG、JPG、WebP 或 SVG 圖示。');
       return;
     }
     if (file.size > maxIconSize) {
-      showMessage('error', '图标文件不可超过 512KB。');
+      showMessage('error', '圖示檔案不可超過 512KB。');
       return;
     }
 
@@ -197,7 +197,7 @@ const PaymentMethods = forwardRef((props, ref) => {
       image.src = dataUrl;
       showMessage('', '');
     };
-    reader.onerror = () => showMessage('error', '无法读取图标文件。');
+    reader.onerror = () => showMessage('error', '無法讀取圖示檔案。');
     reader.readAsDataURL(file);
   };
 
@@ -248,12 +248,12 @@ const PaymentMethods = forwardRef((props, ref) => {
 
   const validateMethod = (method) => {
     const methodCode = method.methodCode.trim().toLowerCase();
-    if (!methodCode) return '请输入方式代码。';
-    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) return '方式代码只能使用英文字母、数字、底线或连字符，且至少 2 个字符。';
-    if (methods.some((m) => m.id !== method.id && m.methodCode.trim().toLowerCase() === methodCode)) return '方式代码不可重复。';
-    if (!method.displayName.trim()) return '请输入显示名称。';
-    if (!['online', 'offline'].includes(method.methodType)) return '请选择付款类型。';
-    if (!['active', 'disabled'].includes(method.status)) return '请选择启用状态。';
+    if (!methodCode) return '請輸入方式代碼。';
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) return '方式代碼只能使用英文字母、數字、底線或連字符，且至少 2 個字元。';
+    if (methods.some((m) => m.id !== method.id && m.methodCode.trim().toLowerCase() === methodCode)) return '方式代碼不可重複。';
+    if (!method.displayName.trim()) return '請輸入顯示名稱。';
+    if (!['online', 'offline'].includes(method.methodType)) return '請選擇付款類型。';
+    if (!['active', 'disabled'].includes(method.status)) return '請選擇啟用狀態。';
     return '';
   };
 
@@ -310,7 +310,7 @@ const PaymentMethods = forwardRef((props, ref) => {
       setViewMode('list');
       showMessage('success', result.message || (viewMode === 'edit' ? '付款方式已更新。' : '付款方式已新增。'));
     } catch (error) {
-      showMessage('error', error.message || (viewMode === 'edit' ? '无法更新付款方式。' : '无法新增付款方式。'));
+      showMessage('error', error.message || (viewMode === 'edit' ? '無法更新付款方式。' : '無法新增付款方式。'));
     } finally {
       setIsSaving(false);
     }
@@ -318,16 +318,16 @@ const PaymentMethods = forwardRef((props, ref) => {
 
   const handleDelete = async (method) => {
     const methodName = method.displayName || method.methodCode;
-    if (!window.confirm(`确定要删除「${methodName}」付款方式吗？`)) return;
+    if (!window.confirm(`確定要刪除「${methodName}」付款方式嗎？`)) return;
 
     setIsSaving(true);
     showMessage('', '');
     try {
       const result = await apiClient.delete(`/billing/payment-method-settings/${encodeURIComponent(method.id)}`);
       await loadMethods({ silent: true });
-      showMessage('success', result.message || '付款方式已删除。');
+      showMessage('success', result.message || '付款方式已刪除。');
     } catch (error) {
-      showMessage('error', error.message || '无法删除付款方式。');
+      showMessage('error', error.message || '無法刪除付款方式。');
     } finally {
       setIsSaving(false);
     }
@@ -335,9 +335,9 @@ const PaymentMethods = forwardRef((props, ref) => {
 
   const handleToggleStatus = async (methodToToggle) => {
     const newStatus = methodToToggle.status === 'active' ? 'disabled' : 'active';
-    const actionText = newStatus === 'active' ? '启用' : '停用';
+    const actionText = newStatus === 'active' ? '啟用' : '停用';
 
-    if (!window.confirm(`确定要${actionText}「${methodToToggle.displayName || methodToToggle.methodCode}」付款方式吗？`)) return;
+    if (!window.confirm(`確定要${actionText}「${methodToToggle.displayName || methodToToggle.methodCode}」付款方式嗎？`)) return;
 
     setIsSaving(true);
     showMessage('', '');
@@ -348,10 +348,10 @@ const PaymentMethods = forwardRef((props, ref) => {
       await apiClient.put('/billing/payment-method-settings', {
         methods: nextMethods.map(toApiMethod),
       });
-      setMethods(nextMethods); // 乐观更新前端状态，让 Switch 立即切换
+      setMethods(nextMethods); // 樂觀更新前端狀態，讓 Switch 立即切換
       showMessage('success', `付款方式已${actionText}。`);
     } catch (error) {
-      showMessage('error', error.message || `无法${actionText}付款方式。`);
+      showMessage('error', error.message || `無法${actionText}付款方式。`);
       await loadMethods({ silent: true }); // 失败时重新拉取数据恢复原状
     } finally {
       setIsSaving(false);
@@ -399,28 +399,28 @@ const PaymentMethods = forwardRef((props, ref) => {
           <div className="tenant-scroll-area" style={{ background: '#111827' }}>
             <section className="settings-block">
               <div className="settings-block-head payment-methods-head">
-                <h3>{isEditing ? '编辑付款方式' : '新增付款方式'}</h3>
+                <h3>{isEditing ? '編輯付款方式' : '新增付款方式'}</h3>
               </div>
               <div className="tenant-field-grid">
                 <label>
-                  <span className="field-label">方式代码 <RequiredMark /></span>
-                  <input value={draftMethod.methodCode} onChange={updateDraftMethod('methodCode')} placeholder="留空将自动由显示名称生成" />
+                  <span className="field-label">方式代碼 <RequiredMark /></span>
+                  <input value={draftMethod.methodCode} onChange={updateDraftMethod('methodCode')} placeholder="留空將自動由顯示名稱生成" />
                 </label>
                 <label>
-                  <span className="field-label">显示名称 <RequiredMark /></span>
+                  <span className="field-label">顯示名稱 <RequiredMark /></span>
                   <input value={draftMethod.displayName} onChange={updateDraftMethod('displayName')} required />
                 </label>
                 <label>
-                  <span className="field-label">付款类型 <RequiredMark /></span>
+                  <span className="field-label">付款類型 <RequiredMark /></span>
                   <select value={draftMethod.methodType} onChange={updateDraftMethod('methodType')}>
-                    <option value="online">线上付款</option>
-                    <option value="offline">线下付款</option>
+                    <option value="online">線上付款</option>
+                    <option value="offline">線下付款</option>
                   </select>
                 </label>
                 <label>
-                  <span className="field-label">启用状态 <RequiredMark /></span>
+                  <span className="field-label">啟用狀態 <RequiredMark /></span>
                   <select value={draftMethod.status} onChange={updateDraftMethod('status')}>
-                    <option value="active">启用</option>
+                    <option value="active">啟用</option>
                     <option value="disabled">停用</option>
                   </select>
                 </label>
@@ -433,7 +433,7 @@ const PaymentMethods = forwardRef((props, ref) => {
                   <input type="number" min="0" step="1" value={draftMethod.sortOrder} onChange={updateDraftMethod('sortOrder')} />
                 </label>
                 <div className="payment-icon-field span-2">
-                  <span className="field-label">付款方式图标</span>
+                  <span className="field-label">付款方式圖示</span>
                   <div
                     className={`payment-icon-upload ${isIconDragOver ? 'drag-over' : ''}`}
                     onDragEnter={handleIconDrag}
@@ -441,11 +441,11 @@ const PaymentMethods = forwardRef((props, ref) => {
                     onDragLeave={handleIconDrag}
                     onDrop={handleIconDrop}
                   >
-                    <button className="payment-icon-preview" type="button" onClick={openIconPicker} aria-label="选择付款方式图标">
+                    <button className="payment-icon-preview" type="button" onClick={openIconPicker} aria-label="選擇付款方式圖示">
                       {draftIconSrc ? (
-                        <img src={draftIconSrc} alt={`${draftMethod.displayName || '付款方式'}图标`} />
+                        <img src={draftIconSrc} alt={`${draftMethod.displayName || '付款方式'}圖示`} />
                       ) : (
-                        <span>未上传</span>
+                        <span>未上傳</span>
                       )}
                     </button>
                     <div className="payment-icon-controls">
@@ -457,11 +457,11 @@ const PaymentMethods = forwardRef((props, ref) => {
                         onChange={handleIconFileChange}
                       />
                       <button className="ghost-btn" type="button" onClick={openIconPicker}>
-                        {draftIconSrc ? '更换图标' : '上传图标'}
+                        {draftIconSrc ? '更換圖示' : '上傳圖示'}
                       </button>
-                      {draftIconSrc && <button className="ghost-btn" type="button" onClick={clearDraftIcon}>移除图标</button>}
+                      {draftIconSrc && <button className="ghost-btn" type="button" onClick={clearDraftIcon}>移除圖示</button>}
                       {draftIconDetails && <span className="payment-icon-meta">{draftIconDetails}</span>}
-                      <small>建议尺寸 160x64px，透明 PNG/WebP 或 SVG 最佳，文件不超过 512KB。也可以把图片拖到预览框。</small>
+                      <small>建議尺寸 160x64px，透明 PNG/WebP 或 SVG 最佳，檔案不超過 512KB。也可以把圖片拖到預覽框。</small>
                     </div>
                   </div>
                 </div>
@@ -473,7 +473,7 @@ const PaymentMethods = forwardRef((props, ref) => {
             <menu className="form-actions">
               <button className="ghost-btn" type="button" onClick={cancelEdit} disabled={isSaving}>取消</button>
               <button className="primary-btn" type="submit" disabled={isSaving}>
-                {isSaving ? '保存中...' : isEditing ? '保存变更' : '新增付款方式'}
+                {isSaving ? '儲存中...' : isEditing ? '儲存變更' : '新增付款方式'}
               </button>
             </menu>
           </div>
@@ -514,7 +514,7 @@ const PaymentMethods = forwardRef((props, ref) => {
         `}</style>
         <div className="tenant-settings-form" style={{ background: '#111827', borderColor: '#1f2937' }}>
           <div className="tenant-scroll-area" style={{ background: '#111827', paddingBottom: '96px' }}>
-            {isLoading && <p className="form-message">载入付款方式中...</p>}
+            {isLoading && <p className="form-message">載入付款方式中...</p>}
 
             {!isLoading && (
               <section className="settings-block">
@@ -534,7 +534,7 @@ const PaymentMethods = forwardRef((props, ref) => {
                               <img
                                 className="payment-logo"
                                 src={method.iconUrl}
-                                alt={`${method.displayName}图标`}
+                                alt={`${method.displayName}圖示`}
                                 onError={showIconFallback}
                               />
                               <span className="payment-logo-fallback hidden">
@@ -552,10 +552,10 @@ const PaymentMethods = forwardRef((props, ref) => {
                           <div className="payment-title-line">
                             <span className="payment-name">{method.displayName}</span>
                             <span className={`payment-tag ${method.methodType === 'online' ? 'payment-tag-blue' : 'payment-tag-gray'}`}>
-                              {method.methodType === 'online' ? '线上付款' : '线下付款'}
+                              {method.methodType === 'online' ? '線上付款' : '線下付款'}
                             </span>
                             {method.status === 'active' && (
-                              <span className="payment-tag payment-tag-green">启用</span>
+                              <span className="payment-tag payment-tag-green">啟用</span>
                             )}
                           </div>
 
@@ -563,8 +563,8 @@ const PaymentMethods = forwardRef((props, ref) => {
 
                           <div className="payment-desc">
                             {method.methodType === 'online'
-                              ? '在线支付方式，适用于线上订单收款'
-                              : '线下支付方式，适用于人工确认收款'}
+                              ? '線上支付方式，適用於線上訂單收款'
+                              : '線下支付方式，適用於人工確認收款'}
                           </div>
                         </div>
 
@@ -573,13 +573,13 @@ const PaymentMethods = forwardRef((props, ref) => {
                             type="button"
                             className={`payment-switch ${method.status === 'active' ? 'payment-switch-on' : 'payment-switch-off'}`}
                             disabled={isSaving}
-                            aria-label={method.status === 'active' ? '当前已启用' : '当前已停用'}
+                            aria-label={method.status === 'active' ? '目前已啟用' : '目前已停用'}
                             onClick={() => handleToggleStatus(method)}
                           >
                             <span className="payment-switch-dot" />
                           </button>
                           <span className={`payment-status-text ${method.status === 'active' ? 'enabled' : 'disabled'}`}>
-                            {method.status === 'active' ? '已启用' : '已禁用'}
+                            {method.status === 'active' ? '已啟用' : '已停用'}
                           </span>
                         </div>
 
@@ -590,7 +590,7 @@ const PaymentMethods = forwardRef((props, ref) => {
                             onClick={() => startEdit(method)}
                             disabled={isSaving}
                           >
-                            编辑
+                            編輯
                           </button>
 
                           <button
@@ -599,7 +599,7 @@ const PaymentMethods = forwardRef((props, ref) => {
                             onClick={() => handleDelete(method)}
                             disabled={isSaving}
                           >
-                            删除
+                            刪除
                           </button>
                         </div>
                       </div>
