@@ -135,7 +135,7 @@ const DiscountData = forwardRef((props, ref) => {
       return matchesKeyword && matchesStatus;
     });
     
-    // 在前端强制使用 ID 排序（降序：最新创建的在最前面），确保顺序稳定，不受后端状态或更新时间排序的影响
+    // 在前端強制使用 ID 排序（降冪：最新建立的在最前面），確保順序穩定，不受後端狀態或更新時間排序的影響
     return filtered.sort((a, b) => (b.id || 0) - (a.id || 0));
   }, [coupons, filterStatus, query]);
 
