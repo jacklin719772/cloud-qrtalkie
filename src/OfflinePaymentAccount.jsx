@@ -159,8 +159,10 @@ export default function OfflinePaymentAccount() {
         #offline-account .settings-block { background: #111827; border: 1px solid #1f2937; }
         #offline-account .settings-block-head h3 { color: #f3f4f6; }
         #offline-account .settings-block-head { border-bottom-color: #1f2937; }
-        #offline-account .field-label { color: #9ca3af; }
-        #offline-account .tenant-field-grid label { color: #9ca3af; }
+        #offline-account .field-label,
+        #console #offline-account .tenant-field-grid label,
+        #console #offline-account .field-label { color: #d1d5db; }
+        #offline-account .tenant-field-grid label { color: #d1d5db; }
         #offline-account .tenant-field-grid input,
         #offline-account .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #offline-account .tenant-field-grid input:focus,
@@ -169,6 +171,9 @@ export default function OfflinePaymentAccount() {
         #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
         #offline-account .settings-divider { border-color: #1f2937; }
         #offline-account .ghost-btn { color: #9ca3af; }
+        #console #offline-account .form-message.error { background: #3b1111; color: #ef4444; }
+        #console #offline-account .form-message.success { background: #0d2818; color: #22c55e; }
+        #offline-account .form-message { color: #d1d5db; }
       `}</style>
       <form className="tenant-settings-form" onSubmit={handleSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
         <div className="tenant-scroll-area" style={{ background: '#111827' }}>
