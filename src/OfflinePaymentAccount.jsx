@@ -170,8 +170,8 @@ export default function OfflinePaymentAccount() {
         #offline-account .tenant-field-grid input::placeholder,
         #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
         #offline-account .settings-divider { border-color: #1f2937; }
-        #offline-account .ghost-btn { background: transparent; color: #d1d5db; border-color: #4b5563; }
-        #offline-account .ghost-btn:hover { background: #374151; color: #f3f4f6; }
+        #offline-account .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #offline-account .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #console #offline-account .form-message.error { background: #3b1111; color: #ef4444; }
         #console #offline-account .form-message.success { background: #0d2818; color: #22c55e; }
         #offline-account .form-message { color: #d1d5db; }
