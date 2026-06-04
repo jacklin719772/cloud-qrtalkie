@@ -112,8 +112,9 @@ export default function TenantManagement() {
   }, [tenants]);
 
   // Pagination & Sorting logic
-  const pageSize = 10; // Assuming 10 items per page, similar to other management views
+  const pageSizeOptions = [10, 20, 50, '全部'];
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const sortedFilteredTenants = useMemo(() => {
     let sortableItems = [...filteredTenants];
@@ -128,12 +129,17 @@ export default function TenantManagement() {
     return sortableItems;
   }, [filteredTenants, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedFilteredTenants.length / pageSize));
-  const paginatedTenants = sortedFilteredTenants.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const effectivePageSize = pageSize === '全部' ? sortedFilteredTenants.length || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(sortedFilteredTenants.length / effectivePageSize));
+  const paginatedTenants = sortedFilteredTenants.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset page when filters or search change
-  }, [searchKeyword, statusFilter, sortConfig]);
+    setCurrentPage(1); // Reset page when filters, search, or page size change
+  }, [searchKeyword, statusFilter, sortConfig, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
 
   function handleSort(key) {
     setSortConfig((current) => ({
@@ -608,6 +614,8 @@ export default function TenantManagement() {
           #tenant-management .tenant-pagination button:disabled { opacity: 0.4; }
           #tenant-management .tenant-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
           #tenant-management .tenant-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management .tenant-page-size { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management .tenant-page-size:focus { border-color: #3b82f6; }
           #tenant-management .tenant-table-wrapper { scrollbar-width: none; }
           #tenant-management .tenant-table-wrapper::-webkit-scrollbar { display: none; }
           #tenant-management .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
@@ -743,7 +751,9 @@ export default function TenantManagement() {
             <div className="tenant-table-footer">
               <div className="tenant-total">共 {filteredTenants.length} 筆資料</div>
               <div className="tenant-pagination">
-                <span className="tenant-page-size">{pageSize} 條/頁</span>
+                <select className="tenant-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === '全部' ? '全部' : Number(v)); setCurrentPage(1); }}>
+                  {pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === '全部' ? '全部' : `${opt} 條/頁`}</option>)}
+                </select>
                 <button className="tenant-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
                 <span className="tenant-page-current">{currentPage}</span>
                 <button className="tenant-page-btn" type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
