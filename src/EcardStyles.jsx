@@ -1068,11 +1068,10 @@ export default function EcardStyles() {
                     <td style={{ color: '#9ca3af' }}>{item.createdAt}</td>
                     <td className="ecard-action-cell">
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', whiteSpace: 'nowrap', justifyContent: 'center' }}>
-                        <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => openPreview(item)}>預覽</button>
+                        <button type="button" style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '5px', border: '1px solid #2563eb', background: 'transparent', color: '#60a5fa', cursor: 'pointer' }} onClick={() => openPreview(item)}>預覽</button>
                         <button
-                          className="ghost-btn"
                           type="button"
-                          style={{ fontSize: '12px', padding: '4px 8px' }}
+                          style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '5px', border: '1px solid #4b5563', background: 'transparent', color: '#9ca3af', cursor: 'pointer' }}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
