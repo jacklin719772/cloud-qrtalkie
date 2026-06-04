@@ -1115,7 +1115,7 @@ export default function EcardStyles() {
                               zIndex: 2147483647,
                               minWidth: '160px',
                               padding: '6px',
-                              background: '#111827',
+                              background: '#1e293b',
                               border: '1px solid #1f2937',
                               borderRadius: '10px',
                               boxShadow: '0 12px 28px rgba(15, 23, 42, 0.18)',
