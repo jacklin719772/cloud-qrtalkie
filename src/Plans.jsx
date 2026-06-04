@@ -661,8 +661,17 @@ const Plans = forwardRef((props, ref) => {
 
         /* === Dark theme overrides === */
         #plans .billing-table { background: #111827; border-color: #1f2937; }
+        #plans .billing-table { color: #e5e7eb; }
         #plans .billing-table thead th { background: #1a2332; color: #e5e7eb; border-bottom-color: #1f2937; }
-        #plans .billing-table tbody td { color: #e5e7eb; border-bottom-color: #1f2937; }
+        #plans .billing-table tbody td { color: #e5e7eb !important; border-bottom-color: #1f2937; }
+        #plans .billing-table tbody td strong,
+        #plans .billing-table tbody td small,
+        #plans .billing-table tbody td span { color: inherit; }
+        #plans .billing-table-wrap { background: #111827; }
+        #plans .billing-table td:last-child,
+        #console #plans .billing-table td:last-child { background: #111827; box-shadow: -8px 0 14px rgba(0,0,0,0.3); }
+        #plans .billing-table th:last-child,
+        #console #plans .billing-table th:last-child { background: #1a2332; }
         #plans .billing-table tbody tr { background: #111827; }
         #plans .billing-table tbody tr:hover { background: #1e293b; }
         #plans .billing-table .status-active { background: #0d2818 !important; color: #4ade80 !important; }
@@ -894,9 +903,9 @@ const Plans = forwardRef((props, ref) => {
             {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
             <div className="payment-method-filter" style={{ flexShrink: 0, display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '20px', backgroundColor: '#1a2332', padding: '12px 16px', borderRadius: '8px', border: '1px solid #1f2937', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>
               <label className="payment-method-search" style={{ position: 'relative', width: '260px', flex: '0 0 260px' }}>
-                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', pointerEvents: 'none' }} aria-hidden="true" />
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} aria-hidden="true" />
                 <input
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#f3f4f6', backgroundColor: '#ffffff', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#e5e7eb', backgroundColor: '#0f172a', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="搜尋套餐 ID、代碼或名稱..."
@@ -907,9 +916,9 @@ const Plans = forwardRef((props, ref) => {
                   <button
                     type="button"
                     onClick={() => setQuery('')}
-                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: '#e2e8f0', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.2s' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#cbd5e1'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: '#374151', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#374151'}
                     aria-label="清除搜索"
                     title="清除"
                   >
@@ -921,9 +930,9 @@ const Plans = forwardRef((props, ref) => {
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 aria-label="筛选状态"
-                style={{ padding: '10px 32px 10px 16px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', backgroundColor: '#ffffff', outline: 'none', cursor: 'pointer', transition: 'all 0.2s ease', color: '#334155', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px 16px' }}
+                style={{ padding: '10px 32px 10px 16px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', backgroundColor: '#0f172a', outline: 'none', cursor: 'pointer', transition: 'all 0.2s ease', color: '#e5e7eb', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px 16px' }}
                 onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
-                onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'none'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#374151'; e.target.style.boxShadow = 'none'; }}
               >
                 <option value="all">全部狀態</option>
                 <option value="active">啟用</option>
@@ -932,10 +941,10 @@ const Plans = forwardRef((props, ref) => {
               <div className="plan-stats" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flex: 1, whiteSpace: 'nowrap' }}>
                 {[
                   ['全部', planStats.total],
-                  ['已启用', planStats.active],
+                  ['已啟用', planStats.active],
                   ['已停用', planStats.disabled],
                 ].map(([label, value]) => (
-                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#ffffff', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
+                  <span key={label} style={{ height: '34px', padding: '0 12px', borderRadius: '999px', backgroundColor: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)' }}>{label}<strong style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 700 }}>{value}</strong></span>
                 ))}
               </div>
             </div>
