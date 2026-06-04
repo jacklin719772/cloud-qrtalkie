@@ -993,15 +993,13 @@ const Plans = forwardRef((props, ref) => {
                 </thead>
                 <tbody>
                   {isLoading ? (
-                    <tr><td colSpan="9" className="empty-state" style={{ textAlign: 'center', padding: '32px' }}>载入中...</td></tr>
-                  ) : paginatedPlans.length === 0 ? (
-                    <tr>
-                      <td colSpan="9" className="empty-state" style={{ textAlign: 'center', padding: '32px' }}>
-                        {query || filterStatus !== 'all' ? '未找到匹配的套餐' : '尚未新增任何套餐'}
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedPlans.map((plan, index) => (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+              ) : paginatedPlans.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '200px', color: '#9ca3af', fontSize: '14px' }}>
+                  {query || filterStatus !== 'all' ? '未找到匹配的套餐' : '尚未新增任何套餐'}
+                </div>
+              ) : (
+                paginatedPlans.map((plan, index) => (
                       <tr key={plan.id} className={plan.status === 'disabled' ? 'disabled-row' : ''}>
                         <td style={{ width: '50px', textAlign: 'center', padding: 0 }}>
                           <input
