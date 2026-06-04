@@ -720,6 +720,12 @@ const Plans = forwardRef((props, ref) => {
         #plans .form-message { color: #d1d5db; }
         #plans .form-message.error { background: #3b1111; color: #ef4444; }
         #plans .form-message.success { background: #0d2818; color: #22c55e; }
+        #plans .billing-table-wrap,
+        #plans .form-grid,
+        #plans .modal-body { scrollbar-width: none; }
+        #plans .billing-table-wrap::-webkit-scrollbar,
+        #plans .form-grid::-webkit-scrollbar,
+        #plans .modal-body::-webkit-scrollbar { display: none; }
       `}</style>
       <section className="view active settings-form-page" id="plans" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="tenant-settings-form" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#111827', borderColor: '#1f2937' }}>
