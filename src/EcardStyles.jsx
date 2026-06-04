@@ -875,7 +875,7 @@ export default function EcardStyles() {
           width: 100%;
           border-collapse: collapse;
           text-align: left;
-          min-width: 1080px;
+          min-width: auto;
         }
         .ecard-table th {
           position: sticky;
@@ -1037,9 +1037,9 @@ export default function EcardStyles() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>加载中...</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>加载中...</td></tr>
               ) : filteredStyles.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>没有匹配的樣式记录</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>没有匹配的樣式记录</td></tr>
               ) : (
                 filteredStyles.map(item => (
                   <tr key={item.id}>
