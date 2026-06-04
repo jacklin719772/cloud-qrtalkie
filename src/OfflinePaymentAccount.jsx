@@ -150,6 +150,12 @@ export default function OfflinePaymentAccount() {
   return (
     <section className="view active settings-form-page" id="offline-account">
       <style>{`
+        #offline-account .tenant-settings-form,
+        #console #offline-account .tenant-settings-form { background: #111827; border-color: #1f2937; }
+        #offline-account .tenant-scroll-area,
+        #console #offline-account .tenant-scroll-area { background: #111827; }
+        #offline-account .tenant-fixed-actions,
+        #console #offline-account .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
         #offline-account .settings-block { background: #111827; border: 1px solid #1f2937; }
         #offline-account .settings-block-head h3 { color: #f3f4f6; }
         #offline-account .settings-block-head { border-bottom-color: #1f2937; }
@@ -162,11 +168,10 @@ export default function OfflinePaymentAccount() {
         #offline-account .tenant-field-grid input::placeholder,
         #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
         #offline-account .settings-divider { border-color: #1f2937; }
-        #offline-account .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
         #offline-account .ghost-btn { color: #9ca3af; }
       `}</style>
-      <form className="tenant-settings-form" onSubmit={handleSubmit}>
-        <div className="tenant-scroll-area">
+      <form className="tenant-settings-form" onSubmit={handleSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
+        <div className="tenant-scroll-area" style={{ background: '#111827' }}>
           {isLoading && <p className="form-message">載入收款帳戶中...</p>}
 
           {!isLoading && (
@@ -204,7 +209,7 @@ export default function OfflinePaymentAccount() {
           )}
         </div>
 
-        <div className="tenant-fixed-actions">
+        <div className="tenant-fixed-actions" style={{ background: '#111827', borderTopColor: '#1f2937' }}>
           {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
           <menu className="form-actions">
             <button className="ghost-btn" type="button" onClick={handleReset} disabled={isSaving || isLoading}>取消</button>
