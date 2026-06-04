@@ -3,10 +3,10 @@ import { BadgePercent, CalendarDays, CalendarX, CircleDollarSign, Search, Ticket
 import apiClient from './apiClient';
 
 const currencyOptions = [
-  { value: 'TWD', label: '新台币 TWD' },
-  { value: 'CNY', label: '人民币 CNY' },
+  { value: 'TWD', label: '新台幣 TWD' },
+  { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
-  { value: 'EUR', label: '欧元 EUR' },
+  { value: 'EUR', label: '歐元 EUR' },
 ];
 
 const emptyCoupon = {
@@ -46,8 +46,8 @@ function formatDiscount(coupon) {
 
 function statusText(status) {
   if (status === 'disabled') return '停用';
-  if (status === 'expired') return '过期';
-  return '启用';
+  if (status === 'expired') return '過期';
+  return '啟用';
 }
 
 function toApiCoupon(coupon) {
@@ -111,7 +111,7 @@ const DiscountData = forwardRef((props, ref) => {
         setMode('list');
       }
     } catch (error) {
-      showMessage('error', error.message || '无法读取折扣资料。');
+      showMessage('error', error.message || '無法讀取折扣資料。');
     } finally {
       setIsLoading(false);
     }
@@ -167,18 +167,18 @@ const DiscountData = forwardRef((props, ref) => {
 
   const validateDraft = () => {
     const coupon = toApiCoupon(draftCoupon);
-    if (!coupon.couponCode) return '请输入折扣代码。';
-    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '折扣代码只能使用英文大写字母、数字、底线或连字符，且至少 2 个字符。';
-    if (coupons.some((item) => item.id !== draftCoupon.id && item.couponCode.trim().toUpperCase() === coupon.couponCode)) return '折扣代码不可重复。';
-    if (!coupon.displayName) return '请输入显示名称。';
-    if (coupon.discountValue <= 0) return '折扣值必须大于 0。';
-    if (coupon.discountType === 'percent' && coupon.discountValue > 100) return '百分比折扣不可超过 100%。';
-    if (coupon.discountType === 'fixed_amount' && !currencyOptions.some((option) => option.value === coupon.currency)) return '请选择有效币种。';
-    if (!coupon.validUntil) return '请选择到期日期。';
-    if (coupon.validFrom && coupon.validUntil < coupon.validFrom) return '到期日期不可早于生效日期。';
-    if (!Number.isFinite(coupon.discountValue)) return '折扣值格式无效。';
-    if (coupon.maxRedemptions !== '' && !Number.isFinite(coupon.maxRedemptions)) return '使用上限格式无效。';
-    if (coupon.maxRedemptions !== '' && coupon.maxRedemptions < 0) return '使用上限不可小于 0。';
+    if (!coupon.couponCode) return '請輸入折扣代碼。';
+    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '折扣代碼只能使用英文大寫字母、數字、底線或連字符，且至少 2 個字元。';
+    if (coupons.some((item) => item.id !== draftCoupon.id && item.couponCode.trim().toUpperCase() === coupon.couponCode)) return '折扣代碼不可重複。';
+    if (!coupon.displayName) return '請輸入顯示名稱。';
+    if (coupon.discountValue <= 0) return '折扣值必須大於 0。';
+    if (coupon.discountType === 'percent' && coupon.discountValue > 100) return '百分比折扣不可超過 100%。';
+    if (coupon.discountType === 'fixed_amount' && !currencyOptions.some((option) => option.value === coupon.currency)) return '請選擇有效幣種。';
+    if (!coupon.validUntil) return '請選擇到期日期。';
+    if (coupon.validFrom && coupon.validUntil < coupon.validFrom) return '到期日期不可早於生效日期。';
+    if (!Number.isFinite(coupon.discountValue)) return '折扣值格式無效。';
+    if (coupon.maxRedemptions !== '' && !Number.isFinite(coupon.maxRedemptions)) return '使用上限格式無效。';
+    if (coupon.maxRedemptions !== '' && coupon.maxRedemptions < 0) return '使用上限不可小於 0。';
     return '';
   };
 
@@ -196,9 +196,9 @@ const DiscountData = forwardRef((props, ref) => {
       const payload = toApiCoupon(draftCoupon);
       const result = await apiClient.put('/billing/coupon-settings', payload);
       await loadCoupons({ silent: true, preferredId: result.id || draftCoupon.id });
-      showMessage('success', result.message || '折扣资料已保存。');
+      showMessage('success', result.message || '折扣資料已儲存。');
     } catch (error) {
-      showMessage('error', error.message || '无法保存折扣资料。');
+      showMessage('error', error.message || '無法儲存折扣資料。');
     } finally {
       setIsSaving(false);
     }
@@ -206,16 +206,16 @@ const DiscountData = forwardRef((props, ref) => {
 
   const deleteDraft = async () => {
     if (!selectedCoupon?.id) return;
-    if (!window.confirm(`确定要删除「${selectedCoupon.couponCode}」折扣吗？`)) return;
+    if (!window.confirm(`確定要刪除「${selectedCoupon.couponCode}」折扣嗎？`)) return;
 
     setIsSaving(true);
     showMessage('', '');
     try {
       const result = await apiClient.delete(`/billing/coupon-settings/${encodeURIComponent(selectedCoupon.id)}`);
       await loadCoupons({ silent: true, preferredId: null });
-      showMessage('success', result.message || '折扣资料已删除。');
+      showMessage('success', result.message || '折扣資料已刪除。');
     } catch (error) {
-      showMessage('error', error.message || '无法删除折扣资料。');
+      showMessage('error', error.message || '無法刪除折扣資料。');
     } finally {
       setIsSaving(false);
     }
@@ -240,9 +240,9 @@ const DiscountData = forwardRef((props, ref) => {
       const payload = toApiCoupon(updatedCoupon);
       const result = await apiClient.put('/billing/coupon-settings', payload);
       await loadCoupons({ silent: true, preferredId: couponId });
-      showMessage('success', result.message || '折扣状态已更新。');
+      showMessage('success', result.message || '折扣狀態已更新。');
     } catch (error) {
-      showMessage('error', error.message || '无法更新折扣状态。');
+      showMessage('error', error.message || '無法更新折扣狀態。');
     } finally {
       setIsSaving(false);
     }
@@ -306,25 +306,25 @@ const DiscountData = forwardRef((props, ref) => {
       `}</style>
       <div className="discount-shell">
         <div className="discount-scroll-area">
-          <section className="discount-summary-grid" aria-label="折扣概览">
+          <section className="discount-summary-grid" aria-label="折扣概覽">
             <div className="discount-summary-card">
               <TicketPercent size={20} aria-hidden="true" />
-              <span>折扣码总数</span>
+              <span>折扣碼總數</span>
               <strong>{coupons.length}</strong>
             </div>
             <div className="discount-summary-card">
               <BadgePercent size={20} aria-hidden="true" />
-              <span>启用中</span>
+              <span>啟用中</span>
               <strong>{activeCount}</strong>
             </div>
             <div className="discount-summary-card">
               <CircleDollarSign size={20} aria-hidden="true" />
-              <span>已使用次数</span>
+              <span>已使用次數</span>
               <strong>{redeemedCount}</strong>
             </div>
           <div className="discount-summary-card">
             <CalendarX size={20} aria-hidden="true" />
-            <span>已过期</span>
+            <span>已過期</span>
             <strong>{expiredCount}</strong>
           </div>
           </section>
@@ -334,19 +334,19 @@ const DiscountData = forwardRef((props, ref) => {
               <div className="discount-toolbar">
                 <label className="discount-search">
                   <Search size={16} aria-hidden="true" />
-                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索代码或名称" />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋代碼或名稱" />
                 </label>
-                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="筛选状态">
-                  <option value="all">全部状态</option>
-                  <option value="active">启用</option>
+                <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="篩選狀態">
+                  <option value="all">全部狀態</option>
+                  <option value="active">啟用</option>
                   <option value="disabled">停用</option>
-                  <option value="expired">过期</option>
+                  <option value="expired">過期</option>
                 </select>
               </div>
 
               <div className="discount-list">
-                {isLoading && <p className="form-message">载入折扣资料中...</p>}
-                {!isLoading && filteredCoupons.length === 0 && <p className="form-message">没有符合条件的折扣资料。</p>}
+                {isLoading && <p className="form-message">載入折扣資料中...</p>}
+                {!isLoading && filteredCoupons.length === 0 && <p className="form-message">沒有符合條件的折扣資料。</p>}
                 {!isLoading && filteredCoupons.map((coupon) => (
               <div
                     className={`discount-list-item ${selectedId === coupon.id ? 'active' : ''}`}
@@ -366,7 +366,7 @@ const DiscountData = forwardRef((props, ref) => {
                             event.stopPropagation(); // Prevent selecting the coupon when clicking the switch
                             await toggleCouponStatus(coupon.id, coupon.status);
                           }}
-                          aria-label={coupon.status === 'active' ? '已启用' : '已停用'}
+                          aria-label={coupon.status === 'active' ? '已啟用' : '已停用'}
                         >
                           <span className="discount-mini-switch-dot" />
                         </button>
@@ -381,7 +381,7 @@ const DiscountData = forwardRef((props, ref) => {
             <form className="discount-detail-panel" onSubmit={saveDraft}>
               <div className="discount-detail-head">
                 <div className="discount-detail-title">
-                  <span>{mode === 'add' ? '新增折扣' : '折扣规则'}</span>
+                  <span>{mode === 'add' ? '新增折扣' : '折扣規則'}</span>
                   {detailTitle && <h3 style={{ fontSize: '14px', margin: 0 }}>{detailTitle}</h3>}
                 </div>
                 <em className={`discount-status ${draftCoupon.status}`}>{statusText(draftCoupon.status)}</em>
@@ -389,8 +389,8 @@ const DiscountData = forwardRef((props, ref) => {
 
               <div className="discount-preview">
                 <div>
-                  <small>结算页展示</small>
-                  <strong style={{ fontSize: '14px' }}>{draftCoupon.displayName || '折扣名称'}</strong>
+                  <small>結算頁展示</small>
+                  <strong style={{ fontSize: '14px' }}>{draftCoupon.displayName || '折扣名稱'}</strong>
                   <span style={{ fontSize: '14px' }}>{draftCoupon.couponCode || 'COUPON'}：{formatDiscount(draftCoupon)} 折扣</span>
                 </div>
                 <BadgePercent size={28} aria-hidden="true" />
@@ -398,18 +398,18 @@ const DiscountData = forwardRef((props, ref) => {
 
               <div className="tenant-field-grid discount-field-grid">
                 <label>
-                  折扣代码
+                  折扣代碼
                   <input value={draftCoupon.couponCode} onChange={updateDraft('couponCode')} placeholder="SAVE20" disabled={isSaving} />
                 </label>
                 <label>
-                  显示名称
+                  顯示名稱
                   <input value={draftCoupon.displayName} onChange={updateDraft('displayName')} placeholder="20% launch discount" disabled={isSaving} />
                 </label>
                 <label>
-                  折扣类型
+                  折扣類型
                   <select value={draftCoupon.discountType} onChange={updateDraft('discountType')} disabled={isSaving}>
                     <option value="percent">百分比折扣</option>
-                    <option value="fixed_amount">固定金额减免</option>
+                    <option value="fixed_amount">固定金額減免</option>
                   </select>
                 </label>
                 <label>
@@ -417,7 +417,7 @@ const DiscountData = forwardRef((props, ref) => {
                   <input type="number" min="0" step="0.01" value={draftCoupon.discountValue} onChange={updateDraft('discountValue')} disabled={isSaving} />
                 </label>
                 <label>
-                  币种
+                  幣種
                   <select value={draftCoupon.currency || 'TWD'} onChange={updateDraft('currency')} disabled={isSaving}>
                     {currencyOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -425,17 +425,17 @@ const DiscountData = forwardRef((props, ref) => {
                   </select>
                 </label>
                 <label>
-                  状态
+                  狀態
                   <select value={draftCoupon.status} onChange={updateDraft('status')} disabled={isSaving}>
-                    <option value="active">启用</option>
+                    <option value="active">啟用</option>
                     <option value="disabled">停用</option>
-                    <option value="expired">过期</option>
+                    <option value="expired">過期</option>
                   </select>
                 </label>
                 <label className="discount-date-field">
                   生效日期
                   <input type="date" value={draftCoupon.validFrom || ''} onChange={updateDraft('validFrom')} disabled={isSaving} />
-                  <small className="discount-field-hint">可为空，表示不限制起始日期。</small>
+                  <small className="discount-field-hint">可為空，表示不限制起始日期。</small>
                 </label>
                 <label className="discount-date-field">
                   到期日期
@@ -443,22 +443,22 @@ const DiscountData = forwardRef((props, ref) => {
                 </label>
                 <label className="span-2">
                   使用上限
-                  <input type="number" min="0" value={draftCoupon.maxRedemptions || ''} onChange={updateDraft('maxRedemptions')} placeholder="不填写表示不限次数" disabled={isSaving} />
+                  <input type="number" min="0" value={draftCoupon.maxRedemptions || ''} onChange={updateDraft('maxRedemptions')} placeholder="不填寫表示不限次數" disabled={isSaving} />
                 </label>
               </div>
 
               <div className="discount-rule-strip">
                 <CalendarDays size={18} aria-hidden="true" />
-                <span>{draftCoupon.validFrom || '不限起始日期'} 至 {draftCoupon.validUntil || '未设置'}</span>
+                <span>{draftCoupon.validFrom || '不限起始日期'} 至 {draftCoupon.validUntil || '未設定'}</span>
                 <b>{Number(draftCoupon.redeemedCount || 0)} / {draftCoupon.maxRedemptions || '不限'}</b>
               </div>
 
               {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
 
               <menu className="form-actions discount-actions">
-                {isEditing && <button className="ghost-btn danger" type="button" onClick={deleteDraft} disabled={isSaving}>删除</button>}
+                {isEditing && <button className="ghost-btn danger" type="button" onClick={deleteDraft} disabled={isSaving}>刪除</button>}
                 <button className="ghost-btn" type="button" onClick={cancelEdit} disabled={isSaving}>取消</button>
-                <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '保存中...' : mode === 'add' ? '建立折扣' : '保存修改'}</button>
+                <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '儲存中...' : mode === 'add' ? '建立折扣' : '儲存修改'}</button>
               </menu>
             </form>
           </section>
