@@ -892,7 +892,7 @@ export default function EcardStyles() {
         .ecard-table td {
           padding: 14px 20px;
           border-bottom: 1px solid #1f2937;
-          color: #334155;
+          color: #e5e7eb;
           font-size: 14px;
           vertical-align: middle;
           white-space: nowrap;
