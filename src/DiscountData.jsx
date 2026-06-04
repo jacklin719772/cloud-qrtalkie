@@ -261,6 +261,8 @@ const DiscountData = forwardRef((props, ref) => {
         #discount-data .discount-summary-card strong { color: #f3f4f6; }
         #discount-data .discount-list-panel,
         #discount-data .discount-detail-panel { background: #111827; border-color: #1f2937; }
+        #discount-data .discount-detail-panel { scrollbar-width: none; }
+        #discount-data .discount-detail-panel::-webkit-scrollbar { display: none; }
         #discount-data .discount-toolbar { border-bottom-color: #1f2937; }
         #discount-data .discount-search { background: #1a2332; border-color: #374151; color: #9ca3af; }
         #discount-data .discount-search input,
