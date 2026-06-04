@@ -328,7 +328,7 @@ export default function EcardStyles() {
             </div>
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '16px', marginTop: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基础信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', marginBottom: '16px', marginTop: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基础信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式编号 <span style={{ color: '#ef4444' }}>*</span></span>
@@ -361,7 +361,7 @@ export default function EcardStyles() {
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片展示</h4>
+                <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片展示</h4>
                 <button type="button" className="ghost-btn" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}>
                   <Upload size={14} /> 上傳展示圖片
                 </button>
@@ -392,7 +392,7 @@ export default function EcardStyles() {
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
+                <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
                 <button type="button" className="ghost-btn" onClick={() => bgFileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}>
                   <Upload size={14} /> 上傳背景圖片
                 </button>
@@ -476,7 +476,7 @@ export default function EcardStyles() {
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* 左侧 */}
                 <div style={{ flex: '0 0 35%', borderRight: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#fcfcfc', flexShrink: 0 }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#1e293b' }}>背景图預覽</h4>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#f3f4f6' }}>背景图預覽</h4>
                   {(() => {
                     const currentBg = formData.backgrounds.find(b => b.id === currentCodeBgId);
                     return (
@@ -588,7 +588,7 @@ export default function EcardStyles() {
                     onBlur={e => e.target.style.borderColor = '#e2e8f0'}
                   />
                   <div style={{ marginTop: '16px', padding: '10px 16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #1f2937', flexShrink: 0 }}>
-                    <h5 style={{ margin: '0 0 8px', fontSize: '13px', color: '#1e293b', fontWeight: 600 }}>说明</h5>
+                    <h5 style={{ margin: '0 0 8px', fontSize: '13px', color: '#f3f4f6', fontWeight: 600 }}>说明</h5>
                     <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
                       <li>直接粘贴已经调试好的 JSON 内容</li>
                       <li>支持 layout_json / default_style_json / display_config_json</li>
@@ -1222,7 +1222,7 @@ export default function EcardStyles() {
               <button type="button" onClick={() => setPreviewItem(null)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#64748b', lineHeight: 1 }}>×</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#1e293b', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#f3f4f6', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片</h4>
               {previewItem.samples && previewItem.samples.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                   {previewItem.samples.map(s => (
@@ -1238,7 +1238,7 @@ export default function EcardStyles() {
 
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
 
-              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#1e293b', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#f3f4f6', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
               {previewItem.backgrounds && previewItem.backgrounds.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                   {previewItem.backgrounds.map(b => (
