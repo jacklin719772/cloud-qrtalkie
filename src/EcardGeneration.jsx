@@ -1061,7 +1061,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-form-title {
             font-size: 15px;
             font-weight: 600;
-            color: #1e293b;
+            color: #f3f4f6;
             margin: 0 0 20px 0;
             border-left: 3px solid #3b82f6;
             padding-left: 8px;
