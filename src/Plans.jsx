@@ -700,7 +700,19 @@ const Plans = forwardRef((props, ref) => {
         #plans .settings-block-head h3 { color: #f3f4f6; }
         #plans .field-label { color: #d1d5db; }
         #plans input, #plans select, #plans textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #console #plans .tenant-settings-form input,
+        #console #plans .tenant-settings-form select,
+        #console #plans .tenant-settings-form textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #console #plans .form-grid input,
+        #console #plans .form-grid select,
+        #console #plans .form-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #plans input:focus, #plans select:focus, #plans textarea:focus { border-color: #3b82f6; }
+        #console #plans .tenant-settings-form input:focus,
+        #console #plans .tenant-settings-form select:focus,
+        #console #plans .tenant-settings-form textarea:focus { border-color: #3b82f6; }
+        #console #plans .form-grid input:focus,
+        #console #plans .form-grid select:focus,
+        #console #plans .form-grid textarea:focus { border-color: #3b82f6; }
         #plans input::placeholder { color: #6b7280; }
         #plans .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
         #plans .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
