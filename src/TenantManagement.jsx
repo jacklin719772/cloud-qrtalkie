@@ -687,7 +687,13 @@ export default function TenantManagement() {
                   </div>
                 ) : (
                 <tbody>
-                      <td>{getStatusBadge(tenant.status)}</td>
+                  {paginatedTenants.map((tenant) => (
+                    <tr key={tenant.id || tenant.tenantNumber}>
+                      <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || tenant.id || '-'}</td>
+                      <td>{tenant.companyName || '-'}</td>
+                      <td>{formatDate(tenant.createdAt)}</td>
+                      <td>{tenant.userLimit || tenant.subscriptionQuantity || tenant.accountQuantity || tenant.seats || 0}</td>
+                      <td>{tenant.totalPaid !== undefined ? tenant.totalPaid : '-'}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                           <button 
@@ -731,6 +737,7 @@ export default function TenantManagement() {
                     </tr>
                   ))}
                 </tbody>
+              )}
               </table>
             </div>
 
