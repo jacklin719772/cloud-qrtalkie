@@ -332,29 +332,29 @@ export default function EcardStyles() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式编号 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={formData.styleCode} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} placeholder="系统自动產生" />
+                  <input required value={formData.styleCode} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} placeholder="系统自动產生" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} placeholder="例如：企业商务蓝卡" />
+                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="例如：企业商务蓝卡" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式類型 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <select required value={formData.styleType} onChange={e => setFormData({ ...formData, styleType: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#111827' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'}>
+                  <select required value={formData.styleType} onChange={e => setFormData({ ...formData, styleType: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'}>
                     <option value="with_company">包含企业名稱</option>
                     <option value="without_company">不包含企业名稱</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <select required value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#111827' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'}>
+                  <select required value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'}>
                     <option value="active">啟用</option>
                     <option value="disabled">停用</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
-                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} placeholder="简单描述该风格的特點" />
+                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="简单描述该风格的特點" />
                 </label>
               </div>
 
