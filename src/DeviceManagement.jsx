@@ -505,7 +505,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>UUID <RequiredMark /></span>
-                  <input value={formData.uuid} readOnly={viewMode === 'edit'} onChange={(event) => setFormData({ ...formData, uuid: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af' } : {}) }} required />
+                  <input value={formData.uuid} readOnly={viewMode === 'edit'} onChange={(event) => setFormData({ ...formData, uuid: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', ...(viewMode === 'edit' ? { backgroundColor: '#0f172a', color: '#6b7280' } : {}) }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>繼電器ID</span>
