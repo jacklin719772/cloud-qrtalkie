@@ -933,7 +933,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         <div className="device-table-card">
           <div className="device-table-wrapper">
             <table className="device-table">
-              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
                   {[
@@ -945,7 +945,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                     ['createdAt', '新增時間', '150px'],
                     ['creatorName', '新增人', '170px'],
                   ].map(([key, label, width]) => (
-                    <th key={key} style={{ width }}>
+                    <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" onClick={() => handleSort(key)} style={{ border: 0, background: 'transparent', color: 'inherit', padding: 0, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>{label}{getSortIcon(key)}</button>
                     </th>
                   ))}
