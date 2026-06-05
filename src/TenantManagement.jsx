@@ -330,21 +330,19 @@ export default forwardRef(function TenantManagement(props, ref) {
 
   const validateAddForm = () => {
     if (!addForm.companyName.trim()) return '請輸入公司名稱。';
-    if (!addForm.loginEmail.trim()) return '請輸入管理員信箱。';
-    if (!addForm.password.trim()) return '請輸入管理員密碼。';
-    if (addForm.password.trim().length < 8) return '密碼至少需要 8 位字元。';
+    if (viewMode === 'add') {
+      if (!addForm.loginEmail.trim()) return '請輸入管理員信箱。';
+      if (!addForm.password.trim()) return '請輸入管理員密碼。';
+      if (addForm.password.trim().length < 8) return '密碼至少需要 8 位字元。';
+      if (!isValidEmail(addForm.loginEmail.trim())) return '請輸入有效的管理員信箱。';
+    }
     if (addForm.enterpriseEmail.trim() && !isValidEmail(addForm.enterpriseEmail)) return '請輸入有效的企業信箱。';
-    if (!isValidEmail(addForm.loginEmail.trim())) return '請輸入有效的管理員信箱。';
     return '';
   };
 
   const handleAddSubmit = async (event) => {
     event.preventDefault();
     const msg = validateAddForm();
-    if (viewMode === 'add' && !addForm.password.trim()) {
-      showAddMessage('error', '請輸入管理員密碼。');
-      return;
-    }
     if (msg) { showAddMessage('error', msg); return; }
 
     setIsAdding(true);
@@ -416,18 +414,24 @@ export default forwardRef(function TenantManagement(props, ref) {
               </div>
             </section>
 
-            {!isEdit && (
             <section className="settings-block">
               <div className="settings-block-head">
                 <h3>管理員帳號</h3>
               </div>
               <div className="tenant-field-grid">
-                <label><span className="field-label">管理員信箱 <RequiredMark /></span><input type="email" value={addForm.loginEmail} onChange={updateAddField('loginEmail')} placeholder="admin@example.com" required /></label>
-                <label><span className="field-label">管理員密碼 <RequiredMark /></span><input type="password" value={addForm.password} onChange={updateAddField('password')} placeholder="至少 8 位字元" required /></label>
+                <label><span className="field-label">管理員信箱 {isEdit ? '' : <RequiredMark />}</span>
+                  {isEdit ? (
+                    <input type="email" value={addForm.loginEmail} readOnly style={{ background: '#0f172a', color: '#6b7280' }} />
+                  ) : (
+                    <input type="email" value={addForm.loginEmail} onChange={updateAddField('loginEmail')} placeholder="admin@example.com" required />
+                  )}
+                </label>
+                {!isEdit && (
+                  <label><span className="field-label">管理員密碼 <RequiredMark /></span><input type="password" value={addForm.password} onChange={updateAddField('password')} placeholder="至少 8 位字元" required /></label>
+                )}
                 <label>管理員電話<input type="tel" value={addForm.adminPhone} onChange={updateAddField('adminPhone')} placeholder="請輸入管理員電話" /></label>
               </div>
             </section>
-            )}
 
           </div>
 
