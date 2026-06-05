@@ -1210,12 +1210,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量新增 Web 帳號</h3></div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>起始帳號</span><input value={batchAddForm.start} onChange={(event) => setBatchAddForm((form) => ({ ...form, start: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>增加數量</span><input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
-              {batchAddMessage.text && <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{batchAddMessage.text}</p>}
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>起始帳號</span><input value={batchAddForm.start} onChange={(event) => setBatchAddForm((form) => ({ ...form, start: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>新增數量</span><input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
+              {batchAddMessage.text && <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{batchAddMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
+              <button type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500, cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
           </form>
@@ -1228,12 +1228,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           <form onSubmit={handleResetPassword} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3></div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>新密碼</span><input type="password" value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>確認密碼</span><input type="password" value={resetConfirmPasswordValue} onChange={(event) => setResetConfirmPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
-              {resetMessage.text && <p style={{ margin: 0, fontSize: '14px', color: resetMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetMessage.text}</p>}
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>新密碼</span><input type="password" value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>確認密碼</span><input type="password" value={resetConfirmPasswordValue} onChange={(event) => setResetConfirmPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
+              {resetMessage.text && <p style={{ margin: 0, fontSize: '14px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)}>取消</button>
+              <button type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500, cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResetting}>{isResetting ? '儲存中...' : '確認重設'}</button>
             </div>
           </form>
