@@ -494,7 +494,7 @@ async function requireAdmin(request, response, next) {
       today.setHours(0, 0, 0, 0);
       const expiresAt = sipUser.service_expires_at ? new Date(sipUser.service_expires_at) : null;
       if (!expiresAt || expiresAt < today) {
-        return response.status(403).json({ message: "此账号的服务已过期，请联系管理员续订。" });
+        return response.status(403).json({ message: "此帳號的服務已過期，請聯繫管理員續訂。" });
       }
 
       request.admin = {
@@ -770,7 +770,7 @@ app.post("/api/auth/login", async (request, response) => {
 
       if (admin && (await verifyPassword(password, admin.password_hash))) {
         if (admin.status !== 'active') {
-          return response.status(403).json({ message: "此管理员账号尚未启用。" });
+          return response.status(403).json({ message: "此管理員帳號尚未啟用。" });
         }
 
         const { token, tokenHash } = createSessionToken();
@@ -828,7 +828,7 @@ app.post("/api/auth/login", async (request, response) => {
     today.setHours(0, 0, 0, 0);
     const serviceExpires = sipUser.service_expires_at ? new Date(sipUser.service_expires_at) : null;
     if (!serviceExpires || serviceExpires < today) {
-      return response.status(403).json({ message: "此账号的服务已过期，请联系管理员续订。" });
+      return response.status(403).json({ message: "此帳號的服務已過期，請聯繫管理員續訂。" });
     }
 
     const { token, tokenHash } = createSessionToken();
@@ -11050,7 +11050,7 @@ app.use("/api/community-images", express.static(path.join(projectRoot, "assets/c
 // GET /api/platform/admins - list all platform admins
 app.get("/api/platform/admins", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超级管理员可以管理平台管理员。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
   }
   let connection;
   try {
@@ -11072,7 +11072,7 @@ app.get("/api/platform/admins", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch platform admins:", error);
-    return response.status(500).json({ message: "获取管理员列表失败。" });
+    return response.status(500).json({ message: "取得管理員列表失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11081,7 +11081,7 @@ app.get("/api/platform/admins", requireAdmin, async (request, response) => {
 // POST /api/platform/admins - create a platform admin
 app.post("/api/platform/admins", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超级管理员可以管理平台管理员。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
   }
   const email = sanitizeString(request.body?.email, 255);
   const password = String(request.body?.password || "");
@@ -11106,12 +11106,12 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
       [email, passwordHash, displayName || null, phoneNumber || null, platformRole]
     );
     return response.status(201).json({
-      message: "平台管理员已创建。",
+      message: "平台管理員已建立。",
       admin: { id: Number(result.insertId), email, displayName, platformRole, status: 'active' },
     });
   } catch (error) {
     console.error("Failed to create platform admin:", error);
-    return response.status(500).json({ message: "创建管理员失败。" });
+    return response.status(500).json({ message: "建立管理員失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11120,10 +11120,10 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
 // PUT /api/platform/admins/:id - update a platform admin
 app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超级管理员可以管理平台管理员。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
   }
   const adminId = Number(request.params.id);
-  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理员编号无效。" });
+  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
 
   const email = sanitizeString(request.body?.email, 255);
   const displayName = sanitizeString(request.body?.displayName, 120);
@@ -11139,9 +11139,9 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
     const [existing] = await connection.query("SELECT id FROM admin_users WHERE id = ? AND account_type = 'platform'", [adminId]);
-    if (!existing) return response.status(404).json({ message: "管理员不存在。" });
+    if (!existing) return response.status(404).json({ message: "管理員不存在。" });
     if (existing.platform_role === "super_admin" && adminId !== request.admin.id) {
-      return response.status(403).json({ message: "不能修改超级管理员的角色。" });
+      return response.status(403).json({ message: "不能修改超級管理員的角色。" });
     }
 
     let sql = "UPDATE admin_users SET ";
@@ -11156,10 +11156,10 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
     sql += sets.join(", ") + " WHERE id = ? AND account_type = 'platform'";
     params.push(adminId);
     await connection.query(sql, params);
-    return response.json({ message: "管理员信息已更新。" });
+    return response.json({ message: "管理員資訊已更新。" });
   } catch (error) {
     console.error("Failed to update platform admin:", error);
-    return response.status(500).json({ message: "更新管理员失败。" });
+    return response.status(500).json({ message: "更新管理員失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11168,25 +11168,25 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
 // PUT /api/platform/admins/:id/status - toggle platform admin status
 app.put("/api/platform/admins/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超级管理员可以管理平台管理员。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
   }
   const adminId = Number(request.params.id);
-  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理员编号无效。" });
+  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
   const status = request.body?.status === 'disabled' ? 'disabled' : 'active';
 
   let connection;
   try {
     connection = await pool.getConnection();
     const [existing] = await connection.query("SELECT id, platform_role FROM admin_users WHERE id = ? AND account_type = 'platform'", [adminId]);
-    if (!existing) return response.status(404).json({ message: "管理员不存在。" });
+    if (!existing) return response.status(404).json({ message: "管理員不存在。" });
     if (existing.platform_role === "super_admin") {
-      return response.status(403).json({ message: "不能停用超级管理员。" });
+      return response.status(403).json({ message: "不能停用超級管理員。" });
     }
     await connection.query("UPDATE admin_users SET status = ? WHERE id = ?", [status, adminId]);
-    return response.json({ message: status === 'active' ? "管理员已启 用。" : "管理员已停用。" });
+    return response.json({ message: status === 'active' ? "管理員已啟用。" : "管理員已停用。" });
   } catch (error) {
     console.error("Failed to toggle platform admin status:", error);
-    return response.status(500).json({ message: "状态切换失败。" });
+    return response.status(500).json({ message: "狀態切換失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11196,22 +11196,22 @@ app.put("/api/platform/admins/:id/status", requireAdmin, async (request, respons
 // DELETE /api/platform/admins/:id - delete a platform admin
 app.delete("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超级管理员可以管理平台管理员。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
   }
   const adminId = Number(request.params.id);
-  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理员编号无效。" });
+  if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
   let connection;
   try {
     connection = await pool.getConnection();
     const [existing] = await connection.query("SELECT id, platform_role FROM admin_users WHERE id = ? AND account_type = 'platform'", [adminId]);
-    if (!existing) return response.status(404).json({ message: "管理员不存在。" });
-    if (existing.platform_role === "super_admin") return response.status(403).json({ message: "不能删除超级管理员。" });
+    if (!existing) return response.status(404).json({ message: "管理員不存在。" });
+    if (existing.platform_role === "super_admin") return response.status(403).json({ message: "不能刪除超級管理員。" });
     await connection.query("DELETE FROM admin_sessions WHERE admin_user_id = ?", [adminId]);
     await connection.query("DELETE FROM admin_users WHERE id = ?", [adminId]);
-    return response.json({ message: "管理员已删除。" });
+    return response.json({ message: "管理員已刪除。" });
   } catch (error) {
     console.error("Failed to delete platform admin:", error);
-    return response.status(500).json({ message: "删除管理员失败。" });
+    return response.status(500).json({ message: "刪除管理員失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11286,7 +11286,7 @@ function getLoadAvg() {
 
 app.get("/api/platform/health", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理员可以查看平台健康状态。" });
+    return response.status(403).json({ message: "只有平台管理員可以查看平台健康狀態。" });
   }
   try {
     const cpu = getCpuUsage();
@@ -11434,14 +11434,14 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
-    return response.status(500).json({ message: "读取平台健康状态失败。" });
+    return response.status(500).json({ message: "讀取平台健康狀態失敗。" });
   }
 });
 
 // POST /api/platform/health/restart-ai - restart Web AI Docker service
 app.post("/api/platform/health/restart-ai", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理员可以重启服务。" });
+    return response.status(403).json({ message: "只有平台管理員可以重啟服務。" });
   }
   try {
     const { execSync } = await import("node:child_process");
@@ -11458,7 +11458,7 @@ app.post("/api/platform/health/restart-ai", requireAdmin, async (request, respon
 // POST /api/platform/health/clean-logs - clean Asterisk and Flexisip logs safely
 app.post("/api/platform/health/clean-logs", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理员可以清理日志。" });
+    return response.status(403).json({ message: "只有平台管理員可以清理日誌。" });
   }
   try {
     const { execSync } = await import("node:child_process");
@@ -11485,17 +11485,17 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
       }
     } catch {}
 
-    return response.json({ message: "日志清理完成。当前日志已清空，归档文件已删除。", ...results });
+    return response.json({ message: "日誌清理完成。當前日誌已清空，歸檔文件已刪除。", ...results });
   } catch (error) {
     console.error("Failed to clean logs:", error);
-    return response.status(500).json({ message: "清理日志失败：" + (error.message || "") });
+    return response.status(500).json({ message: "清理日誌失敗：" + (error.message || "") });
   }
 });
 
 // GET /api/flexisip/statistics/calls - proxy Flexisip Admin calls statistics.
 app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理员可以查看 Flexisip 通话统计。" });
+    return response.status(403).json({ message: "只有平台管理員可以查看 Flexisip 通話統計。" });
   }
 
   const from = sanitizeString(request.query.from || "", 20);
@@ -11505,13 +11505,13 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
   const allowedPeriods = new Set(["day", "week", "month", "year"]);
 
   if (period && !allowedPeriods.has(period)) {
-    return response.status(400).json({ message: "统计粒度只能是 day、week、month 或 year。" });
+    return response.status(400).json({ message: "統計粒度只能是 day、week、month 或 year。" });
   }
   if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
-    return response.status(400).json({ message: "from 必须是 YYYY-MM-DD 格式。" });
+    return response.status(400).json({ message: "from 必須是 YYYY-MM-DD 格式。" });
   }
   if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-    return response.status(400).json({ message: "to 必须是 YYYY-MM-DD 格式。" });
+    return response.status(400).json({ message: "to 必須是 YYYY-MM-DD 格式。" });
   }
 
   try {
@@ -11629,7 +11629,7 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理员可以查看平台统计。" });
+    return response.status(403).json({ message: "只有平台管理員可以查看平台統計。" });
   }
   let connection;
   try {
@@ -11683,7 +11683,7 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch platform stats:", error);
-    return response.status(500).json({ message: "读取平台统计失败。" });
+    return response.status(500).json({ message: "讀取平台統計失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11693,10 +11693,10 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
 // GET /api/tenant/dashboard - tenant dashboard data (tenant admin only)
 app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理员请使用平台概览。" });
+    return response.status(403).json({ message: "平台管理員請使用平台概覽。" });
   }
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租户管理员可以查看租户概览。" });
+    return response.status(403).json({ message: "只有租戶管理員可以查看租戶概覽。" });
   }
   const tenantId = request.admin.tenantId;
   let connection;
