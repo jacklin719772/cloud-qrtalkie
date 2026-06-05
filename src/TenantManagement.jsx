@@ -21,8 +21,6 @@ const emptyForm = {
   loginEmail: '',
   password: '',
   adminPhone: '',
-  userLimit: 100,
-  sipDomain: '',
 };
 
 export default forwardRef(function TenantManagement(props, ref) {
@@ -370,8 +368,6 @@ export default forwardRef(function TenantManagement(props, ref) {
         loginEmail: addForm.loginEmail.trim(),
         password: addForm.password,
         adminPhone: addForm.adminPhone.trim(),
-        userLimit: Number(addForm.userLimit) || 100,
-        sipDomain: addForm.sipDomain.trim(),
       });
       showAddMessage('success', '租戶新增成功。');
       setAddForm({ ...emptyForm });
@@ -391,20 +387,19 @@ export default forwardRef(function TenantManagement(props, ref) {
           #tenant-management-add .settings-block-head h3 { color: #f3f4f6; }
           #tenant-management-add .settings-block-head { border-bottom-color: #1f2937; }
           #tenant-management-add .field-label { color: #d1d5db; }
-          #tenant-management-add .tenant-field-grid label { color: #d1d5db; }
-          #tenant-management-add .tenant-field-grid input,
-          #tenant-management-add .tenant-field-grid select,
-          #tenant-management-add .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
-          #tenant-management-add .tenant-field-grid input:focus,
-          #tenant-management-add .tenant-field-grid textarea:focus { border-color: #3b82f6; }
-          #tenant-management-add .tenant-field-grid input::placeholder,
-          #tenant-management-add .tenant-field-grid textarea::placeholder { color: #6b7280; }
           #tenant-management-add .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
           #tenant-management-add .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
           #tenant-management-add .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
           #tenant-management-add .form-message { color: #d1d5db; }
           #tenant-management-add .form-message.error { background: #3b1111; color: #ef4444; }
           #tenant-management-add .form-message.success { background: #0d2818; color: #22c55e; }
+          #console #tenant-management-add .tenant-settings-form input,
+          #console #tenant-management-add .tenant-settings-form textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #console #tenant-management-add .tenant-settings-form input:focus,
+          #console #tenant-management-add .tenant-settings-form textarea:focus { border-color: #3b82f6; }
+          #console #tenant-management-add .tenant-settings-form input::placeholder,
+          #console #tenant-management-add .tenant-settings-form textarea::placeholder { color: #6b7280; }
+          #console #tenant-management-add .tenant-field-grid label { color: #d1d5db; }
         `}</style>
         <form className="tenant-settings-form" onSubmit={handleAddSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
           <div className="tenant-scroll-area" style={{ background: '#111827' }}>
@@ -433,15 +428,6 @@ export default forwardRef(function TenantManagement(props, ref) {
               </div>
             </section>
 
-            <section className="settings-block">
-              <div className="settings-block-head">
-                <h3>服務設定</h3>
-              </div>
-              <div className="tenant-field-grid">
-                <label>訂閱數量<input type="number" min="1" value={addForm.userLimit} onChange={updateAddField('userLimit')} /></label>
-                <label>SIP 網域<input value={addForm.sipDomain} onChange={updateAddField('sipDomain')} placeholder="sip.example.com" /></label>
-              </div>
-            </section>
           </div>
 
           <div className="tenant-fixed-actions" style={{ background: '#111827', borderTopColor: '#1f2937' }}>
