@@ -895,6 +895,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         #device-management .device-page-jump { color: #9ca3af; }
         #device-management .device-table-wrapper { scrollbar-width: none; }
         #device-management .device-table-wrapper::-webkit-scrollbar { display: none; }
+        #device-management .device-table input[type="checkbox"] { accent-color: #3b82f6; background: transparent; }
         #device-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #device-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #device-management .form-message { color: #d1d5db; }
@@ -935,7 +936,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             <table className="device-table">
               <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
-                  <th style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
+                  <th style={{ width: '50px', textAlign: 'center', padding: 0, background: '#1a2332' }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
                   {[
                     ['uuid', 'UUID', '190px'],
                     ['relayId', '繼電器ID', '170px'],
