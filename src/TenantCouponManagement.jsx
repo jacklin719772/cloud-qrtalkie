@@ -95,7 +95,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
     try {
       const params = new URLSearchParams({
         page: String(nextPage),
-        pageSize: String(pageSize),
+        pageSize: String(effectivePageSize),
         status,
         q: kw.trim(),
       });
@@ -678,6 +678,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-page-btn { background: #1f2937; border-color: #4b5563; color: #9ca3af; }
         #tenant-coupon-management .tenant-coupon-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
         #tenant-coupon-management .tenant-coupon-page-btn:disabled { opacity: 0.4; }
+        #tenant-coupon-management .tenant-coupon-page-size { background: #1a2332; border-color: #374151; color: #e5e7eb; cursor: pointer; }
+        #tenant-coupon-management .tenant-coupon-page-size:focus { border-color: #3b82f6; }
         #tenant-coupon-management .tenant-coupon-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
         #tenant-coupon-management .tenant-coupon-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #tenant-coupon-management .tenant-coupon-table-wrapper { scrollbar-width: none; }
@@ -789,9 +791,9 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
             </div>
 
             <div className="tenant-coupon-table-footer">
-              <div className="tenant-coupon-total">共 {total} 条</div>
+              <div className="tenant-coupon-total">共 {total} 條</div>
               <div className="tenant-coupon-pagination">
-                <span className="tenant-coupon-page-size">{pageSize} 条/页</span>
+                <select className="tenant-coupon-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === "全部" ? "全部" : Number(v)); setPage(1); }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === "全部" ? "全部" : opt + " 條/頁"}</option>)}</select>
                 <button className="tenant-coupon-page-btn" type="button" onClick={() => goToPage(page - 1)} disabled={isLoading || page <= 1}>‹</button>
                 <span className="tenant-coupon-page-current">{page}</span>
                 <button className="tenant-coupon-page-btn" type="button" onClick={() => goToPage(page + 1)} disabled={isLoading || page >= totalPages}>›</button>
