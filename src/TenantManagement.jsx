@@ -850,7 +850,7 @@ export default forwardRef(function TenantManagement(props, ref) {
                   ) : (
                     paginatedTenants.map((tenant) => (
                     <tr key={tenant.id || tenant.tenantNumber}>
-                      <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || tenant.id || '-'}</td>
+                      <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || (tenant.id != null ? String(tenant.id) : null) || '-'}</td>
                       <td>{tenant.companyName || '-'}</td>
                       <td>{formatDate(tenant.createdAt)}</td>
                       <td>{tenant.userLimit || tenant.subscriptionQuantity || tenant.accountQuantity || tenant.seats || 0}</td>
@@ -924,7 +924,7 @@ export default forwardRef(function TenantManagement(props, ref) {
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>租戶詳細資訊</h3>
               <button className="ghost-btn" onClick={() => setDetailsModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0, scrollbarWidth: 'none' }}>
             {isDetailsLoading ? (
               <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
             ) : selectedTenantDetails ? (
@@ -1002,7 +1002,7 @@ export default forwardRef(function TenantManagement(props, ref) {
               <button className="ghost-btn" onClick={() => setEditModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
             </div>
             <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0 }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0, scrollbarWidth: 'none' }}>
                 {isDetailsLoading ? (
                   <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
                 ) : editingTenantData ? (
