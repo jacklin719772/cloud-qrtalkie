@@ -746,7 +746,7 @@ export default forwardRef(function TenantManagement(props, ref) {
           #tenant-management .tenant-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
           #tenant-management .tenant-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
           #tenant-management .tenant-stat-pill strong { color: #ffffff; }
-          #tenant-management .tenant-table-card { background: #111827; border-color: #1f2937; box-shadow: none; border-radius: 14px; min-height: 300px; }
+          #tenant-management .tenant-table-card { background: #1a2332; border-color: #1f2937; box-shadow: none; border-radius: 14px; min-height: 300px; }
           #tenant-management .tenant-table thead { background: #1a2332; }
           #tenant-management .tenant-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
           #tenant-management .tenant-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
@@ -774,6 +774,9 @@ export default forwardRef(function TenantManagement(props, ref) {
           #tenant-management .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
           #tenant-management .dropdown-menu-portal button { color: #d1d5db; }
           #tenant-management .dropdown-menu-portal button:hover { background: #374151; }
+          #tenant-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+          #tenant-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+          #tenant-management .row-actions .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; }
       `}</style>
       <section className="view active" id="tenant-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
@@ -851,20 +854,21 @@ export default forwardRef(function TenantManagement(props, ref) {
                       <td>{formatDate(tenant.createdAt)}</td>
                       <td>{tenant.userLimit || tenant.subscriptionQuantity || tenant.accountQuantity || tenant.seats || 0}</td>
                       <td>{tenant.totalPaid !== undefined ? tenant.totalPaid : '-'}</td>
+                      <td>{getStatusBadge(tenant.status)}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
-                          <button 
-                            className="ghost-btn" 
-                            type="button" 
-                            style={{ fontSize: '12px', padding: '4px 8px' }}
+                          <button
+                            className="ghost-btn"
+                            type="button"
+                            style={{ fontSize: '12px', padding: '4px 8px', background: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb' }}
                             onClick={() => handleDetails(tenant)}
                           >
                             詳情
                           </button>
-                          <button 
-                            className="ghost-btn" 
-                            type="button" 
-                            style={{ fontSize: '12px', padding: '4px 8px' }}
+                          <button
+                            className="ghost-btn"
+                            type="button"
+                            style={{ fontSize: '12px', padding: '4px 8px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563' }}
                             onClick={(e) => {
                               e.stopPropagation();
                               const button = e.currentTarget;
