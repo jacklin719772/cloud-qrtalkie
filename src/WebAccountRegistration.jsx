@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import apiClient from './apiClient';
 
-const pageSizeOptions = [10, 20, 50, "全部"];
-  const [pageSize, setPageSize] = useState(10);
 const defaultSipDomain = import.meta.env.VITE_WEBRTC_DOMAIN || 'pbx.qrtalkie.org';
 
 const emptyWebAccountForm = {
@@ -42,6 +40,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const pageSizeOptions = [10, 20, 50, "全部"];
+  const [pageSize, setPageSize] = useState(10);
   const [selectedIds, setSelectedIds] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [viewMode, setViewMode] = useState('list');
@@ -165,8 +165,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     });
   }, [filteredAccounts, sortConfig]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
-  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * (pageSize === "全部" ? (filtered.length || 1) : pageSize), currentPage * (pageSize === "全部" ? (filtered.length || 1) : pageSize));
+  const effectivePageSize = pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / effectivePageSize));
+  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
   function handleSort(key) {
     setSortConfig((current) => ({
