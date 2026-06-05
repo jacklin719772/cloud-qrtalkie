@@ -200,7 +200,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   function startEdit(account) {
     if (account.tenantName) {
-      window.alert('已经分配给租戶的帳號不允许編輯。');
+      window.alert('已經分配给租戶的帳號不允許編輯。');
       return;
     }
     setFormData({
@@ -372,7 +372,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      setFormMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setFormMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
 
@@ -452,7 +452,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       window.alert(`所选帳號中有 ${assignedAccounts.length} 個已分配给租戶，请先取消分配。`);
       return;
     }
-    if (!window.confirm(`確定要刪除选中的 ${selectedAccounts.length} 個 Web 帳號吗？`)) return;
+    if (!window.confirm(`確定要刪除选中的 ${selectedAccounts.length} 個 Web 帳號嗎？`)) return;
     try {
       await Promise.all(selectedAccounts.map((account) => apiClient.delete(`/admin/web-accounts/${account.id}`)));
       setSelectedIds([]);
@@ -473,7 +473,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       window.alert('所选帳號均未分配给租戶。');
       return;
     }
-    if (!window.confirm(`確定要取消分配选中的 ${assignedAccounts.length} 個 Web 帳號吗？`)) return;
+    if (!window.confirm(`確定要取消分配选中的 ${assignedAccounts.length} 個 Web 帳號嗎？`)) return;
     try {
       await Promise.all(assignedAccounts.map((account) => apiClient.post(`/admin/web-accounts/${account.id}/unassign`)));
       setSelectedIds([]);
@@ -496,10 +496,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'delete') {
       if (account.tenantName) {
-        window.alert('已经分配给租戶的帳號不允许刪除。');
+        window.alert('已經分配给租戶的帳號不允許刪除。');
         return;
       }
-      if (!window.confirm(`確定刪除 Web 帳號 ${account.username} 吗？`)) return;
+      if (!window.confirm(`確定刪除 Web 帳號 ${account.username} 嗎？`)) return;
       try {
         await apiClient.delete(`/admin/web-accounts/${account.id}`);
         await loadAccounts();
@@ -517,10 +517,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'unassign') {
       if (!account.tenantName) {
-        window.alert('该帳號尚未分配给租戶。');
+        window.alert('該帳號尚未分配给租戶。');
         return;
       }
-      if (!window.confirm(`確定取消 Web 帳號 ${account.username} 的租戶分配吗？`)) return;
+      if (!window.confirm(`確定取消 Web 帳號 ${account.username} 的租戶分配嗎？`)) return;
       try {
         await apiClient.post(`/admin/web-accounts/${account.id}/unassign`);
         await loadAccounts();
@@ -530,7 +530,20 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (action === 'assign') {
-      window.alert('请在订单审核或帳號分配流程中選擇该 Web 帳號完成分配。');
+      window.alert('請在訂單审核或帳號分配流程中選擇該 Web 帳號完成分配。');
+      return;
+    }
+    if (action === 'toggle_status') {
+      const newStatus = account.status === 'active' ? 'inactive' : 'active';
+      const actionText = newStatus === 'active' ? '啟用' : '停用';
+      if (!window.confirm(`確定要${actionText} Web 帳號「${account.username}」嗎？`)) return;
+      try {
+        await apiClient.put(`/admin/web-accounts/${account.id}`, { status: newStatus });
+        await loadAccounts();
+      } catch (error) {
+        window.alert(error.message || `${actionText}失敗。`);
+      }
+      return;
     }
   }
 
@@ -542,7 +555,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (resetPasswordValue !== resetConfirmPasswordValue) {
-      setResetMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setResetMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
     setIsResetting(true);
@@ -1178,6 +1191,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('edit', account)}>編輯</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', account)}>重設密碼</button>
+                            <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction(account.tenantName ? 'unassign' : 'assign', account)}>{account.tenantName ? '取消分配' : '帳號分配'}</button>
                             <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', account)}>刪除</button>
                           </div>,
