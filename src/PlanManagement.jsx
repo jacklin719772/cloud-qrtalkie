@@ -753,28 +753,27 @@ export default function PlanManagement({ onNavigate }) {
         }
 
         /* === Dark theme overrides === */
-        #plan-management .plan-management-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #plan-management .plan-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
         #plan-management .plan-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #plan-management .plan-search input::placeholder { color: #6b7280; }
         #plan-management .plan-search input:focus { border-color: #3b82f6; }
         #plan-management .plan-filter-right select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
-        #plan-management .plan-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
-        #plan-management .plan-stat-pill strong { color: #ffffff; }
+        #plan-management .plan-management-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
+        #plan-management .plan-management-stat-pill strong { color: #ffffff; }
         #plan-management .plan-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
-        #plan-management .plan-table thead { background: #1a2332; }
-        #plan-management .plan-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
-        #plan-management .plan-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
-        #plan-management .plan-table tbody tr { background: #111827; }
-        #plan-management .plan-table tbody tr:hover { background: #1e293b; }
-        #plan-management .plan-table td:last-child,
-        #plan-management .plan-table th:last-child { background: #111827; box-shadow: -1px 0 0 #1f2937; }
-        #plan-management .plan-table th:last-child { background: #1a2332; }
-        #plan-management .plan-table-footer { background: #111827; border-top: 1px solid #1f2937; }
-        #plan-management .plan-total { color: #9ca3af; }
+        #plan-management .plan-table thead { background: #1a2332 !important; }
+        #plan-management .plan-table th { color: #e5e7eb !important; border-bottom: 1px solid #1f2937 !important; background: #1a2332 !important; }
+        #plan-management .plan-table td { color: #e5e7eb !important; border-bottom: 1px solid #1f2937 !important; }
+        #plan-management .plan-table tbody tr { background: #111827 !important; }
+        #plan-management .plan-table tbody tr:hover { background: #1e293b !important; }
+        #plan-management .plan-table td:last-child { background: #111827 !important; }
+        #plan-management .plan-table th:last-child { background: #1a2332 !important; box-shadow: -1px 0 0 #1f2937 !important; }
+        #plan-management .plan-table-footer { background: #111827 !important; border-top: 1px solid #1f2937 !important; }
+        #plan-management .plan-total { color: #9ca3af !important; }
         #plan-management .plan-page-size { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; }
         #plan-management .plan-page-btn { background: #1f2937; border: 1px solid #4b5563; color: #9ca3af; }
         #plan-management .plan-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
-        #plan-management .plan-page-btn:disabled { opacity: 0.5; background: #1a2332; color: #4b5563; }
+        #plan-management .plan-page-btn:disabled { opacity: 0.5; background: #1a2332 !important; color: #4b5563 !important; }
         #plan-management .plan-page-current { background: #1e3a5f; border: 1px solid #3b82f6; color: #60a5fa; }
         #plan-management .plan-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #plan-management .plan-page-jump { color: #9ca3af; }
@@ -812,7 +811,7 @@ export default function PlanManagement({ onNavigate }) {
                   }
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '14px' }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #374151', borderRadius: '6px', fontSize: '14px', backgroundColor: '#1a2332', color: '#e5e7eb' }}
               />
             </label>
             <select
@@ -861,7 +860,7 @@ export default function PlanManagement({ onNavigate }) {
         <div className="table-wrap plan-table-card" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
           <div className="plan-table-wrapper">
           <table className="plan-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
               <tr>
                 <th className="plan-select-cell" style={{ width: '40px', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                   <input
@@ -892,7 +891,7 @@ export default function PlanManagement({ onNavigate }) {
 	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>支付方式</th>
 	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>生效日期</th>
 	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>结束日期</th>
-	                <th className="plan-action-head" style={{ whiteSpace: 'nowrap', position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
+	                <th className="plan-action-head" style={{ whiteSpace: 'nowrap', position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -908,7 +907,7 @@ export default function PlanManagement({ onNavigate }) {
                   const paymentLabel = cellText(paymentMethodLabel(order));
                   return (
                   <tr key={order.id}>
-                    <td className="plan-select-cell" style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                    <td className="plan-select-cell" style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                       <input
                         type="checkbox"
                         checked={selectedIds.includes(order.id)}
@@ -922,18 +921,18 @@ export default function PlanManagement({ onNavigate }) {
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
-                    <td title={tenantName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{tenantName.text}</span></td>
-                    <td title={orderNo.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ color: '#e5e7eb' }}>{orderNo.text}</span></td>
-                    <td title={planName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{planName.text}</span></td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{getStatusBadge(getBusinessOrderStatus(order.order_status || order.orderStatus))}</td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{getStatusBadge(getReviewStatus(order.order_status || order.orderStatus))}</td>
-                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{order.accountQuantity || order.account_quantity || '-'}</td>
-                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{termLabel(order.months)}</td>
-                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{Number(order.payable_amount || 0).toFixed(2)}</td>
-                    <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{paymentLabel.text}</td>
-                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
-                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
-                    <td className="plan-action-cell" style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '120px', minWidth: '120px', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                    <td title={tenantName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{tenantName.text}</span></td>
+                    <td title={orderNo.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}><span style={{ color: '#e5e7eb' }}>{orderNo.text}</span></td>
+                    <td title={planName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{planName.text}</span></td>
+                    <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{getStatusBadge(getBusinessOrderStatus(order.order_status || order.orderStatus))}</td>
+                    <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{getStatusBadge(getReviewStatus(order.order_status || order.orderStatus))}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{order.accountQuantity || order.account_quantity || '-'}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{termLabel(order.months)}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{Number(order.payable_amount || 0).toFixed(2)}</td>
+                    <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{paymentLabel.text}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
+                    <td className="plan-action-cell" style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '120px', minWidth: '120px', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openDetailModal(order)}>详情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(e) => {
@@ -1030,7 +1029,7 @@ export default function PlanManagement({ onNavigate }) {
                                   {retainedAccounts.length > 0 && (
                                     <div style={{ maxHeight: '180px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px' }}>
                                       {retainedAccounts.map((account) => (
-                                        <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 110px', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#e5e7eb' }}>
+                                        <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 110px', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937', fontSize: '13px', color: '#e5e7eb' }}>
                                           <strong style={{ color: '#e5e7eb' }}>{account.displayName || account.username}</strong>
                                           <span>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</span>
                                           <span>{account.sourceServiceExpiresAt || '-'}</span>
@@ -1114,7 +1113,7 @@ export default function PlanManagement({ onNavigate }) {
                                 {retainedAccounts.length > 0 && (
                                   <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827' }}>
                                     {retainedAccounts.map((account) => (
-                                      <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 120px', gap: '12px', padding: '12px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#e5e7eb' }}>
+                                      <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 120px', gap: '12px', padding: '12px 14px', borderBottom: '1px solid #1f2937', fontSize: '13px', color: '#e5e7eb' }}>
                                         <strong style={{ color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.displayName || account.username}</strong>
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</span>
                                         <span>{account.sourceServiceExpiresAt || '-'}</span>
@@ -1172,7 +1171,7 @@ export default function PlanManagement({ onNavigate }) {
                               ) : (
                                 unassignedSipAccounts.map((account) => (
                                   <tr key={account.id}>
-                                    <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                                    <td style={{ padding: '6px 10px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                                       <input
                                         type="checkbox"
                                         checked={selectedSipAccountIds.includes(account.id)}
@@ -1189,11 +1188,11 @@ export default function PlanManagement({ onNavigate }) {
                                         style={{ cursor: (!selectedSipAccountIds.includes(account.id) && isSelectionFull) ? 'not-allowed' : 'pointer' }}
                                       />
                                     </td>
-                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.username}</td>
-                                    <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{getSipStatusBadge(account.status)}</td>
-                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.creatorName || '-'}</td>
-                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.createdAt || '-'}</td>
-                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.domain || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.username}</td>
+                                    <td style={{ padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{getSipStatusBadge(account.status)}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.creatorName || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.createdAt || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.domain || '-'}</td>
                                   </tr>
                                 ))
                               )}
