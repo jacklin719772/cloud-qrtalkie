@@ -2537,7 +2537,7 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
     const query = `
       SELECT 
         t.id,
-        t.tenant_number AS tenantNumber,
+        COALESCE(t.tenant_number, CONCAT('TENANT-', LPAD(t.id, 6, '0'))) AS tenantNumber,
         t.name AS companyName,
         t.created_at AS createdAt,
         t.user_limit AS userLimit,
@@ -2755,6 +2755,10 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       const newTenantId = Number(insertTenant.insertId || 0);
       console.log("[createTenant] Tenant inserted, newTenantId:", newTenantId, "insertId:", insertTenant.insertId);
       if (!newTenantId) return response.status(500).json({ message: "建立租戶失敗。" });
+
+      // Generate and set tenant_number
+      const tenantNumber = `TENANT-${String(newTenantId).padStart(6, "0")}`;
+      await connection.query(`UPDATE tenants SET tenant_number = ? WHERE id = ?`, [tenantNumber, newTenantId]);
 
       // Create admin account
       const adminPhone = sanitizeString(payload.adminPhone, 40);
