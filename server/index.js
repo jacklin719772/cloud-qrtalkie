@@ -2729,34 +2729,43 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
 
   let connection;
   try {
+    console.log("[createTenant] Starting tenant creation, payload:", JSON.stringify({ companyName, enterpriseEmail, contactPerson, contactPhone, billingAddress, postalCode, loginEmail: payload.loginEmail, hasPassword: !!payload.password, adminPhone: payload.adminPhone }));
     connection = await pool.getConnection();
+    console.log("[createTenant] DB connection acquired, starting transaction...");
     await connection.query("START TRANSACTION");
 
     if (isCreate) {
       // Validate required fields for creation
       const loginEmail = normalizeEmail(payload.loginEmail);
       const password = String(payload.password || "");
+      console.log("[createTenant] Validated - loginEmail:", loginEmail, "password length:", password.length);
       if (!loginEmail) return response.status(400).json({ message: "請輸入管理員信箱。" });
       if (password.length < 8) return response.status(400).json({ message: "密碼至少需要 8 位字元。" });
 
       // Create tenant
+      console.log("[createTenant] Inserting tenant...");
       const insertTenant = await connection.query(
         `INSERT INTO tenants (name, contact_email, enterprise_email, contact_person, contact_phone, billing_address, postal_code, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
         [companyName, loginEmail, enterpriseEmail || null, contactPerson || null, contactPhone || null, billingAddress || null, postalCode || null],
       );
       const newTenantId = Number(insertTenant.insertId || 0);
+      console.log("[createTenant] Tenant inserted, newTenantId:", newTenantId, "insertId:", insertTenant.insertId);
       if (!newTenantId) return response.status(500).json({ message: "建立租戶失敗。" });
 
       // Create admin account
       const adminPhone = sanitizeString(payload.adminPhone, 40);
+      const passwordHash = await hashPassword(password);
+      console.log("[createTenant] Hashing password done, creating admin_user...");
       await connection.query(
         `INSERT INTO admin_users (tenant_id, email, password_hash, phone_number, account_type, status)
          VALUES (?, ?, ?, ?, 'tenant', 'active')`,
-        [newTenantId, loginEmail, await hashPassword(password), adminPhone || null],
+        [newTenantId, loginEmail, passwordHash, adminPhone || null],
       );
+      console.log("[createTenant] Admin user created, committing...");
 
       await connection.query("COMMIT");
+      console.log("[createTenant] Transaction committed, success!");
       return response.json({ message: "租戶新增成功。", id: newTenantId });
     } else {
       // Update existing tenant
@@ -2772,12 +2781,12 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       return response.json({ message: "租戶設定已儲存。" });
     }
   } catch (error) {
+    console.error("[createTenant] ERROR:", error?.message || error, "code:", error?.code, "sqlMessage:", error?.sqlMessage, "stack:", error?.stack?.substring(0, 300));
     if (connection) {
-      try { await connection.query("ROLLBACK"); } catch {}
+      try { await connection.query("ROLLBACK"); console.log("[createTenant] Rolled back"); } catch (rbErr) { console.error("[createTenant] Rollback failed:", rbErr?.message); }
     }
-    console.error("Failed to save tenant:", error);
     if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "管理員信箱已存在。" });
-    return response.status(500).json({ message: isCreate ? "新增租戶失敗。" : "更新租戶設定失敗。" });
+    return response.status(500).json({ message: (isCreate ? "新增租戶失敗。" : "更新租戶設定失敗。") + " 錯誤: " + (error?.sqlMessage || error?.message || "") });
   } finally {
     if (connection) connection.release();
   }
