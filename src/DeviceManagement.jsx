@@ -78,6 +78,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   const [tenants, setTenants] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [isLoadingTenants, setIsLoadingTenants] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [batchAssignDialogOpen, setBatchAssignDialogOpen] = useState(false);
   const [batchAssignDevices, setBatchAssignDevices] = useState([]);
   const [batchAssignTenantId, setBatchAssignTenantId] = useState('');
