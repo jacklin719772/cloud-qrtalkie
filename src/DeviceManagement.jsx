@@ -549,7 +549,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   }
 
   if (viewMode === 'detail' && viewingDevice) {
-    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' };
+    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#0f172a', color: '#e5e7eb' };
     const details = [
       ['UUID', viewingDevice.uuid || '-'],
       ['繼電器ID', viewingDevice.relayId || '-'],
@@ -565,12 +565,12 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="device-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>設備詳情</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>設備詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {details.map(([label, value]) => (
                   <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: ['訂閱主題', '發佈主題'].includes(label) ? '1 / -1' : undefined }}>
