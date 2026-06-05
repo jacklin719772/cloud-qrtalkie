@@ -309,7 +309,7 @@ export default function ConsoleLayout({ onLogout }) {
             type="button"
             onClick={() => tenantCouponManagementRef.current?.returnToList()}
           >
-            返回優惠碼管理首頁
+            返回首頁
           </button>
         );
       }

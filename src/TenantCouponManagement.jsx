@@ -268,7 +268,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           #tenant-coupon-management .tenant-coupon-shell { background: #111827; border-color: #1f2937; }
           #tenant-coupon-management .tenant-coupon-scroll-area { background: #111827; scrollbar-width: none; }
           #tenant-coupon-management .tenant-coupon-scroll-area::-webkit-scrollbar { display: none; }
-          #tenant-coupon-management .tenant-coupon-assign-panel { background: #111827; border-color: #1f2937; }
+          #tenant-coupon-management .tenant-coupon-assign-panel { background: #111827; border-color: #1f2937; scrollbar-width: none; }
+          #tenant-coupon-management .tenant-coupon-assign-panel::-webkit-scrollbar { display: none; }
           #tenant-coupon-management .tenant-coupon-assign-head span { color: #9ca3af; }
           #tenant-coupon-management .tenant-coupon-assign-head h3 { color: #f3f4f6; }
           #tenant-coupon-management .tenant-coupon-assign-grid label { color: #d1d5db; }
