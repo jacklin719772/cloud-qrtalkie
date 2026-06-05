@@ -531,7 +531,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-table {
           width: 100%;
           min-width: 1180px;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           table-layout: fixed;
           font-size: 12px;
         }
