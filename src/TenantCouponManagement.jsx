@@ -745,6 +745,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         .tenant-coupon-detail-grid label span { color: #9ca3af !important; }
         .tenant-coupon-detail-grid label strong { color: #e5e7eb !important; }
         .tenant-coupon-modal-actions { background: #111827 !important; border-top-color: #1f2937 !important; }
+        .tenant-coupon-modal .icon-btn { background: transparent !important; color: #9ca3af !important; border: none !important; }
+        .tenant-coupon-modal .icon-btn:hover { background: #374151 !important; color: #f3f4f6 !important; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="tenant-coupon-main-toolbar">
