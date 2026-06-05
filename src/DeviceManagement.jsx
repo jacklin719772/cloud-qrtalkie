@@ -77,7 +77,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   const [assigningDevice, setAssigningDevice] = useState(null);
   const [tenants, setTenants] = useState([]);
   const [selectedTenantId, setSelectedTenantId] = useState('');
-  const [isAssigning, setIsAssigning] = useState(false);
+  const [isLoadingTenants, setIsLoadingTenants] = useState(false);
   const [batchAssignDialogOpen, setBatchAssignDialogOpen] = useState(false);
   const [batchAssignDevices, setBatchAssignDevices] = useState([]);
   const [batchAssignTenantId, setBatchAssignTenantId] = useState('');
@@ -443,6 +443,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   }
 
   async function loadTenantsForAssign() {
+    setIsLoadingTenants(true);
     try {
       const data = await apiClient.get('/admin/tenants/with-active-sip');
       setTenants(Array.isArray(data.tenants) ? data.tenants : []);
@@ -450,6 +451,8 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       console.error('Failed to load tenants:', error);
       window.alert('載入租戶列表失敗：' + (error.message || '未知錯誤'));
       setTenants([]);
+    } finally {
+      setIsLoadingTenants(false);
     }
   }
 
@@ -1028,7 +1031,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
                 <select value={selectedTenantId} onChange={(e) => setSelectedTenantId(e.target.value)}
                   style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
-                  <option value="">{tenants.length === 0 ? '載入中...' : '請選擇租戶...'}</option>
+                  <option value="">{isLoadingTenants ? '載入中...' : (tenants.length === 0 ? '暫無可用租戶' : '請選擇租戶...')}</option>
                   {tenants.map(t => (
                     <option key={t.id} value={t.id}>{t.companyName || t.name}{t.latestSipExpiry ? ` (SIP 到期: ${new Date(t.latestSipExpiry).toLocaleDateString('zh-CN')})` : ''}</option>
                   ))}
@@ -1057,7 +1060,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
                 <select value={batchAssignTenantId} onChange={(e) => setBatchAssignTenantId(e.target.value)}
                   style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px' }}>
-                  <option value="">{batchAssignTenants.length === 0 ? '載入中...' : '請選擇租戶...'}</option>
+                  <option value="">{batchAssignTenants.length === 0 ? '暫無可用租戶' : '請選擇租戶...'}</option>
                   {batchAssignTenants.map(t => (
                     <option key={t.id} value={t.id}>{t.companyName || t.name}{t.latestSipExpiry ? ` (SIP 到期: ${new Date(t.latestSipExpiry).toLocaleDateString('zh-CN')})` : ''}</option>
                   ))}
