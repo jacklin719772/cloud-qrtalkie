@@ -822,7 +822,7 @@ export default function PlanManagement({ onNavigate }) {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              style={{ padding: '8px 12px', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '14px' }}
+              style={{ padding: '8px 12px', border: '1px solid #374151', borderRadius: '6px', fontSize: '14px', backgroundColor: '#1a2332', color: '#e5e7eb' }}
             >
               <option value="all">全部訂單</option>
               <option value="paid">已支付</option>

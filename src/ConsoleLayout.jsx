@@ -104,6 +104,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
   const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
+  const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -665,6 +666,9 @@ export default function ConsoleLayout({ onLogout }) {
     }
     if (currentView === 'privacy-policy') {
       return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('隱私政策'); setLegalHelpType('privacy'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
+    }
+    if (currentView === 'plan-management') {
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowPlanMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button></div>);
     }
     return null;
   };
@@ -1350,6 +1354,56 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>服務列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/addon-services</code><br/>建立/更新服務：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/addon-services</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPlanMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowPlanMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>訂閱審核 操作說明</h2>
+              <button onClick={() => setShowPlanMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128220; 訂閱審核的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱審核用於管理租戶的套餐訂單，包括新購和續訂。管理員在此查看訂單狀態、審核訂單、分配 SIP 和 Web 帳號，並確認付款憑證。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128260; 頁面結構說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>頂部查詢統計欄</strong> — 搜尋訂單和狀態篩選，統計標籤可快速切換篩選條件（全部/已支付/未支付/已審核/待審核等）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂單列表</strong> — 顯示訂單編號、租戶、帳號數量、狀態、金額等資訊，支援排序和複選。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作選單</strong> — 每筆訂單的「更多」下拉選單提供詳情、審核等功能。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 審核流程</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>1. 確認訂單詳情</strong> — 查看訂單的套餐內容、帳號數量、支付狀態和付款憑證。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>2. 填寫審核意見</strong> — 選擇審核通過或不通過，填寫審核備註。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>3. 分配帳號</strong> — 審核通過後，為訂單分配對應數量的 SIP 和 Web 帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>4. 確認提交</strong> — 確認所有資訊無誤後提交審核結果。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 訂單狀態說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>未支付</strong> — 租戶已建立訂單但尚未付款。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已支付</strong> — 租戶已完成付款，等待管理員審核。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>待審核</strong> — 付款憑證已提交，等待審核。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已審核</strong> — 管理員已完成審核。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已生效</strong> — 訂單已生效，帳號已分配。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>即將過期</strong> — 套餐即將到期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已過期</strong> — 套餐已超過有效期限。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂單列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/billing-orders</code><br/>訂單詳情：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/billing-orders/:id</code><br/>提交審核：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/billing-orders/:id/review</code></p>
               </div>
             </div>
           </div>
