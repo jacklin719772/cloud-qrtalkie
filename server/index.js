@@ -2707,8 +2707,9 @@ app.put("/api/admin/tenants/:id/status", requireAdmin, async (request, response)
 });
 
 // PUT /api/admin/tenants/:id - 鏇存柊鍠竴绉熸埗鐨勮┏绱拌硣瑷?
-app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
+// PUT /api/admin/tenants/:id - 更新或新增租戶
   if (request.admin.accountType !== 'platform') {
+  console.log("[createTenant] Route matched, admin:", request.admin?.accountType, "tenantId:", request.params?.id);
     return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ュ煼琛屾鎿嶄綔銆?" });
   }
 
