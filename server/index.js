@@ -2964,14 +2964,13 @@ app.get("/api/admin/tenant-coupons", requireAdmin, async (request, response) => 
 
 app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ュ垎閰嶄紭鎯犵爜銆?" });
+    return response.status(403).json({ message: "只有平台管理員可以分配優惠碼。" });
   }
 
   const tenantId = Number(request.body?.tenantId || 0);
   const couponId = Number(request.body?.couponId || 0);
-  if (!Number.isFinite(tenantId) || tenantId <= 0) return response.status(400).json({ message: "璇烽€夋嫨鏈夋晥绉熸埛銆?" });
-  if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "璇烽€夋嫨鏈夋晥浼樻儬鐮併€?" });
-
+  if (!Number.isFinite(tenantId) || tenantId <= 0) return response.status(400).json({ message: "請選擇有效租戶。" });
+  if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "請選擇有效優惠碼。" });
   let connection;
   try {
     connection = await pool.getConnection();
@@ -2983,7 +2982,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
     );
     if (!tenantRows[0]) {
       await connection.rollback();
-      return response.status(404).json({ message: "绉熸埛涓嶅瓨鍦ㄦ垨鏈惎鐢ㄣ€?" });
+      return response.status(404).json({ message: "租戶不存在或未啟用。" });
     }
 
     const couponRows = await connection.query(
@@ -2999,7 +2998,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
     );
     if (!couponRows[0]) {
       await connection.rollback();
-      return response.status(404).json({ message: "浼樻儬鐮佷笉瀛樺湪銆佹湭鍚敤鎴栦笉鍦ㄧ敓鏁堟湡鍐呫€?" });
+      return response.status(404).json({ message: "優惠碼不存在、未啟用或已過期。" });
     }
 
     const result = await connection.query(
@@ -3011,11 +3010,11 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
     );
 
     await connection.commit();
-    return response.status(201).json({ message: "浼樻儬鐮佸凡鍒嗛厤銆?", id: Number(result.insertId) });
+    return response.status(201).json({ message: "優惠碼已分配。", id: Number(result.insertId) });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鍒嗛厤浼樻儬鐮佸け璐ャ€?" });
+    return response.status(500).json({ message: "分配優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
   }

@@ -190,9 +190,11 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         couponId: Number(selectedCouponId),
       });
       setAssignMessage({ type: 'success', text: result.message || '優惠碼已分配。' });
+      setTimeout(() => setAssignMessage({ type: '', text: '' }), 5000);
       await loadAssignments(1);
     } catch (err) {
       setAssignMessage({ type: 'error', text: err.message || '分配優惠碼失敗。' });
+      setTimeout(() => setAssignMessage({ type: '', text: '' }), 5000);
     } finally {
       setIsAssignSaving(false);
     }
