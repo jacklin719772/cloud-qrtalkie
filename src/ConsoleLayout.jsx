@@ -98,6 +98,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showPaymentMethodsHelp, setShowPaymentMethodsHelp] = useState(false);
   const [showDiscountDataHelp, setShowDiscountDataHelp] = useState(false);
   const [showPlansHelp, setShowPlansHelp] = useState(false);
+  const [showTenantMgmtHelp, setShowTenantMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -566,11 +567,13 @@ export default function ConsoleLayout({ onLogout }) {
       const mode = tenantManagementRef.current?.viewMode;
       if (mode === 'add' || mode === 'edit') return null;
       return (
-        <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
-          新增租戶
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
+            新增租戶
+          </button>
+          <button type="button" onClick={() => setShowTenantMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
       );
-    }
     if (currentView === 'call-center-inquiries') {
       const actionBaseStyle = {
         display: 'inline-flex',
@@ -1063,6 +1066,50 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>套餐列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/plans</code><br/>建立/更新套餐：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/billing/plans</code><br/>批量操作：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/plans/batch</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTenantMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowTenantMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>租戶管理 操作說明</h2>
+              <button onClick={() => setShowTenantMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127970; 租戶管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>租戶管理讓平台管理員查看和管理所有註冊租戶。可查看租戶基本資訊、訂閱狀態、累計支付金額，並執行編輯、啟用/停用、刪除等操作。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增租戶</strong> — 點擊「新增租戶」按鈕，填寫企業資訊和管理員帳號，建立新租戶。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯租戶</strong> — 點擊「更多 &gt; 編輯」，進入編輯頁面修改企業資訊，管理員信箱不可更改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 點擊「詳情」或「更多 &gt; 詳情」，彈窗顯示租戶完整資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 在「更多」選單中切換租戶狀態。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除租戶</strong> — 在「更多」選單中選擇刪除（僅停用狀態的租戶可刪除）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按公司名稱、聯絡人、信箱搜尋；按狀態篩選（全部/啟用中/已停用）。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 列表欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>租戶編號</strong> — 系統自動生成的唯一編號，格式 TENANT-XXXXXX。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>公司名稱</strong> — 租戶註冊時填寫的公司名稱。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>註冊日期</strong> — 租戶的註冊時間。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂閱數量</strong> — 租戶購買的帳戶數量上限。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>累計支付</strong> — 該租戶歷史支付總金額。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中 / 已停用 / 待審核 / 即將到期 / 已過期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — 詳情按鈕和更多選單（編輯、啟用/停用、刪除）。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>租戶列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenants</code><br/>租戶詳情：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenants/:id</code><br/>建立/更新：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/tenants/:id</code><br/>刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/admin/tenants/:id</code></p>
               </div>
             </div>
           </div>
