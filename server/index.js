@@ -2752,7 +2752,7 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       const bcrypt = (await import("bcryptjs")).default || (await import("bcryptjs"));
       const adminPhone = sanitizeString(payload.adminPhone, 40);
       await connection.query(
-        `INSERT INTO admins (tenant_id, login_email, password_hash, phone_number, account_type, status)
+        `INSERT INTO admin_users (tenant_id, email, password_hash, phone_number, account_type, status)
          VALUES (?, ?, ?, ?, 'tenant', 'active')`,
         [newTenantId, loginEmail, await bcrypt.hash(password, 10), adminPhone || null],
       );
@@ -2773,7 +2773,9 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       return response.json({ message: "租戶設定已儲存。" });
     }
   } catch (error) {
-    await connection.query("ROLLBACK");
+    if (connection) {
+      try { await connection.query("ROLLBACK"); } catch {}
+    }
     console.error("Failed to save tenant:", error);
     if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "管理員信箱已存在。" });
     return response.status(500).json({ message: isCreate ? "新增租戶失敗。" : "更新租戶設定失敗。" });
