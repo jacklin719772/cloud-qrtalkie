@@ -3060,12 +3060,12 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
 
 app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ユ挙閿€浼樻儬鐮併€?" });
+    return response.status(403).json({ message: "只有平台管理員可以撤銷優惠碼。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
   if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
-    return response.status(400).json({ message: "鏃犳晥鐨勪紭鎯犵爜鍒嗛厤璁板綍銆?" });
+    return response.status(400).json({ message: "無效的優惠碼分配記錄。" });
   }
 
   let connection;
@@ -3084,15 +3084,15 @@ app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, r
     const assignment = rows[0];
     if (!assignment) {
       await connection.rollback();
-      return response.status(404).json({ message: "浼樻儬鐮佸垎閰嶈褰曚笉瀛樺湪銆?" });
+      return response.status(404).json({ message: "優惠碼分配記錄不存在。" });
     }
     if (assignment.status === "used" || assignment.used_order_id) {
       await connection.rollback();
-      return response.status(409).json({ message: "宸蹭娇鐢ㄤ紭鎯犵爜涓嶈兘鎾ら攢銆?" });
+      return response.status(409).json({ message: "已使用的優惠碼不能撤銷。" });
     }
     if (assignment.status !== "assigned") {
       await connection.rollback();
-      return response.status(409).json({ message: "褰撳墠鐘舵€佷笉鍏佽鎾ら攢銆?" });
+      return response.status(409).json({ message: "當前狀態不允許撤銷。" });
     }
 
     await connection.query(
@@ -3105,11 +3105,11 @@ app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, r
     );
 
     await connection.commit();
-    return response.json({ message: "浼樻儬鐮佸凡鎾ら攢銆?" });
+    return response.json({ message: "優惠碼已撤銷。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鎾ら攢浼樻儬鐮佸け璐ャ€?" });
+    return response.status(500).json({ message: "撤銷優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3117,7 +3117,7 @@ app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, r
 
 app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ュ惎鐢ㄤ紭鎯犵爜銆?" });
+    return response.status(403).json({ message: "只有平台管理員可以啟用優惠碼。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
@@ -3146,15 +3146,15 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
     }
     if (assignment.status === "used" || assignment.used_order_id) {
       await connection.rollback();
-      return response.status(409).json({ message: "宸蹭娇鐢ㄤ紭鎯犵爜涓嶈兘閲嶆柊鍚敤銆?" });
+      return response.status(409).json({ message: "已使用的優惠碼不能重新啟用。" });
     }
     if (assignment.status !== "revoked") {
       await connection.rollback();
-      return response.status(409).json({ message: "鍙湁鎾ら攢鐘舵€佺殑浼樻儬鐮佸彲浠ュ惎鐢ㄣ€?" });
+      return response.status(409).json({ message: "只有撤銷狀態的優惠碼可以啟用。" });
     }
     if (assignment.coupon_status !== 'active') {
       await connection.rollback();
-      return response.status(409).json({ message: "浼樻儬鐮佸熀纭€璧勬枡鏈惎鐢紝涓嶈兘鍚敤鍒嗛厤璁板綍銆?" });
+      return response.status(409).json({ message: "優惠碼基礎資料未啟用，不能啟用分配記錄。" });
     }
 
     await connection.query(
@@ -3168,11 +3168,11 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
     );
 
     await connection.commit();
-    return response.json({ message: "浼樻儬鐮佸凡鍚敤銆?" });
+    return response.json({ message: "優惠碼已啟用。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鍚敤浼樻儬鐮佸け璐ャ€?" });
+    return response.status(500).json({ message: "啟用優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3180,7 +3180,7 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
 
 app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ュ垹闄や紭鎯犵爜鍒嗛厤璁板綍銆?" });
+    return response.status(403).json({ message: "只有平台管理員可以刪除優惠碼分配記錄。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
@@ -3212,12 +3212,12 @@ app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, respon
     }
     if (assignment.status !== "revoked") {
       await connection.rollback();
-      return response.status(409).json({ message: "鍙湁鎾ら攢鐘舵€佺殑浼樻儬鐮佸彲浠ュ垹闄ゃ€?" });
+      return response.status(409).json({ message: "只有撤銷狀態的優惠碼可以刪除。" });
     }
 
     await connection.query(`DELETE FROM billing_tenant_coupons WHERE id = ?`, [assignmentId]);
     await connection.commit();
-    return response.json({ message: "浼樻儬鐮佸垎閰嶈褰曞凡鍒犻櫎銆?" });
+    return response.json({ message: "優惠碼分配記錄已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
