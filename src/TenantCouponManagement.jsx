@@ -734,16 +734,16 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
           <div className="tenant-coupon-table-wrap">
               <table className="tenant-coupon-table">
-                <thead>
+                <thead style={{ background: '#1a2332' }}>
                   <tr>
-                    <th>租户</th>
-                    <th>優惠碼</th>
-                    <th>优惠内容</th>
-                    <th>分配时间</th>
-                    <th>使用状态</th>
-                    <th>使用订单</th>
-                    <th>使用时间</th>
-                    <th>操作</th>
+                    <th style={{ background: '#1a2332' }}>租戶</th>
+                    <th style={{ background: '#1a2332' }}>優惠碼</th>
+                    <th style={{ background: '#1a2332' }}>優惠內容</th>
+                    <th style={{ background: '#1a2332' }}>分配時間</th>
+                    <th style={{ background: '#1a2332' }}>使用狀態</th>
+                    <th style={{ background: '#1a2332' }}>使用訂單</th>
+                    <th style={{ background: '#1a2332' }}>使用時間</th>
+                    <th style={{ background: '#1a2332' }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
