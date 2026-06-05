@@ -746,11 +746,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>{viewMode === 'edit' ? '編輯帳號' : '添加新帳號'}</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>{viewMode === 'edit' ? '編輯帳號' : '新增帳號'}</h3>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               
-              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基礎帳號資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用户名 <RequiredMark /></span>
@@ -761,7 +761,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       username: val,
                       displayName: prev.displayName === prev.username ? val : prev.displayName
                     }));
-                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' } : {}) }} onFocus={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#3b82f6'; }} onBlur={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#374151'; }} required readOnly={viewMode === 'edit'} />
+                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', ...(viewMode === 'edit' ? { backgroundColor: '#0f172a', color: '#6b7280', cursor: 'not-allowed' } : {}) }} onFocus={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#3b82f6'; }} onBlur={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#374151'; }} required readOnly={viewMode === 'edit'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>域名 <RequiredMark /></span>
@@ -773,28 +773,28 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
-                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
+                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
+                  <input type="password" value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
-                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
+                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <RequiredMark /></span>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號碼</span>
                   <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -820,7 +820,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                      <input type="password" value={formData.externalPassword} onChange={e => setFormData({ ...formData, externalPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={formData.hasExternal && viewMode === 'add'} />
+                      <input type="password" value={formData.externalPassword} onChange={e => setFormData({ ...formData, externalPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={formData.hasExternal && viewMode === 'add'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>認證域 (Realm)</span>
@@ -836,7 +836,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊協定 (Protocol)</span>
-                      <select value={formData.protocol} onChange={e => setFormData({ ...formData, protocol: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
+                      <select value={formData.protocol} onChange={e => setFormData({ ...formData, protocol: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                         <option value="UDP">UDP</option>
                         <option value="TCP">TCP</option>
                         <option value="TLS">TLS</option>
@@ -848,7 +848,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登记')}</button>
             </div>
           </form>
@@ -868,7 +868,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 返回列表
               </button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -972,7 +972,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 3 ? '600' : '400', color: importStep === 3 ? '#3b82f6' : '#64748b', borderBottom: importStep === 3 ? '2px solid #3b82f6' : 'none' }}>3. 执行導入操作</div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
                {importStep === 1 && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', gap: '16px' }}>
                     <p style={{ color: '#9ca3af', fontSize: '15px' }}>请選擇符合模板格式的 CSV / VSV 文件。</p>
