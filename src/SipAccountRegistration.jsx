@@ -36,7 +36,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSizeOptions = [10, 20, 50, "全部"];
+  const [pageSize, setPageSize] = useState(10);
   const [selectedIds, setSelectedIds] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   
@@ -133,7 +134,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       if (acc.tenantName) assigned++;
     });
 
-    console.log('【前端 DEBUG】当前狀態中的帳號列表长度:', accounts.length);
+    console.log('【前端 DEBUG】當前狀態中的帳號列表长度:', accounts.length);
     return { total: accounts.length, active, disabled, assigned };
   }, [accounts]);
 
@@ -179,8 +180,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }, [filteredAccounts, sortConfig]);
 
   // 分頁計算
-  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
-  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize)));
+  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize), currentPage * (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize));
 
   useEffect(() => {
     setCurrentPage(1);
@@ -442,11 +443,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           _error: ''
         };
 
-        if (!acc.username) acc._error = '用户名不能为空';
-        else if (seenUsernames.has(acc.username)) acc._error = '用户名已存在或文件内重复';
+        if (!acc.username) acc._error = '用戶名不能为空';
+        else if (seenUsernames.has(acc.username)) acc._error = '用戶名已存在或文件内重复';
         else if (!acc.password || acc.password.length < 6) acc._error = '密碼至少需要 6 個字符';
         else if (acc.hasExternal) {
-          if (!acc.externalUsername) acc._error = '外部帳號用户名不能为空';
+          if (!acc.externalUsername) acc._error = '外部帳號用戶名不能为空';
           else if (!acc.externalDomain) acc._error = '外部帳號域名不能为空';
           else if (!acc.externalPassword) acc._error = '外部帳號密碼不能为空';
         }
@@ -605,11 +606,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const handleSaveAccount = async (e) => {
     e.preventDefault();
     if (!formData.username.trim()) {
-      setFormMessage({ type: 'error', text: '請輸入用户名。' });
+      setFormMessage({ type: 'error', text: '請輸入用戶名。' });
       return;
     }
     if (viewMode === 'add' && accounts.some(acc => acc.username === formData.username.trim())) {
-      setFormMessage({ type: 'error', text: '该用户名已存在，请使用其他名稱。' });
+      setFormMessage({ type: 'error', text: '该用戶名已存在，请使用其他名稱。' });
       return;
     }
     if (!formData.domain.trim()) {
@@ -642,7 +643,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (formData.hasExternal) {
       if (!formData.externalUsername.trim()) {
-        setFormMessage({ type: 'error', text: '請輸入外部帳號的用户名。' });
+        setFormMessage({ type: 'error', text: '請輸入外部帳號的用戶名。' });
         return;
       }
       if (!formData.externalDomain.trim()) {
@@ -688,11 +689,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (!Number.isInteger(count) || count <= 0) {
-      setBatchAddMessage({ type: 'error', text: '請輸入有效的增加數量。' });
+      setBatchAddMessage({ type: 'error', text: '請輸入有效的新增數量。' });
       return;
     }
     if (count > 1000) {
-      setBatchAddMessage({ type: 'error', text: '单次批量增加數量不能超过 1000。' });
+      setBatchAddMessage({ type: 'error', text: '单次批量新增數量不能超过 1000。' });
       return;
     }
 
@@ -753,7 +754,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基礎帳號資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用户名 <RequiredMark /></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名 <RequiredMark /></span>
                   <input value={formData.username} onChange={e => {
                     const val = e.target.value;
                     setFormData(prev => ({
@@ -769,7 +770,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '默认与用户名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '默认与用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
@@ -862,7 +863,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       <section className="view active settings-form-page" id="sip-account-registration-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>
                 返回列表
@@ -872,7 +873,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用户名</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名</span>
                   <input value={viewingAccount.username || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -959,14 +960,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       <section className="view active settings-form-page" id="sip-account-registration-import" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>批量導入帳號</h3>
               <button className="ghost-btn" type="button" onClick={handleDownloadTemplate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
                 <Download size={14} /> 下載模板
               </button>
             </div>
             
-            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 1 ? '600' : '400', color: importStep === 1 ? '#3b82f6' : '#64748b', borderBottom: importStep === 1 ? '2px solid #3b82f6' : 'none' }}>1. 選擇導入文件</div>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 2 ? '600' : '400', color: importStep === 2 ? '#3b82f6' : '#64748b', borderBottom: importStep === 2 ? '2px solid #3b82f6' : 'none' }}>2. 校验文件數據</div>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 3 ? '600' : '400', color: importStep === 3 ? '#3b82f6' : '#64748b', borderBottom: importStep === 3 ? '2px solid #3b82f6' : 'none' }}>3. 执行導入操作</div>
@@ -986,23 +987,23 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                {importStep === 2 && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                      <p style={{ marginBottom: '16px', color: '#9ca3af', fontSize: '15px' }}>
-                       共解析到 <strong style={{ color: '#0f172a' }}>{parsedData.length}</strong> 條數據，其中有错误 <strong style={{ color: '#ef4444' }}>{parsedData.filter(d => d._error).length}</strong> 條。
+                       共解析到 <strong style={{ color: '#e5e7eb' }}>{parsedData.length}</strong> 條數據，其中有错误 <strong style={{ color: '#ef4444' }}>{parsedData.filter(d => d._error).length}</strong> 條。
                      </p>
                      <div style={{ flex: 1, overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px' }}>
                        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                           <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1a2332', zIndex: 1 }}>
                              <tr>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>行号</th>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>用户名</th>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>狀態/错误信息</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500 }}>行號</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500 }}>用戶名</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500 }}>狀態/錯誤資訊</th>
                              </tr>
                           </thead>
                           <tbody>
                              {parsedData.map((d, idx) => (
                                <tr key={idx}>
-                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: '#9ca3af' }}>{d._originalRow}</td>
-                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: '#0f172a' }}>{d.username || '-'}</td>
-                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: d._error ? '#ef4444' : '#10b981' }}>{d._error || '校验通过'}</td>
+                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>{d._originalRow}</td>
+                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#e5e7eb' }}>{d.username || '-'}</td>
+                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: d._error ? '#ef4444' : '#10b981' }}>{d._error || '校验通过'}</td>
                                </tr>
                              ))}
                           </tbody>
@@ -1503,7 +1504,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           }}
                         />
                       </td>
-                      <td style={{ color: '#0f172a', fontWeight: 500 }}>{acc.username}</td>
+                      <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
                       <td>{getStatusBadge(acc.status)}</td>
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
@@ -1541,7 +1542,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           <div className="sip-table-footer">
             <div className="sip-total">共 {filteredAccounts.length} 筆記錄</div>
             <div className="sip-pagination">
-              <span className="sip-page-size">{pageSize} 條/頁</span>
+              <select className="sip-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === '全部' ? '全部' : Number(v)); setCurrentPage(1); }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === '全部' ? '全部' : opt + ' 條/頁'}</option>)}</select>
               <button className="sip-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
               <span className="sip-page-current">{currentPage}</span>
               <button className="sip-page-btn" type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
@@ -1556,20 +1557,20 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       {batchAddOpen && createPortal(
         <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
           <form onSubmit={handleBatchAddSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>批量增加帳號</h3>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>批量新增帳號</h3>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>起始用户帳號 <RequiredMark /></span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>起始用戶帳號 <RequiredMark /></span>
                 <input type="number" min="1" step="1" value={batchAddForm.start} onChange={e => setBatchAddForm(prev => ({ ...prev, start: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>增加數量 <RequiredMark /></span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新增數量 <RequiredMark /></span>
                 <input type="number" min="1" max="1000" step="1" value={batchAddForm.count} onChange={e => setBatchAddForm(prev => ({ ...prev, count: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
               </label>
               <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
-                系统会按单個增加的默认逻辑創建帳號，用户名从起始帳號开始递增，顯示名默认与用户名一致。
+                系統會按單個增加的預設邏輯建立帳號，用戶名從起始帳號開始遞增，顯示名預設與用戶名一致。
               </p>
               {batchAddMessage.text && (
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
@@ -1587,8 +1588,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       {resetPasswordAccount && createPortal(
         <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
           <form onSubmit={handleResetPasswordSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '400px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>重設密碼 ({resetPasswordAccount.username})</h3>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>重設密碼 ({resetPasswordAccount.username})</h3>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
