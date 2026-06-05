@@ -38,11 +38,11 @@ function RequiredMark() {
 
 function getStatusBadge(status) {
   const statusMap = {
-    assigned: { label: '已分配', bg: '#dcfce7', color: '#15803d' },
-    unassigned: { label: '未分配', bg: '#f1f5f9', color: '#475569' },
-    disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
+    assigned: { label: '已分配', bg: '#0d2818', color: '#4ade80' },
+    unassigned: { label: '未分配', bg: '#1f2937', color: '#9ca3af' },
+    disabled: { label: '已停用', bg: '#3b1111', color: '#fca5a5' },
   };
-  const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#475569' };
+  const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
   return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '4px 12px', fontSize: '12px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
 }
 
@@ -496,46 +496,46 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="device-management-form" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <form className="panel" onSubmit={handleSaveDevice} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯設備' : '新增設備'}</h3>
+          <form className="panel" onSubmit={handleSaveDevice} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯設備' : '新增設備'}</h3>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基礎設備資訊</h4>
+              <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', marginBottom: '16px', marginTop: 0 }}>基礎設備資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>UUID <RequiredMark /></span>
-                  <input value={formData.uuid} readOnly={viewMode === 'edit'} onChange={(event) => setFormData({ ...formData, uuid: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#f8fafc', color: '#64748b' } : {}) }} required />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>UUID <RequiredMark /></span>
+                  <input value={formData.uuid} readOnly={viewMode === 'edit'} onChange={(event) => setFormData({ ...formData, uuid: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af' } : {}) }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>繼電器ID</span>
-                  <input value={formData.relayId} onChange={(event) => setFormData({ ...formData, relayId: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>繼電器ID</span>
+                  <input value={formData.relayId} onChange={(event) => setFormData({ ...formData, relayId: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>訂閱主題 <RequiredMark /></span>
-                  <input value={formData.subscribeTopic} onChange={(event) => setFormData({ ...formData, subscribeTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>訂閱主題 <RequiredMark /></span>
+                  <input value={formData.subscribeTopic} onChange={(event) => setFormData({ ...formData, subscribeTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>發佈主題 <RequiredMark /></span>
-                  <input value={formData.publishTopic} onChange={(event) => setFormData({ ...formData, publishTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>發佈主題 <RequiredMark /></span>
+                  <input value={formData.publishTopic} onChange={(event) => setFormData({ ...formData, publishTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>Wifi名稱</span>
-                  <input value={formData.wifiName} onChange={(event) => setFormData({ ...formData, wifiName: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>Wifi名稱</span>
+                  <input value={formData.wifiName} onChange={(event) => setFormData({ ...formData, wifiName: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>Wifi密碼</span>
-                  <input value={formData.wifiPassword} onChange={(event) => setFormData({ ...formData, wifiPassword: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>Wifi密碼</span>
+                  <input value={formData.wifiPassword} onChange={(event) => setFormData({ ...formData, wifiPassword: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>备注</span>
-                  <textarea value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} rows={3} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', resize: 'vertical' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>备注</span>
+                  <textarea value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} rows={3} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', resize: 'vertical' }} />
                 </label>
               </div>
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交新增')}</button>
             </div>
           </form>
@@ -545,7 +545,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   }
 
   if (viewMode === 'detail' && viewingDevice) {
-    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' };
+    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' };
     const details = [
       ['UUID', viewingDevice.uuid || '-'],
       ['繼電器ID', viewingDevice.relayId || '-'],
@@ -561,8 +561,8 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="device-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>設備詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
             </div>
@@ -570,7 +570,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {details.map(([label, value]) => (
                   <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: ['訂閱主題', '發佈主題'].includes(label) ? '1 / -1' : undefined }}>
-                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>{label}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>{label}</span>
                     <input value={value} readOnly style={fieldStyle} />
                   </label>
                 ))}
@@ -583,7 +583,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   }
 
   return (
-    <section className="view active" id="device-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <section className="view active" id="device-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
       <style>{`
         .dropdown-menu-portal {
           position: fixed;
@@ -862,8 +862,49 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
           #device-management .device-table-footer { padding: 14px 20px; flex-wrap: wrap; }
           #device-management .device-pagination { flex-wrap: wrap; }
         }
+
+        /* === Dark theme overrides === */
+        #device-management .device-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #device-management .device-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #device-management .device-search input::placeholder { color: #6b7280; }
+        #device-management .device-search input:focus { border-color: #3b82f6; }
+        #device-management .device-status-select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #device-management .device-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
+        #device-management .device-stat-pill strong { color: #ffffff; }
+        #device-management .device-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #device-management .device-table thead { background: #1a2332; }
+        #device-management .device-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #device-management .device-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #device-management .device-table tbody tr { background: #111827; }
+        #device-management .device-table tbody tr:hover { background: #1e293b; }
+        #device-management .device-table td:last-child { background: #111827; box-shadow: -1px 0 0 #1f2937; }
+        #device-management .device-table th:last-child { background: #1a2332; box-shadow: -1px 0 0 #1f2937; }
+        #device-management .device-empty { background: #111827; color: #9ca3af; border-bottom: 1px solid #1f2937; }
+        #device-management .device-empty-icon { background: linear-gradient(180deg, #1e3a5f 0%, #1a2332 100%); color: #60a5fa; }
+        #device-management .device-empty-title { color: #f3f4f6; }
+        #device-management .device-empty-desc { color: #9ca3af; }
+        #device-management .device-table-footer { background: #111827; border-top: 1px solid #1f2937; }
+        #device-management .device-total { color: #9ca3af; }
+        #device-management .device-page-size { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; }
+        #device-management .device-page-size:focus { border-color: #3b82f6; }
+        #device-management .device-page-btn { background: #1f2937; border: 1px solid #4b5563; color: #9ca3af; }
+        #device-management .device-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #device-management .device-page-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; }
+        #device-management .device-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+        #device-management .device-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #device-management .device-page-jump { color: #9ca3af; }
+        #device-management .device-table-wrapper { scrollbar-width: none; }
+        #device-management .device-table-wrapper::-webkit-scrollbar { display: none; }
+        #device-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #device-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #device-management .form-message { color: #d1d5db; }
+        #device-management .form-message.error { background: #3b1111; color: #ef4444; }
+        #device-management .form-message.success { background: #0d2818; color: #22c55e; }
+        .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
+        .dropdown-menu-portal .dropdown-item { color: #d1d5db; }
+        .dropdown-menu-portal .dropdown-item:hover { background: #374151; color: #f3f4f6; }
       `}</style>
-      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
+      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="device-toolbar">
           <div className="device-filter-left">
             <label className="device-search">
@@ -908,7 +949,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                       <button type="button" onClick={() => handleSort(key)} style={{ border: 0, background: 'transparent', color: 'inherit', padding: 0, cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }}>{label}{getSortIcon(key)}</button>
                     </th>
                   ))}
-                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center' }}>操作</th>
+                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -932,7 +973,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                     <td>{device.expiresAt || '-'}</td>
                     <td>{device.createdAt || '-'}</td>
                     <td>{device.creatorName || '-'}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => handleAction('details', device)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={(event) => {
@@ -969,7 +1010,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               <button className="device-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage((page) => page - 1)}>‹</button>
               <span className="device-page-current">{currentPage}</span>
               <button className="device-page-btn" type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage((page) => page + 1)}>›</button>
-              <span className="device-page-jump">前往<input className="device-page-input" value={currentPage} readOnly />页</span>
+              <span className="device-page-jump">前往<input className="device-page-input" value={currentPage} readOnly />頁</span>
             </div>
           </div>
         </div>
@@ -983,20 +1024,20 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
                 <select value={selectedTenantId} onChange={(e) => setSelectedTenantId(e.target.value)}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '13px' }}>
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px' }}>
                   <option value="">{tenants.length === 0 ? '載入中...' : '請選擇租戶...'}</option>
                   {tenants.map(t => (
                     <option key={t.id} value={t.id}>{t.companyName || t.name}{t.latestSipExpiry ? ` (SIP 到期: ${new Date(t.latestSipExpiry).toLocaleDateString('zh-CN')})` : ''}</option>
                   ))}
                 </select>
               </label>
-              <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>
+              <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af' }}>
                 設備有效期將與租戶 SIP 帳號有效期保持一致。若租戶無明確到期日則設備永久有效。
               </p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
               <button className="ghost-btn" type="button" disabled={isAssigning} onClick={() => setAssignDialogOpen(false)}>取消</button>
               <button className="primary-btn" type="button" disabled={isAssigning || !selectedTenantId} onClick={handleConfirmAssign}>{isAssigning ? '分配中...' : '確認分配'}</button>
             </div>
@@ -1012,9 +1053,9 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
                 <select value={batchAssignTenantId} onChange={(e) => setBatchAssignTenantId(e.target.value)}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '13px' }}>
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px' }}>
                   <option value="">{batchAssignTenants.length === 0 ? '載入中...' : '請選擇租戶...'}</option>
                   {batchAssignTenants.map(t => (
                     <option key={t.id} value={t.id}>{t.companyName || t.name}{t.latestSipExpiry ? ` (SIP 到期: ${new Date(t.latestSipExpiry).toLocaleDateString('zh-CN')})` : ''}</option>
@@ -1022,7 +1063,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 </select>
               </label>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAssigning} onClick={() => setBatchAssignDialogOpen(false)}>取消</button>
               <button className="primary-btn" type="button" disabled={isBatchAssigning || !batchAssignTenantId} onClick={handleConfirmBatchAssign}>{isBatchAssigning ? '分配中...' : '確認分配'}</button>
             </div>
@@ -1038,25 +1079,25 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>繼電器ID</span>
-                <input value={batchAddForm.relayId} onChange={(event) => setBatchAddForm((form) => ({ ...form, relayId: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>繼電器ID</span>
+                <input value={batchAddForm.relayId} onChange={(event) => setBatchAddForm((form) => ({ ...form, relayId: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>訂閱主題</span>
-                <input value={batchAddForm.subscribeTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, subscribeTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>訂閱主題</span>
+                <input value={batchAddForm.subscribeTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, subscribeTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>發佈主題</span>
-                <input value={batchAddForm.publishTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, publishTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>發佈主題</span>
+                <input value={batchAddForm.publishTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, publishTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 500, color: '#475569' }}>新增數量</span>
-                <input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>新增數量</span>
+                <input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
-              <p style={{ margin: 0, fontSize: '10px', color: '#64748b' }}>系統會為每條記錄生成唯一 UUID，並使用相同的繼電器ID、訂閱主題和發佈主題。</p>
+              <p style={{ margin: 0, fontSize: '10px', color: '#9ca3af' }}>系統會為每條記錄生成唯一 UUID，並使用相同的繼電器ID、訂閱主題和發佈主題。</p>
               {batchAddMessage.text && <p style={{ margin: 0, fontSize: '11px', color: batchAddMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{batchAddMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '新增中...' : '確認新增'}</button>
             </div>
