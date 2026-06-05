@@ -2734,10 +2734,9 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   try {
     console.log("[createTenant] Starting tenant creation, payload:", JSON.stringify({ companyName, enterpriseEmail, contactPerson, contactPhone, billingAddress, postalCode, loginEmail: payload.loginEmail, hasPassword: !!payload.password, adminPhone: payload.adminPhone }));
     connection = await pool.getConnection();
-    console.log("[createTenant] DB connection acquired, starting transaction...");
-    await connection.query("START TRANSACTION");
 
     if (isCreate) {
+      await connection.query("START TRANSACTION");
       // Validate required fields for creation
       const loginEmail = normalizeEmail(payload.loginEmail);
       const password = String(payload.password || "");
