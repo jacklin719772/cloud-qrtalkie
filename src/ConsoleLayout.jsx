@@ -101,6 +101,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showTenantMgmtHelp, setShowTenantMgmtHelp] = useState(false);
   const [showCouponMgmtHelp, setShowCouponMgmtHelp] = useState(false);
   const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
+  const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -364,6 +365,7 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleBatchDelete()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}>
               <Trash2 size={14} /> 批量刪除
             </button>
+            <button type="button" onClick={() => setShowSipMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           </div>
         );
       }
@@ -1212,6 +1214,55 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>設備列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/gate-devices</code><br/>新增/編輯設備：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/gate-devices</code><br/>批量操作：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/gate-devices/batch</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSipMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowSipMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>SIP 帳號管理 操作說明</h2>
+              <button onClick={() => setShowSipMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128222; SIP 帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>SIP 帳號管理用於建立和維護 SIP 通訊帳號。每個 SIP 帳號對應一個 SIP 分機，可用於語音通話、視訊通話等通訊服務。管理員可在此批次建立、編輯、分配和刪除 SIP 帳號。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 SIP 帳號，設定用戶名、密碼、角色、狀態等。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 SIP 帳號，自動遞增用戶名。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>導入 CSV</strong> — 從 CSV 檔案批量導入 SIP 帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、密碼、角色等設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的 SIP 密碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量取消分配</strong> — 批次取消帳號與租戶的綁定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量刪除</strong> — 批次刪除不再使用的帳號。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，預設為 sip.qrtalkie.org。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>顯示名</strong> — 來電顯示的名稱，預設與用戶名相同。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。（新增時必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>手機號碼</strong> — 聯絡電話。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>郵箱</strong> — 聯絡電子郵件。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>外部帳號</strong> — 勾選後可設定外部 SIP 中繼參數（用戶名、域名、密碼、Realm、Registrar、Outbound Proxy、通訊協定）。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code></p>
               </div>
             </div>
           </div>
