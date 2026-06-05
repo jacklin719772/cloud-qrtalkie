@@ -193,8 +193,8 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-sub">/ 剩余 {(health.disk?.usage != null) ? `${((100 - health.disk.usage) * 1.0).toFixed(0)}%` : '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div className="pdb-metric-label">SSL 证书到期</div>
-              <div className="pdb-metric-value" style={{ color: (health.ssl?.daysLeft ?? 90) <= 7 ? '#dc2626' : (health.ssl?.daysLeft ?? 90) <= 30 ? '#f59e0b' : '#1f2937' }}>
+              <div className="pdb-metric-label">SSL 證書到期</div>
+              <div className="pdb-metric-value" style={{ color: (health.ssl?.daysLeft ?? 90) <= 7 ? '#ef4444' : (health.ssl?.daysLeft ?? 90) <= 30 ? '#fbbf24' : '#f3f4f6' }}>
                 {health.ssl ? `${health.ssl.daysLeft} 天` : '-'}
               </div>
               <div className="pdb-progress"><div className={`pdb-bar ${(health.ssl?.daysLeft ?? 90) <= 7 ? 'red' : (health.ssl?.daysLeft ?? 90) <= 30 ? 'orange' : 'green'}`} style={{ width: `${Math.min(100, ((health.ssl?.daysLeft ?? 90) / 90) * 100)}%` }} /></div>
