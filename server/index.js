@@ -2635,7 +2635,7 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
     return response.json({
       tenant: {
         id: Number(row.id),
-        tenantNumber: row.tenant_number || "",
+        tenantNumber: row.tenant_number || `TENANT-${String(row.id).padStart(6, "0")}`,
         companyName: row.name || "",
         enterpriseEmail: row.enterprise_email || row.contact_email || "",
         contactPerson: row.contact_person || "",
@@ -2937,7 +2937,7 @@ app.get("/api/admin/tenant-coupons", requireAdmin, async (request, response) => 
       items: rows.map((row) => ({
         id: Number(row.id),
         tenantId: Number(row.tenant_id),
-        tenantNumber: row.tenant_number || "",
+        tenantNumber: row.tenant_number || `TENANT-${String(row.id).padStart(6, "0")}`,
         tenantName: row.tenant_name || "",
         couponId: Number(row.coupon_id),
         couponCode: row.coupon_code || "",
