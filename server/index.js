@@ -10,6 +10,7 @@ import { pool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
+import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
 
 const app = express();
 const port = Number(process.env.API_PORT || 3001);
@@ -11457,6 +11458,141 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
     return response.status(500).json({ message: "清理日志失败：" + (error.message || "") });
   }
 });
+
+// GET /api/flexisip/statistics/calls - proxy Flexisip Admin calls statistics.
+app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理员可以查看 Flexisip 通话统计。" });
+  }
+
+  const from = sanitizeString(request.query.from || "", 20);
+  const to = sanitizeString(request.query.to || "", 20);
+  const period = sanitizeString(request.query.period || request.query.by || "day", 20);
+  const contactList = sanitizeString(request.query.contactList || request.query.contacts_list || "", 80);
+  const allowedPeriods = new Set(["day", "week", "month", "year"]);
+
+  if (period && !allowedPeriods.has(period)) {
+    return response.status(400).json({ message: "统计粒度只能是 day、week、month 或 year。" });
+  }
+  if (from && !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+    return response.status(400).json({ message: "from 必须是 YYYY-MM-DD 格式。" });
+  }
+  if (to && !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return response.status(400).json({ message: "to 必须是 YYYY-MM-DD 格式。" });
+  }
+
+  try {
+    // Flexisip Admin Statistics uses "by" for granularity and "contacts_list" for contact list filtering.
+    const flexisipResponse = await getCallsStatistics({ from, to, period, contactList });
+    const contentType = flexisipResponse.headers.get("content-type") || "";
+    console.log("Flexisip calls statistics response:", {
+      status: flexisipResponse.status,
+      contentType,
+    });
+
+    if (!flexisipResponse.ok) {
+      await flexisipResponse.text().catch(() => "");
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip Admin Statistics request failed",
+        status: flexisipResponse.status,
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+
+    if (contentType.includes("application/json")) {
+      const data = await flexisipResponse.json();
+      return response.json({
+        success: true,
+        type: "calls",
+        from: from || null,
+        to: to || null,
+        period,
+        contactList: contactList || null,
+        data,
+        source: "flexisip-admin-statistics",
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    }
+
+    if (contentType.includes("text/html")) {
+      await flexisipResponse.text().catch(() => "");
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip admin statistics returned HTML, JSON parsing is not implemented yet",
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+
+    if (contentType.includes("text/csv")) {
+      await flexisipResponse.text().catch(() => "");
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip admin statistics returned CSV, export handling is not implemented on this endpoint",
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+
+    const text = await flexisipResponse.text();
+    if (!text.trim()) {
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip admin statistics returned an empty response",
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+
+    try {
+      const data = JSON.parse(text);
+      return response.json({
+        success: true,
+        type: "calls",
+        from: from || null,
+        to: to || null,
+        period,
+        contactList: contactList || null,
+        data,
+        source: "flexisip-admin-statistics",
+        lastUpdatedAt: new Date().toISOString(),
+      });
+    } catch {
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip admin statistics returned an unsupported response format",
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+  } catch (error) {
+    if (error instanceof FlexisipAdminSessionError) {
+      console.error("Flexisip Admin session error:", {
+        status: error.status,
+        path: error.path,
+        contentType: error.contentType,
+        message: error.message,
+      });
+      return response.status(502).json({
+        success: false,
+        error: "Flexisip Admin session request failed",
+        type: "calls",
+        source: "flexisip-admin-statistics",
+      });
+    }
+
+    console.error("Failed to fetch Flexisip calls statistics:", error?.message || error);
+    return response.status(502).json({
+      success: false,
+      error: "Flexisip Admin Statistics request failed",
+      type: "calls",
+      source: "flexisip-admin-statistics",
+    });
+  }
+});
+
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {

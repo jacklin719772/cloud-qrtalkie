@@ -1,0 +1,37 @@
+3:06:10 AM [vite] (client) Forced re-optimization of dependencies
+
+  VITE v7.3.5  ready in 396 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.140.0.8:5173/
+  ➜  Network: http://172.21.0.1:5173/
+3:10:59 AM [vite] (client) hmr update /src/OfflinePaymentAccount.jsx
+3:28:58 AM [vite] (client) Forced re-optimization of dependencies
+
+  VITE v7.3.5  ready in 268 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.140.0.8:5173/
+  ➜  Network: http://172.21.0.1:5173/
+3:29:12 AM [vite] http proxy error: /api/me
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:29:17 AM [vite] http proxy error: /api/notifications
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:29:22 AM [vite] http proxy error: /api/auth/login
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:30:17 AM [vite] http proxy error: /api/notifications
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:31:17 AM [vite] http proxy error: /api/notifications
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:32:17 AM [vite] http proxy error: /api/notifications
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+3:33:17 AM [vite] http proxy error: /api/notifications
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+Killed
