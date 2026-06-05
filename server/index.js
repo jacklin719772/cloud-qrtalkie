@@ -2583,7 +2583,7 @@ app.get("/api/admin/tenants/with-active-sip", requireAdmin, async (request, resp
       `SELECT DISTINCT t.id, t.name,
               (SELECT MAX(su.service_expires_at) FROM sip_users su WHERE su.tenant_id = t.id AND su.status = 'active' AND (su.service_expires_at IS NULL OR su.service_expires_at > NOW())) AS latest_sip_expiry
        FROM tenants t
-       INNER JOIN sip_users su2 ON su2.tenant_id = t.id AND su2.status = 'active' AND (su2.service_expires_at IS NULL OR su2.service_expires_at > NOW())
+       WHERE t.status = 'active'
        ORDER BY t.name`
     );
     response.json({
