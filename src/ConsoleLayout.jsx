@@ -99,6 +99,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showDiscountDataHelp, setShowDiscountDataHelp] = useState(false);
   const [showPlansHelp, setShowPlansHelp] = useState(false);
   const [showTenantMgmtHelp, setShowTenantMgmtHelp] = useState(false);
+  const [showCouponMgmtHelp, setShowCouponMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -314,14 +315,17 @@ export default function ConsoleLayout({ onLogout }) {
         );
       }
       return (
-        <button
-          className="primary-btn"
-          type="button"
-          onClick={() => tenantCouponManagementRef.current?.startAssign()} // The common styles are applied via TenantCouponManagement's internal CSS
-        >
-          <Plus size={14} /> {/* Icon size consistent with DeviceManagement */}
-          分配優惠碼
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => tenantCouponManagementRef.current?.startAssign()}
+          >
+            <Plus size={14} />
+            分配優惠碼
+          </button>
+          <button type="button" onClick={() => setShowCouponMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
       );
     }
     if (currentView === 'sip-account-registration') {
@@ -1111,6 +1115,54 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>租戶列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenants</code><br/>租戶詳情：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenants/:id</code><br/>建立/更新：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/tenants/:id</code><br/>刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/admin/tenants/:id</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCouponMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowCouponMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>優惠碼管理 操作說明</h2>
+              <button onClick={() => setShowCouponMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127991; 優惠碼管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>優惠碼管理讓平台管理員為租戶分配折扣優惠碼。每個優惠碼可分配給不同租戶，租戶購買套餐時輸入優惠碼即可享受折扣。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128161; 重要前提</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#fbbf24" }}>&#9888; 優惠碼來源</strong> — 分配優惠碼前，必須先在「基礎數據 &gt; 折扣資料」中建立優惠碼。若優惠碼列表為空，請先前往折扣資料頁面新增。</li>
+                  <li><strong style={{ color: "#fbbf24" }}>&#9888; 已使用不可撤銷</strong> — 租戶已在下單時使用的優惠碼將標記為「已使用」，無法撤銷。撤銷操作僅對「未使用」狀態的分配記錄有效。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>分配優惠碼</strong> — 點擊「分配優惠碼」按鈕，選擇啟用中的租戶和生效中的優惠碼，確認分配。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 點擊「詳情」按鈕查看分配記錄的完整資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>撤銷分配</strong> — 對未使用的分配記錄點擊「撤銷」，可取消該優惠碼分配。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重新啟用</strong> — 對已撤銷的記錄點擊「啟用」，可恢復該優惠碼分配。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除記錄</strong> — 對已撤銷的記錄點擊「刪除」，永久移除分配記錄。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按關鍵字搜尋，按使用狀態篩選。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 使用狀態說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>未使用</strong> — 已分配但租戶尚未在訂單中使用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已使用</strong> — 租戶已在下單時使用此優惠碼，無法撤銷。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已撤銷</strong> — 平台管理員已手動撤銷，租戶無法再使用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已過期</strong> — 優惠碼已超過有效期限。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>分配列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenant-coupons</code><br/>分配優惠碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/tenant-coupons</code><br/>撤銷/啟用/刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/DELETE /api/admin/tenant-coupons/:id</code></p>
               </div>
             </div>
           </div>
