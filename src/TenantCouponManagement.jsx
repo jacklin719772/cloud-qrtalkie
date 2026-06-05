@@ -668,7 +668,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #tenant-coupon-management .tenant-coupon-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
         #tenant-coupon-management .tenant-coupon-stat-pill strong { color: #ffffff; }
-        #tenant-coupon-management .tenant-coupon-table-card { background: #1a2332; border-color: #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #tenant-coupon-management .tenant-coupon-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
         #tenant-coupon-management .tenant-coupon-table thead { background: #1a2332; }
         #tenant-coupon-management .tenant-coupon-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
         #tenant-coupon-management .tenant-coupon-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
