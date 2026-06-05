@@ -2711,12 +2711,13 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   console.log("[createTenant] Route matched, admin:", request.admin?.accountType, "tenantId:", request.params?.id);
   if (request.admin.accountType !== 'platform') {
     console.log("[createTenant] Rejected: not platform admin");
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ュ煼琛屾鎿嶄綔銆?" });
+    return response.status(403).json({ message: "只有平台管理員可以執行此操作。" });
   }
 
   const tenantId = Number(request.params.id);
   if (!Number.isFinite(tenantId) || tenantId < 0) return response.status(400).json({ message: "無效的租戶 ID。" });
   const isCreate = tenantId === 0;
+  const payload = request.body || {};
   const companyName = sanitizeString(payload.companyName, 160);
   const enterpriseEmail = normalizeEmail(payload.enterpriseEmail);
   const contactPerson = sanitizeString(payload.contactPerson, 120);
