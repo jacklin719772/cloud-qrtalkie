@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import apiClient from './apiClient';
 
-const pageSize = 10;
+const pageSizeOptions = [10, 20, 50, "全部"];
+  const [pageSize, setPageSize] = useState(10);
 const defaultSipDomain = import.meta.env.VITE_WEBRTC_DOMAIN || 'pbx.qrtalkie.org';
 
 const emptyWebAccountForm = {
@@ -31,7 +32,7 @@ function getStatusBadge(status) {
     pending: { label: '待审核', bg: '#e0f2fe', color: '#0369a1' },
     expired: { label: '已过期', bg: '#fee2e2', color: '#dc2626' },
   };
-  const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#475569' };
+  const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
   return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '10px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
 }
 
@@ -165,7 +166,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }, [filteredAccounts, sortConfig]);
 
   const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / pageSize));
-  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * (pageSize === "全部" ? (filtered.length || 1) : pageSize), currentPage * (pageSize === "全部" ? (filtered.length || 1) : pageSize));
 
   function handleSort(key) {
     setSortConfig((current) => ({
@@ -277,9 +278,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           email: email || '',
           error: '',
         };
-        if (!item.username) item.error = '用户名不能为空';
+        if (!item.username) item.error = '用戶名不能为空';
         else if (item.password.length < 6) item.error = '密碼至少需要 6 個字符';
-        else if (accounts.some((account) => account.username === item.username && (account.domain || defaultSipDomain) === item.domain)) item.error = '该域名下用户名已存在';
+        else if (accounts.some((account) => account.username === item.username && (account.domain || defaultSipDomain) === item.domain)) item.error = '该域名下用戶名已存在';
         return item;
       });
       setImportRows(rows);
@@ -354,11 +355,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   async function handleSaveAccount(event) {
     event.preventDefault();
     if (!formData.username.trim()) {
-      setFormMessage({ type: 'error', text: '請輸入用户名。' });
+      setFormMessage({ type: 'error', text: '請輸入用戶名。' });
       return;
     }
     if (viewMode === 'add' && accounts.some((account) => account.username === formData.username.trim() && (account.domain || defaultSipDomain) === (formData.domain || defaultSipDomain))) {
-      setFormMessage({ type: 'error', text: '该域名下用户名已存在。' });
+      setFormMessage({ type: 'error', text: '该域名下用戶名已存在。' });
       return;
     }
     if (viewMode === 'add' && !formData.password) {
@@ -435,7 +436,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setBatchAddMessage({ type: 'error', text: `已成功增加 ${successCount} 個，失敗 ${errors.length} 個。${errors.slice(0, 3).join('；')}` });
       return;
     }
-    setBatchAddMessage({ type: 'success', text: `已成功批量增加 ${successCount} 個帳號。` });
+    setBatchAddMessage({ type: 'success', text: `已成功批量新增 ${successCount} 個帳號。` });
     window.setTimeout(() => setBatchAddOpen(false), 800);
   }
 
@@ -586,63 +587,63 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="web-account-registration-form" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯 Web 帳號' : '添加 Web 帳號'}</h3>
+          <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯 Web 帳號' : '添加 Web 帳號'}</h3>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基礎帳號信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>用户名 <RequiredMark /></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名 <RequiredMark /></span>
                   <input value={formData.username} readOnly={viewMode === 'edit'} onChange={(event) => {
                     const value = event.target.value;
                     setFormData((current) => ({ ...current, username: value, displayName: current.displayName === current.username ? value : current.displayName }));
-                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#f8fafc', color: '#64748b' } : {}) }} required />
+                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af' } : {}) }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>SIP Domain <RequiredMark /></span>
-                  <input value={formData.domain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }} required />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>SIP Domain <RequiredMark /></span>
+                  <input value={formData.domain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={(event) => setFormData({ ...formData, displayName: event.target.value })} placeholder={formData.username || '默认与用户名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
+                  <input value={formData.displayName} onChange={(event) => setFormData({ ...formData, displayName: event.target.value })} placeholder={formData.username || '默认与用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.password} onChange={(event) => setFormData({ ...formData, password: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
+                  <input type="password" value={formData.password} onChange={(event) => setFormData({ ...formData, password: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.confirmPassword} onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
+                  <input type="password" value={formData.confirmPassword} onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>角色 <RequiredMark /></span>
-                  <select value={formData.role} onChange={(event) => setFormData({ ...formData, role: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
+                  <select value={formData.role} onChange={(event) => setFormData({ ...formData, role: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>狀態 <RequiredMark /></span>
-                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <RequiredMark /></span>
+                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>手機号</span>
-                  <input value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
+                  <input value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>郵箱</span>
-                  <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
+                  <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
                 </label>
               </div>
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登记')}</button>
             </div>
           </form>
@@ -655,45 +656,45 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="web-account-registration-import" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>導入 Web 帳號</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>導入 Web 帳號</h3>
               <button className="ghost-btn" type="button" onClick={downloadImportTemplate}>下載模板</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'grid', gap: '16px', alignContent: 'start' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none', display: 'grid', gap: '16px', alignContent: 'start' }}>
               <input type="file" accept=".csv,text/csv" onChange={handleImportFile} style={{ maxWidth: '360px' }} />
               {importMessage.text && <p style={{ margin: 0, fontSize: '14px', color: importMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{importMessage.text}</p>}
-              <div className="table-wrap" style={{ maxHeight: '420px', overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+              <div className="table-wrap" style={{ maxHeight: '420px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px' }}>
                 <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse' }}>
-                  <thead style={{ backgroundColor: '#f8fafc', position: 'sticky', top: 0 }}>
+                  <thead style={{ backgroundColor: '#1a2332', position: 'sticky', top: 0 }}>
                     <tr>
-                      {['行号', '用户名', '顯示名稱', 'SIP Domain', '角色', '狀態', '手機号', '郵箱', '校验'].map((label) => (
-                        <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', fontSize: '13px', color: '#475569', textAlign: 'left' }}>{label}</th>
+                      {['行号', '用戶名', '顯示名稱', 'SIP Domain', '角色', '狀態', '手機号', '郵箱', '校验'].map((label) => (
+                        <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', fontSize: '13px', color: '#9ca3af', textAlign: 'left' }}>{label}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {importRows.length === 0 ? (
-                      <tr><td colSpan="9" style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b' }}>请選擇 CSV 文件</td></tr>
+                      <tr><td colSpan="9" style={{ padding: '40px 16px', textAlign: 'center', color: '#9ca3af' }}>请選擇 CSV 文件</td></tr>
                     ) : importRows.map((row) => (
                       <tr key={row.row}>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.row}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.username}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.displayName || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.domain || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.role}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.status}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.phone || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>{row.email || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #f1f5f9', color: row.error ? '#dc2626' : '#16a34a' }}>{row.error || '可導入'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.row}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.username}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.displayName || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.domain || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.role}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.status}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.phone || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.email || '-'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', color: row.error ? '#dc2626' : '#16a34a' }}>{row.error || '可導入'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              <button type="button" onClick={() => setViewMode('list')} disabled={isImporting} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 500 }}>取消</button>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button type="button" onClick={() => setViewMode('list')} disabled={isImporting} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="button" onClick={handleImportSubmit} disabled={isImporting || importRows.length === 0 || importRows.some((row) => row.error)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isImporting ? '導入中...' : '执行導入'}</button>
             </div>
           </div>
@@ -703,19 +704,19 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }
 
   if (viewMode === 'detail' && viewingAccount) {
-    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' };
+    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' };
     return (
       <section className="view active settings-form-page" id="web-account-registration-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>Web 帳號詳情</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>Web 帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {[
-                  ['用户名', viewingAccount.username || '-'],
+                  ['用戶名', viewingAccount.username || '-'],
                   ['顯示名稱', viewingAccount.displayName || '-'],
                   ['SIP Domain', viewingAccount.domain || '-'],
                   ['角色', viewingAccount.role || '-'],
@@ -727,7 +728,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   ['創建時間', viewingAccount.createdAt || '-'],
                 ].map(([label, value]) => (
                   <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>{label}</span>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>{label}</span>
                     <input value={value} readOnly style={fieldStyle} />
                   </label>
                 ))}
@@ -740,7 +741,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }
 
   return (
-    <section className="view active" id="web-account-registration" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <section className="view active" id="web-account-registration" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
       <style>{`
         .dropdown-menu-portal {
           position: fixed;
@@ -1047,8 +1048,45 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           #web-account-registration .web-table-footer { padding: 14px 20px; flex-wrap: wrap; }
           #web-account-registration .web-pagination { flex-wrap: wrap; }
         }
+        /* === Dark theme overrides === */
+        #web-account-registration .web-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #web-account-registration .web-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #web-account-registration .web-search input::placeholder { color: #6b7280; }
+        #web-account-registration .web-search input:focus { border-color: #3b82f6; }
+        #web-account-registration .web-status-select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #web-account-registration .web-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
+        #web-account-registration .web-stat-pill strong { color: #ffffff; }
+        #web-account-registration .web-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #web-account-registration .web-table thead { background: #1a2332; }
+        #web-account-registration .web-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #web-account-registration .web-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #web-account-registration .web-table tbody tr { background: #111827; }
+        #web-account-registration .web-table tbody tr:hover { background: #1e293b; }
+        #web-account-registration .web-table td:last-child { background: #111827; box-shadow: -1px 0 0 #1f2937; }
+        #web-account-registration .web-table th:last-child { background: #1a2332; box-shadow: -1px 0 0 #1f2937; }
+        #web-account-registration .web-table-footer { background: #111827; border-top: 1px solid #1f2937; }
+        #web-account-registration .web-total { color: #9ca3af; }
+        #web-account-registration .web-page-size { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; }
+        #web-account-registration .web-page-size:focus { border-color: #3b82f6; }
+        #web-account-registration .web-page-btn { background: #1f2937; border: 1px solid #4b5563; color: #9ca3af; }
+        #web-account-registration .web-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #web-account-registration .web-page-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; }
+        #web-account-registration .web-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+        #web-account-registration .web-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #web-account-registration .web-page-jump { color: #9ca3af; }
+        #web-account-registration .web-table-wrapper { scrollbar-width: none; }
+        #web-account-registration .web-table-wrapper::-webkit-scrollbar { display: none; }
+        #web-account-registration .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #web-account-registration .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #web-account-registration .form-message { color: #d1d5db; }
+        #web-account-registration .form-message.error { background: #3b1111; color: #ef4444; }
+        #web-account-registration .form-message.success { background: #0d2818; color: #22c55e; }
+        .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
+        .dropdown-menu-portal .dropdown-item { color: #d1d5db; }
+        .dropdown-menu-portal .dropdown-item:hover { background: #374151; color: #f3f4f6; }
+        .dropdown-menu-portal .dropdown-item.dropdown-item-danger:hover { background: #3b1111; }
       `}</style>
-      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
+      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="web-toolbar">
           <div className="web-filter-left">
             <label className="web-search">
@@ -1084,11 +1122,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         <div className="web-table-card">
           <div className="web-table-wrapper">
             <table className="web-table">
-              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
               <tr>
-                <th style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
+                <th style={{ width: '50px', textAlign: 'center', padding: 0, background: '#1a2332' }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
                 {[
-                  ['username', '用户名', '150px'],
+                  ['username', '用戶名', '150px'],
                   ['displayName', '顯示名稱', '150px'],
                   ['domain', 'SIP Domain', '150px'],
                   ['role', '角色', '100px'],
@@ -1097,11 +1135,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   ['createdAt', '創建時間', '150px'],
                   ['creatorName', '創建人', '150px'],
                 ].map(([key, label, width]) => (
-                  <th key={key} style={{ width }}>
+                  <th key={key} style={{ width, background: '#1a2332' }}>
                     <button type="button" className="web-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
                   </th>
                 ))}
-                <th style={{ position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center' }}>操作</th>
+                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1117,7 +1155,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 paginatedAccounts.map((account) => (
                   <tr key={account.id}>
                     <td style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={selectedIds.includes(account.id)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...new Set([...ids, account.id])] : ids.filter((id) => id !== account.id))} /></td>
-                    <td style={{ color: '#0f172a', fontWeight: 500 }}>{account.username}</td>
+                    <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{account.username}</td>
                     <td>{account.displayName || '-'}</td>
                     <td>{account.domain || '-'}</td>
                     <td>{account.role || 'user'}</td>
@@ -1125,7 +1163,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     <td>{account.tenantName || '未分配'}</td>
                     <td>{account.createdAt || '-'}</td>
                     <td>{account.creatorName || '-'}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', color: '#e5e7eb', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', account)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={(event) => {
@@ -1155,7 +1193,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         <div className="web-table-footer">
           <div className="web-total">共 {filteredAccounts.length} 筆記錄</div>
           <div className="web-pagination">
-            <span className="web-page-size">{pageSize} 條/頁</span>
+            <select className="web-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === "全部" ? "全部" : Number(v)); setCurrentPage(1); }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === "全部" ? "全部" : opt + " 條/頁"}</option>)}</select>
             <button className="web-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
             <span className="web-page-current">{currentPage}</span>
             <button className="web-page-btn" type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
@@ -1166,15 +1204,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       </div>
 
       {batchAddOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAddOpen(false); }}>
-          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>批量增加 Web 帳號</h3></div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAddOpen(false); }}>
+          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量新增 Web 帳號</h3></div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>起始帳號</span><input value={batchAddForm.start} onChange={(event) => setBatchAddForm((form) => ({ ...form, start: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} /></label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>增加數量</span><input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>起始帳號</span><input value={batchAddForm.start} onChange={(event) => setBatchAddForm((form) => ({ ...form, start: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>增加數量</span><input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
               {batchAddMessage.text && <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{batchAddMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
@@ -1184,15 +1222,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       )}
 
       {resetPasswordAccount && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setResetPasswordAccount(null); }}>
-          <form onSubmit={handleResetPassword} style={{ width: 'min(480px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>重設密碼</h3></div>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setResetPasswordAccount(null); }}>
+          <form onSubmit={handleResetPassword} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3></div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>新密碼</span><input type="password" value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} required minLength={6} /></label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>確認密碼</span><input type="password" value={resetConfirmPasswordValue} onChange={(event) => setResetConfirmPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }} required minLength={6} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>新密碼</span><input type="password" value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span>確認密碼</span><input type="password" value={resetConfirmPasswordValue} onChange={(event) => setResetConfirmPasswordValue(event.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} required minLength={6} /></label>
               {resetMessage.text && <p style={{ margin: 0, fontSize: '14px', color: resetMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResetting}>{isResetting ? '儲存中...' : '確認重設'}</button>
             </div>
