@@ -574,6 +574,7 @@ export default function ConsoleLayout({ onLogout }) {
           <button type="button" onClick={() => setShowTenantMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
+    }
     if (currentView === 'call-center-inquiries') {
       const actionBaseStyle = {
         display: 'inline-flex',
