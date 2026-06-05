@@ -103,6 +103,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
   const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
   const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
+  const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -300,9 +301,12 @@ export default function ConsoleLayout({ onLogout }) {
         whiteSpace: 'nowrap',
       };
       return (
-        <button className="primary-btn" type="button" onClick={() => addonServicesRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
-          <Plus size={14} /> 新增服務
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => addonServicesRef.current?.startAdd()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
+            <Plus size={14} /> 新增服務
+          </button>
+          <button type="button" onClick={() => setShowAddonServicesHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
       );
     }
     if (currentView === 'tenant-coupon-management') {
@@ -1307,6 +1311,45 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/web-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/web-accounts</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/web-accounts/:id/reset-password</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddonServicesHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAddonServicesHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>增值服務 操作說明</h2>
+              <button onClick={() => setShowAddonServicesHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128230; 增值服務的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>增值服務是套餐的可選附加功能，租戶購買套餐時可同時選購。管理員在此設定增值服務的基本資訊和不同套餐下的定價。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128260; 頁面結構說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>頂部統計欄</strong> — 顯示服務總數、啟用中數量、定價規則數量，快速了解增值服務概況。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>左側列表</strong> — 已建立的增值服務列表，支援搜尋和狀態篩選。每個項目顯示服務代碼、名稱和預設定價。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>右側詳情</strong> — 點擊左側任一增值服務後，右側顯示該服務的完整資訊和定價設定。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作流程</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>1. 新增服務</strong> — 點擊「新增服務」按鈕，在右側面板填寫服務代碼、名稱、說明、計費單位和預設定價。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>2. 設定套餐定價</strong> — 在「套餐定價」區域為每個套餐設定不同的單價和幣種，可勾選「隨套餐期限」讓價格自動跟隨套餐週期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>3. 檢視服務</strong> — 點擊左側列表中的服務項目，右側顯示該服務的詳細資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>4. 啟用/停用</strong> — 使用開關按鈕快速切換服務狀態，停用的服務不會在租戶端顯示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>5. 刪除服務</strong> — 點擊服務項目右側的刪除圖標移除服務。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>服務列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/billing/addon-services</code><br/>建立/更新服務：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/billing/addon-services</code></p>
               </div>
             </div>
           </div>
