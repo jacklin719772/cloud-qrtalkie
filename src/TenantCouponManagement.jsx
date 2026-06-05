@@ -670,16 +670,16 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-stat-pill strong { color: #ffffff; }
         #tenant-coupon-management .tenant-coupon-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
         #tenant-coupon-management .tenant-coupon-table thead { background: #1a2332; }
-        #tenant-coupon-management .tenant-coupon-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
-        #tenant-coupon-management .tenant-coupon-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #tenant-coupon-management .tenant-coupon-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
         #tenant-coupon-management .tenant-coupon-table tbody tr { background: #111827; }
         #tenant-coupon-management .tenant-coupon-table tbody tr:hover { background: #1e293b; }
-        #tenant-coupon-management .tenant-coupon-table-footer { background: #111827; border-top-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-table-footer { background: #111827; border-top: 1px solid #1f2937; }
         #tenant-coupon-management .pagination-info { color: #9ca3af; }
         #tenant-coupon-management .pagination-info b { color: #f3f4f6; }
         #tenant-coupon-management .tenant-coupon-page-btn { background: #1f2937; border-color: #4b5563; color: #9ca3af; }
         #tenant-coupon-management .tenant-coupon-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
-        #tenant-coupon-management .tenant-coupon-page-btn:disabled { opacity: 0.4; }
+        #tenant-coupon-management .tenant-coupon-page-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; }
         #tenant-coupon-management .tenant-coupon-page-size { background: #1a2332; border-color: #374151; color: #e5e7eb; cursor: pointer; }
         #tenant-coupon-management .tenant-coupon-page-size:focus { border-color: #3b82f6; }
         #tenant-coupon-management .tenant-coupon-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
@@ -699,7 +699,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .assign-modal-content { background: #111827; border: 1px solid #1f2937; }
         #tenant-coupon-management .assign-modal-content select,
         #tenant-coupon-management .assign-modal-content input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
-        #tenant-coupon-management .tenant-coupon-empty { background: #111827; color: #9ca3af; border-bottom-color: #1f2937; width: 100%; }
+        #tenant-coupon-management .tenant-coupon-empty { background: #111827; color: #9ca3af; border-bottom: 1px solid #1f2937; width: 100%; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="tenant-coupon-main-toolbar">
@@ -772,14 +772,14 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                       <td>{formatDate(item.usedAt)}</td>
                       <td>
                         <div className="tenant-coupon-actions">
-                          <button className="ghost-btn" type="button" onClick={() => openDetails(item)}>详情</button>
+                          <button className="ghost-btn" type="button" onClick={() => openDetails(item)}>詳情</button>
                           {item.status === 'assigned' && (
-                            <button className="ghost-btn danger" type="button" onClick={() => revokeAssignment(item)} disabled={isRevoking}>撤销</button>
+                            <button className="ghost-btn danger" type="button" onClick={() => revokeAssignment(item)} disabled={isRevoking}>撤銷</button>
                           )}
                           {item.status === 'revoked' && (
                             <>
-                              <button className="ghost-btn" type="button" onClick={() => enableAssignment(item)} disabled={isRevoking}>启用</button>
-                              <button className="ghost-btn danger" type="button" onClick={() => deleteAssignment(item)} disabled={isRevoking}>删除</button>
+                              <button className="ghost-btn" type="button" onClick={() => enableAssignment(item)} disabled={isRevoking}>啟用</button>
+                              <button className="ghost-btn danger" type="button" onClick={() => deleteAssignment(item)} disabled={isRevoking}>刪除</button>
                             </>
                           )}
                         </div>
