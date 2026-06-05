@@ -255,7 +255,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       inactive: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
       pending: { label: '待审核', bg: '#e0f2fe', color: '#0369a1' },
     };
-    const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#475569' };
+    const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
     return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '10px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
   };
 
@@ -744,16 +744,16 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="sip-account-registration-add" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '600' }}>{viewMode === 'edit' ? '編輯帳號' : '添加新帳號'}</h3>
+          <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>{viewMode === 'edit' ? '編輯帳號' : '添加新帳號'}</h3>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
               
-              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>用户名 <RequiredMark /></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用户名 <RequiredMark /></span>
                   <input value={formData.username} onChange={e => {
                     const val = e.target.value;
                     setFormData(prev => ({
@@ -761,82 +761,82 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       username: val,
                       displayName: prev.displayName === prev.username ? val : prev.displayName
                     }));
-                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}) }} onFocus={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#3b82f6'; }} onBlur={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#cbd5e1'; }} required readOnly={viewMode === 'edit'} />
+                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' } : {}) }} onFocus={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#3b82f6'; }} onBlur={e => { if (viewMode !== 'edit') e.target.style.borderColor = '#374151'; }} required readOnly={viewMode === 'edit'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>域名 <RequiredMark /></span>
-                  <input value={formData.domain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b', cursor: 'not-allowed' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>域名 <RequiredMark /></span>
+                  <input value={formData.domain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '默认与用户名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
+                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '默认与用户名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
-                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required={viewMode === 'add'} minLength={6} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
+                  <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required={viewMode === 'add'} minLength={6} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
+                  <input type="password" value={formData.confirmPassword} onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>角色 <RequiredMark /></span>
-                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
+                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>狀態 <RequiredMark /></span>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <RequiredMark /></span>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>手機号</span>
-                  <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
+                  <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>郵箱</span>
-                  <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
+                  <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
               </div>
 
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
+              <div style={{ borderTop: '1px solid #1f2937', paddingTop: '24px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '16px' }}>
                   <input type="checkbox" checked={formData.hasExternal} onChange={e => setFormData({ ...formData, hasExternal: e.target.checked })} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>外部帳號</span>
+                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db' }}>外部帳號</span>
                 </label>
                 {formData.hasExternal && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>用戶名 <RequiredMark /></span>
-                      <input value={formData.externalUsername} onChange={e => setFormData({ ...formData, externalUsername: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required={formData.hasExternal} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名 <RequiredMark /></span>
+                      <input value={formData.externalUsername} onChange={e => setFormData({ ...formData, externalUsername: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={formData.hasExternal} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>域名 <RequiredMark /></span>
-                      <input value={formData.externalDomain} onChange={e => setFormData({ ...formData, externalDomain: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required={formData.hasExternal} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>域名 <RequiredMark /></span>
+                      <input value={formData.externalDomain} onChange={e => setFormData({ ...formData, externalDomain: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={formData.hasExternal} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                      <input type="password" value={formData.externalPassword} onChange={e => setFormData({ ...formData, externalPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required={formData.hasExternal && viewMode === 'add'} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
+                      <input type="password" value={formData.externalPassword} onChange={e => setFormData({ ...formData, externalPassword: e.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={formData.hasExternal && viewMode === 'add'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>認證域 (Realm)</span>
-                      <input value={formData.realm} onChange={e => setFormData({ ...formData, realm: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>認證域 (Realm)</span>
+                      <input value={formData.realm} onChange={e => setFormData({ ...formData, realm: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>註冊伺服器 (Registrar)</span>
-                      <input value={formData.registrar} onChange={e => setFormData({ ...formData, registrar: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>註冊伺服器 (Registrar)</span>
+                      <input value={formData.registrar} onChange={e => setFormData({ ...formData, registrar: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>出站代理 (Outbound Proxy)</span>
-                      <input value={formData.outboundProxy} onChange={e => setFormData({ ...formData, outboundProxy: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>出站代理 (Outbound Proxy)</span>
+                      <input value={formData.outboundProxy} onChange={e => setFormData({ ...formData, outboundProxy: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通訊協定 (Protocol)</span>
-                      <select value={formData.protocol} onChange={e => setFormData({ ...formData, protocol: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'}>
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊協定 (Protocol)</span>
+                      <select value={formData.protocol} onChange={e => setFormData({ ...formData, protocol: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#fff' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                         <option value="UDP">UDP</option>
                         <option value="TCP">TCP</option>
                         <option value="TLS">TLS</option>
@@ -846,9 +846,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 )}
               </div>
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#475569', border: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登记')}</button>
             </div>
           </form>
@@ -861,88 +861,88 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="sip-account-registration-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '600' }}>帳號詳情</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>
                 返回列表
               </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>用户名</span>
-                  <input value={viewingAccount.username || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用户名</span>
+                  <input value={viewingAccount.username || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>域名</span>
-                  <input value={viewingAccount.domain || defaultSipDomain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>域名</span>
+                  <input value={viewingAccount.domain || defaultSipDomain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>顯示名</span>
-                  <input value={viewingAccount.displayName || viewingAccount.username || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
+                  <input value={viewingAccount.displayName || viewingAccount.username || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>角色</span>
-                  <input value={viewingAccount.role || 'user'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色</span>
+                  <input value={viewingAccount.role || 'user'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>狀態</span>
-                  <input value={viewingAccount.status || 'active'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態</span>
+                  <input value={viewingAccount.status || 'active'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>手機号</span>
-                  <input value={viewingAccount.phone || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
+                  <input value={viewingAccount.phone || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>郵箱</span>
-                  <input value={viewingAccount.email || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
+                  <input value={viewingAccount.email || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>添加人</span>
-                  <input value={viewingAccount.creatorName || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>添加人</span>
+                  <input value={viewingAccount.creatorName || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>添加時間</span>
-                  <input value={viewingAccount.createdAt || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>添加時間</span>
+                  <input value={viewingAccount.createdAt || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>租戶名稱</span>
-                  <input value={viewingAccount.tenantName || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>租戶名稱</span>
+                  <input value={viewingAccount.tenantName || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                 </label>
               </div>
 
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
+              <div style={{ borderTop: '1px solid #1f2937', paddingTop: '24px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                   <input type="checkbox" checked={!!(viewingAccount.externalUsername || viewingAccount.externalDomain)} readOnly style={{ width: '16px', height: '16px' }} disabled />
-                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>外部帳號</span>
+                  <span style={{ fontSize: '15px', fontWeight: '600', color: '#d1d5db' }}>外部帳號</span>
                 </label>
                 {(viewingAccount.externalUsername || viewingAccount.externalDomain) && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>用戶名</span>
-                      <input value={viewingAccount.externalUsername || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名</span>
+                      <input value={viewingAccount.externalUsername || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>域名</span>
-                      <input value={viewingAccount.externalDomain || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>域名</span>
+                      <input value={viewingAccount.externalDomain || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>認證域 (Realm)</span>
-                      <input value={viewingAccount.externalRealm || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>認證域 (Realm)</span>
+                      <input value={viewingAccount.externalRealm || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>註冊伺服器 (Registrar)</span>
-                      <input value={viewingAccount.externalRegistrar || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>註冊伺服器 (Registrar)</span>
+                      <input value={viewingAccount.externalRegistrar || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>出站代理 (Outbound Proxy)</span>
-                      <input value={viewingAccount.externalOutboundProxy || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>出站代理 (Outbound Proxy)</span>
+                      <input value={viewingAccount.externalOutboundProxy || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通訊協定 (Protocol)</span>
-                      <input value={viewingAccount.externalProtocol || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊協定 (Protocol)</span>
+                      <input value={viewingAccount.externalProtocol || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
                     </label>
                   </div>
                 )}
@@ -958,15 +958,15 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return (
       <section className="view active settings-form-page" id="sip-account-registration-import" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: '600' }}>批量導入帳號</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>批量導入帳號</h3>
               <button className="ghost-btn" type="button" onClick={handleDownloadTemplate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
                 <Download size={14} /> 下載模板
               </button>
             </div>
             
-            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 1 ? '600' : '400', color: importStep === 1 ? '#3b82f6' : '#64748b', borderBottom: importStep === 1 ? '2px solid #3b82f6' : 'none' }}>1. 選擇導入文件</div>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 2 ? '600' : '400', color: importStep === 2 ? '#3b82f6' : '#64748b', borderBottom: importStep === 2 ? '2px solid #3b82f6' : 'none' }}>2. 校验文件數據</div>
                <div style={{ flex: 1, padding: '16px', textAlign: 'center', fontSize: '15px', fontWeight: importStep === 3 ? '600' : '400', color: importStep === 3 ? '#3b82f6' : '#64748b', borderBottom: importStep === 3 ? '2px solid #3b82f6' : 'none' }}>3. 执行導入操作</div>
@@ -975,7 +975,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                {importStep === 1 && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: '300px', gap: '16px' }}>
-                    <p style={{ color: '#475569', fontSize: '15px' }}>请選擇符合模板格式的 CSV / VSV 文件。</p>
+                    <p style={{ color: '#9ca3af', fontSize: '15px' }}>请選擇符合模板格式的 CSV / VSV 文件。</p>
                   <label className="primary-btn" style={{ cursor: 'pointer', padding: '10px 24px', fontSize: '15px' }}>
                        選擇文件并解析
                        <input type="file" accept=".csv,.vsv" style={{ display: 'none' }} onChange={handleFileUpload} />
@@ -985,22 +985,22 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
                {importStep === 2 && (
                   <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                     <p style={{ marginBottom: '16px', color: '#475569', fontSize: '15px' }}>
+                     <p style={{ marginBottom: '16px', color: '#9ca3af', fontSize: '15px' }}>
                        共解析到 <strong style={{ color: '#0f172a' }}>{parsedData.length}</strong> 條數據，其中有错误 <strong style={{ color: '#ef4444' }}>{parsedData.filter(d => d._error).length}</strong> 條。
                      </p>
-                     <div style={{ flex: 1, overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                     <div style={{ flex: 1, overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px' }}>
                        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                          <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 1 }}>
+                          <thead style={{ position: 'sticky', top: 0, backgroundColor: '#1a2332', zIndex: 1 }}>
                              <tr>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 500 }}>行号</th>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 500 }}>用户名</th>
-                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 500 }}>狀態/错误信息</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>行号</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>用户名</th>
+                               <th style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#9ca3af', fontWeight: 500 }}>狀態/错误信息</th>
                              </tr>
                           </thead>
                           <tbody>
                              {parsedData.map((d, idx) => (
                                <tr key={idx}>
-                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>{d._originalRow}</td>
+                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: '#9ca3af' }}>{d._originalRow}</td>
                                  <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: '#0f172a' }}>{d.username || '-'}</td>
                                  <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', color: d._error ? '#ef4444' : '#10b981' }}>{d._error || '校验通过'}</td>
                                </tr>
@@ -1028,7 +1028,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                         <>
                            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                               <h4 style={{ fontSize: '24px', color: importResults.fail === 0 ? '#10b981' : '#f59e0b', margin: '0 0 12px 0' }}>導入完成</h4>
-                              <p style={{ color: '#475569', fontSize: '15px', margin: 0 }}>成功導入 <strong>{importResults.success}</strong> 條，失敗 <strong>{importResults.fail}</strong> 條。</p>
+                              <p style={{ color: '#9ca3af', fontSize: '15px', margin: 0 }}>成功導入 <strong>{importResults.success}</strong> 條，失敗 <strong>{importResults.fail}</strong> 條。</p>
                            </div>
                            {importResults.errors.length > 0 && (
                               <div style={{ width: '100%', maxWidth: '600px', backgroundColor: '#fef2f2', padding: '20px', borderRadius: '8px', border: '1px solid #fecaca', maxHeight: '200px', overflowY: 'auto' }}>
@@ -1368,9 +1368,47 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           #sip-account-registration .sip-table-footer { padding: 14px 20px; flex-wrap: wrap; }
           #sip-account-registration .sip-pagination { flex-wrap: wrap; }
         }
+
+        /* === Dark theme overrides === */
+        #sip-account-registration .sip-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #sip-account-registration .sip-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #sip-account-registration .sip-search input::placeholder { color: #6b7280; }
+        #sip-account-registration .sip-search input:focus { border-color: #3b82f6; }
+        #sip-account-registration .sip-status-select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #sip-account-registration .sip-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
+        #sip-account-registration .sip-stat-pill strong { color: #ffffff; }
+        #sip-account-registration .sip-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #sip-account-registration .sip-table thead { background: #1a2332; }
+        #sip-account-registration .sip-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #sip-account-registration .sip-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #sip-account-registration .sip-table tbody tr { background: #111827; }
+        #sip-account-registration .sip-table tbody tr:hover { background: #1e293b; }
+        #sip-account-registration .sip-table td:last-child { background: #111827; box-shadow: -1px 0 0 #1f2937; }
+        #sip-account-registration .sip-table th:last-child { background: #1a2332; box-shadow: -1px 0 0 #1f2937; }
+        #sip-account-registration .sip-table-footer { background: #111827; border-top: 1px solid #1f2937; }
+        #sip-account-registration .sip-total { color: #9ca3af; }
+        #sip-account-registration .sip-page-size { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; }
+        #sip-account-registration .sip-page-size:focus { border-color: #3b82f6; }
+        #sip-account-registration .sip-page-btn { background: #1f2937; border: 1px solid #4b5563; color: #9ca3af; }
+        #sip-account-registration .sip-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #sip-account-registration .sip-page-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; }
+        #sip-account-registration .sip-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+        #sip-account-registration .sip-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #sip-account-registration .sip-page-jump { color: #9ca3af; }
+        #sip-account-registration .sip-table-wrapper { scrollbar-width: none; }
+        #sip-account-registration .sip-table-wrapper::-webkit-scrollbar { display: none; }
+        #sip-account-registration .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #sip-account-registration .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #sip-account-registration .form-message { color: #d1d5db; }
+        #sip-account-registration .form-message.error { background: #3b1111; color: #ef4444; }
+        #sip-account-registration .form-message.success { background: #0d2818; color: #22c55e; }
+        .dropdown-menu-portal { background: #1e293b; border-color: #374151; }
+        .dropdown-menu-portal .dropdown-item { color: #d1d5db; }
+        .dropdown-menu-portal .dropdown-item:hover { background: #374151; color: #f3f4f6; }
+        .dropdown-menu-portal .dropdown-item.dropdown-item-danger:hover { background: #3b1111; }
       `}</style>
-      <section className="view active" id="sip-account-registration" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
+      <section className="view active" id="sip-account-registration" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
+        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
           
           <div className="sip-toolbar">
             <div className="sip-filter-left">
@@ -1406,9 +1444,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           <div className="sip-table-card">
             <div className="sip-table-wrapper">
               <table className="sip-table">
-              <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
-                  <th style={{ width: '50px', textAlign: 'center', padding: 0 }}>
+                  <th style={{ width: '50px', textAlign: 'center', padding: 0, background: '#1a2332' }}>
                     <input
                       type="checkbox"
                       checked={paginatedAccounts.length > 0 && paginatedAccounts.every(acc => selectedIds.includes(acc.id))}
@@ -1433,11 +1471,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     ['createdAt', '添加時間', '150px'],
                     ['tenantName', '租戶名稱', '150px'],
                   ].map(([key, label, width]) => (
-                    <th key={key} style={{ width }}>
+                    <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" className="sip-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
                     </th>
                   ))}
-                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center' }}>操作</th>
+                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1470,7 +1508,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
                       <td>{acc.tenantName || '未分配'}</td>
-                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                           <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', acc)}>詳情</button>
                           <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={(e) => {
@@ -1516,28 +1554,28 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
       {/* 重設密碼彈窗 */}
       {batchAddOpen && createPortal(
-        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
-          <form onSubmit={handleBatchAddSubmit} style={{ backgroundColor: '#fff', borderRadius: '8px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
+          <form onSubmit={handleBatchAddSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>批量增加帳號</h3>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>起始用户帳號 <RequiredMark /></span>
-                <input type="number" min="1" step="1" value={batchAddForm.start} onChange={e => setBatchAddForm(prev => ({ ...prev, start: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>起始用户帳號 <RequiredMark /></span>
+                <input type="number" min="1" step="1" value={batchAddForm.start} onChange={e => setBatchAddForm(prev => ({ ...prev, start: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>增加數量 <RequiredMark /></span>
-                <input type="number" min="1" max="1000" step="1" value={batchAddForm.count} onChange={e => setBatchAddForm(prev => ({ ...prev, count: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} required />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>增加數量 <RequiredMark /></span>
+                <input type="number" min="1" max="1000" step="1" value={batchAddForm.count} onChange={e => setBatchAddForm(prev => ({ ...prev, count: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
               </label>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '13px', lineHeight: 1.6 }}>
+              <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
                 系统会按单個增加的默认逻辑創建帳號，用户名从起始帳號开始递增，顯示名默认与用户名一致。
               </p>
               {batchAddMessage.text && (
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
@@ -1548,22 +1586,22 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
       {resetPasswordAccount && createPortal(
         <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
-          <form onSubmit={handleResetPasswordSubmit} style={{ backgroundColor: '#fff', borderRadius: '8px', width: '400px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+          <form onSubmit={handleResetPasswordSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '400px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0f172a' }}>重設密碼 ({resetPasswordAccount.username})</h3>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
-                <input type="password" value={resetPasswordValue} onChange={e => setResetPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required minLength={6} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
+                <input type="password" value={resetPasswordValue} onChange={e => setResetPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required minLength={6} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>確認新密碼 <RequiredMark /></span>
-                <input type="password" value={resetConfirmPasswordValue} onChange={e => setResetConfirmPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} required minLength={6} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認新密碼 <RequiredMark /></span>
+                <input type="password" value={resetConfirmPasswordValue} onChange={e => setResetConfirmPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required minLength={6} />
               </label>
               {resetMessage.text && <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: resetMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{resetMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResetting}>{isResetting ? '儲存中...' : '確認重設'}</button>
             </div>
