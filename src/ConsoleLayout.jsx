@@ -100,6 +100,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showPlansHelp, setShowPlansHelp] = useState(false);
   const [showTenantMgmtHelp, setShowTenantMgmtHelp] = useState(false);
   const [showCouponMgmtHelp, setShowCouponMgmtHelp] = useState(false);
+  const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -486,6 +487,7 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="primary-btn" type="button" onClick={() => deviceManagementRef.current?.handleBatchDelete()} style={{ ...deviceActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}>
               <Trash2 size={14} /> 批量刪除
             </button>
+            <button type="button" onClick={() => setShowDeviceMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           </div>
         );
       }
@@ -1163,6 +1165,53 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>分配列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenant-coupons</code><br/>分配優惠碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/tenant-coupons</code><br/>撤銷/啟用/刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/DELETE /api/admin/tenant-coupons/:id</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeviceMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowDeviceMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>設備管理 操作說明</h2>
+              <button onClick={() => setShowDeviceMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127976; 設備管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>設備管理用於為租戶門禁系統提供入口開關遠端控制。每個設備對應一個實體繼電器控制單元，通過 MQTT 主題發布控制指令來遠端開啟/關閉門禁。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增設備</strong> — 手動新增單個設備，設定 UUID、繼電器 ID、MQTT 主題等參數。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次新增多個設備，自動生成 UUID。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>分配設備</strong> — 將設備分配給指定租戶，分配後租戶可通過門禁系統控制該設備。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>取消分配</strong> — 取消設備與租戶的綁定關係。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯設備</strong> — 修改設備的設定參數。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除設備</strong> — 移除不再使用的設備。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將設備列表匯出為 CSV 檔案。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>UUID</strong> — 設備唯一識別碼，系統自動生成，用於 MQTT 通訊中的設備標識。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>繼電器 ID</strong> — MQTT Relay ID，標識設備所屬的繼電器控制單元。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發布主題（Publish Topic）</strong> — 發布控制命令的 MQTT 主題。其中的 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>SendID</code> 欄位為設備控制單元（繼電器）編號，用於指定要控制哪一個開關迴路。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂閱主題（Subscribe Topic）</strong> — 接收設備回傳反饋資訊的 MQTT 主題，格式為 <code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>繼電器ID/QRTALKIE/POST</code>。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>WiFi 名稱</strong> — 設備所在地的 WiFi 網路名稱，用於設備連網設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>WiFi 密碼</strong> — 對應 WiFi 網路的連接密碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>分配狀態</strong> — 已分配（已綁定租戶）/ 未分配（尚未綁定）/ 已停用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>所屬租戶</strong> — 設備當前綁定的租戶名稱。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>截止日期</strong> — 設備的使用截止日期。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>設備列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/gate-devices</code><br/>新增/編輯設備：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/gate-devices</code><br/>批量操作：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/gate-devices/batch</code></p>
               </div>
             </div>
           </div>
