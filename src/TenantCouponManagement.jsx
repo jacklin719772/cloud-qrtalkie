@@ -266,7 +266,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       <section className="view active tenant-coupon-page" id="tenant-coupon-management">
         <style>{`
           #tenant-coupon-management .tenant-coupon-shell { background: #111827; border-color: #1f2937; }
-          #tenant-coupon-management .tenant-coupon-scroll-area { background: #111827; }
+          #tenant-coupon-management .tenant-coupon-scroll-area { background: #111827; scrollbar-width: none; }
+          #tenant-coupon-management .tenant-coupon-scroll-area::-webkit-scrollbar { display: none; }
           #tenant-coupon-management .tenant-coupon-assign-panel { background: #111827; border-color: #1f2937; }
           #tenant-coupon-management .tenant-coupon-assign-head span { color: #9ca3af; }
           #tenant-coupon-management .tenant-coupon-assign-head h3 { color: #f3f4f6; }
@@ -292,7 +293,6 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                   <span>優惠碼分配</span>
                   <h3>為租戶分配優惠碼</h3>
                 </div>
-                <button className="ghost-btn" type="button" onClick={returnToList}>返回優惠碼管理</button>
               </div>
 
               <div className="tenant-coupon-assign-grid">
