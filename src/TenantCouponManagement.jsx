@@ -139,7 +139,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       setCoupons([]);
       setSelectedTenantId('');
       setSelectedCouponId('');
-      setAssignMessage({ type: 'error', text: err.message || '無法讀取可分配资料。' });
+      setAssignMessage({ type: 'error', text: err.message || '無法讀取可分配資料。' });
     } finally {
       setIsAssignLoading(false);
     }
@@ -207,7 +207,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       window.alert('已使用、已撤銷或已過期的優惠碼不能撤銷。');
       return;
     }
-    if (!window.confirm(`確定要撤銷「${item.tenantName || item.tenantNumber}」的优惠码「${item.couponCode}」吗？`)) return;
+    if (!window.confirm(`確定要撤銷「${item.tenantName || item.tenantNumber}」的優惠碼「${item.couponCode}」嗎？`)) return;
 
     setIsRevoking(true);
     setError('');
@@ -216,7 +216,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '撤销优惠码失败。');
+      setError(err.message || '撤销優惠碼失败。');
     } finally {
       setIsRevoking(false);
     }
@@ -224,7 +224,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
   async function enableAssignment(item) {
     if (item.status !== 'revoked') {
-      window.alert('只有撤销状态的优惠码可以启用。');
+      window.alert('只有撤销状态的優惠碼可以启用。');
       return;
     }
 
@@ -235,7 +235,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '启用优惠码失败。');
+      setError(err.message || '启用優惠碼失败。');
     } finally {
       setIsRevoking(false);
     }
@@ -243,10 +243,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
   async function deleteAssignment(item) {
     if (item.status !== 'revoked') {
-      window.alert('只有撤销状态的优惠码可以删除。');
+      window.alert('只有撤销状态的優惠碼可以删除。');
       return;
     }
-    if (!window.confirm(`确定要删除「${item.tenantName || item.tenantNumber}」的优惠码「${item.couponCode}」分配记录吗？`)) return;
+    if (!window.confirm(`确定要删除「${item.tenantName || item.tenantNumber}」的優惠碼「${item.couponCode}」分配記錄嗎？`)) return;
 
     setIsRevoking(true);
     setError('');
@@ -255,7 +255,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '删除优惠码分配记录失败。');
+      setError(err.message || '删除優惠碼分配記錄失败。');
     } finally {
       setIsRevoking(false);
     }
@@ -269,17 +269,17 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
             <form className="tenant-coupon-assign-panel" onSubmit={submitAssignment}>
               <div className="tenant-coupon-assign-head">
                 <div>
-                  <span>优惠码分配</span>
-                  <h3>为租户分配优惠码</h3>
+                  <span>優惠碼分配</span>
+                  <h3>为租户分配優惠碼</h3>
                 </div>
-                <button className="ghost-btn" type="button" onClick={returnToList}>返回优惠码管理</button>
+                <button className="ghost-btn" type="button" onClick={returnToList}>返回優惠碼管理</button>
               </div>
 
               <div className="tenant-coupon-assign-grid">
                 <label>
                   启用中的租户
                   <select value={selectedTenantId} onChange={(event) => setSelectedTenantId(event.target.value)} disabled={isAssignLoading || isAssignSaving}>
-                    {tenants.length === 0 && <option value="">暂无启用租户</option>}
+                    {tenants.length === 0 && <option value="">暫無啟用租戶</option>}
                     {tenants.map((tenant) => (
                       <option key={tenant.id} value={tenant.id}>
                         {tenant.companyName || tenant.tenantNumber || tenant.id}
@@ -289,9 +289,9 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 </label>
 
                 <label>
-                  生效中的优惠码
+                  生效中的優惠碼
                   <select value={selectedCouponId} onChange={(event) => setSelectedCouponId(event.target.value)} disabled={isAssignLoading || isAssignSaving}>
-                    {coupons.length === 0 && <option value="">暂无生效优惠码</option>}
+                    {coupons.length === 0 && <option value="">暫無生效優惠碼</option>}
                     {coupons.map((coupon) => (
                       <option key={coupon.id} value={coupon.id}>
                         {coupon.couponCode} - {coupon.displayName || formatDiscount(coupon)}
@@ -301,9 +301,9 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 </label>
               </div>
 
-              <section className="tenant-coupon-readonly-card" aria-label="优惠码基本信息">
+              <section className="tenant-coupon-readonly-card" aria-label="優惠碼基本信息">
                 <div className="tenant-coupon-readonly-head">
-                  <span>优惠码基本信息</span>
+                  <span>優惠碼基本信息</span>
                   <strong>{selectedCoupon?.couponCode || '-'}</strong>
                 </div>
                 <div className="tenant-coupon-readonly-grid">
@@ -342,7 +342,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 </div>
               </section>
 
-              {isAssignLoading && <p className="form-message">正在载入可分配资料...</p>}
+              {isAssignLoading && <p className="form-message">正在載入可分配資料...</p>}
               {assignMessage.text && <p className={`form-message ${assignMessage.type}`}>{assignMessage.text}</p>}
 
               <menu className="form-actions tenant-coupon-assign-actions">
@@ -399,7 +399,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           height: 14px !important;
         }
         /* ========================================================
-           优惠码管理页面样式 - 对齐 DeviceManagement.jsx
+           優惠碼管理页面样式 - 对齐 DeviceManagement.jsx
            ======================================================== */
         #tenant-coupon-management .tenant-coupon-shell {
           background: rgba(255, 255, 255, 0.96);
@@ -699,6 +699,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .assign-modal-content { background: #111827; border: 1px solid #1f2937; }
         #tenant-coupon-management .assign-modal-content select,
         #tenant-coupon-management .assign-modal-content input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #tenant-coupon-management .tenant-coupon-empty { background: #111827; color: #9ca3af; border-bottom-color: #1f2937; width: 100%; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="tenant-coupon-main-toolbar">
@@ -736,7 +737,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 <thead>
                   <tr>
                     <th>租户</th>
-                    <th>优惠码</th>
+                    <th>優惠碼</th>
                     <th>优惠内容</th>
                     <th>分配时间</th>
                     <th>使用状态</th>
@@ -748,12 +749,16 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 <tbody>
                   {isLoading && (
                     <tr>
-                      <td colSpan="8" className="tenant-coupon-empty">正在载入优惠码分配列表...</td>
+                      <td colSpan="8" style={{ padding: 0 }}>
+                        <div className="tenant-coupon-empty">正在載入優惠碼分配列表...</div>
+                      </td>
                     </tr>
                   )}
                   {!isLoading && items.length === 0 && (
                     <tr>
-                      <td colSpan="8" className="tenant-coupon-empty">暂无符合条件的优惠码分配记录</td>
+                      <td colSpan="8" style={{ padding: 0 }}>
+                        <div className="tenant-coupon-empty">暫無符合條件的優惠碼分配記錄</div>
+                      </td>
                     </tr>
                   )}
                   {!isLoading && items.map((item) => (
@@ -815,7 +820,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
               <div className="tenant-coupon-detail-grid">
                 <label><span>租户</span><strong>{detailItem.tenantName || '-'}</strong></label>
                 <label><span>租户编号</span><strong>{detailItem.tenantNumber || detailItem.tenantId || '-'}</strong></label>
-                <label><span>优惠码</span><strong>{detailItem.couponCode || '-'}</strong></label>
+                <label><span>優惠碼</span><strong>{detailItem.couponCode || '-'}</strong></label>
                 <label><span>显示名称</span><strong>{detailItem.displayName || '-'}</strong></label>
                 <label><span>优惠内容</span><strong>{formatDiscount(detailItem)}</strong></label>
                 <label><span>状态</span><strong>{statusText(detailItem.status)}</strong></label>
