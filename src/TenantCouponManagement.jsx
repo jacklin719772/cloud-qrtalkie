@@ -725,6 +725,16 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .assign-modal-content select,
         #tenant-coupon-management .assign-modal-content input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #tenant-coupon-management .tenant-coupon-empty { background: #111827; color: #9ca3af; border-bottom: 1px solid #1f2937; width: 100%; }
+        #tenant-coupon-management .tenant-coupon-modal-overlay { background: rgba(0,0,0,0.5); }
+        #tenant-coupon-management .tenant-coupon-modal { background: #111827; border-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-modal-head { border-bottom-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-modal-head span { color: #9ca3af; }
+        #tenant-coupon-management .tenant-coupon-modal-head h3 { color: #f3f4f6; }
+        #tenant-coupon-management .tenant-coupon-modal-body { background: #111827; }
+        #tenant-coupon-management .tenant-coupon-detail-grid label span { color: #9ca3af; }
+        #tenant-coupon-management .tenant-coupon-detail-grid label strong { color: #e5e7eb; }
+        #tenant-coupon-management .tenant-coupon-modal-actions { background: #111827; border-top-color: #1f2937; }
+        #tenant-coupon-management .icon-btn { color: #9ca3af; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="tenant-coupon-main-toolbar">
@@ -832,41 +842,41 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           </div>
       </div>
       {detailItem && createPortal(
-        <div className="tenant-coupon-modal-overlay" onClick={() => setDetailItem(null)}>
-          <div className="tenant-coupon-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="tenant-coupon-modal-head">
+        <div className="tenant-coupon-modal-overlay" onClick={() => setDetailItem(null)} style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="tenant-coupon-modal" onClick={(event) => event.stopPropagation()} style={{ background: '#111827', border: '1px solid #1f2937' }}>
+            <div className="tenant-coupon-modal-head" style={{ borderBottomColor: '#1f2937' }}>
               <div>
-                <span>分配详情</span>
-                <h3>{detailItem.couponCode}</h3>
+                <span style={{ color: '#9ca3af' }}>分配詳情</span>
+                <h3 style={{ color: '#f3f4f6' }}>{detailItem.couponCode}</h3>
               </div>
-              <button className="icon-btn" type="button" title="关闭" onClick={() => setDetailItem(null)}>x</button>
+              <button className="icon-btn" type="button" title="關閉" onClick={() => setDetailItem(null)} style={{ color: '#9ca3af' }}>x</button>
             </div>
             <div className="tenant-coupon-modal-body">
               <div className="tenant-coupon-detail-grid">
-                <label><span>租户</span><strong>{detailItem.tenantName || '-'}</strong></label>
-                <label><span>租户编号</span><strong>{detailItem.tenantNumber || detailItem.tenantId || '-'}</strong></label>
-                <label><span>優惠碼</span><strong>{detailItem.couponCode || '-'}</strong></label>
-                <label><span>显示名称</span><strong>{detailItem.displayName || '-'}</strong></label>
-                <label><span>优惠内容</span><strong>{formatDiscount(detailItem)}</strong></label>
-                <label><span>状态</span><strong>{statusText(detailItem.status)}</strong></label>
-                <label><span>有效期</span><strong>{detailItem.validFrom || '不限'} 至 {detailItem.validUntil || '-'}</strong></label>
-                <label><span>分配时间</span><strong>{formatDate(detailItem.assignedAt)}</strong></label>
-                <label><span>使用订单</span><strong>{detailItem.usedOrderNo || '-'}</strong></label>
-                <label><span>使用时间</span><strong>{formatDate(detailItem.usedAt)}</strong></label>
-                <label className="span-2"><span>备注</span><strong>{detailItem.notes || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>租戶</span><strong style={{ color: '#e5e7eb' }}>{detailItem.tenantName || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>租戶編號</span><strong style={{ color: '#e5e7eb' }}>{detailItem.tenantNumber || detailItem.tenantId || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>優惠碼</span><strong style={{ color: '#e5e7eb' }}>{detailItem.couponCode || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>顯示名稱</span><strong style={{ color: '#e5e7eb' }}>{detailItem.displayName || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>優惠內容</span><strong style={{ color: '#e5e7eb' }}>{formatDiscount(detailItem)}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>狀態</span><strong style={{ color: '#e5e7eb' }}>{statusText(detailItem.status)}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>有效期</span><strong style={{ color: '#e5e7eb' }}>{detailItem.validFrom ? formatDate(detailItem.validFrom) : '不限'} 至 {detailItem.validUntil ? formatDate(detailItem.validUntil) : '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>分配時間</span><strong style={{ color: '#e5e7eb' }}>{formatDate(detailItem.assignedAt)}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>使用訂單</span><strong style={{ color: '#e5e7eb' }}>{detailItem.usedOrderNo || '-'}</strong></label>
+                <label><span style={{ color: '#9ca3af' }}>使用時間</span><strong style={{ color: '#e5e7eb' }}>{formatDate(detailItem.usedAt)}</strong></label>
+                <label className="span-2"><span style={{ color: '#9ca3af' }}>備註</span><strong style={{ color: '#e5e7eb' }}>{detailItem.notes || '-'}</strong></label>
               </div>
             </div>
-            <div className="tenant-coupon-modal-actions">
+            <div className="tenant-coupon-modal-actions" style={{ borderTopColor: '#1f2937', background: '#111827' }}>
               {detailItem.status === 'assigned' && (
-                <button className="ghost-btn danger" type="button" onClick={() => revokeAssignment(detailItem)} disabled={isRevoking}>撤销</button>
+                <button className="ghost-btn danger" type="button" onClick={() => revokeAssignment(detailItem)} disabled={isRevoking}>撤銷</button>
               )}
               {detailItem.status === 'revoked' && (
                 <>
-                  <button className="ghost-btn" type="button" onClick={() => enableAssignment(detailItem)} disabled={isRevoking}>启用</button>
-                  <button className="ghost-btn danger" type="button" onClick={() => deleteAssignment(detailItem)} disabled={isRevoking}>删除</button>
+                  <button className="ghost-btn" type="button" onClick={() => enableAssignment(detailItem)} disabled={isRevoking}>啟用</button>
+                  <button className="ghost-btn danger" type="button" onClick={() => deleteAssignment(detailItem)} disabled={isRevoking}>刪除</button>
                 </>
               )}
-              <button className="primary-btn" type="button" onClick={() => setDetailItem(null)}>关闭</button>
+              <button className="primary-btn" type="button" onClick={() => setDetailItem(null)}>關閉</button>
             </div>
           </div>
         </div>,
