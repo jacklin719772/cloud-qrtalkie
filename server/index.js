@@ -2749,12 +2749,11 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       if (!newTenantId) return response.status(500).json({ message: "建立租戶失敗。" });
 
       // Create admin account
-      const bcrypt = (await import("bcryptjs")).default || (await import("bcryptjs"));
       const adminPhone = sanitizeString(payload.adminPhone, 40);
       await connection.query(
         `INSERT INTO admin_users (tenant_id, email, password_hash, phone_number, account_type, status)
          VALUES (?, ?, ?, ?, 'tenant', 'active')`,
-        [newTenantId, loginEmail, await bcrypt.hash(password, 10), adminPhone || null],
+        [newTenantId, loginEmail, await hashPassword(password), adminPhone || null],
       );
 
       await connection.query("COMMIT");
