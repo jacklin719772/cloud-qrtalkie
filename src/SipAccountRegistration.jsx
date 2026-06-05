@@ -1092,7 +1092,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
            复刻設備管理頁面顶部命令按钮的视觉风格
            严格限定在该頁面挂载时生效，通过子選擇器仅覆盖工具栏操作按钮组
            ======================================================== */
-        .page-heading > div > button {
+        .page-heading > div > button.ghost-btn,
+        .page-heading > div > button.primary-btn {
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;

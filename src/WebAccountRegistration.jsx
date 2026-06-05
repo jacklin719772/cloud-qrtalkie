@@ -771,7 +771,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         /* ========================================================
            复刻設備管理頁面顶部命令按钮的视觉风格
            ======================================================== */
-        .page-heading > div > button {
+        .page-heading > div > button.ghost-btn,
+        .page-heading > div > button.primary-btn {
           display: inline-flex !important;
           align-items: center !important;
           justify-content: center !important;
