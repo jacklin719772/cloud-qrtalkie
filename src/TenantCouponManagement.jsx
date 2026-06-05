@@ -1,20 +1,20 @@
 ﻿import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
-import { Search, Download, Upload, Plus, UserPlus, UserMinus, Trash2, Edit, Eye } from 'lucide-react'; // 引入图标
+import { Search, Download, Upload, Plus, UserPlus, UserMinus, Trash2, Edit, Eye } from 'lucide-react'; // 引入圖標
 
 const statusOptions = [
-  { value: 'all', label: '全部状态' },
+  { value: 'all', label: '全部狀態' },
   { value: 'assigned', label: '未使用' },
   { value: 'used', label: '已使用' },
-  { value: 'revoked', label: '已撤销' },
-  { value: 'expired', label: '已过期' },
+  { value: 'revoked', label: '已撤銷' },
+  { value: 'expired', label: '已過期' },
 ];
 
 function statusText(status) {
   if (status === 'used') return '已使用';
-  if (status === 'revoked') return '已撤销';
-  if (status === 'expired') return '已过期';
+  if (status === 'revoked') return '已撤銷';
+  if (status === 'expired') return '已過期';
   return '未使用';
 }
 
@@ -67,11 +67,11 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
   const pageEnd = Math.min(total, page * pageSize);
 
   const statItems = useMemo(() => [
-    { key: 'total', label: '已分配总数', value: stats.total || 0 },
+    { key: 'total', label: '已分配總數', value: stats.total || 0 },
     { key: 'assigned', label: '未使用', value: stats.assigned || 0, tone: 'success' },
     { key: 'used', label: '已使用', value: stats.used || 0, tone: 'primary' },
-    { key: 'revoked', label: '已撤销', value: stats.revoked || 0, tone: 'danger' },
-    { key: 'expired', label: '已过期', value: stats.expired || 0, tone: 'warning' },
+    { key: 'revoked', label: '已撤銷', value: stats.revoked || 0, tone: 'danger' },
+    { key: 'expired', label: '已過期', value: stats.expired || 0, tone: 'warning' },
   ], [stats]);
 
   const selectedCoupon = useMemo(
@@ -107,7 +107,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
     } catch (err) {
       setItems([]);
       setTotal(0);
-      setError(err.message || '无法读取优惠码分配列表。');
+      setError(err.message || '無法讀取優惠碼分配列表。');
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +137,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       setCoupons([]);
       setSelectedTenantId('');
       setSelectedCouponId('');
-      setAssignMessage({ type: 'error', text: err.message || '无法读取可分配资料。' });
+      setAssignMessage({ type: 'error', text: err.message || '無法讀取可分配资料。' });
     } finally {
       setIsAssignLoading(false);
     }
@@ -172,11 +172,11 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
   async function submitAssignment(event) {
     event.preventDefault();
     if (!selectedTenantId) {
-      setAssignMessage({ type: 'error', text: '请选择启用中的租户。' });
+      setAssignMessage({ type: 'error', text: '請選擇啟用中的租戶。' });
       return;
     }
     if (!selectedCouponId) {
-      setAssignMessage({ type: 'error', text: '请选择生效中的优惠码。' });
+      setAssignMessage({ type: 'error', text: '請選擇生效中的優惠碼。' });
       return;
     }
 
@@ -187,10 +187,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         tenantId: Number(selectedTenantId),
         couponId: Number(selectedCouponId),
       });
-      setAssignMessage({ type: 'success', text: result.message || '优惠码已分配。' });
+      setAssignMessage({ type: 'success', text: result.message || '優惠碼已分配。' });
       await loadAssignments(1);
     } catch (err) {
-      setAssignMessage({ type: 'error', text: err.message || '分配优惠码失败。' });
+      setAssignMessage({ type: 'error', text: err.message || '分配優惠碼失敗。' });
     } finally {
       setIsAssignSaving(false);
     }
@@ -202,10 +202,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
   async function revokeAssignment(item) {
     if (item.status !== 'assigned') {
-      window.alert('已使用、已撤销或已过期的优惠码不能撤销。');
+      window.alert('已使用、已撤銷或已過期的優惠碼不能撤銷。');
       return;
     }
-    if (!window.confirm(`确定要撤销「${item.tenantName || item.tenantNumber}」的优惠码「${item.couponCode}」吗？`)) return;
+    if (!window.confirm(`確定要撤銷「${item.tenantName || item.tenantNumber}」的优惠码「${item.couponCode}」吗？`)) return;
 
     setIsRevoking(true);
     setError('');
@@ -655,8 +655,48 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
             flex-wrap: wrap;
           }
         }
+
+        /* === Dark theme overrides === */
+        #tenant-coupon-management .tenant-content { background: #111827; }
+        #tenant-coupon-management .tenant-coupon-shell { background: #111827; border-color: #1f2937; box-shadow: none; }
+        #tenant-coupon-management .tenant-coupon-main-toolbar { background: #111827; border-color: #1f2937; box-shadow: none; }
+        #tenant-coupon-management .tenant-coupon-search input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #tenant-coupon-management .tenant-coupon-search input::placeholder { color: #6b7280; }
+        #tenant-coupon-management .tenant-coupon-search input:focus { border-color: #3b82f6; }
+        #tenant-coupon-management .tenant-coupon-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #tenant-coupon-management .tenant-coupon-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
+        #tenant-coupon-management .tenant-coupon-stat-pill strong { color: #ffffff; }
+        #tenant-coupon-management .tenant-coupon-table-card { background: #1a2332; border-color: #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #tenant-coupon-management .tenant-coupon-table thead { background: #1a2332; }
+        #tenant-coupon-management .tenant-coupon-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-table tbody tr { background: #111827; }
+        #tenant-coupon-management .tenant-coupon-table tbody tr:hover { background: #1e293b; }
+        #tenant-coupon-management .tenant-coupon-table-footer { background: #111827; border-top-color: #1f2937; }
+        #tenant-coupon-management .pagination-info { color: #9ca3af; }
+        #tenant-coupon-management .pagination-info b { color: #f3f4f6; }
+        #tenant-coupon-management .tenant-coupon-page-btn { background: #1f2937; border-color: #4b5563; color: #9ca3af; }
+        #tenant-coupon-management .tenant-coupon-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #tenant-coupon-management .tenant-coupon-page-btn:disabled { opacity: 0.4; }
+        #tenant-coupon-management .tenant-coupon-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+        #tenant-coupon-management .tenant-coupon-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #tenant-coupon-management .tenant-coupon-table-wrapper { scrollbar-width: none; }
+        #tenant-coupon-management .tenant-coupon-table-wrapper::-webkit-scrollbar { display: none; }
+        #tenant-coupon-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #tenant-coupon-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #tenant-coupon-management .primary-btn { background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%); }
+        #tenant-coupon-management .form-message { color: #d1d5db; }
+        #tenant-coupon-management .form-message.error { background: #3b1111; color: #ef4444; }
+        #tenant-coupon-management .form-message.success { background: #0d2818; color: #22c55e; }
+        #tenant-coupon-management .status-badge.status-assigned { background: #0d2818; color: #4ade80; }
+        #tenant-coupon-management .status-badge.status-used { background: #1e3a5f; color: #93c5fd; }
+        #tenant-coupon-management .status-badge.status-revoked { background: #3b1111; color: #fca5a5; }
+        #tenant-coupon-management .status-badge.status-expired { background: #1f2937; color: #9ca3af; }
+        #tenant-coupon-management .assign-modal-content { background: #111827; border: 1px solid #1f2937; }
+        #tenant-coupon-management .assign-modal-content select,
+        #tenant-coupon-management .assign-modal-content input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
       `}</style>
-      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
+      <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <form className="tenant-coupon-main-toolbar" onSubmit={handleSearch}>
           <div className="tenant-coupon-filter-left">
             <label className="tenant-coupon-search">
