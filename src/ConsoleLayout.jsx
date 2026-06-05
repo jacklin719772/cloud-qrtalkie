@@ -114,6 +114,7 @@ export default function ConsoleLayout({ onLogout }) {
   const plansRef = useRef(null);
   const discountDataRef = useRef(null);
   const addonServicesRef = useRef(null);
+  const tenantManagementRef = useRef(null);
   const tenantCouponManagementRef = useRef(null);
   const sipAccountRegistrationRef = useRef(null);
   const webAccountRegistrationRef = useRef(null);
@@ -562,8 +563,10 @@ export default function ConsoleLayout({ onLogout }) {
       );
     }
     if (currentView === 'tenant-management') {
+      const mode = tenantManagementRef.current?.viewMode;
+      if (mode === 'add') return null;
       return (
-        <button className="primary-btn" type="button">
+        <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
           新增租戶
         </button>
       );
@@ -739,7 +742,7 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'access-control' && <AccessControl ref={accessControlRef} />}
           {currentView === 'platform-admin-management' && <PlatformAdminManagement ref={platformAdminRef} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
-          {currentView === 'tenant-management' && <TenantManagement />}
+          {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}
           {['plans', 'plans-add'].includes(currentView) && (
             <Plans ref={plansRef} view={currentView} onReturnToList={() => setCurrentView('plans')} />

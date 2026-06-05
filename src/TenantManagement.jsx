@@ -1,9 +1,31 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { forwardRef, useState, useEffect, useMemo, useRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Search } from 'lucide-react';
+import { Search, ArrowLeft } from 'lucide-react';
 import apiClient from './apiClient';
 
-export default function TenantManagement() {
+function RequiredMark() {
+  return <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>;
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+const emptyForm = {
+  companyName: '',
+  enterpriseEmail: '',
+  contactPerson: '',
+  contactPhone: '',
+  postalCode: '',
+  billingAddress: '',
+  loginEmail: '',
+  password: '',
+  adminPhone: '',
+  userLimit: 100,
+  sipDomain: '',
+};
+
+export default forwardRef(function TenantManagement(props, ref) {
   const [tenants, setTenants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,8 +41,39 @@ export default function TenantManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const dropdownAnchorRef = useRef(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'add'
+  const [addForm, setAddForm] = useState({ ...emptyForm });
+  const [addMessage, setAddMessage] = useState({ type: '', text: '' });
+  const [isAdding, setIsAdding] = useState(false);
+  const messageTimerRef = useRef(null);
 
   const dropdownMenuRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    startAdd,
+    get viewMode() { return viewMode; },
+  }));
+
+  function startAdd() {
+    setViewMode('add');
+    setAddForm({ ...emptyForm });
+    setAddMessage({ type: '', text: '' });
+  }
+
+  const showAddMessage = (type, text) => {
+    setAddMessage({ type, text });
+    if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
+    if (text) {
+      messageTimerRef.current = window.setTimeout(() => {
+        setAddMessage({ type: '', text: '' });
+        messageTimerRef.current = null;
+      }, 5000);
+    }
+  };
+
+  const updateAddField = (field) => (event) => {
+    setAddForm((current) => ({ ...current, [field]: event.target.value }));
+  };
 
   useEffect(() => {
     loadTenants();
@@ -288,6 +341,120 @@ export default function TenantManagement() {
       }
     }
   };
+
+  const validateAddForm = () => {
+    if (!addForm.companyName.trim()) return '請輸入公司名稱。';
+    if (!addForm.loginEmail.trim()) return '請輸入管理員信箱。';
+    if (!addForm.password.trim()) return '請輸入管理員密碼。';
+    if (addForm.password.trim().length < 8) return '密碼至少需要 8 位字元。';
+    if (addForm.enterpriseEmail.trim() && !isValidEmail(addForm.enterpriseEmail)) return '請輸入有效的企業信箱。';
+    if (!isValidEmail(addForm.loginEmail.trim())) return '請輸入有效的管理員信箱。';
+    return '';
+  };
+
+  const handleAddSubmit = async (event) => {
+    event.preventDefault();
+    const msg = validateAddForm();
+    if (msg) { showAddMessage('error', msg); return; }
+
+    setIsAdding(true);
+    showAddMessage('', '');
+    try {
+      await apiClient.put('/admin/tenants/0', {
+        companyName: addForm.companyName.trim(),
+        enterpriseEmail: addForm.enterpriseEmail.trim(),
+        contactPerson: addForm.contactPerson.trim(),
+        contactPhone: addForm.contactPhone.trim(),
+        postalCode: addForm.postalCode.trim(),
+        billingAddress: addForm.billingAddress.trim(),
+        loginEmail: addForm.loginEmail.trim(),
+        password: addForm.password,
+        adminPhone: addForm.adminPhone.trim(),
+        userLimit: Number(addForm.userLimit) || 100,
+        sipDomain: addForm.sipDomain.trim(),
+      });
+      showAddMessage('success', '租戶新增成功。');
+      setAddForm({ ...emptyForm });
+      setTimeout(() => { setViewMode('list'); loadTenants(); }, 1000);
+    } catch (err) {
+      showAddMessage('error', err.message || '新增租戶失敗。');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  if (viewMode === 'add') {
+    return (
+      <section className="view active settings-form-page" id="tenant-management-add" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <style>{`
+          #tenant-management-add .settings-block { background: #111827; border: 1px solid #1f2937; }
+          #tenant-management-add .settings-block-head h3 { color: #f3f4f6; }
+          #tenant-management-add .settings-block-head { border-bottom-color: #1f2937; }
+          #tenant-management-add .field-label { color: #d1d5db; }
+          #tenant-management-add .tenant-field-grid label { color: #d1d5db; }
+          #tenant-management-add .tenant-field-grid input,
+          #tenant-management-add .tenant-field-grid select,
+          #tenant-management-add .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-management-add .tenant-field-grid input:focus,
+          #tenant-management-add .tenant-field-grid textarea:focus { border-color: #3b82f6; }
+          #tenant-management-add .tenant-field-grid input::placeholder,
+          #tenant-management-add .tenant-field-grid textarea::placeholder { color: #6b7280; }
+          #tenant-management-add .tenant-fixed-actions { background: #111827; border-top-color: #1f2937; }
+          #tenant-management-add .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+          #tenant-management-add .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+          #tenant-management-add .form-message { color: #d1d5db; }
+          #tenant-management-add .form-message.error { background: #3b1111; color: #ef4444; }
+          #tenant-management-add .form-message.success { background: #0d2818; color: #22c55e; }
+        `}</style>
+        <form className="tenant-settings-form" onSubmit={handleAddSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
+          <div className="tenant-scroll-area" style={{ background: '#111827' }}>
+            <section className="settings-block">
+              <div className="settings-block-head">
+                <h3>企業資訊</h3>
+              </div>
+              <div className="tenant-field-grid">
+                <label><span className="field-label">公司名稱 <RequiredMark /></span><input value={addForm.companyName} onChange={updateAddField('companyName')} placeholder="請輸入公司名稱" required /></label>
+                <label>企業信箱<input type="email" value={addForm.enterpriseEmail} onChange={updateAddField('enterpriseEmail')} placeholder="company@example.com" /></label>
+                <label>企業聯絡人<input value={addForm.contactPerson} onChange={updateAddField('contactPerson')} placeholder="請輸入聯絡人姓名" /></label>
+                <label>聯絡電話<input type="tel" value={addForm.contactPhone} onChange={updateAddField('contactPhone')} placeholder="請輸入聯絡電話" /></label>
+                <label>郵遞區號<input value={addForm.postalCode} onChange={updateAddField('postalCode')} placeholder="100" /></label>
+                <label className="span-2">帳單郵寄地址<textarea rows="3" value={addForm.billingAddress} onChange={updateAddField('billingAddress')} placeholder="請輸入帳單地址"></textarea></label>
+              </div>
+            </section>
+
+            <section className="settings-block">
+              <div className="settings-block-head">
+                <h3>管理員帳號</h3>
+              </div>
+              <div className="tenant-field-grid">
+                <label><span className="field-label">管理員信箱 <RequiredMark /></span><input type="email" value={addForm.loginEmail} onChange={updateAddField('loginEmail')} placeholder="admin@example.com" required /></label>
+                <label><span className="field-label">管理員密碼 <RequiredMark /></span><input type="password" value={addForm.password} onChange={updateAddField('password')} placeholder="至少 8 位字元" required /></label>
+                <label>管理員電話<input type="tel" value={addForm.adminPhone} onChange={updateAddField('adminPhone')} placeholder="請輸入管理員電話" /></label>
+              </div>
+            </section>
+
+            <section className="settings-block">
+              <div className="settings-block-head">
+                <h3>服務設定</h3>
+              </div>
+              <div className="tenant-field-grid">
+                <label>訂閱數量<input type="number" min="1" value={addForm.userLimit} onChange={updateAddField('userLimit')} /></label>
+                <label>SIP 網域<input value={addForm.sipDomain} onChange={updateAddField('sipDomain')} placeholder="sip.example.com" /></label>
+              </div>
+            </section>
+          </div>
+
+          <div className="tenant-fixed-actions" style={{ background: '#111827', borderTopColor: '#1f2937' }}>
+            {addMessage.text && <p className={`form-message ${addMessage.type}`}>{addMessage.text}</p>}
+            <menu className="form-actions">
+              <button className="ghost-btn" type="button" onClick={() => setViewMode('list')} disabled={isAdding}>返回列表</button>
+              <button className="primary-btn" type="submit" disabled={isAdding}>{isAdding ? '建立中...' : '新增租戶'}</button>
+            </menu>
+          </div>
+        </form>
+      </section>
+    );
+  }
 
   return (
     <>
@@ -892,4 +1059,4 @@ export default function TenantManagement() {
     </section>
     </>
   );
-}
+});
