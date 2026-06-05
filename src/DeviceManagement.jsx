@@ -974,7 +974,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                     <td>{device.expiresAt || '-'}</td>
                     <td>{device.createdAt || '-'}</td>
                     <td>{device.creatorName || '-'}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => handleAction('details', device)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={(event) => {
