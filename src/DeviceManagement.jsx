@@ -967,7 +967,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 ) : paginatedDevices.map((device) => (
                   <tr key={device.id}>
                     <td style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={selectedIds.includes(device.id)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...new Set([...ids, device.id])] : ids.filter((id) => id !== device.id))} /></td>
-                    <td style={{ color: '#0f172a', fontWeight: 500 }}>{device.uuid}</td>
+                    <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{device.uuid}</td>
                     <td>{device.relayId || '-'}</td>
                     <td>{getStatusBadge(device.status)}</td>
                     <td>{device.tenantName || '未分配'}</td>
