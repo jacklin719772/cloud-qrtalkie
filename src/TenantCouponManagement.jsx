@@ -684,8 +684,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-page-size:focus { border-color: #3b82f6; }
         #tenant-coupon-management .tenant-coupon-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
         #tenant-coupon-management .tenant-coupon-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
-        #tenant-coupon-management .tenant-coupon-table-wrapper { scrollbar-width: none; }
-        #tenant-coupon-management .tenant-coupon-table-wrapper::-webkit-scrollbar { display: none; }
+        #tenant-coupon-management .tenant-coupon-table-wrap { scrollbar-width: none; }
+        #tenant-coupon-management .tenant-coupon-table-wrap::-webkit-scrollbar { display: none; }
         #tenant-coupon-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #tenant-coupon-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #tenant-coupon-management .primary-btn { background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%); }
@@ -734,7 +734,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
           <div className="tenant-coupon-table-wrap">
               <table className="tenant-coupon-table">
-                <thead style={{ background: '#1a2332' }}>
+                <thead style={{ background: '#1a2332', position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
                     <th style={{ background: '#1a2332' }}>租戶</th>
                     <th style={{ background: '#1a2332' }}>優惠碼</th>
