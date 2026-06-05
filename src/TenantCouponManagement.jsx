@@ -149,10 +149,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
     loadAssignments(1);
   }, [status, pageSize]);
 
-  function handleSearch(event) {
-    event.preventDefault();
-    loadAssignments(1);
-  }
+  useEffect(() => {
+    const timer = setTimeout(() => loadAssignments(1), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   function goToPage(nextPage) {
     const boundedPage = Math.min(totalPages, Math.max(1, nextPage));
@@ -490,7 +490,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-stat-pill {
           height: 34px;
           padding: 0 12px;
-          border-radius: 999px;
+          border-radius: 14px;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           color: #475569;
@@ -701,28 +701,21 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .assign-modal-content input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
-        <form className="tenant-coupon-main-toolbar" onSubmit={handleSearch}>
+        <div className="tenant-coupon-main-toolbar">
           <div className="tenant-coupon-filter-left">
             <label className="tenant-coupon-search">
               <Search size={18} aria-hidden="true" />
               <input
                 value={query}
-                onChange={(event) => {
-                  const val = event.target.value;
-                  setQuery(val);
-                  if (val === '') {
-                    loadAssignments(1, '');
-                  }
-                }}
-                placeholder="搜索租户、优惠码或显示名称"
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="搜尋租戶、優惠碼或顯示名稱"
               />
             </label>
-            <select className="tenant-coupon-status-select" value={status} onChange={(event) => setStatus(event.target.value)} aria-label="筛选状态">
+            <select className="tenant-coupon-status-select" value={status} onChange={(event) => setStatus(event.target.value)} aria-label="篩選狀態">
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
-            <button className="ghost-btn tenant-coupon-search-btn" type="submit" disabled={isLoading} style={{ height: '46px', padding: '0 20px', borderRadius: '9px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>查询</button>
           </div>
           
           <div className="tenant-coupon-stats">
@@ -733,7 +726,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
               </span>
             ))}
           </div>
-        </form>
+        </div>
 
         <div className="tenant-coupon-table-card">
           {error && <p className="form-message error tenant-coupon-message" style={{ margin: '16px 24px 0' }}>{error}</p>}
