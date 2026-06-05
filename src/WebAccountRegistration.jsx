@@ -705,13 +705,13 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }
 
   if (viewMode === 'detail' && viewingAccount) {
-    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' };
+    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#0f172a', color: '#e5e7eb' };
     return (
       <section className="view active settings-form-page" id="web-account-registration-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>Web 帳號詳情</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>Web 帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
@@ -722,11 +722,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   ['SIP Domain', viewingAccount.domain || '-'],
                   ['角色', viewingAccount.role || '-'],
                   ['狀態', viewingAccount.status || '-'],
-                  ['手機号', viewingAccount.phone || '-'],
+                  ['手機號碼', viewingAccount.phone || '-'],
                   ['郵箱', viewingAccount.email || '-'],
-                  ['所属租戶', viewingAccount.tenantName || '未分配'],
-                  ['創建人', viewingAccount.creatorName || '-'],
-                  ['創建時間', viewingAccount.createdAt || '-'],
+                  ['所屬租戶', viewingAccount.tenantName || '未分配'],
+                  ['建立人', viewingAccount.creatorName || '-'],
+                  ['建立時間', viewingAccount.createdAt || '-'],
                 ].map(([label, value]) => (
                   <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>{label}</span>
