@@ -3008,6 +3008,44 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
        VALUES (?, ?, 'assigned', ?)`,
       [tenantId, couponId, request.admin.id],
     );
+    const assignmentId = Number(result.insertId);
+
+    // 發送站內通知給該租戶管理員
+    const [couponInfo] = await connection.query(
+      `SELECT coupon_code, display_name, discount_type, discount_value, currency
+       FROM billing_coupons WHERE id = ?`, [couponId],
+    );
+    if (couponInfo) {
+      const discountText = couponInfo.discount_type === 'fixed_amount'
+        ? `${couponInfo.currency || 'USD'} ${Number(couponInfo.discount_value || 0).toFixed(2)}`
+        : `${Number(couponInfo.discount_value || 0)}%`;
+      const couponTitle = `優惠碼已分配：${couponInfo.coupon_code}`;
+      const couponBody = `平台已為您分配優惠碼「${couponInfo.display_name || couponInfo.coupon_code}」（${discountText} 折扣），購買套餐時輸入 ${couponInfo.coupon_code} 即可享受優惠。`;
+
+      const dedupeKey = `coupon_assigned_${assignmentId}`;
+      const [notifResult] = await connection.query(
+        `INSERT INTO notification_events (
+           tenant_id, scope_type, scope_id, event_type, sender_type, sender_id,
+           dedupe_key, title, body, severity, status, target_view
+         )
+         VALUES (?, 'coupon', ?, 'coupon_assigned', 'platform_admin', ?,
+                 ?, ?, ?, 'info', 'active', 'domain')`,
+        [tenantId, assignmentId, request.admin.id, dedupeKey, couponTitle, couponBody],
+      );
+      const eventId = Number(notifResult.insertId || 0);
+      if (eventId > 0) {
+        const tenantAdmins = await connection.query(
+          `SELECT id FROM admin_users WHERE tenant_id = ? AND status = 'active'`,
+          [tenantId],
+        );
+        for (const ad of tenantAdmins) {
+          await connection.query(
+            `INSERT IGNORE INTO notification_receipts (event_id, admin_user_id, receiver_type) VALUES (?, ?, 'admin')`,
+            [eventId, ad.id],
+          );
+        }
+      }
+    }
 
     await connection.commit();
     return response.status(201).json({ message: "優惠碼已分配。", id: Number(result.insertId) });
