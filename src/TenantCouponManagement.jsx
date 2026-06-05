@@ -264,20 +264,39 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
   if (mode === 'assign') {
     return (
       <section className="view active tenant-coupon-page" id="tenant-coupon-management">
+        <style>{`
+          #tenant-coupon-management .tenant-coupon-shell { background: #111827; border-color: #1f2937; }
+          #tenant-coupon-management .tenant-coupon-scroll-area { background: #111827; }
+          #tenant-coupon-management .tenant-coupon-assign-panel { background: #111827; border-color: #1f2937; }
+          #tenant-coupon-management .tenant-coupon-assign-head span { color: #9ca3af; }
+          #tenant-coupon-management .tenant-coupon-assign-head h3 { color: #f3f4f6; }
+          #tenant-coupon-management .tenant-coupon-assign-grid label { color: #d1d5db; }
+          #tenant-coupon-management .tenant-coupon-assign-grid select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #tenant-coupon-management .tenant-coupon-readonly-card { background: #1a2332; border-color: #1f2937; }
+          #tenant-coupon-management .tenant-coupon-readonly-head span { color: #9ca3af; }
+          #tenant-coupon-management .tenant-coupon-readonly-head strong { color: #f3f4f6; }
+          #tenant-coupon-management .tenant-coupon-readonly-grid label { color: #d1d5db; }
+          #tenant-coupon-management .tenant-coupon-readonly-grid input { background: #0f172a; border-color: #374151; color: #e5e7eb; }
+          #tenant-coupon-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+          #tenant-coupon-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+          #tenant-coupon-management .form-message { color: #d1d5db; }
+          #tenant-coupon-management .form-message.error { background: #3b1111; color: #ef4444; }
+          #tenant-coupon-management .form-message.success { background: #0d2818; color: #22c55e; }
+        `}</style>
         <div className="tenant-coupon-shell">
           <div className="tenant-coupon-scroll-area tenant-coupon-assign-scroll">
             <form className="tenant-coupon-assign-panel" onSubmit={submitAssignment}>
               <div className="tenant-coupon-assign-head">
                 <div>
                   <span>優惠碼分配</span>
-                  <h3>为租户分配優惠碼</h3>
+                  <h3>為租戶分配優惠碼</h3>
                 </div>
                 <button className="ghost-btn" type="button" onClick={returnToList}>返回優惠碼管理</button>
               </div>
 
               <div className="tenant-coupon-assign-grid">
                 <label>
-                  启用中的租户
+                  啟用中的租戶
                   <select value={selectedTenantId} onChange={(event) => setSelectedTenantId(event.target.value)} disabled={isAssignLoading || isAssignSaving}>
                     {tenants.length === 0 && <option value="">暫無啟用租戶</option>}
                     {tenants.map((tenant) => (
@@ -301,27 +320,27 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                 </label>
               </div>
 
-              <section className="tenant-coupon-readonly-card" aria-label="優惠碼基本信息">
+              <section className="tenant-coupon-readonly-card" aria-label="優惠碼基本資訊">
                 <div className="tenant-coupon-readonly-head">
-                  <span>優惠碼基本信息</span>
+                  <span>優惠碼基本資訊</span>
                   <strong>{selectedCoupon?.couponCode || '-'}</strong>
                 </div>
                 <div className="tenant-coupon-readonly-grid">
                   <label>
-                    显示名称
+                    顯示名稱
                     <input value={selectedCoupon?.displayName || ''} readOnly placeholder="-" />
                   </label>
                   <label>
-                    优惠类型
-                    <input value={selectedCoupon?.discountType === 'fixed_amount' ? '固定金额减免' : selectedCoupon ? '百分比折扣' : ''} readOnly placeholder="-" />
+                    優惠類型
+                    <input value={selectedCoupon?.discountType === 'fixed_amount' ? '固定金額減免' : selectedCoupon ? '百分比折扣' : ''} readOnly placeholder="-" />
                   </label>
                   <label>
-                    优惠内容
+                    優惠內容
                     <input value={selectedCoupon ? formatDiscount(selectedCoupon) : ''} readOnly placeholder="-" />
                   </label>
                   <label>
-                    状态
-                    <input value={selectedCoupon?.status === 'active' ? '启用' : ''} readOnly placeholder="-" />
+                    狀態
+                    <input value={selectedCoupon?.status === 'active' ? '啟用' : ''} readOnly placeholder="-" />
                   </label>
                   <label>
                     生效日期
@@ -336,7 +355,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
                     <input value={selectedCoupon?.maxRedemptions || '不限'} readOnly />
                   </label>
                   <label>
-                    已使用次数
+                    已使用次數
                     <input value={selectedCoupon ? Number(selectedCoupon.redeemedCount || 0) : ''} readOnly placeholder="-" />
                   </label>
                 </div>
@@ -348,7 +367,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
               <menu className="form-actions tenant-coupon-assign-actions">
                 <button className="ghost-btn" type="button" onClick={returnToList} disabled={isAssignSaving}>取消</button>
                 <button className="primary-btn" type="submit" disabled={isAssignLoading || isAssignSaving || !selectedTenantId || !selectedCouponId}>
-                  {isAssignSaving ? '分配中...' : '确认分配'}
+                  {isAssignSaving ? '分配中...' : '確認分配'}
                 </button>
               </menu>
             </form>
