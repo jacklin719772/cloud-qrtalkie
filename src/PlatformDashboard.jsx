@@ -74,24 +74,24 @@ const PlatformDashboard = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({ refresh }));
 
   const handleRestartAi = async () => {
-    if (!window.confirm('确定要重启 Web AI 服务吗？')) return;
+    if (!window.confirm('確定要重啟 Web AI 服務吗？')) return;
     try {
       await apiClient.post('/platform/health/restart-ai');
-      alert('Web AI 服务已重启');
+      alert('Web AI 服務已重啟');
       fetchHealth();
     } catch (e) {
-      alert('重启失败：' + (e.message || '未知错误'));
+      alert('重啟失敗：' + (e.message || '未知錯誤'));
     }
   };
 
   const handleCleanLogs = async () => {
-    if (!window.confirm('确定要清理 Asterisk 和 Flexisip 日志吗？\n\n安全清理策略：\n- 当前日志文件：truncate 清空（不影响服务运行）\n- 旧归档文件（.gz）：直接删除\n- .log.1 缓冲区：保留')) return;
+    if (!window.confirm('確定要清理 Asterisk 和 Flexisip 日誌吗？\n\n安全清理策略：\n- 當前日誌檔案：truncate 清空（不影响服務運行）\n- 旧归档檔案（.gz）：直接删除\n- .log.1 缓冲区：保留')) return;
     try {
       const res = await apiClient.post('/platform/health/clean-logs');
-      alert(res.message || '日志清理完成');
+      alert(res.message || '日誌清理完成');
       fetchHealth();
     } catch (e) {
-      alert('清理失败：' + (e.message || '未知错误'));
+      alert('清理失敗：' + (e.message || '未知錯誤'));
     }
   };
   return (
@@ -117,7 +117,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-metric-label { color: #9ca3af; font-size: 12px; margin-bottom: 6px; }
         .pdb-metric-value { font-size: 18px; font-weight: 400; line-height: 1.1; color: #f3f4f6; }
         .pdb-metric-sub { margin-top: 6px; font-size: 11px; color: #9ca3af; }
-        .pdb-progress { height: 5px; background: #edf2f7; border-radius: 99px; overflow: hidden; margin-top: 10px; }
+        .pdb-progress { height: 5px; background: #374151; border-radius: 99px; overflow: hidden; margin-top: 10px; }
         .pdb-bar { height: 100%; border-radius: 99px; }
         .pdb-bar.green { background: #5fc89f; }
         .pdb-bar.orange { background: #f6b25d; }
@@ -133,7 +133,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-biz-value { font-size: 18px; font-weight: 400; margin-top: 6px; color: #f3f4f6; }
         .pdb-biz-label { font-size: 12px; color: #9ca3af; }
         .pdb-alert-card { padding: 0; overflow: hidden; }
-        .pdb-alert-header { padding: 13px 14px; border-bottom: 1px solid #edf1f6; display: flex; justify-content: space-between; align-items: center; }
+        .pdb-alert-header { padding: 13px 14px; border-bottom: 1px solid #1f2937; display: flex; justify-content: space-between; align-items: center; }
         .pdb-alert-count { font-size: 11px; color: #9ca3af; }
         .pdb-alert-list { padding: 4px 0; }
         .pdb-alert-item { display: grid; grid-template-columns: 82px 1fr 80px; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1f2937; }
@@ -145,7 +145,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-alert-text { font-size: 12px; color: #e5e7eb; }
         .pdb-alert-time { text-align: right; font-size: 11px; color: #9ca3af; }
         .pdb-chart { height: 190px; position: relative; padding: 12px 10px 0; }
-        .pdb-chart-bars { height: 135px; display: flex; align-items: end; gap: 12px; border-left: 1px solid #e8edf4; border-bottom: 1px solid #e8edf4; padding-left: 10px; }
+        .pdb-chart-bars { height: 135px; display: flex; align-items: end; gap: 12px; border-left: 1px solid #374151; border-bottom: 1px solid #374151; padding-left: 10px; }
         .pdb-chart-bars span { width: 100%; max-width: 34px; background: linear-gradient(180deg, #8bbcff, #dbeaff); border-radius: 8px 8px 0 0; }
         .pdb-chart-labels { display: flex; gap: 12px; padding-left: 11px; margin-top: 8px; color: #9ca3af; font-size: 10px; }
         .pdb-chart-labels span { width: 34px; text-align: center; }
@@ -164,18 +164,18 @@ const PlatformDashboard = forwardRef((props, ref) => {
         <div className="pdb-title-row" style={{ marginBottom: '14px' }}>
         </div>
 
-        {/* 平台健康状态 */}
+        {/* 平台健康狀態 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>平台健康状态</div>
-            <div className="pdb-section-note">Ubuntu / 核心服务 / 通信业务</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>平台健康狀態</div>
+            <div className="pdb-section-note">Ubuntu / 核心服務 / 通訊業務</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">CPU 使用率</div>
               <div className="pdb-metric-value">{health.cpu?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.cpu?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">5分钟平均负载：{health.load?.load5 ?? '-'}</div>
+              <div className="pdb-metric-sub">5分鐘平均负载：{health.load?.load5 ?? '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">内存使用率</div>
@@ -201,23 +201,23 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-sub">{health.ssl ? `到期日：${health.ssl.date}` : '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div className="pdb-metric-label">系统运行时间</div>
+              <div className="pdb-metric-label">系统運行时间</div>
               <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
               <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
             </div>
           </div>
         </div>
 
-        {/* 核心服务状态 */}
+        {/* 核心服務狀態 */}
         <div className="pdb-section">
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
-              <div><div className="pdb-service-name">SIP 呼叫服务</div><div className="pdb-service-status">{health.flexisip === 'running' ? '运行正常' : health.flexisip === 'partial' ? '部分运行' : '已停止'}</div></div>
+              <div><div className="pdb-service-name">SIP 呼叫服務</div><div className="pdb-service-status">{health.flexisip === 'running' ? '運行正常' : health.flexisip === 'partial' ? '部分運行' : '已停止'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.asterisk === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Web 呼叫服务</div><div className="pdb-service-status">{health.asterisk === 'running' ? '运行正常' : health.asterisk === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Web 呼叫服務</div><div className="pdb-service-status">{health.asterisk === 'running' ? '運行正常' : health.asterisk === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mariadb === 'running' ? 'green' : 'warn'}`} />
@@ -225,77 +225,77 @@ const PlatformDashboard = forwardRef((props, ref) => {
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mongodb === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '运行正常' : health.mongodb === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '運行正常' : health.mongodb === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '运行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '運行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
           </div>
         </div>
 
-        {/* API 服务状态 */}
+        {/* API 服務狀態 */}
         <div className="pdb-section">
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.accountManager === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">账号管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '运行正常' : health.accountManager === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">帳號管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '運行正常' : health.accountManager === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.lime === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">加密服务</div><div className="pdb-service-status">{health.lime === 'running' ? '运行正常' : health.lime === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">加密服務</div><div className="pdb-service-status">{health.lime === 'running' ? '運行正常' : health.lime === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.fts === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">文件传输服务</div><div className="pdb-service-status">{health.fts === 'running' ? '运行正常' : health.fts === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">檔案傳輸服務</div><div className="pdb-service-status">{health.fts === 'running' ? '運行正常' : health.fts === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.aiservice === 'running' ? 'green' : 'warn'}`} />
               <div style={{ flex: 1 }}>
-                <div className="pdb-service-name">Web AI 服务</div>
+                <div className="pdb-service-name">Web AI 服務</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="pdb-service-status">{health.aiservice === 'running' ? '运行正常' : health.aiservice === 'stopped' ? '已停止' : '未安装'}</div>
+                  <div className="pdb-service-status">{health.aiservice === 'running' ? '運行正常' : health.aiservice === 'stopped' ? '已停止' : '未安装'}</div>
                   {health.aiservice !== 'running' && (
-                    <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重启</span>
+                    <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重啟</span>
                   )}
                 </div>
               </div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '运行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '運行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.coturn === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '运行正常' : health.coturn === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '運行正常' : health.coturn === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mqtt === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '运行正常' : health.mqtt === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '運行正常' : health.mqtt === 'stopped' ? '已停止' : '未安装'}</div></div>
             </div>
           </div>
         </div>
 
-        {/* 通信业务状态 */}
+        {/* 通訊業務狀態 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>通信业务状态</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>通訊業務狀態</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已创建 SIP 账号</div>
+              <div className="pdb-biz-label">已创建 SIP 帳號</div>
               <div className="pdb-biz-value">{stats.sipCreated?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已分配 SIP 账号</div>
+              <div className="pdb-biz-label">已分配 SIP 帳號</div>
               <div className="pdb-biz-value">{stats.sipAssigned?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已创建 Web 账号</div>
+              <div className="pdb-biz-label">已创建 Web 帳號</div>
               <div className="pdb-biz-value">{stats.webCreated?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已分配 Web 账号</div>
+              <div className="pdb-biz-label">已分配 Web 帳號</div>
               <div className="pdb-biz-value">{stats.webAssigned?.toLocaleString()}</div>
             </div>
           </div>
@@ -304,7 +304,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
         {/* 告警中心 + 平台核心指标 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#0f172a" }}>运营情况</div>
+            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>运营情况</div>
           </div>
           <div className="pdb-grid pdb-grid-2">
             <div className="pdb-card" style={{ padding: '18px' }}>
@@ -315,8 +315,8 @@ const PlatformDashboard = forwardRef((props, ref) => {
                   { label: '待审核订单', value: stats.pendingReviewCount?.toLocaleString(), color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' },
                   { label: '待付款订单', value: stats.pendingPaymentCount?.toLocaleString(), color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' },
                   { label: '已收款总额', value: '$' + (stats.paidTotal?.toLocaleString()) },
-                  { label: '已分配 SIP 账号', value: stats.sipAssigned?.toLocaleString() },
-                  { label: '已分配 Web 账号', value: stats.webAssigned?.toLocaleString() },
+                  { label: '已分配 SIP 帳號', value: stats.sipAssigned?.toLocaleString() },
+                  { label: '已分配 Web 帳號', value: stats.webAssigned?.toLocaleString() },
                   { label: '电子名片数量', value: stats.ecardCount?.toLocaleString() },
                   { label: '门控设备数量', value: stats.deviceCount?.toLocaleString() },
                   { label: '管控社区数量', value: stats.communityCount?.toLocaleString() },
