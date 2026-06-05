@@ -753,7 +753,7 @@ export default function PlanManagement({ onNavigate }) {
         }
 
         /* === Dark theme overrides === */
-        #plan-management .plan-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #plan-management .plan-toolbar { background: #111827 !important; border: 1px solid #1f2937 !important; box-shadow: none !important; }
         #plan-management .plan-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #plan-management .plan-search input::placeholder { color: #6b7280; }
         #plan-management .plan-search input:focus { border-color: #3b82f6; }
