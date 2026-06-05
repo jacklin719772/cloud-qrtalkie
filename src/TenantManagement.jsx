@@ -746,7 +746,8 @@ export default forwardRef(function TenantManagement(props, ref) {
           #tenant-management .tenant-status-select { background: #1a2332; border-color: #374151; color: #e5e7eb; }
           #tenant-management .tenant-stat-pill { background: #1a2332; border-color: #374151; color: #9ca3af; }
           #tenant-management .tenant-stat-pill strong { color: #ffffff; }
-          #tenant-management .tenant-table-card { background: #1a2332; border-color: #1f2937; box-shadow: none; border-radius: 14px; min-height: 300px; }
+          #tenant-management .tenant-table-card { background: #1a2332; border: 1px solid #374151; box-shadow: none; border-radius: 14px; min-height: 300px; overflow: hidden; }
+          #tenant-management .tenant-content { border-radius: 14px; overflow: hidden; }
           #tenant-management .tenant-table thead { background: #1a2332; }
           #tenant-management .tenant-table th { color: #e5e7eb; border-bottom-color: #1f2937; }
           #tenant-management .tenant-table td { color: #e5e7eb; border-bottom-color: #1f2937; }
