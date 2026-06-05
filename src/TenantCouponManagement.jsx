@@ -531,8 +531,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-table {
           width: 100%;
           min-width: 1180px;
-          border-collapse: separate;
-          border-spacing: 0;
+          border-collapse: collapse;
           table-layout: fixed;
           font-size: 12px;
         }
@@ -737,14 +736,14 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
               <table className="tenant-coupon-table">
                 <thead style={{ background: '#1a2332', position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
-                    <th style={{ background: '#1a2332' }}>租戶</th>
-                    <th style={{ background: '#1a2332' }}>優惠碼</th>
-                    <th style={{ background: '#1a2332' }}>優惠內容</th>
-                    <th style={{ background: '#1a2332' }}>分配時間</th>
-                    <th style={{ background: '#1a2332' }}>使用狀態</th>
-                    <th style={{ background: '#1a2332' }}>使用訂單</th>
-                    <th style={{ background: '#1a2332' }}>使用時間</th>
-                    <th style={{ background: '#1a2332' }}>操作</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>租戶</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>優惠碼</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>優惠內容</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>分配時間</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>使用狀態</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>使用訂單</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>使用時間</th>
+                    <th style={{ background: '#1a2332', position: 'sticky', top: 0 }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
