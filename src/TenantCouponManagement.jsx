@@ -282,6 +282,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           #tenant-coupon-management .form-message { color: #d1d5db; }
           #tenant-coupon-management .form-message.error { background: #3b1111; color: #ef4444; }
           #tenant-coupon-management .form-message.success { background: #0d2818; color: #22c55e; }
+          #tenant-coupon-management .tenant-coupon-assign-actions { background: #111827; border-top: 1px solid #1f2937; box-shadow: none; }
         `}</style>
         <div className="tenant-coupon-shell">
           <div className="tenant-coupon-scroll-area tenant-coupon-assign-scroll">
