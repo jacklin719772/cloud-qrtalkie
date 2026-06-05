@@ -500,7 +500,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯設備' : '新增設備'}</h3>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', marginBottom: '16px', marginTop: 0 }}>基礎設備資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -509,33 +509,33 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>繼電器ID</span>
-                  <input value={formData.relayId} onChange={(event) => setFormData({ ...formData, relayId: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input value={formData.relayId} onChange={(event) => setFormData({ ...formData, relayId: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>訂閱主題 <RequiredMark /></span>
-                  <input value={formData.subscribeTopic} onChange={(event) => setFormData({ ...formData, subscribeTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required />
+                  <input value={formData.subscribeTopic} onChange={(event) => setFormData({ ...formData, subscribeTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>發佈主題 <RequiredMark /></span>
-                  <input value={formData.publishTopic} onChange={(event) => setFormData({ ...formData, publishTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required />
+                  <input value={formData.publishTopic} onChange={(event) => setFormData({ ...formData, publishTopic: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>Wifi名稱</span>
-                  <input value={formData.wifiName} onChange={(event) => setFormData({ ...formData, wifiName: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input value={formData.wifiName} onChange={(event) => setFormData({ ...formData, wifiName: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>Wifi密碼</span>
-                  <input value={formData.wifiPassword} onChange={(event) => setFormData({ ...formData, wifiPassword: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input value={formData.wifiPassword} onChange={(event) => setFormData({ ...formData, wifiPassword: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>备注</span>
-                  <textarea value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} rows={3} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', resize: 'vertical' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>備註</span>
+                  <textarea value={formData.notes} onChange={(event) => setFormData({ ...formData, notes: event.target.value })} rows={3} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', resize: 'vertical', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
               </div>
             </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#fff', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交新增')}</button>
             </div>
           </form>
@@ -1081,19 +1081,19 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>繼電器ID</span>
-                <input value={batchAddForm.relayId} onChange={(event) => setBatchAddForm((form) => ({ ...form, relayId: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input value={batchAddForm.relayId} onChange={(event) => setBatchAddForm((form) => ({ ...form, relayId: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>訂閱主題</span>
-                <input value={batchAddForm.subscribeTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, subscribeTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input value={batchAddForm.subscribeTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, subscribeTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>發佈主題</span>
-                <input value={batchAddForm.publishTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, publishTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input value={batchAddForm.publishTopic} onChange={(event) => setBatchAddForm((form) => ({ ...form, publishTopic: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>新增數量</span>
-                <input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
               </label>
               <p style={{ margin: 0, fontSize: '10px', color: '#9ca3af' }}>系統會為每條記錄生成唯一 UUID，並使用相同的繼電器ID、訂閱主題和發佈主題。</p>
               {batchAddMessage.text && <p style={{ margin: 0, fontSize: '11px', color: batchAddMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{batchAddMessage.text}</p>}
