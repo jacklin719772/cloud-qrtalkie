@@ -770,7 +770,7 @@ export default forwardRef(function TenantManagement(props, ref) {
           #tenant-management .tenant-pagination-info b { color: #f3f4f6; }
           #tenant-management .tenant-pagination button { background: #1f2937; border-color: #4b5563; color: #9ca3af; }
           #tenant-management .tenant-pagination button:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
-          #tenant-management .tenant-pagination button:disabled { opacity: 0.4; }
+          #tenant-management .tenant-pagination button:disabled { opacity: 0.5; background: #1a2332; color: #4b5563; border-color: #374151; }
           #tenant-management .tenant-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
           #tenant-management .tenant-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
           #tenant-management .tenant-page-size { background: #1a2332; border-color: #374151; color: #e5e7eb; }
