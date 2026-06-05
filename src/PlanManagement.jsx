@@ -113,7 +113,7 @@ export default function PlanManagement({ onNavigate }) {
     const requiredAccountCount = Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0);
     const isRenewalReview = isRenewalOrder(reviewOrder);
     if (reviewData.status === 'review_approved' && !isRenewalReview && selectedSipAccountIds.length !== requiredAccountCount) {
-      alert(`当前已选择 ${selectedSipAccountIds.length} 个账号，需要选择 ${requiredAccountCount} 个账号后才能提交审核。`);
+      alert(`當前已選擇 ${selectedSipAccountIds.length} 个账号，需要选择 ${requiredAccountCount} 个账号后才能提交审核。`);
       return;
     }
 
@@ -130,7 +130,7 @@ export default function PlanManagement({ onNavigate }) {
       }
 
       if (unassignedWebAccounts.length < missingWebCount) {
-        alert(`当前可用 Web 账号不足，账号不足不能完成分配工作。\n\n需要分配 Web 账号：${missingWebCount} 个\n目前未分配账号：${unassignedWebAccounts.length} 个`);
+        alert(`當前可用 Web 账号不足，账号不足不能完成分配工作。\n\n需要分配 Web 账号：${missingWebCount} 个\n目前未分配账号：${unassignedWebAccounts.length} 个`);
         return;
       }
       webAccountIds = unassignedWebAccounts.slice(0, missingWebCount).map(a => a.id);
@@ -170,7 +170,7 @@ export default function PlanManagement({ onNavigate }) {
     }
     const availableCount = unassignedSipAccounts.length;
     if (availableCount < requiredCount) {
-      const confirmed = window.confirm(`未分配账号数量不足。当前未分配账号 ${availableCount} 个，需要分配 ${requiredCount} 个。\n\n点击确定后将前往账号登记页面，请添加足够账号以完成账号分配操作。`);
+      const confirmed = window.confirm(`未分配账号数量不足。當前未分配账号 ${availableCount} 个，需要分配 ${requiredCount} 个。\n\n点击确定后将前往账号登记頁面，请添加足够账号以完成账号分配操作。`);
       if (confirmed) {
         setReviewOrder(null);
         onNavigate?.('sip-account-registration');
@@ -184,7 +184,7 @@ export default function PlanManagement({ onNavigate }) {
   const goToWebAccountAssignmentStep = () => {
     const requiredCount = Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0);
     if (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== requiredCount) {
-      alert(`当前已选择 ${selectedSipAccountIds.length} 个 SIP 账号，需要选择 ${requiredCount} 个账号后才能进入 Web 账号分配。`);
+      alert(`當前已選擇 ${selectedSipAccountIds.length} 个 SIP 账号，需要选择 ${requiredCount} 个账号后才能进入 Web 账号分配。`);
       return;
     }
 
@@ -201,7 +201,7 @@ export default function PlanManagement({ onNavigate }) {
 
     const availableCount = unassignedWebAccounts.length;
     if (availableCount < missingWebCount) {
-      alert(`当前可用 Web 账号不足，账号不足不能完成分配工作。\n\n需要分配 Web 账号：${missingWebCount} 个\n目前未分配账号：${availableCount} 个`);
+      alert(`當前可用 Web 账号不足，账号不足不能完成分配工作。\n\n需要分配 Web 账号：${missingWebCount} 个\n目前未分配账号：${availableCount} 个`);
       return;
     }
     setReviewStep(4);
@@ -215,7 +215,9 @@ export default function PlanManagement({ onNavigate }) {
     return `${currency} ${Number(amount || 0).toFixed(2)}`;
   };
 
-  const pageSize = 10;
+  const pageSizeOptions = [10, 20, 50, "全部"];
+  const [pageSize, setPageSize] = useState(10);
+  const effectivePageSize = pageSize === "全部" ? (totalItems || 1) : pageSize;
 
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
@@ -235,7 +237,7 @@ export default function PlanManagement({ onNavigate }) {
     setIsLoading(true);
     setSelectedIds([]);
     try {
-      const data = await apiClient.get(`/admin/billing-orders?page=${currentPage}&pageSize=${pageSize}&status=${statusFilter}&q=${encodeURIComponent(kw)}`);
+      const data = await apiClient.get(`/admin/billing-orders?page=${currentPage}&pageSize=${effectivePageSize}&status=${statusFilter}&q=${encodeURIComponent(kw)}`);
       setOrders(data.orders || []);
       setTotalItems(data.pagination?.total || 0);
       if (data.stats) setStats(data.stats);
@@ -397,7 +399,7 @@ export default function PlanManagement({ onNavigate }) {
     return { text, title: text === '-' ? undefined : text };
   };
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
   const requiresWebAccountReview = reviewData.status === 'review_approved' && orderRequiresWebAccounts(reviewOrder);
   const reviewSteps = [
     '确认订单详情',
@@ -749,10 +751,50 @@ export default function PlanManagement({ onNavigate }) {
           #plan-management .plan-pagination { flex-wrap: wrap; }
           #plan-management .plan-management-heading-stats { justify-content: flex-start; }
         }
+
+        /* === Dark theme overrides === */
+        #plan-management .plan-management-toolbar { background: #111827; border: 1px solid #1f2937; box-shadow: none; }
+        #plan-management .plan-search input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #plan-management .plan-search input::placeholder { color: #6b7280; }
+        #plan-management .plan-search input:focus { border-color: #3b82f6; }
+        #plan-management .plan-filter-right select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #plan-management .plan-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
+        #plan-management .plan-stat-pill strong { color: #ffffff; }
+        #plan-management .plan-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #plan-management .plan-table thead { background: #1a2332; }
+        #plan-management .plan-table th { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #plan-management .plan-table td { color: #e5e7eb; border-bottom: 1px solid #1f2937; }
+        #plan-management .plan-table tbody tr { background: #111827; }
+        #plan-management .plan-table tbody tr:hover { background: #1e293b; }
+        #plan-management .plan-table td:last-child,
+        #plan-management .plan-table th:last-child { background: #111827; box-shadow: -1px 0 0 #1f2937; }
+        #plan-management .plan-table th:last-child { background: #1a2332; }
+        #plan-management .plan-table-footer { background: #111827; border-top: 1px solid #1f2937; }
+        #plan-management .plan-total { color: #9ca3af; }
+        #plan-management .plan-page-size { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; }
+        #plan-management .plan-page-btn { background: #1f2937; border: 1px solid #4b5563; color: #9ca3af; }
+        #plan-management .plan-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #plan-management .plan-page-btn:disabled { opacity: 0.5; background: #1a2332; color: #4b5563; }
+        #plan-management .plan-page-current { background: #1e3a5f; border: 1px solid #3b82f6; color: #60a5fa; }
+        #plan-management .plan-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
+        #plan-management .plan-page-jump { color: #9ca3af; }
+        #plan-management .plan-table-wrapper { scrollbar-width: none; }
+        #plan-management .plan-table-wrapper::-webkit-scrollbar { display: none; }
+        #plan-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #plan-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #plan-management .form-message { color: #d1d5db; }
+        #plan-management .form-message.error { background: #3b1111; color: #ef4444; }
+        #plan-management .form-message.success { background: #0d2818; color: #22c55e; }
+        #plan-management .empty-state { background: #111827; color: #9ca3af; }
+        #plan-management .empty-state-title { color: #9ca3af; }
+        .plan-dropdown-menu { background: #1e293b; border-color: #374151; }
+        .plan-dropdown-menu .dropdown-item { color: #d1d5db; }
+        .plan-dropdown-menu .dropdown-item:hover { background: #374151; color: #f3f4f6; }
+        .plan-dropdown-menu .dropdown-item.dropdown-item-danger:hover { background: #3b1111; }
       `}</style>
       {!reviewOrder ? (
-      <section className="view active" id="plan-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="tenant-content plan-management-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
+      <section className="view active" id="plan-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
+      <div className="tenant-content plan-management-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px', background: '#111827' }}>
         
         <div className="toolbar plan-toolbar" style={{ flexShrink: 0, display: 'flex', gap: '12px', flexWrap: 'nowrap', alignItems: 'center', marginBottom: '12px', width: '100%', boxSizing: 'border-box' }}>
           <div className="plan-filter-left">
@@ -760,7 +802,7 @@ export default function PlanManagement({ onNavigate }) {
               <Search size={18} />
               <input
                 type="search"
-                placeholder="搜索订单编号、租户名称"
+                placeholder="搜尋订单编号、租户名称"
                 value={searchKeyword}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -770,7 +812,7 @@ export default function PlanManagement({ onNavigate }) {
                   }
                 }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '14px' }}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '14px' }}
               />
             </label>
             <select
@@ -780,7 +822,7 @@ export default function PlanManagement({ onNavigate }) {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '14px' }}
+              style={{ padding: '8px 12px', border: '1px solid #1f2937', borderRadius: '6px', fontSize: '14px' }}
             >
               <option value="all">全部订单</option>
               <option value="paid">已支付</option>
@@ -816,12 +858,12 @@ export default function PlanManagement({ onNavigate }) {
           </div>
         </div>
 
-        <div className="table-wrap plan-table-card" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <div className="table-wrap plan-table-card" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
           <div className="plan-table-wrapper">
           <table className="plan-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#f8fafc' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
               <tr>
-                <th className="plan-select-cell" style={{ width: '40px', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+                <th className="plan-select-cell" style={{ width: '40px', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                   <input
                     type="checkbox"
                     checked={orders.length > 0 && orders.every(order => selectedIds.includes(order.id))}
@@ -839,25 +881,25 @@ export default function PlanManagement({ onNavigate }) {
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-	                <th style={{ whiteSpace: 'nowrap', minWidth: '180px', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>租户名称</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>订单编号</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>套餐名称</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>订单状态</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>审核状态</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>账号数量</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>租期（月）</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>金额</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>支付方式</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>生效日期</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>结束日期</th>
-	                <th className="plan-action-head" style={{ whiteSpace: 'nowrap', position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', fontSize: '14px', fontWeight: 500, color: '#475569', padding: '12px 16px', borderBottom: '1px solid #e2e8f0', width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
+	                <th style={{ whiteSpace: 'nowrap', minWidth: '180px', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>租户名称</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>订单编号</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>套餐名称</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>订单狀態</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>审核狀態</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>账号数量</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>租期（月）</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>金额</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>支付方式</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>生效日期</th>
+	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>结束日期</th>
+	                <th className="plan-action-head" style={{ whiteSpace: 'nowrap', position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr><td colSpan="13" style={{ padding: 0, textAlign: 'center' }}><div className="plan-empty"><p className="plan-empty-title">加载中...</p></div></td></tr>
               ) : orders.length === 0 ? (
-                <tr><td colSpan="13" style={{ padding: 0, textAlign: 'center' }}><div className="plan-empty"><p className="plan-empty-title">暂无套餐订单数据</p></div></td></tr>
+                <tr><td colSpan="13" style={{ padding: 0, textAlign: 'center' }}><div className="plan-empty"><p className="plan-empty-title">暫無套餐订单数据</p></div></td></tr>
               ) : (
                 orders.map((order) => {
                   const tenantName = cellText(order.tenant_name);
@@ -880,18 +922,18 @@ export default function PlanManagement({ onNavigate }) {
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
-                    <td title={tenantName.title} style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#0f172a' }}>{tenantName.text}</span></td>
-                    <td title={orderNo.title} style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ color: '#0f172a' }}>{orderNo.text}</span></td>
-                    <td title={planName.title} style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#0f172a' }}>{planName.text}</span></td>
+                    <td title={tenantName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{tenantName.text}</span></td>
+                    <td title={orderNo.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ color: '#e5e7eb' }}>{orderNo.text}</span></td>
+                    <td title={planName.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}><span style={{ fontWeight: 500, color: '#e5e7eb' }}>{planName.text}</span></td>
                     <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{getStatusBadge(getBusinessOrderStatus(order.order_status || order.orderStatus))}</td>
                     <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{getStatusBadge(getReviewStatus(order.order_status || order.orderStatus))}</td>
-                    <td style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{order.accountQuantity || order.account_quantity || '-'}</td>
-                    <td style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{termLabel(order.months)}</td>
-                    <td style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{Number(order.payable_amount || 0).toFixed(2)}</td>
-                    <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{paymentLabel.text}</td>
-                    <td style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
-                    <td style={{ fontSize: '14px', color: '#334155', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
-                    <td className="plan-action-cell" style={{ position: 'sticky', right: 0, backgroundColor: '#ffffff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '120px', minWidth: '120px', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{order.accountQuantity || order.account_quantity || '-'}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{termLabel(order.months)}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{Number(order.payable_amount || 0).toFixed(2)}</td>
+                    <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{paymentLabel.text}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
+                    <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
+                    <td className="plan-action-cell" style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '120px', minWidth: '120px', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openDetailModal(order)}>详情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(e) => {
@@ -921,9 +963,9 @@ export default function PlanManagement({ onNavigate }) {
           </table>
           </div>
           <div className="billing-pagination plan-table-footer" style={{ flexShrink: 0, width: '100%', boxSizing: 'border-box', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="plan-total">共 {totalItems} 笔记录</span>
+            <span className="plan-total">共 {totalItems} 笔記錄</span>
             <div className="plan-pagination">
-              <span className="plan-page-size">{pageSize} 条/页</span>
+              <select className="plan-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === "全部" ? "全部" : Number(v)); setCurrentPage(1); }} style={{ height: "38px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", backgroundColor: "#1a2332", color: "#9ca3af", fontSize: "11px", cursor: "pointer" }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === "全部" ? "全部" : opt + " 條/頁"}</option>)}</select>
               <button className="plan-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
               <span className="plan-page-current">{currentPage}</span>
               <button className="plan-page-btn" type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>›</button>
@@ -936,13 +978,13 @@ export default function PlanManagement({ onNavigate }) {
       ) : (
         <section className="view active settings-form-page" id="plan-management-review" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-            <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-              <div style={{ flexShrink: 0, padding: reviewStep >= 3 ? '12px 24px' : '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: reviewStep >= 3 ? '17px' : '18px', color: '#0f172a', fontWeight: '600' }}>订单审核</h3>
+            <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+              <div style={{ flexShrink: 0, padding: reviewStep >= 3 ? '12px 24px' : '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: reviewStep >= 3 ? '17px' : '18px', color: '#e5e7eb', fontWeight: '600' }}>订单审核</h3>
                 <button className="ghost-btn" type="button" onClick={() => setReviewOrder(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: reviewStep >= 3 ? '5px 10px' : '6px 12px' }}>返回列表</button>
               </div>
 
-              <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
                 {reviewSteps.map((stepName, index) => {
                   const stepIndex = index + 1;
                   const isActive = reviewStep === stepIndex;
@@ -962,34 +1004,34 @@ export default function PlanManagement({ onNavigate }) {
                     {reviewStep === 1 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <div className="detail-section">
-                          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基本信息</h4>
+                          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基本信息</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单编号</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{reviewOrder.order_no || reviewOrder.orderNo}</span></div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>创建时间</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{formatDate(reviewOrder.created_at)}</span></div>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户名称</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{reviewOrder.tenant_name}</span></div>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>套餐名称</span><span style={{ fontSize: '15px', color: '#0f172a', fontWeight: '500' }}>{reviewOrder.plan_name || reviewOrder.planName}</span></div>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>账号数量</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{reviewOrder.account_quantity || reviewOrder.accountQuantity || '-'}</span></div>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租期（月）</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{termLabel(reviewOrder.months)}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单编号</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{reviewOrder.order_no || reviewOrder.orderNo}</span></div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>创建时间</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{formatDate(reviewOrder.created_at)}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户名称</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{reviewOrder.tenant_name}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>套餐名称</span><span style={{ fontSize: '15px', color: '#e5e7eb', fontWeight: '500' }}>{reviewOrder.plan_name || reviewOrder.planName}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>账号数量</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{reviewOrder.account_quantity || reviewOrder.accountQuantity || '-'}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租期（月）</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{termLabel(reviewOrder.months)}</span></div>
                           </div>
                         </div>
 
                         {isRenewalOrder(reviewOrder) && (
                           <div className="detail-section">
-                            <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>续订保留账号</h4>
+                            <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>续订保留账号</h4>
                             {(() => {
                               const retainedAccounts = Array.isArray(reviewOrder.retainedAccounts) ? reviewOrder.retainedAccounts : [];
                               const requiredCount = Number(reviewOrder.account_quantity || reviewOrder.accountQuantity || 0);
                               const replacementCount = Math.max(0, requiredCount - retainedAccounts.length);
                               return (
                                 <>
-                                  <div style={{ marginBottom: '10px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', color: '#475569', fontSize: '13px' }}>
+                                  <div style={{ marginBottom: '10px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#1a2332', color: '#9ca3af', fontSize: '13px' }}>
                                     已保留 {retainedAccounts.length} 个账号，审核通过时将自动随机补分配 {replacementCount} 个账号。
                                   </div>
                                   {retainedAccounts.length > 0 && (
-                                    <div style={{ maxHeight: '180px', overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                    <div style={{ maxHeight: '180px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px' }}>
                                       {retainedAccounts.map((account) => (
-                                        <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 110px', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#334155' }}>
-                                          <strong style={{ color: '#0f172a' }}>{account.displayName || account.username}</strong>
+                                        <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 110px', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#e5e7eb' }}>
+                                          <strong style={{ color: '#e5e7eb' }}>{account.displayName || account.username}</strong>
                                           <span>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</span>
                                           <span>{account.sourceServiceExpiresAt || '-'}</span>
                                         </div>
@@ -1002,14 +1044,14 @@ export default function PlanManagement({ onNavigate }) {
                           </div>
                         )}
 
-                        <div style={{ borderTop: '1px solid #e2e8f0', margin: '8px 0' }}></div>
+                        <div style={{ borderTop: '1px solid #1f2937', margin: '8px 0' }}></div>
 
 
                         <div className="detail-section">
-                          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>状态与金额</h4>
+                          <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>狀態与金额</h4>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付方式</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{paymentMethodLabel(reviewOrder)}</span></div>
-	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付日期</span><span style={{ fontSize: '15px', color: '#0f172a' }}>{formatDate(reviewOrder.paymentDate || reviewOrder.payment_proof_uploaded_at || reviewOrder.paid_at)}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付方式</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{paymentMethodLabel(reviewOrder)}</span></div>
+	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付日期</span><span style={{ fontSize: '15px', color: '#e5e7eb' }}>{formatDate(reviewOrder.paymentDate || reviewOrder.payment_proof_uploaded_at || reviewOrder.paid_at)}</span></div>
 	                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单金额</span><span style={{ fontSize: '18px', color: '#ef4444', fontWeight: '600' }}>{Number(reviewOrder.payable_amount || reviewOrder.payableAmount || 0).toFixed(2)} {reviewOrder.currency}</span></div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
 	                              <span style={{ fontSize: '13px', color: '#64748b' }}>支付金额 / 凭证</span>
@@ -1028,7 +1070,7 @@ export default function PlanManagement({ onNavigate }) {
                     {reviewStep === 2 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 500, color: '#475569' }}>审核结果</span>
+                          <span style={{ fontSize: '15px', fontWeight: 500, color: '#9ca3af' }}>审核结果</span>
                           <select 
                             value={reviewData.status} 
                             onChange={(e) => {
@@ -1045,7 +1087,7 @@ export default function PlanManagement({ onNavigate }) {
                           </select>
                         </label>
                         <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <span style={{ fontSize: '15px', fontWeight: 500, color: '#475569' }}>审核意见</span>
+                          <span style={{ fontSize: '15px', fontWeight: 500, color: '#9ca3af' }}>审核意见</span>
                           <textarea 
                             rows="6"
                             value={reviewData.comments}
@@ -1070,10 +1112,10 @@ export default function PlanManagement({ onNavigate }) {
                                   本次续订需要账号 <strong>{requiredCount}</strong> 个，已保留原账号 <strong>{retainedAccounts.length}</strong> 个，审核通过后系统将自动随机补分配 <strong>{replacementCount}</strong> 个未分配账号。
                                 </div>
                                 {retainedAccounts.length > 0 && (
-                                  <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#fff' }}>
+                                  <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827' }}>
                                     {retainedAccounts.map((account) => (
-                                      <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 120px', gap: '12px', padding: '12px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#334155' }}>
-                                        <strong style={{ color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.displayName || account.username}</strong>
+                                      <div key={account.sipUserId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 120px', gap: '12px', padding: '12px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#e5e7eb' }}>
+                                        <strong style={{ color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.displayName || account.username}</strong>
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</span>
                                         <span>{account.sourceServiceExpiresAt || '-'}</span>
                                       </div>
@@ -1090,19 +1132,19 @@ export default function PlanManagement({ onNavigate }) {
                             <>
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isSelectionComplete ? '#bbf7d0' : '#fed7aa'}`, backgroundColor: isSelectionComplete ? '#f0fdf4' : '#fff7ed', color: isSelectionComplete ? '#166534' : '#9a3412', fontSize: '13px' }}>
-                            <span>已选择 <strong>{selectedCount}</strong> / 需分配 <strong>{requiredCount}</strong> 个账号</span>
+                            <span>已選擇 <strong>{selectedCount}</strong> / 需分配 <strong>{requiredCount}</strong> 个账号</span>
                             {!isSelectionComplete && <span>{selectedCount < requiredCount ? `还需选择 ${requiredCount - selectedCount} 个` : `已超出 ${selectedCount - requiredCount} 个`}</span>}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', color: '#475569', fontSize: '13px' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', color: '#9ca3af', fontSize: '13px' }}>
 	                            <span>账号有效期</span>
-                            <strong style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600 }}>{getAccountEffectiveRange(reviewOrder)}</strong>
+                            <strong style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600 }}>{getAccountEffectiveRange(reviewOrder)}</strong>
                           </div>
                         </div>
-                        <div className="table-wrap" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div className="table-wrap" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#f8fafc' }}>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
                               <tr>
-                                <th style={{ width: '36px', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+                                <th style={{ width: '36px', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                                   <input
                                     type="checkbox"
                                     checked={requiredCount > 0 && selectedCount === requiredCount}
@@ -1113,18 +1155,18 @@ export default function PlanManagement({ onNavigate }) {
                                     style={{ cursor: 'pointer' }}
                                   />
                                 </th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#475569', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>账号</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#475569', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>状态</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#475569', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>添加人</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#475569', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>添加时间</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#475569', padding: '7px 10px', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>域名</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>账号</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>狀態</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>添加人</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>添加时间</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>域名</th>
                               </tr>
                             </thead>
                             <tbody>
                               {unassignedSipAccounts.length === 0 ? (
                                 <tr>
                                   <td colSpan="6" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-                                    {isLoadingSipAccounts ? '加载中...' : '暂无未分配SIP账号'}
+                                    {isLoadingSipAccounts ? '加载中...' : '暫無未分配SIP账号'}
                                   </td>
                                 </tr>
                               ) : (
@@ -1147,11 +1189,11 @@ export default function PlanManagement({ onNavigate }) {
                                         style={{ cursor: (!selectedSipAccountIds.includes(account.id) && isSelectionFull) ? 'not-allowed' : 'pointer' }}
                                       />
                                     </td>
-                                    <td style={{ fontSize: '12px', color: '#0f172a', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.username}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.username}</td>
                                     <td style={{ padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{getSipStatusBadge(account.status)}</td>
-                                    <td style={{ fontSize: '12px', color: '#334155', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.creatorName || '-'}</td>
-                                    <td style={{ fontSize: '12px', color: '#334155', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.createdAt || '-'}</td>
-                                    <td style={{ fontSize: '12px', color: '#334155', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.domain || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.creatorName || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.createdAt || '-'}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #f1f5f9' }}>{account.domain || '-'}</td>
                                   </tr>
                                 ))
                               )}
@@ -1175,10 +1217,10 @@ export default function PlanManagement({ onNavigate }) {
                             <>
                               <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                                 <div style={{ padding: '8px 12px', borderRadius: '6px', border: `1px solid ${isWebReady ? '#bbf7d0' : '#fecaca'}`, backgroundColor: isWebReady ? '#f0fdf4' : '#fef2f2', color: isWebReady ? '#166534' : '#991b1b', fontSize: '13px' }}>
-                                  共需绑定 <strong>{requiredCount}</strong> 个 WebRTC 账号，本次需新增 <strong>{requiredNewWebCount}</strong> 个，当前可用 <strong>{unassignedWebAccounts.length}</strong> 个。
+                                  共需绑定 <strong>{requiredCount}</strong> 个 WebRTC 账号，本次需新增 <strong>{requiredNewWebCount}</strong> 个，當前可用 <strong>{unassignedWebAccounts.length}</strong> 个。
                                 </div>
-                                <div style={{ color: '#475569', fontSize: '13px' }}>
-                                  账号有效期 <strong style={{ color: '#0f172a' }}>{getAccountEffectiveRange(reviewOrder)}</strong>
+                                <div style={{ color: '#9ca3af', fontSize: '13px' }}>
+                                  账号有效期 <strong style={{ color: '#e5e7eb' }}>{getAccountEffectiveRange(reviewOrder)}</strong>
                                 </div>
                               </div>
                               <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', alignContent: 'start', gap: '12px', paddingRight: '4px' }}>
@@ -1186,13 +1228,13 @@ export default function PlanManagement({ onNavigate }) {
                                   const webAccountIndex = sipPreviewAccounts.slice(0, index).filter((account) => !account.reuseWeb).length;
                                   const webAccount = sipAccount.reuseWeb ? null : unassignedWebAccounts[webAccountIndex];
                                   return (
-                                    <div key={sipAccount.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#fff', padding: '12px', display: 'grid', gap: '10px', minWidth: 0 }}>
+                                    <div key={sipAccount.id} style={{ border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827', padding: '12px', display: 'grid', gap: '10px', minWidth: 0 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
                                         <span style={{ fontSize: '12px', color: '#64748b' }}>SIP账号</span>
                                         <span style={{ fontSize: '12px', color: sipAccount.kind === '补充' ? '#f97316' : '#2563eb', backgroundColor: sipAccount.kind === '补充' ? '#fff7ed' : '#eff6ff', borderRadius: '999px', padding: '2px 8px' }}>{sipAccount.kind}</span>
                                       </div>
                                       <div title={`${sipAccount.username}${sipAccount.domain ? ` | ${sipAccount.domain}` : ''}`} style={{ minWidth: 0 }}>
-                                        <div style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.displayName || sipAccount.username}</div>
+                                        <div style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.displayName || sipAccount.username}</div>
                                         <div style={{ color: '#64748b', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.username}{sipAccount.domain ? ` | ${sipAccount.domain}` : ''}</div>
                                       </div>
                                       <div style={{ height: '1px', backgroundColor: '#f1f5f9' }} />
@@ -1202,7 +1244,7 @@ export default function PlanManagement({ onNavigate }) {
                                           <div style={{ color: '#166534', fontSize: '13px', lineHeight: 1.5 }}>沿用原 WebRTC 账号，提交审核时同步更新有效期。</div>
                                         ) : webAccount ? (
                                           <div title={`${webAccount.username}${webAccount.domain ? ` | ${webAccount.domain}` : ''}`} style={{ minWidth: 0 }}>
-                                            <div style={{ color: '#0f172a', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webAccount.displayName || webAccount.username}</div>
+                                            <div style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webAccount.displayName || webAccount.username}</div>
                                             <div style={{ color: '#64748b', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webAccount.username}{webAccount.domain ? ` | ${webAccount.domain}` : ''}</div>
                                           </div>
                                         ) : (
@@ -1225,11 +1267,11 @@ export default function PlanManagement({ onNavigate }) {
                 )}
               </div>
 
-              <div style={{ flexShrink: 0, padding: reviewStep >= 3 ? '10px 24px' : '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-	                <button onClick={() => setReviewOrder(null)} disabled={isLoadingReview} style={{ padding: reviewStep >= 3 ? '7px 20px' : '10px 24px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', cursor: 'pointer', fontSize: reviewStep >= 3 ? '13px' : '14px', fontWeight: '500' }}>取消</button>
+              <div style={{ flexShrink: 0, padding: reviewStep >= 3 ? '10px 24px' : '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+	                <button onClick={() => setReviewOrder(null)} disabled={isLoadingReview} style={{ padding: reviewStep >= 3 ? '7px 20px' : '10px 24px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: reviewStep >= 3 ? '13px' : '14px', fontWeight: '500' }}>取消</button>
                 
                 {reviewStep > 1 && (
-	                  <button onClick={() => setReviewStep(p => p - 1)} disabled={isLoadingReview} style={{ padding: reviewStep >= 3 ? '7px 20px' : '10px 24px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', cursor: 'pointer', fontSize: reviewStep >= 3 ? '13px' : '14px', fontWeight: '500' }}>上一步</button>
+	                  <button onClick={() => setReviewStep(p => p - 1)} disabled={isLoadingReview} style={{ padding: reviewStep >= 3 ? '7px 20px' : '10px 24px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: reviewStep >= 3 ? '13px' : '14px', fontWeight: '500' }}>上一步</button>
                 )}
                 
                 {reviewStep === 1 && (
@@ -1259,49 +1301,49 @@ export default function PlanManagement({ onNavigate }) {
 
       {detailOrder && createPortal(
         <div className="modal-overlay" onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '640px', backgroundColor: '#fff', borderRadius: '12px', display: 'flex', flexDirection: 'column', maxHeight: '85vh', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#0f172a' }}>订单详情</h3>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '640px', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', maxHeight: '85vh', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#e5e7eb' }}>订单详情</h3>
               <button onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '20px' }}>&times;</button>
             </div>
             
             <div className="modal-body" style={{ position: 'relative', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="detail-section">
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基本信息</h4>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基本信息</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单编号</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.order_no || detailOrder.orderNo}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>创建时间</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{formatDate(detailOrder.created_at)}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户名称</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.tenant_name}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户编号</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.tenant_number}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单编号</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.order_no || detailOrder.orderNo}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>创建时间</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{formatDate(detailOrder.created_at)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户名称</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.tenant_name}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租户编号</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.tenant_number}</span></div>
                 </div>
               </div>
               
               <div className="detail-section">
-	                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>套餐与服务</h4>
+	                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>套餐与服务</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>套餐名称</span><span style={{ fontSize: '14px', color: '#0f172a', fontWeight: '500' }}>{detailOrder.plan_name || detailOrder.planName}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>账号数量</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.account_quantity || detailOrder.accountQuantity || '-'}</span></div>
-	                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租期（月）</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{termLabel(detailOrder.months)}</span></div>
-	                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>增值服务</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.addon_names || detailOrder.addonNames || '-'}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>套餐名称</span><span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: '500' }}>{detailOrder.plan_name || detailOrder.planName}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>账号数量</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.account_quantity || detailOrder.accountQuantity || '-'}</span></div>
+	                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>租期（月）</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{termLabel(detailOrder.months)}</span></div>
+	                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>增值服务</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.addon_names || detailOrder.addonNames || '-'}</span></div>
                 </div>
               </div>
               
               <div className="detail-section">
-                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>状态与金额</h4>
+                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>狀態与金额</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单状态</span><div>{getStatusBadge(getBusinessOrderStatus(detailOrder.order_status || detailOrder.orderStatus))}</div></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核状态</span><div>{getStatusBadge(getReviewStatus(detailOrder.order_status || detailOrder.orderStatus))}</div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>订单狀態</span><div>{getStatusBadge(getBusinessOrderStatus(detailOrder.order_status || detailOrder.orderStatus))}</div></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核狀態</span><div>{getStatusBadge(getReviewStatus(detailOrder.order_status || detailOrder.orderStatus))}</div></div>
                   {['review_approved', 'review_rejected'].includes(detailOrder.order_status || detailOrder.orderStatus) && (
                     <>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核人</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.reviewer_name || detailOrder.reviewed_by_platform_admin_id || '-'}</span></div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核时间</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{detailOrder.reviewed_at ? new Date(detailOrder.reviewed_at).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'}</span></div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核意见</span><span style={{ fontSize: '14px', color: '#0f172a', whiteSpace: 'pre-wrap' }}>{detailOrder.review_note || detailOrder.reviewNote || '-'}</span></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核人</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.reviewer_name || detailOrder.reviewed_by_platform_admin_id || '-'}</span></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核时间</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{detailOrder.reviewed_at ? new Date(detailOrder.reviewed_at).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'}</span></div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: '1 / -1' }}><span style={{ fontSize: '13px', color: '#64748b' }}>审核意见</span><span style={{ fontSize: '14px', color: '#e5e7eb', whiteSpace: 'pre-wrap' }}>{detailOrder.review_note || detailOrder.reviewNote || '-'}</span></div>
                     </>
                   )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>生效日期</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{formatDate(detailOrder.effective_at || detailOrder.effectiveAt)}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>结束日期</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{formatDate(detailOrder.expires_at || detailOrder.expiresAt)}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付方式</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{paymentMethodLabel(detailOrder)}</span></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付日期</span><span style={{ fontSize: '14px', color: '#0f172a' }}>{formatDate(detailOrder.paymentDate || detailOrder.payment_proof_uploaded_at || detailOrder.paid_at)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>生效日期</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{formatDate(detailOrder.effective_at || detailOrder.effectiveAt)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>结束日期</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{formatDate(detailOrder.expires_at || detailOrder.expiresAt)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付方式</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{paymentMethodLabel(detailOrder)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}><span style={{ fontSize: '13px', color: '#64748b' }}>支付日期</span><span style={{ fontSize: '14px', color: '#e5e7eb' }}>{formatDate(detailOrder.paymentDate || detailOrder.payment_proof_uploaded_at || detailOrder.paid_at)}</span></div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <span style={{ fontSize: '13px', color: '#64748b' }}>订单金额</span>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
@@ -1319,11 +1361,11 @@ export default function PlanManagement({ onNavigate }) {
                     </div>
                   </div>
                   {showCostDetails && (
-                    <div style={{ gridColumn: '1 / -1', marginTop: '4px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: 0, overflowX: 'auto' }}>
+                    <div style={{ gridColumn: '1 / -1', marginTop: '4px', padding: '16px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px solid #1f2937', minWidth: 0, overflowX: 'auto' }}>
                       {isLoadingDetail ? (
                         <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', margin: 0 }}>加载明细中...</p>
                       ) : detailOrder.items && detailOrder.items.length > 0 ? (
-                        <table style={{ width: '100%', minWidth: '400px', tableLayout: 'fixed', wordBreak: 'break-all', borderCollapse: 'collapse', fontSize: '13px', color: '#334155' }}>
+                        <table style={{ width: '100%', minWidth: '400px', tableLayout: 'fixed', wordBreak: 'break-all', borderCollapse: 'collapse', fontSize: '13px', color: '#e5e7eb' }}>
                           <thead>
                             <tr>
                               <th style={{ width: '40px', textAlign: 'left', padding: '8px', borderBottom: '1px solid #cbd5e1', color: '#64748b', fontWeight: 500 }}>序号</th>
@@ -1335,24 +1377,24 @@ export default function PlanManagement({ onNavigate }) {
                           <tbody>
                             {detailOrder.items.map((item, index) => (
                               <tr key={index}>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{index + 1}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', fontWeight: 500 }}>{item.itemName}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>{itemFormula(item)}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>{formatMoney(item.lineAmount, item.currency)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>{index + 1}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>{item.itemName}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#64748b' }}>{itemFormula(item)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600 }}>{formatMoney(item.lineAmount, item.currency)}</td>
                               </tr>
                             ))}
                             {Number(detailOrder.discountAmount || 0) > 0 && (
                               <tr>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>-</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', fontWeight: 500 }}>优惠折扣</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>{detailOrder.coupon?.couponCode || '折扣'}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600, color: '#ef4444' }}>- {formatMoney(detailOrder.discountAmount, detailOrder.currency)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>-</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>优惠折扣</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#64748b' }}>{detailOrder.coupon?.couponCode || '折扣'}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600, color: '#ef4444' }}>- {formatMoney(detailOrder.discountAmount, detailOrder.currency)}</td>
                               </tr>
                             )}
                           </tbody>
                         </table>
                       ) : (
-                        <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', margin: 0 }}>暂无费用明细数据</p>
+                        <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', margin: 0 }}>暫無费用明细数据</p>
                       )}
                     </div>
                   )}
@@ -1360,14 +1402,14 @@ export default function PlanManagement({ onNavigate }) {
               </div>
               
               <div className="detail-section">
-	                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#334155', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>已分配账号</h4>
-                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+	                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>已分配账号</h4>
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#1a2332' }}>
                   功能开发中，将在此处展示已分配至该订单的 SIP 账号列表...
                 </div>
               </div>
             </div>
             
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #1f2937', display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} className="secondary-btn">关闭</button>
             </div>
           </div>

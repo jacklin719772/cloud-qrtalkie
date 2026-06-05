@@ -50,7 +50,7 @@ const viewTitles = {
   'sip-account-registration': 'SIP帳號管理',
   'sip-account-allocation': 'Web帳號管理',
   tenant: '租戶設定',
-  'plan-management': '套餐管理',
+  'plan-management': '訂閱審核',
   'e-business-card': '電子名片',
   'ecard-styles-management': '電子名片管理',
   'tenant-management': '租戶管理',

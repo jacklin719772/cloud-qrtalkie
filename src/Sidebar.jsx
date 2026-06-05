@@ -103,12 +103,12 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <button
               className={`nav-item ${currentView === 'plan-management' ? 'active' : ''}`}
               type="button"
-              title={isCollapsed ? '套餐管理' : undefined}
-              aria-label="套餐管理"
+              title={isCollapsed ? '訂閱審核' : undefined}
+              aria-label="訂閱審核"
               onClick={() => onViewChange('plan-management')}
             >
               <Package className="nav-icon" size={20} aria-hidden="true" />
-              {!isCollapsed && <span>套餐管理</span>}
+              {!isCollapsed && <span>訂閱審核</span>}
             </button>
 
             <button
