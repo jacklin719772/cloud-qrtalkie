@@ -562,7 +562,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       <section className="view active settings-form-page" id="device-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>設備詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
             </div>
@@ -1018,16 +1018,16 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       </div>
 
       {assignDialogOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssignDialogOpen(false); }}>
-          <div style={{ width: 'min(480px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>分配設備 — {assigningDevice?.uuid}</h3>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setAssignDialogOpen(false); }}>
+          <div style={{ width: 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>分配設備 — {assigningDevice?.uuid}</h3>
             </div>
             <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>選擇租戶 <span style={{ color: '#ef4444' }}>*</span></span>
                 <select value={selectedTenantId} onChange={(e) => setSelectedTenantId(e.target.value)}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px' }}>
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', fontSize: '13px', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
                   <option value="">{tenants.length === 0 ? '載入中...' : '請選擇租戶...'}</option>
                   {tenants.map(t => (
                     <option key={t.id} value={t.id}>{t.companyName || t.name}{t.latestSipExpiry ? ` (SIP 到期: ${new Date(t.latestSipExpiry).toLocaleDateString('zh-CN')})` : ''}</option>
@@ -1038,7 +1038,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 設備有效期將與租戶 SIP 帳號有效期保持一致。若租戶無明確到期日則設備永久有效。
               </p>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isAssigning} onClick={() => setAssignDialogOpen(false)}>取消</button>
               <button className="primary-btn" type="button" disabled={isAssigning || !selectedTenantId} onClick={handleConfirmAssign}>{isAssigning ? '分配中...' : '確認分配'}</button>
             </div>
@@ -1049,7 +1049,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       {batchAssignDialogOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAssignDialogOpen(false); }}>
           <div style={{ width: 'min(520px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>批量分配設備（{batchAssignDevices.length} 個）</h3>
             </div>
             <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -1064,7 +1064,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 </select>
               </label>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAssigning} onClick={() => setBatchAssignDialogOpen(false)}>取消</button>
               <button className="primary-btn" type="button" disabled={isBatchAssigning || !batchAssignTenantId} onClick={handleConfirmBatchAssign}>{isBatchAssigning ? '分配中...' : '確認分配'}</button>
             </div>
@@ -1074,9 +1074,9 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       )}
       {batchAddOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAddOpen(false); }}>
-          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>批量新增設備</h3>
+          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量新增設備</h3>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1096,9 +1096,9 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                 <input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
               </label>
               <p style={{ margin: 0, fontSize: '10px', color: '#9ca3af' }}>系統會為每條記錄生成唯一 UUID，並使用相同的繼電器ID、訂閱主題和發佈主題。</p>
-              {batchAddMessage.text && <p style={{ margin: 0, fontSize: '11px', color: batchAddMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{batchAddMessage.text}</p>}
+              {batchAddMessage.text && <p style={{ margin: 0, fontSize: '11px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{batchAddMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '新增中...' : '確認新增'}</button>
             </div>
