@@ -60,7 +60,11 @@ const Plans = forwardRef((props, ref) => {
   const dropdownMenuRef = useRef(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10; // 每页显示数量，可根据需要调整
+  const pageSizeOptions = [10, 20, 50, '全部'];
+  const [pageSize, setPageSize] = useState(10);
+  const effectivePageSize = pageSize === '全部' ? (filteredPlans.length || 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(filteredPlans.length / effectivePageSize));
+  const paginatedPlans = filteredPlans.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
   useImperativeHandle(ref, () => ({
     startAdd,
@@ -131,8 +135,6 @@ const Plans = forwardRef((props, ref) => {
     });
   }, [plans, filterStatus, query]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredPlans.length / pageSize));
-  const paginatedPlans = filteredPlans.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const planStats = useMemo(() => ({
     total: plans.length,
@@ -144,7 +146,7 @@ const Plans = forwardRef((props, ref) => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [query, filterStatus]);
+  }, [query, filterStatus, pageSize]);
 
   // 当删除最后一笔导致当前页超出总页数时，自动回退到最新末页
   useEffect(() => {
@@ -1087,7 +1089,7 @@ const Plans = forwardRef((props, ref) => {
                   共 {filteredPlans.length} 條
                 </div>
                 <div className="device-pagination" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span className="device-page-size" style={{ height: '38px', padding: '0 14px', borderRadius: '8px', border: '1px solid #4b5563', backgroundColor: '#1a2332', color: '#9ca3af', fontSize: '11px', display: 'inline-flex', alignItems: 'center' }}>{pageSize} 條/頁</span>
+                  <select className="device-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === "全部" ? "全部" : Number(v)); setCurrentPage(1); }} style={{ height: "38px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", backgroundColor: "#1a2332", color: "#9ca3af", fontSize: "11px", cursor: "pointer" }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === "全部" ? "全部" : opt + " 條/頁"}</option>)}</select>
                   <button
                     className="device-page-btn"
                     type="button"
