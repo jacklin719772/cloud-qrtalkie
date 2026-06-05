@@ -47,6 +47,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
+  const pageSizeOptions = [10, 20, 50, "全部"];
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,9 +63,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
   const [isAssignLoading, setIsAssignLoading] = useState(false);
   const [isAssignSaving, setIsAssignSaving] = useState(false);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const pageStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const pageEnd = Math.min(total, page * pageSize);
+  const effectivePageSize = pageSize === "全部" ? (total || 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
+  const pageStart = total === 0 ? 0 : (page - 1) * effectivePageSize + 1;
+  const pageEnd = Math.min(total, page * effectivePageSize);
 
   const statItems = useMemo(() => [
     { key: 'total', label: '已分配總數', value: stats.total || 0 },
