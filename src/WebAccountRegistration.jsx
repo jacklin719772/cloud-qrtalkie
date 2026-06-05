@@ -24,13 +24,13 @@ function RequiredMark() {
 
 function getStatusBadge(status) {
   const statusMap = {
-    active: { label: '啟用中', bg: '#dcfce7', color: '#15803d' },
-    disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
-    inactive: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
-    pending: { label: '待审核', bg: '#e0f2fe', color: '#0369a1' },
-    expired: { label: '已过期', bg: '#fee2e2', color: '#dc2626' },
+    active: { label: '啟用中', bg: '#0d2818', color: '#4ade80' },
+    disabled: { label: '已停用', bg: '#3b1111', color: '#fca5a5' },
+    inactive: { label: '已停用', bg: '#3b1111', color: '#fca5a5' },
+    pending: { label: '待審核', bg: '#1e3a5f', color: '#93c5fd' },
+    expired: { label: '已過期', bg: '#3b1111', color: '#fca5a5' },
   };
-  const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
+  const item = statusMap[status] || { label: status || '未知', bg: '#1f2937', color: '#9ca3af' };
   return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '10px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
 }
 
@@ -589,8 +589,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       <section className="view active settings-form-page" id="web-account-registration-form" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯 Web 帳號' : '添加 Web 帳號'}</h3>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯 Web 帳號' : '新增 Web 帳號'}</h3>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基礎帳號信息</h4>
@@ -600,7 +600,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   <input value={formData.username} readOnly={viewMode === 'edit'} onChange={(event) => {
                     const value = event.target.value;
                     setFormData((current) => ({ ...current, username: value, displayName: current.displayName === current.username ? value : current.displayName }));
-                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', ...(viewMode === 'edit' ? { backgroundColor: '#1a2332', color: '#9ca3af' } : {}) }} required />
+                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', ...(viewMode === 'edit' ? { backgroundColor: '#0f172a', color: '#6b7280', cursor: 'not-allowed' } : {}) }} required />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>SIP Domain <RequiredMark /></span>
@@ -608,15 +608,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={(event) => setFormData({ ...formData, displayName: event.target.value })} placeholder={formData.username || '默认与用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input value={formData.displayName} onChange={(event) => setFormData({ ...formData, displayName: event.target.value })} placeholder={formData.username || '默認與用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.password} onChange={(event) => setFormData({ ...formData, password: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
+                  <input type="password" value={formData.password} onChange={(event) => setFormData({ ...formData, password: event.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.confirmPassword} onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })} placeholder={viewMode === 'edit' ? '不修改请留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} required={viewMode === 'add'} minLength={6} />
+                  <input type="password" value={formData.confirmPassword} onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required={viewMode === 'add'} minLength={6} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
@@ -634,18 +634,18 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
-                  <input value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
-                  <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                  <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
                 </label>
               </div>
             </div>
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
-              <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登记')}</button>
+              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交新增')}</button>
             </div>
           </form>
         </div>
