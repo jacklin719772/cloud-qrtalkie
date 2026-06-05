@@ -62,9 +62,6 @@ const Plans = forwardRef((props, ref) => {
   const [currentPage, setCurrentPage] = useState(1);
   const pageSizeOptions = [10, 20, 50, '全部'];
   const [pageSize, setPageSize] = useState(10);
-  const effectivePageSize = pageSize === '全部' ? (filteredPlans.length || 1) : pageSize;
-  const totalPages = Math.max(1, Math.ceil(filteredPlans.length / effectivePageSize));
-  const paginatedPlans = filteredPlans.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
   useImperativeHandle(ref, () => ({
     startAdd,
@@ -141,6 +138,10 @@ const Plans = forwardRef((props, ref) => {
     active: plans.filter((plan) => plan.status === 'active').length,
     disabled: plans.filter((plan) => plan.status === 'disabled').length,
   }), [plans]);
+
+  const effectivePageSize = pageSize === '全部' ? (filteredPlans.length || 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(filteredPlans.length / effectivePageSize));
+  const paginatedPlans = filteredPlans.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
   // 搜寻或筛选改变时，重置回第一页
   useEffect(() => {
