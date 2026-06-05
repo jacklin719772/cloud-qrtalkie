@@ -734,7 +734,17 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
         #tenant-coupon-management .tenant-coupon-detail-grid label span { color: #9ca3af; }
         #tenant-coupon-management .tenant-coupon-detail-grid label strong { color: #e5e7eb; }
         #tenant-coupon-management .tenant-coupon-modal-actions { background: #111827; border-top-color: #1f2937; }
+        #tenant-coupon-management .tenant-coupon-detail-grid label { background: #1a2332; border-color: #374151; }
         #tenant-coupon-management .icon-btn { color: #9ca3af; }
+        .tenant-coupon-modal { background: #111827 !important; border-color: #1f2937 !important; }
+        .tenant-coupon-modal-head { background: #1a2332 !important; border-bottom-color: #1f2937 !important; }
+        .tenant-coupon-modal-head span { color: #9ca3af !important; }
+        .tenant-coupon-modal-head h3 { color: #f3f4f6 !important; }
+        .tenant-coupon-modal-body { background: #111827 !important; }
+        .tenant-coupon-detail-grid label { background: #1a2332 !important; border-color: #374151 !important; }
+        .tenant-coupon-detail-grid label span { color: #9ca3af !important; }
+        .tenant-coupon-detail-grid label strong { color: #e5e7eb !important; }
+        .tenant-coupon-modal-actions { background: #111827 !important; border-top-color: #1f2937 !important; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0', background: '#111827' }}>
         <div className="tenant-coupon-main-toolbar">
