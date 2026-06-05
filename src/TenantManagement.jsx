@@ -756,8 +756,6 @@ export default function TenantManagement() {
                 <span className="tenant-page-jump">前往<input className="tenant-page-input" value={currentPage} readOnly />頁</span>
               </div>
             </div>
-          </>
-          )}
           </div>
       </div>
 
