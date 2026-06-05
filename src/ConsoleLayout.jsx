@@ -564,7 +564,7 @@ export default function ConsoleLayout({ onLogout }) {
     }
     if (currentView === 'tenant-management') {
       const mode = tenantManagementRef.current?.viewMode;
-      if (mode === 'add') return null;
+      if (mode === 'add' || mode === 'edit') return null;
       return (
         <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
           新增租戶

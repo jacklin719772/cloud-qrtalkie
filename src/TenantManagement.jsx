@@ -34,8 +34,6 @@ export default forwardRef(function TenantManagement(props, ref) {
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedTenantDetails, setSelectedTenantDetails] = useState(null);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingTenantData, setEditingTenantData] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const dropdownAnchorRef = useRef(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -43,6 +41,8 @@ export default forwardRef(function TenantManagement(props, ref) {
   const [addForm, setAddForm] = useState({ ...emptyForm });
   const [addMessage, setAddMessage] = useState({ type: '', text: '' });
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [tenantNumber, setTenantNumber] = useState('');
   const messageTimerRef = useRef(null);
 
   const dropdownMenuRef = useRef(null);
@@ -54,6 +54,7 @@ export default forwardRef(function TenantManagement(props, ref) {
 
   function startAdd() {
     setViewMode('add');
+    setEditingId(null);
     setAddForm({ ...emptyForm });
     setAddMessage({ type: '', text: '' });
   }
@@ -261,39 +262,26 @@ export default forwardRef(function TenantManagement(props, ref) {
 
   const handleEdit = async (tenant) => {
     setOpenDropdownId(null);
-    setEditModalOpen(true);
-    setIsDetailsLoading(true);
-    setEditingTenantData(null);
     try {
       const data = await apiClient.get(`/admin/tenants/${tenant.id}`);
-      setEditingTenantData(data.tenant);
+      const t = data.tenant;
+      setAddForm({
+        companyName: t.companyName || '',
+        enterpriseEmail: t.enterpriseEmail || '',
+        contactPerson: t.contactPerson || '',
+        contactPhone: t.contactPhone || '',
+        postalCode: t.postalCode || '',
+        billingAddress: t.billingAddress || '',
+        loginEmail: t.loginEmail || '',
+        password: '',
+        adminPhone: t.adminPhone || '',
+      });
+      setEditingId(t.id);
+      setTenantNumber(t.tenantNumber || `TENANT-${String(t.id).padStart(6, "0")}`);
+      setViewMode('edit');
     } catch (err) {
       console.error(err);
       alert(err.message || '無法載入租戶詳情');
-      setEditModalOpen(false);
-    } finally {
-      setIsDetailsLoading(false);
-    }
-  };
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    if (!editingTenantData?.companyName?.trim()) {
-      alert('請輸入公司名稱。');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await apiClient.put(`/admin/tenants/${editingTenantData.id}`, {
-        ...editingTenantData
-      });
-      setEditModalOpen(false);
-      loadTenants(); // 更新列表顯示的最新資料
-    } catch (err) {
-      console.error(err);
-      alert(err.message || '儲存失敗');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -353,33 +341,43 @@ export default forwardRef(function TenantManagement(props, ref) {
   const handleAddSubmit = async (event) => {
     event.preventDefault();
     const msg = validateAddForm();
+    if (viewMode === 'add' && !addForm.password.trim()) {
+      showAddMessage('error', '請輸入管理員密碼。');
+      return;
+    }
     if (msg) { showAddMessage('error', msg); return; }
 
     setIsAdding(true);
     showAddMessage('', '');
     try {
-      await apiClient.put('/admin/tenants/0', {
+      const payload = {
         companyName: addForm.companyName.trim(),
         enterpriseEmail: addForm.enterpriseEmail.trim(),
         contactPerson: addForm.contactPerson.trim(),
         contactPhone: addForm.contactPhone.trim(),
         postalCode: addForm.postalCode.trim(),
         billingAddress: addForm.billingAddress.trim(),
-        loginEmail: addForm.loginEmail.trim(),
-        password: addForm.password,
         adminPhone: addForm.adminPhone.trim(),
-      });
-      showAddMessage('success', '租戶新增成功。');
+      };
+      if (viewMode === 'add') {
+        payload.loginEmail = addForm.loginEmail.trim();
+        payload.password = addForm.password;
+        await apiClient.put('/admin/tenants/0', payload);
+      } else {
+        await apiClient.put(`/admin/tenants/${editingId}`, payload);
+      }
+      showAddMessage('success', viewMode === 'add' ? '租戶新增成功。' : '租戶資料已儲存。');
       setAddForm({ ...emptyForm });
       setTimeout(() => { setViewMode('list'); loadTenants(); }, 1000);
     } catch (err) {
-      showAddMessage('error', err.message || '新增租戶失敗。');
+      showAddMessage('error', err.message || (viewMode === 'add' ? '新增租戶失敗。' : '儲存租戶失敗。'));
     } finally {
       setIsAdding(false);
     }
   };
 
-  if (viewMode === 'add') {
+  if (viewMode === 'add' || viewMode === 'edit') {
+    const isEdit = viewMode === 'edit';
     return (
       <section className="view active settings-form-page" id="tenant-management-add" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <style>{`
@@ -408,6 +406,7 @@ export default forwardRef(function TenantManagement(props, ref) {
                 <h3>企業資訊</h3>
               </div>
               <div className="tenant-field-grid">
+                {isEdit && <label>租戶編號<input value={tenantNumber} readOnly style={{ background: '#0f172a', color: '#6b7280' }} /></label>}
                 <label><span className="field-label">公司名稱 <RequiredMark /></span><input value={addForm.companyName} onChange={updateAddField('companyName')} placeholder="請輸入公司名稱" required /></label>
                 <label>企業信箱<input type="email" value={addForm.enterpriseEmail} onChange={updateAddField('enterpriseEmail')} placeholder="company@example.com" /></label>
                 <label>企業聯絡人<input value={addForm.contactPerson} onChange={updateAddField('contactPerson')} placeholder="請輸入聯絡人姓名" /></label>
@@ -417,6 +416,7 @@ export default forwardRef(function TenantManagement(props, ref) {
               </div>
             </section>
 
+            {!isEdit && (
             <section className="settings-block">
               <div className="settings-block-head">
                 <h3>管理員帳號</h3>
@@ -427,6 +427,7 @@ export default forwardRef(function TenantManagement(props, ref) {
                 <label>管理員電話<input type="tel" value={addForm.adminPhone} onChange={updateAddField('adminPhone')} placeholder="請輸入管理員電話" /></label>
               </div>
             </section>
+            )}
 
           </div>
 
@@ -434,7 +435,7 @@ export default forwardRef(function TenantManagement(props, ref) {
             {addMessage.text && <p className={`form-message ${addMessage.type}`}>{addMessage.text}</p>}
             <menu className="form-actions">
               <button className="ghost-btn" type="button" onClick={() => setViewMode('list')} disabled={isAdding}>返回列表</button>
-              <button className="primary-btn" type="submit" disabled={isAdding}>{isAdding ? '建立中...' : '新增租戶'}</button>
+              <button className="primary-btn" type="submit" disabled={isAdding}>{isAdding ? '儲存中...' : isEdit ? '儲存修改' : '新增租戶'}</button>
             </menu>
           </div>
         </form>
@@ -994,59 +995,6 @@ export default forwardRef(function TenantManagement(props, ref) {
         document.body
       )}
 
-      {editModalOpen && createPortal(
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={() => setEditModalOpen(false)}>
-          <div className="modal-content" style={{ backgroundColor: '#111827', borderRadius: '12px', width: '600px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>編輯租戶資訊</h3>
-              <button className="ghost-btn" onClick={() => setEditModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '24px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
-            </div>
-            <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '24px', minHeight: 0, scrollbarWidth: 'none' }}>
-                {isDetailsLoading ? (
-                  <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
-                ) : editingTenantData ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>租戶編號</span>
-                      <input value={editingTenantData.tenantNumber || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#9ca3af', outline: 'none' }} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                      <input required value={editingTenantData.companyName || ''} onChange={e => setEditingTenantData({...editingTenantData, companyName: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>企業信箱</span>
-                      <input type="email" value={editingTenantData.enterpriseEmail || ''} onChange={e => setEditingTenantData({...editingTenantData, enterpriseEmail: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>企業聯絡人</span>
-                      <input value={editingTenantData.contactPerson || ''} onChange={e => setEditingTenantData({...editingTenantData, contactPerson: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>聯絡電話</span>
-                      <input type="tel" value={editingTenantData.contactPhone || ''} onChange={e => setEditingTenantData({...editingTenantData, contactPhone: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵遞區號</span>
-                      <input value={editingTenantData.postalCode || ''} onChange={e => setEditingTenantData({...editingTenantData, postalCode: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>帳單郵寄地址</span>
-                      <textarea rows="3" value={editingTenantData.billingAddress || ''} onChange={e => setEditingTenantData({...editingTenantData, billingAddress: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', resize: 'vertical', outline: 'none', fontFamily: 'inherit' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#cbd5e1'} />
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-              <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#111827', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setEditModalOpen(false)} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: isSaving ? 0.7 : 1 }}>取消</button>
-                <button type="submit" disabled={isSaving || isDetailsLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isDetailsLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isDetailsLoading) ? 0.7 : 1 }}>{isSaving ? '儲存中...' : '儲存修改'}</button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
     </section>
     </>
   );
