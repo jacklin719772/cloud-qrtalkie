@@ -758,8 +758,9 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management .plan-search input::placeholder { color: #6b7280; }
         #plan-management .plan-search input:focus { border-color: #3b82f6; }
         #plan-management .plan-filter-right select { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
-        #plan-management .plan-management-stat-pill { background: #1a2332; border: 1px solid #374151; color: #9ca3af; border-radius: 14px; }
-        #plan-management .plan-management-stat-pill strong { color: #ffffff; }
+        #plan-management .plan-management-stat-pill { background: #1a2332 !important; border: 1px solid #374151 !important; color: #9ca3af !important; border-radius: 14px; }
+        #plan-management .plan-management-stat-pill strong { color: #ffffff !important; }
+        #plan-management .plan-management-stat-pill.selected { background: #1e3a5f !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
         #plan-management .plan-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
         #plan-management .plan-table thead { background: #1a2332 !important; }
         #plan-management .plan-table th { color: #e5e7eb !important; border-bottom: 1px solid #1f2937 !important; background: #1a2332 !important; }
