@@ -1122,7 +1122,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           background: linear-gradient(90deg, #2563eb 0%, #4f46e5 100%) !important;
           box-shadow: 0 6px 14px rgba(79, 70, 229, 0.22) !important;
         }
-        .page-heading > div > button svg {
+        .page-heading > div > button.ghost-btn svg,
+        .page-heading > div > button.primary-btn svg {
           width: 14px !important;
           height: 14px !important;
         }

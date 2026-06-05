@@ -102,6 +102,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showCouponMgmtHelp, setShowCouponMgmtHelp] = useState(false);
   const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
   const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
+  const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -405,6 +406,7 @@ export default function ConsoleLayout({ onLogout }) {
               <button className="primary-btn" type="button" onClick={() => webAccountRegistrationRef.current?.handleBatchDelete()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '999px' }}>
               <Trash2 size={14} /> 批量刪除
             </button>
+            <button type="button" onClick={() => setShowWebAccountHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           </div>
         );
       }
@@ -1263,6 +1265,48 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWebAccountHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowWebAccountHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>Web 帳號管理 操作說明</h2>
+              <button onClick={() => setShowWebAccountHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127760; Web 帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>Web 帳號用於用戶透過瀏覽器呼叫 SIP 帳號，實現網頁端語音和視訊通話。在分配 SIP 帳號時，系統將自動為每一個 SIP 帳號隨機配置一個 Web 帳號，因此 Web 帳號數量不應少於 SIP 帳號數量。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9888; 重要提示</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#fbbf24" }}>數量關係</strong> — 每個 SIP 帳號需要對應一個 Web 帳號，確保 Web 帳號數量 ≥ SIP 帳號數量，避免分配失敗。</li>
+                  <li><strong style={{ color: "#fbbf24" }}>自動配對</strong> — 分配 SIP 帳號時，系統會自動配對未分配的 Web 帳號。如無可用 Web 帳號，SIP 分配將失敗。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 Web 帳號，設定用戶名、密碼、角色、狀態等。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 Web 帳號，自動遞增用戶名。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>導入 CSV</strong> — 從 CSV 檔案批量導入 Web 帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、密碼、角色等設定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的登入密碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 在更多選單中切換帳號狀態。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號分配/取消分配</strong> — 將帳號分配給租戶或取消分配。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/web-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/web-accounts</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/web-accounts/:id/reset-password</code></p>
               </div>
             </div>
           </div>
