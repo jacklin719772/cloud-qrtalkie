@@ -2712,9 +2712,8 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   }
 
   const tenantId = Number(request.params.id);
-  if (!tenantId) return response.status(400).json({ message: "鐒℃晥鐨勭鎴?ID銆?" });
-
-  const payload = request.body || {};
+  if (!Number.isFinite(tenantId) || tenantId < 0) return response.status(400).json({ message: "無效的租戶 ID。" });
+  const isCreate = tenantId === 0;
   const companyName = sanitizeString(payload.companyName, 160);
   const enterpriseEmail = normalizeEmail(payload.enterpriseEmail);
   const contactPerson = sanitizeString(payload.contactPerson, 120);
@@ -2730,19 +2729,53 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    const result = await connection.query(
-      `UPDATE tenants
-       SET name = ?, contact_email = ?, enterprise_email = ?, contact_person = ?,
-           contact_phone = ?, billing_address = ?, postal_code = ?
-       WHERE id = ?`,
-      [companyName, enterpriseEmail || null, enterpriseEmail || null, contactPerson || null, contactPhone || null, billingAddress || null, postalCode || null, tenantId],
-    );
+    await connection.query("START TRANSACTION");
 
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "鎵句笉鍒版寚瀹氱殑绉熸埗銆?" });
-    return response.json({ message: "绉熸埗瑷畾宸插劜瀛樸€?" });
+    if (isCreate) {
+      // Validate required fields for creation
+      const loginEmail = normalizeEmail(payload.loginEmail);
+      const password = String(payload.password || "");
+      if (!loginEmail) return response.status(400).json({ message: "請輸入管理員信箱。" });
+      if (password.length < 8) return response.status(400).json({ message: "密碼至少需要 8 位字元。" });
+
+      // Create tenant
+      const insertTenant = await connection.query(
+        `INSERT INTO tenants (name, contact_email, enterprise_email, contact_person, contact_phone, billing_address, postal_code, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [companyName, loginEmail, enterpriseEmail || null, contactPerson || null, contactPhone || null, billingAddress || null, postalCode || null],
+      );
+      const newTenantId = Number(insertTenant.insertId || 0);
+      if (!newTenantId) return response.status(500).json({ message: "建立租戶失敗。" });
+
+      // Create admin account
+      const bcrypt = (await import("bcryptjs")).default || (await import("bcryptjs"));
+      const adminPhone = sanitizeString(payload.adminPhone, 40);
+      await connection.query(
+        `INSERT INTO admins (tenant_id, login_email, password_hash, phone_number, account_type, status)
+         VALUES (?, ?, ?, ?, 'tenant', 'active')`,
+        [newTenantId, loginEmail, await bcrypt.hash(password, 10), adminPhone || null],
+      );
+
+      await connection.query("COMMIT");
+      return response.json({ message: "租戶新增成功。", id: newTenantId });
+    } else {
+      // Update existing tenant
+      const result = await connection.query(
+        `UPDATE tenants
+         SET name = ?, contact_email = ?, enterprise_email = ?, contact_person = ?,
+             contact_phone = ?, billing_address = ?, postal_code = ?
+         WHERE id = ?`,
+        [companyName, enterpriseEmail || null, enterpriseEmail || null, contactPerson || null, contactPhone || null, billingAddress || null, postalCode || null, tenantId],
+      );
+
+      if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到指定的租戶。" });
+      return response.json({ message: "租戶設定已儲存。" });
+    }
   } catch (error) {
-    console.error("Failed to update tenant details:", error);
-    return response.status(500).json({ message: "鏇存柊绉熸埗瑷畾澶辨晽銆?" });
+    await connection.query("ROLLBACK");
+    console.error("Failed to save tenant:", error);
+    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "管理員信箱已存在。" });
+    return response.status(500).json({ message: isCreate ? "新增租戶失敗。" : "更新租戶設定失敗。" });
   } finally {
     if (connection) connection.release();
   }
