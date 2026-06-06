@@ -795,12 +795,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       await loadAccounts();
     }
   };
-    setIsBatchAdding(false);
-    setTimeout(() => {
-      setBatchAddOpen(false);
-      setBatchAddMessage({ type: '', text: '' });
-    }, 800);
-  };
 
   if (viewMode === 'add' || viewMode === 'edit') {
     return (
