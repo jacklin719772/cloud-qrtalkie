@@ -67,6 +67,10 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [resetConfirmPasswordValue, setResetConfirmPasswordValue] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' });
+  const [verifyAccount, setVerifyAccount] = useState(null);
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   function getNextNumericUsername() {
     const maxUsername = accounts.reduce((max, account) => {
@@ -587,6 +591,21 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         console.error('Failed to toggle sip account status:', err);
         alert(err.message || `${actionText}失敗`);
         setIsLoading(false);
+      }
+      return;
+    }
+
+    if (action === 'verify') {
+      setVerifyAccount(account);
+      setVerifyResult(null);
+      setIsVerifying(true);
+      try {
+        const result = await apiClient.get(`/admin/sip-accounts/${account.id}/verify`);
+        setVerifyResult(result);
+      } catch (err) {
+        setVerifyResult({ error: err.message || '校驗失敗' });
+      } finally {
+        setIsVerifying(false);
       }
       return;
     }
@@ -1570,6 +1589,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                               <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', acc)}>{acc.status === 'active' ? '停用' : '啟用'}</button>
                               <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', acc)}>刪除</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', acc)}>重設密碼</button>
+                              <button type="button" className="dropdown-item" onClick={() => handleAction('verify', acc)}>帳號校驗</button>
                               {acc.tenantName && (
                                 <button type="button" className="dropdown-item" onClick={() => handleAction('unassign', acc)}>取消分配</button>
                               )}
@@ -1627,6 +1647,70 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {/* 帳號校驗彈窗 */}
+      {verifyAccount && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '80vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f3f4f6' }}>帳號校驗 — {verifyAccount.username}</h3>
+              <button type="button" onClick={() => { setVerifyAccount(null); setVerifyResult(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>&#10005;</button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, scrollbarWidth: 'none' }}>
+              {isVerifying ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>正在校驗帳號資訊...</p>
+              ) : verifyResult?.error ? (
+                <p style={{ color: '#ef4444', textAlign: 'center' }}>{verifyResult.error}</p>
+              ) : verifyResult ? (
+                <>
+                  {verifyResult.consistent ? (
+                    <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                      <p style={{ color: '#22c55e', fontSize: '16px', fontWeight: 600, margin: '0 0 8px' }}>&#10003; 帳號資訊一致</p>
+                      <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>本地數據與 Flexisip 遠端數據完全一致</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p style={{ color: '#fbbf24', fontSize: '14px', fontWeight: 600, margin: '0 0 16px' }}>&#9888; 發現以下欄位不一致：</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {verifyResult.differences?.map((diff, i) => (
+                          <div key={i} style={{ background: '#1e293b', borderRadius: '8px', padding: '12px 16px' }}>
+                            <span style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 600 }}>{diff.label}</span>
+                            <div style={{ display: 'flex', gap: '16px', marginTop: '4px', fontSize: '13px' }}>
+                              <span style={{ color: '#9ca3af' }}>本地：<span style={{ color: '#e5e7eb' }}>{diff.local || '—'}</span></span>
+                              <span style={{ color: '#9ca3af' }}>遠端：<span style={{ color: '#fbbf24' }}>{diff.remote || '—'}</span></span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                        <button type="button" disabled={isSyncing} onClick={async () => {
+                          setIsSyncing(true);
+                          try {
+                            await apiClient.put(`/admin/sip-accounts/${verifyAccount.id}`, {
+                              displayName: verifyResult.localData?.displayName || verifyAccount.displayName,
+                              email: verifyResult.localData?.email || verifyAccount.email || '',
+                              phone: verifyResult.localData?.phone || verifyAccount.phone || '',
+                            });
+                            setVerifyResult({ consistent: true, differences: [], localData: verifyResult.localData });
+                          } catch (err) {
+                            alert(err.message || '同步失敗');
+                          } finally {
+                            setIsSyncing(false);
+                          }
+                        }} style={{ padding: '10px 28px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '同步中...' : '同步至 Flexisip'}</button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : null}
+            </div>
+            <div style={{ flexShrink: 0, padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setVerifyAccount(null); setVerifyResult(null); }} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>關閉</button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

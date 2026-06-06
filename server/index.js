@@ -16,6 +16,7 @@ import {
   searchAccountBySip,
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
+  getAccount as flexisipGetAccount,
   activateAccount as flexisipActivateAccount,
   deactivateAccount as flexisipDeactivateAccount,
   updateAccount as flexisipUpdateAccount,
@@ -6631,6 +6632,94 @@ app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, r
     return response.status(500).json({ message: "取消分配失敗。" });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// GET /api/admin/sip-accounts/:id/verify - 校验本地与 Flexisip 账号数据一致性
+app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行此操作。" });
+  }
+
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT id, username, sip_domain, display_name, email, phone_number, role, status,
+         flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
+    connection.release();
+
+    if (rows.length === 0) {
+      return response.status(404).json({ message: "帳號不存在。" });
+    }
+    const local = rows[0];
+
+    if (!local.flexisip_account_id && !local.sip_uri) {
+      return response.json({ consistent: true, message: "本地帳號，無 Flexisip 數據可比對。" });
+    }
+
+    // 定位远端账号
+    let flexisipAccount = null;
+    try {
+      if (local.flexisip_account_id) {
+        flexisipAccount = await flexisipGetAccount(local.flexisip_account_id);
+      } else if (local.sip_uri) {
+        flexisipAccount = await searchAccountBySip(local.sip_uri);
+      }
+    } catch (err) {
+      if (err?.status === 404) {
+        return response.json({
+          consistent: false,
+          localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
+          differences: [{ label: '遠端帳號', local: '存在', remote: '不存在' }],
+        });
+      }
+      return response.status(502).json({ message: "無法連接 Flexisip 進行校驗。" });
+    }
+
+    if (!flexisipAccount) {
+      return response.json({
+        consistent: false,
+        localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
+        differences: [{ label: '遠端帳號', local: '存在', remote: '未找到' }],
+      });
+    }
+
+    // 字段对比
+    const differences = [];
+    if ((local.display_name || '') !== (flexisipAccount.display_name || '')) {
+      differences.push({ label: '顯示名稱', local: local.display_name || '—', remote: flexisipAccount.display_name || '—' });
+    }
+    if ((local.email || '') !== (flexisipAccount.email || '')) {
+      differences.push({ label: 'Email', local: local.email || '—', remote: flexisipAccount.email || '—' });
+    }
+    if ((local.phone_number || '') !== (flexisipAccount.phone || '')) {
+      differences.push({ label: '電話', local: local.phone_number || '—', remote: flexisipAccount.phone || '—' });
+    }
+    // 状态对比 (local status vs flexisip activated)
+    const localActive = local.status === 'active';
+    const remoteActive = flexisipAccount.activated === true || flexisipAccount.activated === 1;
+    if (localActive !== remoteActive) {
+      differences.push({ label: '啟用狀態', local: localActive ? '已啟用' : '已停用', remote: remoteActive ? '已啟用' : '已停用' });
+    }
+
+    return response.json({
+      consistent: differences.length === 0,
+      localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
+      remoteData: { id: flexisipAccount.id, display_name: flexisipAccount.display_name, email: flexisipAccount.email, phone: flexisipAccount.phone, activated: flexisipAccount.activated },
+      differences,
+    });
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("SIP account verify failed:", error?.message);
+    return response.status(500).json({ message: "校驗失敗。" });
   }
 });
 
