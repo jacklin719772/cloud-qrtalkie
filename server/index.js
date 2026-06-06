@@ -6177,31 +6177,49 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     display_name: displayName || username,
     phone: phone || undefined,
     role,
-    activated: true,
   };
 
   try {
     const flexisipResult = await flexisipCreateAccount(flexisipCreatePayload);
     // 提取远端 ID（测试确认返回格式为 { id: 64 }）
     flexisipAccountId = flexisipResult?.id || flexisipResult?.account?.id || flexisipResult?.userId;
+
+    // 如果 createAccount 没有返回 id，尝试通过 search 查找
+    if (!flexisipAccountId) {
+      try {
+        const searchResult = await searchAccountBySip(sipUri);
+        flexisipAccountId = searchResult?.id || searchResult?.account?.id;
+      } catch {}
+    }
+
     if (!flexisipAccountId) {
       console.error("Flexisip createAccount returned no id:", JSON.stringify(flexisipResult).substring(0, 200));
       return response.status(502).json({
         message: "遠端帳號創建成功但無法獲取 ID，請聯繫管理員。",
-        code: "FLEXISIP_CREATE_NO_ID",
+        code: "FLEXISIP_ACCOUNT_ID_MISSING",
       });
     }
 
-    // 确保账号已激活（测试发现 createAccount 后 activated 为 false）
-    if (!flexisipResult?.activated) {
-      try {
-        await flexisipActivateAccount(flexisipAccountId);
-      } catch (activateErr) {
-        console.warn("Flexisip activateAccount failed (continuing):", flexisipAccountId, activateErr?.message);
-      }
-    }
+    // createAccount 不会自动激活，必须显式调用 activateAccount
+    await flexisipActivateAccount(flexisipAccountId);
   } catch (createErr) {
-    console.error("Flexisip createAccount failed:", createErr?.message || createErr);
+    console.error("Flexisip create/activate failed:", createErr?.message || createErr);
+
+    // 如果账号已创建但激活失败，尝试补偿删除
+    if (flexisipAccountId) {
+      try { await flexisipDeleteAccount(flexisipAccountId); } catch (cleanupErr) {
+        console.error("FLEXISIP ACTIVATE FAILED - cleanup also failed. id:", flexisipAccountId, "sipUri:", sipUri, "cleanupErr:", cleanupErr?.message);
+        return response.status(502).json({
+          message: "遠端帳號創建後啟用失敗，且清理失敗，請聯繫管理員。",
+          code: "FLEXISIP_ACTIVATE_FAILED_CLEANUP_FAILED",
+        });
+      }
+      return response.status(502).json({
+        message: "遠端帳號啟用失敗，已回滾。",
+        code: "FLEXISIP_ACTIVATE_FAILED_ROLLED_BACK",
+      });
+    }
+
     return response.status(502).json({
       message: "遠端通訊帳號創建失敗。",
       code: "FLEXISIP_CREATE_FAILED",
