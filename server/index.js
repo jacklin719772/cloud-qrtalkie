@@ -6212,29 +6212,14 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   } catch (createErr) {
     console.error("Flexisip create/activate failed:", createErr?.message || createErr);
 
-    // 422/409 username taken → 自動釋放 tombstone 並重試
+    // 422/409 username taken → accounts_tombstones 保留，前端提示用戶是否徹底釋放
     if ((createErr?.status === 422 || createErr?.status === 409) && !flexisipAccountId) {
-      console.log(`單個創建 ${username}: 422 username taken，嘗試釋放 accounts_tombstones...`);
-      try {
-        const release = await releaseAccountTombstone({ username, domain });
-        if (release?.released) {
-          console.log(`單個創建 ${username}: tombstone 已釋放，重新創建...`);
-          const retry = await flexisipCreateAccount(flexisipCreatePayload);
-          flexisipAccountId = retry?.id;
-          if (flexisipAccountId) {
-            await flexisipActivateAccount(flexisipAccountId);
-            // 成功了，跳到本地儲存
-          }
-        }
-      } catch (releaseErr) {
-        console.error(`單個創建 ${username}: 釋放 tombstone 失敗:`, releaseErr?.message);
-      }
-      if (!flexisipAccountId) {
-        return response.status(409).json({
-          message: "該 SIP 帳號已被刪除保留，無法重複使用，請更換帳號。",
-          code: "FLEXISIP_USERNAME_TOMBSTONED",
-        });
-      }
+      return response.status(409).json({
+        message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
+        code: "FLEXISIP_USERNAME_TOMBSTONED",
+        username,
+        domain,
+      });
     }
 
     // 如果依然沒有 flexisipAccountId（create 失敗且未恢復），回傳錯誤
@@ -6427,35 +6412,16 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: flexisipCreateAccount 失敗: status=${e?.status}, message=${e?.message}`);
       }
 
-      // 422 username already taken → 自動釋放 tombstone 並重試
+      // 422 username already taken → accounts_tombstones 保留，前端提示用戶
       if (!flexisipAccountId && createErr?.status === 422) {
-        console.log(`[batch] ${realUsername}: 422 username taken，嘗試釋放 accounts_tombstones...`);
-        try {
-          const release = await releaseAccountTombstone({ username: realUsername, domain });
-          if (release?.released) {
-            console.log(`[batch] ${realUsername}: tombstone 已釋放，重新創建...`);
-            const retry = await flexisipCreateAccount({
-              username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
-              display_name: realUsername, email: `${realUsername}@${domain}`,
-            });
-            flexisipAccountId = retry?.id;
-            console.log(`[batch] ${realUsername}: 重試創建返回 id=${flexisipAccountId}`);
-          } else {
-            console.log(`[batch] ${realUsername}: tombstone 不存在或無法釋放`);
-          }
-        } catch (releaseErr) {
-          console.log(`[batch] ${realUsername}: 釋放 tombstone 失敗:`, releaseErr?.message);
-        }
-        // 釋放失敗或重試仍失敗
-        if (!flexisipAccountId) {
-          results.push({
-            username: realUsername, sipUri, success: false,
-            errorCode: "FLEXISIP_USERNAME_TOMBSTONED",
-            message: "該 SIP 帳號已被刪除保留，無法重複使用，請更換帳號。",
-          });
-          failed++;
-          continue;
-        }
+        console.log(`[batch] ${realUsername}: 422 username taken（accounts_tombstones）`);
+        results.push({
+          username: realUsername, sipUri, success: false,
+          errorCode: "FLEXISIP_USERNAME_TOMBSTONED",
+          message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
+        });
+        failed++;
+        continue;
       }
 
       if (!flexisipAccountId) {
@@ -7218,6 +7184,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
   }
 
   const accountId = Number(request.params.id);
+  const permanent = request.body?.permanent === true || String(request.query?.permanent || '').toLowerCase() === 'true';
   if (!Number.isInteger(accountId) || accountId <= 0) {
     return response.status(400).json({ message: "無效的帳號 ID。" });
   }
@@ -7295,6 +7262,19 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
     }
     // 没有远端 ID 的同步账号：视为远端已不存在
     if (!flexisipAccountId) flexisipDeleted = true;
+
+    // ── 徹底刪除：釋放 accounts_tombstones 保留 ──
+    let tombstoneReleased = false;
+    if (permanent && flexisipDeleted && account.username && account.sip_domain) {
+      try {
+        const release = await releaseAccountTombstone({ username: account.username, domain: account.sip_domain });
+        tombstoneReleased = release?.released === true;
+        console.log(`SIP account ${accountId} permanent delete: tombstone released=${tombstoneReleased}, username=${account.username}, domain=${account.sip_domain}`);
+      } catch (tombstoneErr) {
+        console.error(`SIP account ${accountId} permanent delete: tombstone release failed:`, tombstoneErr?.message);
+        // tombstone release failure is non-fatal; continue with local delete
+      }
+    }
 
     // ── 本地删除 ──
     connection = await pool.getConnection();

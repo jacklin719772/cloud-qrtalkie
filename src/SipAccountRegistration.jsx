@@ -58,6 +58,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [batchAddResults, setBatchAddResults] = useState(null);
   const [batchAddMessage, setBatchAddMessage] = useState({ type: '', text: '' });
 
+  // 删除确认弹窗
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { account, isBatch }
+
+  // 单个创建 tombstone 重试
+  const [tombstoneRetry, setTombstoneRetry] = useState(null); // { username, domain, formData }
+
   const [importStep, setImportStep] = useState(1);
   const [parsedData, setParsedData] = useState([]);
   const [importing, setImporting] = useState(false);
@@ -348,16 +354,65 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
 
     if (window.confirm(`確定要刪除选中的 ${selectedIds.length} 個帳號吗？`)) {
-      setIsLoading(true);
-      try {
-        await Promise.all(selectedAccounts.map(account => apiClient.delete(`/admin/sip-accounts/${account.id}`)));
+      setDeleteConfirm({ account: null, isBatch: true, ids: selectedIds });
+    }
+  };
+
+  // 执行删除（permanent: true = 彻底删除，false = 保留删除）
+  const executeDelete = async (permanent) => {
+    const info = deleteConfirm;
+    if (!info) return;
+    setDeleteConfirm(null);
+    setIsLoading(true);
+    try {
+      if (info.isBatch) {
+        const selectedAccounts = accounts.filter(acc => info.ids.includes(acc.id));
+        await Promise.all(selectedAccounts.map(account =>
+          apiClient.delete(`/admin/sip-accounts/${account.id}`, { data: { permanent } })
+        ));
         setSelectedIds([]);
-        loadAccounts();
-      } catch (err) {
-        console.error('Failed to batch delete sip accounts:', err);
-        alert(err.message || '部分或全部帳號刪除失敗');
-        loadAccounts();
+      } else {
+        await apiClient.delete(`/admin/sip-accounts/${info.account.id}`, { data: { permanent } });
       }
+      loadAccounts();
+    } catch (err) {
+      console.error('Failed to delete sip account:', err);
+      alert(err.message || '刪除失敗');
+      setIsLoading(false);
+    }
+  };
+
+  // 释放 tombstone 并重试创建
+  const handleTombstoneReleaseAndRetry = async () => {
+    const info = tombstoneRetry;
+    if (!info) return;
+    setTombstoneRetry(null);
+    setIsSaving(true);
+    setFormMessage({ type: '', text: '' });
+    try {
+      const releaseResult = await apiClient.post('/flexisip/accounts/tombstones/release', {
+        username: info.username,
+        domain: info.domain,
+        reason: '管理員重新創建同名帳號',
+      });
+      if (!releaseResult?.released) {
+        setFormMessage({ type: 'error', text: '釋放失敗：該用戶名保留不存在。' });
+        setIsSaving(false);
+        return;
+      }
+      // 重新提交创建
+      await apiClient.post('/admin/sip-accounts', formData);
+      setFormMessage({ type: 'success', text: '帳號創建成功！' });
+      setTimeout(async () => {
+        setViewMode('list');
+        setFormData(emptyAccountForm);
+        setEditingOriginal(null);
+        await loadAccounts();
+      }, 800);
+    } catch (err) {
+      setFormMessage({ type: 'error', text: err.message || '操作失敗' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -539,17 +594,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         alert('已经分配给租戶的帳號不允许刪除。');
         return;
       }
-      if (window.confirm(`確定要刪除帳號「${account.username}」嗎？`)) {
-        setIsLoading(true);
-        try {
-          await apiClient.delete(`/admin/sip-accounts/${account.id}`);
-          loadAccounts();
-        } catch (err) {
-          console.error('Failed to delete sip account:', err);
-          alert(err.message || '刪除失敗');
-          setIsLoading(false);
-        }
-      }
+      setDeleteConfirm({ account, isBatch: false });
       return;
     }
 
@@ -737,8 +782,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         loadAccounts();
       }, 1500);
     } catch (err) {
-      setFormMessage({ type: 'error', text: err.message || '儲存失敗。' });
-    } finally {
+      if (err.code === 'FLEXISIP_USERNAME_TOMBSTONED') {
+        setTombstoneRetry({
+          username: err.username || formData.username,
+          domain: err.domain || defaultSipDomain,
+        });
+      } else {
+        setFormMessage({ type: 'error', text: err.message || '儲存失敗。' });
+      } finally {
       setIsSaving(false);
     }
   };
@@ -1658,6 +1709,68 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {/* 刪除確認彈窗 */}
+      {deleteConfirm && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100001 }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '440px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>
+                {deleteConfirm.isBatch ? `確認刪除 ${deleteConfirm.ids.length} 個帳號` : `確認刪除帳號「${deleteConfirm.account?.username}」`}
+              </h3>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: 1.7 }}>
+                請選擇刪除方式：
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button type="button" onClick={() => executeDelete(false)} style={{
+                  padding: '14px 16px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#1e293b',
+                  color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px',
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px', color: '#fbbf24' }}>保留刪除（預設）</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從 Flexisip 刪除帳號，但保留該用戶名，防止重複註冊</div>
+                </button>
+                <button type="button" onClick={() => executeDelete(true)} style={{
+                  padding: '14px 16px', borderRadius: '8px', border: '1px solid #dc2626', backgroundColor: '#1e293b',
+                  color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px',
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px', color: '#ef4444' }}>徹底刪除</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從 Flexisip 刪除帳號並釋放該用戶名，允許重新註冊</div>
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button className="ghost-btn" type="button" onClick={() => setDeleteConfirm(null)}>取消</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Tombstone 釋放確認彈窗 */}
+      {tombstoneRetry && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100001 }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>用戶名已被保留</h3>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: 1.7 }}>
+                帳號 <strong style={{ color: '#fbbf24' }}>{tombstoneRetry.username}@{tombstoneRetry.domain}</strong> 的用戶名已被刪除保留，無法直接重新創建。
+              </p>
+              <p style={{ margin: '12px 0 0', color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
+                是否徹底釋放該用戶名後再重新創建帳號？
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button className="ghost-btn" type="button" onClick={() => { setTombstoneRetry(null); setFormMessage({ type: '', text: '' }); }}>取消</button>
+              <button className="primary-btn" type="button" onClick={handleTombstoneReleaseAndRetry}>釋放並創建</button>
+            </div>
+          </div>
         </div>,
         document.body
       )}
