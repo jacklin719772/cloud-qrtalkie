@@ -11,6 +11,12 @@ import { createEmailToken, createNumericCode, createSessionToken, hashPassword, 
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
+import {
+  FlexisipAccountManagerError,
+  searchAccountBySip,
+  createAccount as flexisipCreateAccount,
+  deleteAccount as flexisipDeleteAccount,
+} from "./flexisipAccountManagerClient.js";
 
 const app = express();
 const port = Number(process.env.API_PORT || 3001);
@@ -6086,14 +6092,13 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   }
 });
 
-// POST /api/admin/sip-accounts - 保存新登记的帳號
+// POST /api/admin/sip-accounts - 新增 SIP 帳號（整合 Flexisip Account Manager）
 app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號登记。" });
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號登記。" });
   }
-  
+
   const payload = request.body || {};
-  console.log('【后端 DEBUG】POST /api/admin/sip-accounts 接收到的新增参数:', payload);
   const username = String(payload.username || "").trim();
   const displayName = String(payload.displayName || "").trim();
   const domain = String(payload.domain || "").trim();
@@ -6103,31 +6108,109 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
 
-  if (!username || !domain || !password) return response.status(400).json({ message: "缺少必填参数。" });
+  // ── 步骤 1-2: 参数校验 ──
+  if (!username || !domain || !password) {
+    return response.status(400).json({ message: "缺少必填參數。" });
+  }
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(username)) {
+    return response.status(400).json({ message: "用戶名格式無效。" });
+  }
+  if (password.length < 6) {
+    return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+  }
 
+  // ── 步骤 3: 本地唯一性校验 ──
   let connection;
+  try {
+    connection = await pool.getConnection();
+    const existing = await connection.query(
+      `SELECT id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1`,
+      [username, domain],
+    );
+    if (existing.length > 0) {
+      connection.release();
+      return response.status(409).json({ message: "該用戶名已存在。" });
+    }
+    connection.release();
+  } catch (err) {
+    if (connection) connection.release();
+    console.error("SIP account local duplicate check failed:", err.message);
+    return response.status(500).json({ message: "帳號儲存失敗" });
+  }
+
+  // ── 步骤 4: 远端存在性检查 ──
+  const sipUri = `sip:${username}@${domain}`;
+  let flexisipAccountId = null;
+  let flexisipCreatePayload = null;
+
+  try {
+    await searchAccountBySip(sipUri);
+    // 远端账号已存在
+    return response.status(409).json({
+      message: "該 SIP 帳號已在通訊服務中存在。",
+      code: "FLEXISIP_ACCOUNT_ALREADY_EXISTS",
+    });
+  } catch (searchErr) {
+    if (searchErr instanceof FlexisipAccountManagerError && searchErr.status === 404) {
+      // 远端不存在，继续创建
+    } else if (searchErr?.status === 404) {
+      // 以其他方式返回的 404
+    } else {
+      console.error("Flexisip searchAccountBySip failed:", searchErr?.message || searchErr);
+      return response.status(502).json({
+        message: "無法驗證遠端帳號狀態，請稍後重試。",
+        code: "FLEXISIP_SEARCH_FAILED",
+      });
+    }
+  }
+
+  // ── 步骤 5: 创建 Flexisip 账号 ──
+  // 测试已验证 createAccount 需要以下字段：
+  //   username, sip (完整 SIP URI), password, algorithm ("SHA-256"), email, display_name
+  flexisipCreatePayload = {
+    username,
+    sip: sipUri,
+    password,
+    algorithm: "SHA-256",  // Flexisip API 要求此字段，测试验证通过
+    email: email || `${username}@${domain}`,
+    display_name: displayName || username,
+    phone: phone || undefined,
+    role,
+  };
+
+  try {
+    const flexisipResult = await flexisipCreateAccount(flexisipCreatePayload);
+    // 提取远端 ID（测试确认返回格式为 { id: 64 }）
+    flexisipAccountId = flexisipResult?.id || flexisipResult?.account?.id || flexisipResult?.userId;
+    if (!flexisipAccountId) {
+      console.error("Flexisip createAccount returned no id:", JSON.stringify(flexisipResult).substring(0, 200));
+      return response.status(502).json({
+        message: "遠端帳號創建成功但無法獲取 ID，請聯繫管理員。",
+        code: "FLEXISIP_CREATE_NO_ID",
+      });
+    }
+  } catch (createErr) {
+    console.error("Flexisip createAccount failed:", createErr?.message || createErr);
+    return response.status(502).json({
+      message: "遠端通訊帳號創建失敗。",
+      code: "FLEXISIP_CREATE_FAILED",
+    });
+  }
+
+  // ── 步骤 6: 本地数据库写入 ──
   try {
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 取消強制分配：若為平台管理員新增，tenantId 為 null，等待後續再進行分配
     let targetTenantId = request.admin.tenantId || null;
-
-    const existing = await connection.query(`SELECT id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1`, [username, domain]);
-    if (existing.length > 0) {
-      await connection.rollback();
-      return response.status(409).json({ message: "该用户名已存在。" });
-    }
-
     const passwordHash = await hashPassword(password);
 
     const userRes = await connection.query(
       `INSERT INTO sip_users (tenant_id, username, sip_domain, display_name, email, phone_number, password_hash, role, status, created_by_admin_user_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [targetTenantId, username, domain, displayName, email, phone, passwordHash, role, status, request.admin.id]
+      [targetTenantId, username, domain, displayName, email, phone, passwordHash, role, status, request.admin.id],
     );
-    
-    console.log('【后端 DEBUG】主帳號写入成功，生成的 ID 为:', userRes.insertId);
+
     if (payload.hasExternal) {
       const extUsername = String(payload.externalUsername || "").trim();
       const extDomain = String(payload.externalDomain || "").trim();
@@ -6140,19 +6223,52 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       await connection.query(
         `INSERT INTO sip_external_accounts (sip_user_id, external_username, external_domain, external_password, realm, registrar, outbound_proxy, protocol)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [Number(userRes.insertId), extUsername, extDomain, extPassword, realm, registrar, outboundProxy, protocol]
+        [Number(userRes.insertId), extUsername, extDomain, extPassword, realm, registrar, outboundProxy, protocol],
       );
     }
 
     await connection.commit();
-    console.log('【后端 DEBUG】新增帳號数据库事务提交完毕！');
-    return response.status(201).json({ message: "帳號登记成功" });
-  } catch (error) {
-    if (connection) await connection.rollback();
-    console.error("Failed to save SIP account:", error);
+    connection.release();
+
+    return response.status(201).json({
+      message: "帳號登記成功",
+      id: Number(userRes.insertId),
+      username,
+      sip_domain: domain,
+      sip_uri: sipUri,
+      flexisip_account_id: flexisipAccountId,
+    });
+  } catch (dbErr) {
+    // ── 步骤 7: 补偿删除远端账号 ──
+    if (connection) {
+      try { await connection.rollback(); } catch {}
+      connection.release();
+    }
+
+    console.error("Local DB save failed for SIP account:", dbErr?.message);
+
+    if (flexisipAccountId) {
+      try {
+        await flexisipDeleteAccount(flexisipAccountId);
+        return response.status(500).json({
+          message: "帳號儲存失敗，已回滾遠端帳號。",
+          code: "LOCAL_DB_SAVE_FAILED_ROLLED_BACK",
+        });
+      } catch (cleanupErr) {
+        console.error(
+          "CRITICAL: Failed to cleanup Flexisip account after local DB failure.",
+          "flexisipAccountId:", flexisipAccountId,
+          "sipUri:", sipUri,
+          "error:", cleanupErr?.message || cleanupErr,
+        );
+        return response.status(500).json({
+          message: "帳號儲存失敗，遠端帳號清理失敗，請聯繫管理員。",
+          code: "LOCAL_DB_SAVE_FAILED_FLEXISIP_CLEANUP_FAILED",
+        });
+      }
+    }
+
     return response.status(500).json({ message: "帳號儲存失敗" });
-  } finally {
-    if (connection) connection.release();
   }
 });
 
