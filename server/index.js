@@ -6519,6 +6519,8 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+          // updateAccount 可能重置激活状态，重新激活确保账号保持 activated
+          await flexisipActivateAccount(flexisipAccountId);
         } catch (flexisipErr) {
           const now = new Date().toISOString().slice(0, 19).replace("T", " ");
           const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
