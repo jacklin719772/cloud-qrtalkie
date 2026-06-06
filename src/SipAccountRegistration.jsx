@@ -55,6 +55,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [batchAddOpen, setBatchAddOpen] = useState(false);
   const [batchAddForm, setBatchAddForm] = useState({ start: '', count: '100' });
   const [isBatchAdding, setIsBatchAdding] = useState(false);
+  const [batchAddResults, setBatchAddResults] = useState(null);
   const [batchAddMessage, setBatchAddMessage] = useState({ type: '', text: '' });
 
   const [importStep, setImportStep] = useState(1);
@@ -763,6 +764,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     setIsBatchAdding(true);
     setBatchAddMessage({ type: '', text: '' });
+    setBatchAddResults(null);
 
     try {
       const result = await apiClient.post('/admin/sip-accounts/batch', {
@@ -784,7 +786,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         const msgs = [];
         if (failed > 0) msgs.push(`${failed} 個失敗`);
         if (inconsistent > 0) msgs.push(`${inconsistent} 個與 Flexisip 不一致`);
-        setBatchAddMessage({ type: 'error', text: `已完成：${createdOk} 個成功，${msgs.join('，')}。請查看詳情。` });
+        setBatchAddMessage({ type: 'error', text: `已完成：${createdOk} 個成功，${msgs.join('，')}。` });
+        setBatchAddResults((result.results || []).filter(r => !r.success || r.check?.consistent === false));
       } else {
         setBatchAddMessage({ type: 'success', text: `批量新增完成，${createdOk} 個帳號全部與 Flexisip 資訊一致。` });
       }
@@ -1633,9 +1636,25 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               {batchAddMessage.text && (
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
               )}
+              {batchAddResults && batchAddResults.length > 0 && (
+                <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', borderRadius: '6px', border: '1px solid #1f2937', scrollbarWidth: 'none' }}>
+                  {batchAddResults.map((r, i) => (
+                    <div key={i} style={{ padding: '8px 12px', borderBottom: i < batchAddResults.length - 1 ? '1px solid #1f2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{r.username || r.sipUri}</span>
+                      <span style={{ color: r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '#f59e0b' : '#ef4444', fontSize: '12px' }}>
+                        {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已删除保留' :
+                         r.errorCode === 'DUPLICATE_LOCAL_SIP_ACCOUNT' ? '本地已存在' :
+                         r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '远端已存在' :
+                         r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地保存失败' :
+                         r.message || r.errorCode || '失败'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
+              <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => { setBatchAddOpen(false); setBatchAddResults(null); }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
           </form>
