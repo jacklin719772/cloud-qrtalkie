@@ -17,6 +17,7 @@ import {
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
   activateAccount as flexisipActivateAccount,
+  deactivateAccount as flexisipDeactivateAccount,
 } from "./flexisipAccountManagerClient.js";
 
 const app = express();
@@ -6302,6 +6303,125 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     }
 
     return response.status(500).json({ message: "帳號儲存失敗" });
+  }
+});
+
+// PUT /api/admin/sip-accounts/:id/status - 啟用/停用 SIP 帳號（同步 Flexisip）
+app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以變更帳號狀態。" });
+  }
+
+  const accountId = Number(request.params.id);
+  const newStatus = String(request.body?.status || "").trim();
+
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+  if (!['active', 'inactive', 'disabled'].includes(newStatus)) {
+    return response.status(400).json({ message: "無效的狀態值。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT id, username, sip_domain, status, flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
+    const account = rows[0];
+    if (!account) {
+      connection.release();
+      return response.status(404).json({ message: "帳號不存在。" });
+    }
+
+    const isActivating = newStatus === 'active';
+    const actionText = isActivating ? '啟用' : '停用';
+    let flexisipAccountId = account.flexisip_account_id;
+
+    // ── 本地 only 账号：只更新本地状态 ──
+    if (account.sync_status === 'local_only' || (!flexisipAccountId && !account.sip_uri)) {
+      connection.release();
+      connection = await pool.getConnection();
+      await connection.query(
+        `UPDATE sip_users SET status = ?, sync_attempts = sync_attempts + 1, last_synced_at = NOW()
+         WHERE id = ?`, [newStatus, accountId],
+      );
+      connection.release();
+      return response.json({ message: `${actionText}成功`, status: newStatus, sync_status: 'local_only' });
+    }
+
+    connection.release();
+
+    // ── 定位远端 ID ──
+    if (!flexisipAccountId && account.sip_uri) {
+      try {
+        const searchResult = await searchAccountBySip(account.sip_uri);
+        flexisipAccountId = searchResult?.id;
+        if (flexisipAccountId) {
+          connection = await pool.getConnection();
+          await connection.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, accountId]);
+          connection.release();
+        }
+      } catch (searchErr) {
+        if (searchErr?.status !== 404) {
+          console.error("Flexisip search failed during status toggle:", searchErr?.message);
+        }
+      }
+    }
+
+    if (!flexisipAccountId) {
+      return response.status(502).json({
+        message: "無法找到對應的遠端帳號。",
+        code: "FLEXISIP_ACCOUNT_NOT_FOUND",
+      });
+    }
+
+    // ── 调用 Flexisip ──
+    try {
+      if (isActivating) {
+        await flexisipActivateAccount(flexisipAccountId);
+      } else {
+        await flexisipDeactivateAccount(flexisipAccountId);
+      }
+    } catch (flexisipErr) {
+      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+      connection = await pool.getConnection();
+      if (flexisipErr?.status === 404) {
+        await connection.query(
+          `UPDATE sip_users SET sync_status = 'flexisip_missing', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+          [errMsg, now, accountId],
+        );
+        connection.release();
+        return response.status(502).json({ message: "遠端帳號不存在。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+      }
+      await connection.query(
+        `UPDATE sip_users SET sync_status = 'sync_failed', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+        [errMsg, now, accountId],
+      );
+      connection.release();
+      return response.status(502).json({
+        message: `遠端${actionText}失敗。`,
+        code: isActivating ? "FLEXISIP_ACTIVATE_FAILED" : "FLEXISIP_DEACTIVATE_FAILED",
+      });
+    }
+
+    // ── 更新本地 ──
+    connection = await pool.getConnection();
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    const newSyncStatus = isActivating ? 'active' : 'disabled';
+    await connection.query(
+      `UPDATE sip_users SET status = ?, sync_status = ?, sync_error = NULL, sync_attempts = sync_attempts + 1, last_synced_at = ?
+       WHERE id = ?`,
+      [newStatus, newSyncStatus, now, accountId],
+    );
+    connection.release();
+    return response.json({ message: `${actionText}成功`, status: newStatus, sync_status: newSyncStatus });
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("SIP status toggle failed:", error?.message);
+    return response.status(500).json({ message: `${String(request.body?.status) === 'active' ? '啟用' : '停用'}失敗。` });
   }
 });
 

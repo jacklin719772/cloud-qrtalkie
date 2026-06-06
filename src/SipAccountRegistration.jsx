@@ -572,6 +572,22 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
 
+    if (action === 'toggle_status') {
+      const newStatus = account.status === 'active' ? 'inactive' : 'active';
+      const actionText = newStatus === 'active' ? '啟用' : '停用';
+      if (!window.confirm(`確定要${actionText}帳號「${account.username}」嗎？`)) return;
+      setIsLoading(true);
+      try {
+        await apiClient.put(`/admin/sip-accounts/${account.id}/status`, { status: newStatus });
+        loadAccounts();
+      } catch (err) {
+        console.error('Failed to toggle sip account status:', err);
+        alert(err.message || `${actionText}失敗`);
+        setIsLoading(false);
+      }
+      return;
+    }
+
     alert(`觸發操作: ${action} - 帳號: ${account.username}`);
   };
 
