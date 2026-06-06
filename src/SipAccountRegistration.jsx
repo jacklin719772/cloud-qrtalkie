@@ -675,10 +675,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       }
     }
 
-    // 编辑模式：检测是否有字段变化
+    // 编辑模式：检测是否有字段变化（仅比较可编辑字段）
     if (viewMode === 'edit' && editingOriginal) {
-      const changedFields = ['displayName', 'email', 'phone', 'role', 'password',
-        'hasExternal', 'externalUsername', 'externalDomain', 'externalPassword', 'realm', 'registrar', 'outboundProxy', 'protocol'];
+      const changedFields = ['displayName', 'email', 'phone', 'role'];
       const hasChanges = changedFields.some(field => {
         const a = String(editingOriginal[field] ?? '').trim();
         const b = String(formData[field] ?? '').trim();
@@ -695,7 +694,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setFormMessage({ type: '', text: '' });
     try {
       if (viewMode === 'edit') {
-        await apiClient.put(`/admin/sip-accounts/${formData.id}`, formData);
+        // 仅提交可编辑字段，不提交 username/domain/password/status
+        const editPayload = {
+          displayName: formData.displayName.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          role: formData.role,
+        };
+        await apiClient.put(`/admin/sip-accounts/${formData.id}`, editPayload);
         setFormMessage({ type: 'success', text: '帳號更新成功！' });
       } else {
         await apiClient.post('/admin/sip-accounts', formData);

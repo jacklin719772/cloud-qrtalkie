@@ -6445,14 +6445,6 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
 
-  // 禁止修改 username/domain
-  if (payload.username !== undefined || payload.domain !== undefined) {
-    return response.status(400).json({
-      message: "不允許修改 SIP 用戶名或域名。",
-      code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED",
-    });
-  }
-
   let connection;
   try {
     connection = await pool.getConnection();
@@ -6469,6 +6461,18 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
     if (account.tenant_id != null) {
       connection.release();
       return response.status(409).json({ message: "已經分配給租戶的帳號不允許編輯。" });
+    }
+
+    // 禁止修改 username/domain（仅当与数据库值不同时才拒绝）
+    const reqUsername = String(payload.username ?? '').trim();
+    const reqDomain = String(payload.domain || payload.sip_domain || '').trim().toLowerCase();
+    if (reqUsername && reqUsername !== account.username) {
+      connection.release();
+      return response.status(400).json({ message: "不允許修改 SIP 用戶名。", code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED" });
+    }
+    if (reqDomain && reqDomain !== (account.sip_domain || '').toLowerCase()) {
+      connection.release();
+      return response.status(400).json({ message: "不允許修改 SIP 域名。", code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED" });
     }
 
     // ── 变化检测 ──
