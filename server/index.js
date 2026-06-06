@@ -6375,7 +6375,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       // Flexisip create
       const flexisipResult = await flexisipCreateAccount({
         username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
-        display_name: realUsername, role,
+        display_name: realUsername, email: `${realUsername}@${domain}`,
       });
       flexisipAccountId = flexisipResult?.id;
 
