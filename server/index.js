@@ -6685,7 +6685,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
           differences: [{ field: 'account', label: '遠端帳號', localValue: '存在', remoteValue: '不存在', syncable: false, reason: 'Flexisip 遠端帳號不存在。' }],
         });
       }
-      return response.status(502).json({ message: "無法連接 Flexisip 進行校驗。" });
+      return response.status(502).json({ message: `無法連接 Flexisip 進行校驗：${err?.message || '未知錯誤'}` });
     }
 
     if (!flexisipAccount) {
@@ -6743,7 +6743,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
   } catch (error) {
     if (connection) { try { connection.release(); } catch {} }
     console.error("SIP account verify failed:", error?.message);
-    return response.status(500).json({ message: "校驗失敗。" });
+    return response.status(500).json({ message: `校驗失敗：${error?.message || '未知錯誤'}` });
   }
 });
 
