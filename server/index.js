@@ -6519,8 +6519,12 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
-          // updateAccount 可能重置激活状态，重新激活确保账号保持 activated
-          await flexisipActivateAccount(flexisipAccountId);
+          // updateAccount 可能重置状态，根据本地 status 恢复
+          if (account.status === 'active') {
+            await flexisipActivateAccount(flexisipAccountId);
+          } else if (account.status === 'inactive' || account.status === 'disabled') {
+            await flexisipDeactivateAccount(flexisipAccountId);
+          }
         } catch (flexisipErr) {
           const now = new Date().toISOString().slice(0, 19).replace("T", " ");
           const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
