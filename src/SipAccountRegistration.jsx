@@ -1697,7 +1697,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           try {
                             await apiClient.post(`/admin/sip-accounts/${verifyAccount.id}/sync-to-flexisip`);
                             loadAccounts();
-                            verifyResult = null;
                             setVerifyAccount(null);
                             setVerifyResult(null);
                             alert('同步成功！');
