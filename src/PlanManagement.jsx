@@ -960,7 +960,7 @@ export default function PlanManagement({ onNavigate }) {
                   </tr>
                   );
                 })
-              )}
+              }
             </tbody>
           </table>
           </div>
