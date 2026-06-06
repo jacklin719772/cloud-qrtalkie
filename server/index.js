@@ -10,6 +10,7 @@ import { pool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
+import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombstoneClient.js";
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
@@ -12622,6 +12623,77 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
       error: "Flexisip Admin Statistics request failed",
       type: "calls",
       source: "flexisip-admin-statistics",
+    });
+  }
+});
+
+// POST /api/flexisip/accounts/tombstones/release - release a deleted Flexisip username reservation.
+app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的 Flexisip 用户名。" });
+  }
+
+  const username = sanitizeString(request.body?.username, 64);
+  const domain = sanitizeString(request.body?.domain, 64);
+  const reason = sanitizeString(request.body?.reason, 500);
+
+  if (!username || !domain) {
+    return response.status(400).json({
+      message: "username 和 domain 为必填项。",
+      code: "FLEXISIP_TOMBSTONE_INVALID_INPUT",
+    });
+  }
+  if (!reason) {
+    return response.status(400).json({
+      message: "请填写释放已删除用户名的原因。",
+      code: "FLEXISIP_TOMBSTONE_REASON_REQUIRED",
+    });
+  }
+
+  try {
+    const result = await releaseAccountTombstone({ username, domain });
+    console.warn("Flexisip account tombstone release requested:", {
+      adminId: request.admin.id,
+      username,
+      domain,
+      released: result.released,
+      reason,
+    });
+
+    if (!result.released) {
+      return response.status(404).json({
+        success: false,
+        code: "FLEXISIP_TOMBSTONE_NOT_FOUND",
+        ...result,
+      });
+    }
+
+    return response.json({
+      success: true,
+      code: "FLEXISIP_TOMBSTONE_RELEASED",
+      ...result,
+    });
+  } catch (error) {
+    if (error instanceof FlexisipTombstoneError) {
+      console.error("Failed to release Flexisip account tombstone:", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
+        username,
+        domain,
+      });
+      return response.status(error.status).json({
+        success: false,
+        code: error.code,
+        message: error.message,
+      });
+    }
+
+    console.error("Unexpected Flexisip tombstone release error:", error?.message || error);
+    return response.status(500).json({
+      success: false,
+      code: "FLEXISIP_TOMBSTONE_RELEASE_FAILED",
+      message: "释放已删除的 Flexisip 用户名失败。",
     });
   }
 });
