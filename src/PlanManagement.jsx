@@ -861,6 +861,11 @@ export default function PlanManagement({ onNavigate }) {
         </div>
 
         <div className="table-wrap plan-table-card" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
+            {isLoading ? (
+              <div className="plan-empty" style={{ flex: 1, width: '100%' }}><p className="plan-empty-title" style={{ color: '#d1d5db' }}>載入中...</p></div>
+            ) : orders.length === 0 ? (
+              <div className="plan-empty" style={{ flex: 1, width: '100%' }}><p className="plan-empty-title" style={{ color: '#d1d5db' }}>暫無套餐訂單資料</p></div>
+            ) : (
           <div className="plan-table-wrapper">
           <table className="plan-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
@@ -898,11 +903,6 @@ export default function PlanManagement({ onNavigate }) {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
-                <tr><td colSpan="13" style={{ padding: 0, textAlign: 'center' }}><div className="plan-empty"><p className="plan-empty-title">載入中...</p></div></td></tr>
-              ) : orders.length === 0 ? (
-                <tr><td colSpan="13" style={{ padding: 0, textAlign: 'center' }}><div className="plan-empty"><p className="plan-empty-title">暫無套餐訂單資料</p></div></td></tr>
-              ) : (
                 orders.map((order) => {
                   const tenantName = cellText(order.tenant_name);
                   const orderNo = cellText(order.order_no);
@@ -964,8 +964,9 @@ export default function PlanManagement({ onNavigate }) {
             </tbody>
           </table>
           </div>
+          )}
           <div className="billing-pagination plan-table-footer" style={{ flexShrink: 0, width: '100%', boxSizing: 'border-box', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="plan-total">共 {totalItems} 笔記錄</span>
+            <span className="plan-total">共 {totalItems} 筆記錄</span>
             <div className="plan-pagination">
               <select className="plan-page-size" value={pageSize} onChange={(e) => { const v = e.target.value; setPageSize(v === "全部" ? "全部" : Number(v)); setCurrentPage(1); }} style={{ height: "38px", padding: "0 14px", borderRadius: "8px", border: "1px solid #4b5563", backgroundColor: "#1a2332", color: "#9ca3af", fontSize: "11px", cursor: "pointer" }}>{pageSizeOptions.map(opt => <option key={opt} value={opt}>{opt === "全部" ? "全部" : opt + " 條/頁"}</option>)}</select>
               <button className="plan-page-btn" type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>‹</button>
