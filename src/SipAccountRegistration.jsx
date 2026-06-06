@@ -1628,24 +1628,24 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       )}
 
       {resetPasswordAccount && createPortal(
-        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
-          <form onSubmit={handleResetPasswordSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '400px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
+          <form onSubmit={handleResetPasswordSubmit} style={{ backgroundColor: '#111827', borderRadius: '10px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>重設密碼 ({resetPasswordAccount.username})</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f3f4f6' }}>重設密碼 — {resetPasswordAccount.username}</h3>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(至少 6 個字元)</span></span>
                 <input type="password" value={resetPasswordValue} onChange={e => setResetPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required minLength={6} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認新密碼 <RequiredMark /></span>
                 <input type="password" value={resetConfirmPasswordValue} onChange={e => setResetConfirmPasswordValue(e.target.value)} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required minLength={6} />
               </label>
-              {resetMessage.text && <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: resetMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{resetMessage.text}</p>}
+              {resetMessage.text && <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)}>取消</button>
+              <button type="button" disabled={isResetting} onClick={() => setResetPasswordAccount(null)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResetting}>{isResetting ? '儲存中...' : '確認重設'}</button>
             </div>
           </form>
