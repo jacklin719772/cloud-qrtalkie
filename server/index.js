@@ -6491,9 +6491,9 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       return response.json({ success: true, no_change: true, message: "沒有可儲存的修改。" });
     }
 
-    // ── Flexisip sync（非 local_only 账号）──
+    // ── Flexisip sync（非 local_only 账号，且 display_name/email/phone 有变化）──
     const needsFlexisipSync = account.sync_status !== 'local_only' && (
-      changedFields.some(f => ['display_name', 'email', 'phone', 'role'].includes(f))
+      changedFields.some(f => ['display_name', 'email', 'phone'].includes(f))
     );
 
     if (needsFlexisipSync) {
@@ -6514,9 +6514,8 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       if (flexisipAccountId) {
         const flexisipPayload = {};
         if (changedFields.includes('display_name')) flexisipPayload.display_name = displayName;
-        if (changedFields.includes('email')) flexisipPayload.email = email;
-        if (changedFields.includes('phone')) flexisipPayload.phone = phone;
-        if (changedFields.includes('role')) flexisipPayload.role = role;
+        if (changedFields.includes('email') && email) flexisipPayload.email = email;
+        if (changedFields.includes('phone') && phone) flexisipPayload.phone = phone;
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
