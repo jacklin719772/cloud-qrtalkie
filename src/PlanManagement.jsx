@@ -762,7 +762,7 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management .plan-management-stat-pill { background: #1a2332 !important; border: 1px solid #374151 !important; color: #9ca3af !important; border-radius: 14px; }
         #plan-management .plan-management-stat-pill strong { color: #ffffff !important; }
         #plan-management .plan-management-stat-pill.selected { background: #1e3a5f !important; border-color: #3b82f6 !important; color: #93c5fd !important; }
-        #plan-management .plan-table-card { background: #1a2332; border: 1px solid #1f2937; box-shadow: none; border-radius: 14px; overflow: hidden; }
+        #plan-management .plan-table-card { background: #1a2332 !important; border: 1px solid #1f2937 !important; box-shadow: none !important; border-radius: 14px; overflow: hidden; }
         #plan-management .plan-table thead { background: #1a2332 !important; }
         #plan-management .plan-table th { color: #e5e7eb !important; border-bottom: 1px solid #1f2937 !important; background: #1a2332 !important; }
         #plan-management .plan-table td { color: #e5e7eb !important; border-bottom: 1px solid #1f2937 !important; }
