@@ -605,7 +605,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (resetPasswordValue !== resetConfirmPasswordValue) {
-      setResetMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setResetMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
 
@@ -613,8 +613,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setResetMessage({ type: '', text: '' });
     try {
       await apiClient.put(`/admin/sip-accounts/${resetPasswordAccount.id}/reset-password`, { password: resetPasswordValue });
-      alert('密碼重設成功！');
-      setResetPasswordAccount(null);
+      setResetMessage({ type: 'success', text: '密碼重設成功！' });
+      setTimeout(() => {
+        setResetPasswordAccount(null);
+        setResetPasswordValue('');
+        setResetConfirmPasswordValue('');
+      }, 1500);
     } catch (err) {
       setResetMessage({ type: 'error', text: err.message || '密碼重設失敗。' });
     } finally {

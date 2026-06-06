@@ -6634,10 +6634,10 @@ app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, r
   }
 });
 
-// PUT /api/admin/sip-accounts/:id/reset-password - 重置密碼
+// PUT /api/admin/sip-accounts/:id/reset-password - 重置密碼（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號操作。" });
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -6646,25 +6646,94 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
   }
 
   const password = String(request.body?.password || "");
-  if (password.length < 6) {
-    return response.status(400).json({ message: "密碼至少需要 6 个字符。" });
+  if (!password || password.length < 6) {
+    return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
   }
 
   let connection;
   try {
     connection = await pool.getConnection();
-    const rows = await connection.query(`SELECT id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
+    const rows = await connection.query(
+      `SELECT id, username, sip_domain, flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
     if (rows.length === 0) {
+      connection.release();
       return response.status(404).json({ message: "帳號不存在。" });
     }
+    const account = rows[0];
+    connection.release();
+
+    // ── local_only 历史账号：只更新本地 ──
+    if (account.sync_status === 'local_only' || (!account.flexisip_account_id && !account.sip_uri)) {
+      connection = await pool.getConnection();
+      const passwordHash = await hashPassword(password);
+      await connection.query(`UPDATE sip_users SET password_hash = ?, sync_attempts = sync_attempts + 1, last_synced_at = NOW() WHERE id = ?`, [passwordHash, accountId]);
+      connection.release();
+      return response.json({ message: "密碼重置成功。" });
+    }
+
+    // ── 定位远端 ID ──
+    let flexisipAccountId = account.flexisip_account_id || null;
+    if (!flexisipAccountId && account.sip_uri) {
+      try {
+        const sr = await searchAccountBySip(account.sip_uri);
+        flexisipAccountId = sr?.id;
+        if (flexisipAccountId) {
+          const c2 = await pool.getConnection();
+          await c2.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, accountId]);
+          c2.release();
+        }
+      } catch {}
+    }
+
+    if (!flexisipAccountId) {
+      return response.status(502).json({
+        message: "無法找到對應的遠端帳號。",
+        code: "FLEXISIP_ACCOUNT_NOT_FOUND",
+      });
+    }
+
+    // ── 同步 Flexisip 密码 ──
+    try {
+      await flexisipUpdateAccount(flexisipAccountId, {
+        username: account.username,
+        password,
+        algorithm: "SHA-256",
+      });
+    } catch (flexisipErr) {
+      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+      const c3 = await pool.getConnection();
+      if (flexisipErr?.status === 404) {
+        await c3.query(
+          `UPDATE sip_users SET sync_status = 'flexisip_missing', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+          [errMsg, now, accountId],
+        );
+        c3.release();
+        return response.status(502).json({ message: "遠端帳號不存在。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+      }
+      await c3.query(
+        `UPDATE sip_users SET sync_status = 'sync_failed', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+        [errMsg, now, accountId],
+      );
+      c3.release();
+      return response.status(502).json({ message: "遠端密碼更新失敗。", code: "FLEXISIP_PASSWORD_UPDATE_FAILED" });
+    }
+
+    // ── 更新本地密码 ──
+    connection = await pool.getConnection();
     const passwordHash = await hashPassword(password);
-    await connection.query(`UPDATE sip_users SET password_hash = ? WHERE id = ?`, [passwordHash, accountId]);
+    await connection.query(
+      `UPDATE sip_users SET password_hash = ?, sync_error = NULL, sync_attempts = sync_attempts + 1, last_synced_at = NOW() WHERE id = ?`,
+      [passwordHash, accountId],
+    );
+    connection.release();
     return response.json({ message: "密碼重置成功。" });
   } catch (error) {
-    console.error("Failed to reset SIP account password:", error);
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("Failed to reset SIP account password:", error?.message);
     return response.status(500).json({ message: "密碼重設失敗。" });
-  } finally {
-    if (connection) connection.release();
   }
 });
 
