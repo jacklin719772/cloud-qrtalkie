@@ -6205,10 +6205,13 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     let targetTenantId = request.admin.tenantId || null;
     const passwordHash = await hashPassword(password);
 
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
     const userRes = await connection.query(
-      `INSERT INTO sip_users (tenant_id, username, sip_domain, display_name, email, phone_number, password_hash, role, status, created_by_admin_user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [targetTenantId, username, domain, displayName, email, phone, passwordHash, role, status, request.admin.id],
+      `INSERT INTO sip_users (tenant_id, username, sip_domain, display_name, email, phone_number, password_hash, role, status, created_by_admin_user_id,
+         flexisip_account_id, sip_uri, sync_status, sync_attempts, last_synced_at, created_in_flexisip_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, ?, ?)`,
+      [targetTenantId, username, domain, displayName, email, phone, passwordHash, role, status, request.admin.id,
+       flexisipAccountId || null, sipUri, now, now],
     );
 
     if (payload.hasExternal) {
