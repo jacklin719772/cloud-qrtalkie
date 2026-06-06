@@ -903,7 +903,7 @@ export default function PlanManagement({ onNavigate }) {
               </tr>
             </thead>
             <tbody>
-                orders.map((order) => {
+                {orders.map((order) => {
                   const tenantName = cellText(order.tenant_name);
                   const orderNo = cellText(order.order_no);
                   const planName = cellText(order.plan_name);
