@@ -10,6 +10,8 @@ import { pool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
+
+function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
 import {
   FlexisipAccountManagerError,
@@ -6739,12 +6741,12 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
       differences.push({ field: 'status', label: '啟用狀態', localValue: localActive ? '已啟用' : '已停用', remoteValue: remoteActive ? '已啟用' : '已停用', syncable: true });
     }
 
-    return response.json({
+    return response.json(bigIntSafe({
       consistent: differences.length === 0,
       localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
       remoteData: { id: safeRemote.id, display_name: safeRemote.display_name, email: safeRemote.email, phone: safeRemote.phone, activated: safeRemote.activated },
       differences,
-    });
+    }));
   } catch (error) {
     if (connection) { try { connection.release(); } catch {} }
     console.error("SIP account verify failed:", error?.message);
