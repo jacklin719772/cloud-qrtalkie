@@ -16,6 +16,7 @@ import {
   searchAccountBySip,
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
+  activateAccount as flexisipActivateAccount,
 } from "./flexisipAccountManagerClient.js";
 
 const app = express();
@@ -6176,6 +6177,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     display_name: displayName || username,
     phone: phone || undefined,
     role,
+    activated: true,
   };
 
   try {
@@ -6188,6 +6190,15 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         message: "遠端帳號創建成功但無法獲取 ID，請聯繫管理員。",
         code: "FLEXISIP_CREATE_NO_ID",
       });
+    }
+
+    // 确保账号已激活（测试发现 createAccount 后 activated 为 false）
+    if (!flexisipResult?.activated) {
+      try {
+        await flexisipActivateAccount(flexisipAccountId);
+      } catch (activateErr) {
+        console.warn("Flexisip activateAccount failed (continuing):", flexisipAccountId, activateErr?.message);
+      }
     }
   } catch (createErr) {
     console.error("Flexisip createAccount failed:", createErr?.message || createErr);
