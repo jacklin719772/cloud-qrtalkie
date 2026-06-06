@@ -6423,10 +6423,10 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         const passwordHash = await hashPassword(password);
         const now = new Date().toISOString().slice(0, 19).replace("T", " ");
         const userRes = await conn.query(
-          `INSERT INTO sip_users (tenant_id, username, sip_domain, display_name, password_hash, role, status, created_by_admin_user_id,
+          `INSERT INTO sip_users (tenant_id, username, sip_domain, email, display_name, password_hash, role, status, created_by_admin_user_id,
              flexisip_account_id, sip_uri, sync_status, sync_attempts, last_synced_at, created_in_flexisip_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, 'active', 1, ?, ?)`,
-          [null, realUsername, domain, realUsername, passwordHash, role, request.admin.id, flexisipAccountId, sipUri, now, now],
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, 'active', 1, ?, ?)`,
+          [null, realUsername, domain, `${realUsername}@${domain}`, realUsername, passwordHash, role, request.admin.id, flexisipAccountId, sipUri, now, now],
         );
         await conn.commit();
         conn.release();
