@@ -677,7 +677,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     // 编辑模式：检测是否有字段变化（仅比较可编辑字段）
     if (viewMode === 'edit' && editingOriginal) {
-      const changedFields = ['displayName', 'email', 'phone', 'role'];
+      const changedFields = ['displayName', 'email', 'phone'];
       const hasChanges = changedFields.some(field => {
         const a = String(editingOriginal[field] ?? '').trim();
         const b = String(formData[field] ?? '').trim();
@@ -699,7 +699,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           displayName: formData.displayName.trim(),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
-          role: formData.role,
         };
         await apiClient.put(`/admin/sip-accounts/${formData.id}`, editPayload);
         setFormMessage({ type: 'success', text: '帳號更新成功！' });
@@ -823,7 +822,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
-                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
+                  <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} disabled={viewMode === 'edit'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', ...(viewMode === 'edit' ? { backgroundColor: '#0f172a', color: '#6b7280', cursor: 'not-allowed' } : {}) }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                   </select>
