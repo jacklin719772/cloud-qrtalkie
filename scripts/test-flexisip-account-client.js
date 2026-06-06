@@ -105,10 +105,12 @@ async function run() {
   // ============================
   const testUsername = `test_codex_${Date.now().toString(36)}`;
   const testPayload = {
+    username: testUsername,
     sip: `${testUsername}@qrtalkie.org`,
     password: "Test123456!",
     email: `${testUsername}@qrtalkie.org`,
     display_name: `Codex Test ${testUsername}`,
+    algorithm: "SHA-256",   // API 要求 algorithm 字段
   };
 
   let createdId = null;
