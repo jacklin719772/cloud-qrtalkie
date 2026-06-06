@@ -6662,7 +6662,11 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
     const local = rows[0];
 
     if (!local.flexisip_account_id && !local.sip_uri) {
-      return response.json({ consistent: true, message: "本地帳號，無 Flexisip 數據可比對。" });
+      return response.json({
+        consistent: false, status: 'local_only',
+        localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
+        differences: [{ field: 'account', label: '遠端帳號', localValue: '僅本地存在', remoteValue: '未同步', syncable: false, reason: '該帳號僅存在於本地數據庫，未與 Flexisip 同步。' }],
+      });
     }
 
     // 定位远端账号
@@ -6676,9 +6680,9 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
     } catch (err) {
       if (err?.status === 404) {
         return response.json({
-          consistent: false,
+          consistent: false, status: 'flexisip_missing',
           localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
-          differences: [{ label: '遠端帳號', local: '存在', remote: '不存在' }],
+          differences: [{ field: 'account', label: '遠端帳號', localValue: '存在', remoteValue: '不存在', syncable: false, reason: 'Flexisip 遠端帳號不存在。' }],
         });
       }
       return response.status(502).json({ message: "無法連接 Flexisip 進行校驗。" });
@@ -6686,28 +6690,48 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
 
     if (!flexisipAccount) {
       return response.json({
-        consistent: false,
+        consistent: false, status: 'flexisip_missing',
         localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
-        differences: [{ label: '遠端帳號', local: '存在', remote: '未找到' }],
+        differences: [{ field: 'account', label: '遠端帳號', localValue: '存在', remoteValue: '未找到', syncable: false, reason: 'Flexisip 遠端帳號未找到。' }],
       });
     }
 
-    // 字段对比
+    // 字段对比（含 syncable 标记）
     const differences = [];
+    // Username — 不可同步
+    if ((local.username || '') !== (flexisipAccount.username || '')) {
+      differences.push({ field: 'username', label: '用戶名', localValue: local.username || '—', remoteValue: flexisipAccount.username || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
+    }
+    // Domain — 不可同步
+    const remoteDomain = (flexisipAccount.domain || flexisipAccount.sip || '').replace(/^sip:/, '').split('@').pop() || '';
+    if ((local.sip_domain || '') !== remoteDomain) {
+      differences.push({ field: 'domain', label: '域名', localValue: local.sip_domain || '—', remoteValue: remoteDomain || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
+    }
+    // Display name — 可同步
     if ((local.display_name || '') !== (flexisipAccount.display_name || '')) {
-      differences.push({ label: '顯示名稱', local: local.display_name || '—', remote: flexisipAccount.display_name || '—' });
+      differences.push({ field: 'display_name', label: '顯示名稱', localValue: local.display_name || '—', remoteValue: flexisipAccount.display_name || '—', syncable: true });
     }
-    if ((local.email || '') !== (flexisipAccount.email || '')) {
-      differences.push({ label: 'Email', local: local.email || '—', remote: flexisipAccount.email || '—' });
+    // Email — 可同步
+    const localEmail = (local.email || '').trim().toLowerCase();
+    const remoteEmail = (flexisipAccount.email || '').trim().toLowerCase();
+    if (localEmail !== remoteEmail) {
+      differences.push({ field: 'email', label: 'Email', localValue: local.email || '—', remoteValue: flexisipAccount.email || '—', syncable: true });
     }
+    // Phone — 可同步
     if ((local.phone_number || '') !== (flexisipAccount.phone || '')) {
-      differences.push({ label: '電話', local: local.phone_number || '—', remote: flexisipAccount.phone || '—' });
+      differences.push({ field: 'phone', label: '電話', localValue: local.phone_number || '—', remoteValue: flexisipAccount.phone || '—', syncable: true });
     }
-    // 状态对比 (local status vs flexisip activated)
+    // Role — 可同步
+    const localRole = local.role || 'user';
+    const remoteRole = flexisipAccount.role || 'user';
+    if (localRole !== remoteRole) {
+      differences.push({ field: 'role', label: '角色', localValue: localRole, remoteValue: remoteRole, syncable: true });
+    }
+    // 状态
     const localActive = local.status === 'active';
     const remoteActive = flexisipAccount.activated === true || flexisipAccount.activated === 1;
     if (localActive !== remoteActive) {
-      differences.push({ label: '啟用狀態', local: localActive ? '已啟用' : '已停用', remote: remoteActive ? '已啟用' : '已停用' });
+      differences.push({ field: 'status', label: '啟用狀態', localValue: localActive ? '已啟用' : '已停用', remoteValue: remoteActive ? '已啟用' : '已停用', syncable: true });
     }
 
     return response.json({
@@ -6720,6 +6744,116 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
     if (connection) { try { connection.release(); } catch {} }
     console.error("SIP account verify failed:", error?.message);
     return response.status(500).json({ message: "校驗失敗。" });
+  }
+});
+
+// POST /api/admin/sip-accounts/:id/sync-to-flexisip - 用本地數據同步 Flexisip
+app.post("/api/admin/sip-accounts/:id/sync-to-flexisip", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行此操作。" });
+  }
+
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT id, username, sip_domain, display_name, email, phone_number, role, status,
+         flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
+    connection.release();
+
+    if (rows.length === 0) {
+      return response.status(404).json({ message: "帳號不存在。" });
+    }
+    const local = rows[0];
+
+    // local_only 不允许同步
+    if (local.sync_status === 'local_only' || (!local.flexisip_account_id && !local.sip_uri)) {
+      return response.status(400).json({
+        message: "該帳號僅存在於本地，無法同步到 Flexisip。",
+        code: "LOCAL_ONLY_ACCOUNT_CANNOT_SYNC_TO_FLEXISIP",
+      });
+    }
+
+    // 定位远端
+    let flexisipAccountId = local.flexisip_account_id || null;
+    if (!flexisipAccountId && local.sip_uri) {
+      try {
+        const sr = await searchAccountBySip(local.sip_uri);
+        flexisipAccountId = sr?.id;
+        if (flexisipAccountId) {
+          const c2 = await pool.getConnection();
+          await c2.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, accountId]);
+          c2.release();
+        }
+      } catch {}
+    }
+
+    if (!flexisipAccountId) {
+      return response.status(502).json({ message: "遠端帳號不存在。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+    }
+
+    let synced = false;
+
+    // 1. 同步資料欄位
+    const payload = { username: local.username, algorithm: "SHA-256" };
+    if (local.display_name) payload.display_name = local.display_name;
+    if (local.email) payload.email = local.email;
+    if (local.phone_number) payload.phone = local.phone_number;
+
+    try {
+      await flexisipUpdateAccount(flexisipAccountId, payload);
+      synced = true;
+    } catch (updateErr) {
+      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const errMsg = (updateErr?.message || String(updateErr)).substring(0, 500);
+      const c3 = await pool.getConnection();
+      if (updateErr?.status === 404) {
+        await c3.query(`UPDATE sip_users SET sync_status = 'flexisip_missing', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`, [errMsg, now, accountId]);
+        c3.release();
+        return response.status(502).json({ message: "遠端帳號不存在。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+      }
+      await c3.query(`UPDATE sip_users SET sync_status = 'sync_failed', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`, [errMsg, now, accountId]);
+      c3.release();
+      return response.status(502).json({ message: "同步失敗。", code: "FLEXISIP_SYNC_FAILED" });
+    }
+
+    // 2. 同步狀態
+    const localActive = local.status === 'active';
+    try {
+      if (localActive) {
+        await flexisipActivateAccount(flexisipAccountId);
+      } else {
+        await flexisipDeactivateAccount(flexisipAccountId);
+      }
+    } catch (statusErr) {
+      const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+      const errMsg = (statusErr?.message || String(statusErr)).substring(0, 500);
+      const c4 = await pool.getConnection();
+      await c4.query(`UPDATE sip_users SET sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`, [errMsg, now, accountId]);
+      c4.release();
+    }
+
+    // 3. 更新本地同步字段
+    connection = await pool.getConnection();
+    const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+    await connection.query(
+      `UPDATE sip_users SET sync_error = NULL, sync_attempts = sync_attempts + 1, last_synced_at = ?, sync_status = ? WHERE id = ?`,
+      [now, localActive ? 'active' : 'disabled', accountId],
+    );
+    connection.release();
+
+    return response.json({ message: "同步成功。", synced });
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("SIP account sync failed:", error?.message);
+    return response.status(500).json({ message: "同步失敗。" });
   }
 });
 

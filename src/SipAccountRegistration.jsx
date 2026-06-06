@@ -1677,30 +1677,39 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {verifyResult.differences?.map((diff, i) => (
                           <div key={i} style={{ background: '#1e293b', borderRadius: '8px', padding: '12px 16px' }}>
-                            <span style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 600 }}>{diff.label}</span>
-                            <div style={{ display: 'flex', gap: '16px', marginTop: '4px', fontSize: '13px' }}>
-                              <span style={{ color: '#9ca3af' }}>本地：<span style={{ color: '#e5e7eb' }}>{diff.local || '—'}</span></span>
-                              <span style={{ color: '#9ca3af' }}>遠端：<span style={{ color: '#fbbf24' }}>{diff.remote || '—'}</span></span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 600 }}>{diff.label}</span>
+                              {!diff.syncable && (
+                                <span style={{ color: '#fbbf24', fontSize: '11px', background: '#3b2508', padding: '2px 8px', borderRadius: '4px' }}>不可同步</span>
+                              )}
                             </div>
+                            <div style={{ display: 'flex', gap: '16px', marginTop: '4px', fontSize: '13px' }}>
+                              <span style={{ color: '#9ca3af' }}>本地：<span style={{ color: '#e5e7eb' }}>{diff.localValue || '—'}</span></span>
+                              <span style={{ color: '#9ca3af' }}>遠端：<span style={{ color: '#fbbf24' }}>{diff.remoteValue || '—'}</span></span>
+                            </div>
+                            {diff.reason && <div style={{ marginTop: '4px', fontSize: '11px', color: '#fbbf24' }}>{diff.reason}</div>}
                           </div>
                         ))}
                       </div>
                       <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
-                        <button type="button" disabled={isSyncing} onClick={async () => {
+                        <button type="button" disabled={isSyncing || !verifyResult.differences?.some(d => d.syncable)} onClick={async () => {
                           setIsSyncing(true);
                           try {
-                            await apiClient.put(`/admin/sip-accounts/${verifyAccount.id}`, {
-                              displayName: verifyResult.localData?.displayName || verifyAccount.displayName,
-                              email: verifyResult.localData?.email || verifyAccount.email || '',
-                              phone: verifyResult.localData?.phone || verifyAccount.phone || '',
-                            });
-                            setVerifyResult({ consistent: true, differences: [], localData: verifyResult.localData });
+                            await apiClient.post(`/admin/sip-accounts/${verifyAccount.id}/sync-to-flexisip`);
+                            loadAccounts();
+                            verifyResult = null;
+                            setVerifyAccount(null);
+                            setVerifyResult(null);
+                            alert('同步成功！');
                           } catch (err) {
                             alert(err.message || '同步失敗');
                           } finally {
                             setIsSyncing(false);
                           }
-                        }} style={{ padding: '10px 28px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: isSyncing ? 0.7 : 1 }}>{isSyncing ? '同步中...' : '同步至 Flexisip'}</button>
+                        }} style={{ padding: '10px 28px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: (isSyncing || !verifyResult.differences?.some(d => d.syncable)) ? 0.5 : 1 }}>{isSyncing ? '同步中...' : '同步至 Flexisip'}</button>
+                        {verifyResult.differences?.some(d => !d.syncable) && !verifyResult.differences?.some(d => d.syncable) && (
+                          <p style={{ color: '#fbbf24', fontSize: '12px', textAlign: 'center', margin: '8px 0 0 0' }}>當前差異包含不可同步的 SIP 身份欄位，請人工處理。</p>
+                        )}
                       </div>
                     </>
                   )}
