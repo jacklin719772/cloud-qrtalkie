@@ -18,6 +18,7 @@ import {
   deleteAccount as flexisipDeleteAccount,
   activateAccount as flexisipActivateAccount,
   deactivateAccount as flexisipDeactivateAccount,
+  updateAccount as flexisipUpdateAccount,
 } from "./flexisipAccountManagerClient.js";
 
 const app = express();
@@ -6425,10 +6426,10 @@ app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, resp
   }
 });
 
-// PUT /api/admin/sip-accounts/:id - 编辑帳號
+// PUT /api/admin/sip-accounts/:id - 編輯帳號（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號登记。" });
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號登記。" });
   }
 
   const accountId = Number(request.params.id);
@@ -6444,29 +6445,109 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
 
+  // 禁止修改 username/domain
+  if (payload.username !== undefined || payload.domain !== undefined) {
+    return response.status(400).json({
+      message: "不允許修改 SIP 用戶名或域名。",
+      code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED",
+    });
+  }
+
   let connection;
   try {
     connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    const rows = await connection.query(`SELECT id, tenant_id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
+    const rows = await connection.query(
+      `SELECT id, tenant_id, display_name, email, phone_number, role, status,
+         username, sip_domain, flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
     const account = rows[0];
     if (!account) {
-      await connection.rollback();
+      connection.release();
       return response.status(404).json({ message: "帳號不存在。" });
     }
     if (account.tenant_id != null) {
-      await connection.rollback();
-      return response.status(409).json({ message: "已经分配给租戶的帳號不允許编辑。" });
+      connection.release();
+      return response.status(409).json({ message: "已經分配給租戶的帳號不允許編輯。" });
     }
 
-    let updateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?, role = ?, status = ?`;
+    // ── 变化检测 ──
+    const changedFields = [];
+    if (account.display_name !== displayName) changedFields.push('display_name');
+    if (account.email !== email) changedFields.push('email');
+    if (account.phone_number !== phone) changedFields.push('phone');
+    if (account.role !== role) changedFields.push('role');
+    if (account.status !== status) changedFields.push('status');
+    if (password) changedFields.push('password');
+
+    connection.release();
+
+    // 如果没有任何字段变化，直接返回
+    if (changedFields.length === 0) {
+      return response.json({ success: true, no_change: true, message: "沒有可儲存的修改。" });
+    }
+
+    // ── Flexisip sync（非 local_only 账号）──
+    const needsFlexisipSync = account.sync_status !== 'local_only' && (
+      changedFields.some(f => ['display_name', 'email', 'phone', 'role'].includes(f))
+    );
+
+    if (needsFlexisipSync) {
+      let flexisipAccountId = account.flexisip_account_id || null;
+
+      if (!flexisipAccountId && account.sip_uri) {
+        try {
+          const sr = await searchAccountBySip(account.sip_uri);
+          flexisipAccountId = sr?.id;
+          if (flexisipAccountId) {
+            const c2 = await pool.getConnection();
+            await c2.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, accountId]);
+            c2.release();
+          }
+        } catch {}
+      }
+
+      if (flexisipAccountId) {
+        const flexisipPayload = {};
+        if (changedFields.includes('display_name')) flexisipPayload.display_name = displayName;
+        if (changedFields.includes('email')) flexisipPayload.email = email;
+        if (changedFields.includes('phone')) flexisipPayload.phone = phone;
+        if (changedFields.includes('role')) flexisipPayload.role = role;
+
+        try {
+          await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+        } catch (flexisipErr) {
+          const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+          const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+          const c3 = await pool.getConnection();
+          if (flexisipErr?.status === 404) {
+            await c3.query(
+              `UPDATE sip_users SET sync_status = 'flexisip_missing', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+              [errMsg, now, accountId],
+            );
+            c3.release();
+            return response.status(502).json({ message: "遠端帳號不存在。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+          }
+          await c3.query(
+            `UPDATE sip_users SET sync_status = 'sync_failed', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+            [errMsg, now, accountId],
+          );
+          c3.release();
+          return response.status(502).json({ message: "遠端帳號更新失敗。", code: "FLEXISIP_UPDATE_FAILED" });
+        }
+      }
+    }
+
+    // ── 更新本地数据库 ──
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    let updateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?, role = ?, status = ?, sync_error = NULL, sync_attempts = sync_attempts + 1, last_synced_at = NOW()`;
     let updateParams = [displayName, email, phone, role, status];
 
     if (password) {
-      const passwordHash = await hashPassword(password);
       updateSql += `, password_hash = ?`;
-      updateParams.push(passwordHash);
+      updateParams.push(await hashPassword(password));
     }
     updateSql += ` WHERE id = ?`;
     updateParams.push(accountId);

@@ -42,6 +42,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'add' | 'import' | 'detail'
+  const [editingOriginal, setEditingOriginal] = useState(null);
   const [viewingAccount, setViewingAccount] = useState(null);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
@@ -502,7 +503,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         alert('已经分配给租戶的帳號不允许編輯。');
         return;
       }
-      setFormData({
+      const initialData = {
         id: account.id,
         username: account.username || '',
         displayName: account.displayName || account.username || '',
@@ -521,7 +522,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         registrar: account.externalRegistrar || '',
         outboundProxy: account.externalOutboundProxy || '',
         protocol: account.externalProtocol || 'UDP',
-      });
+      };
+      setFormData(initialData);
+      setEditingOriginal(initialData);
       setViewMode('edit');
       return;
     }
@@ -668,6 +671,22 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       }
       if (viewMode === 'add' && !formData.externalPassword.trim()) {
         setFormMessage({ type: 'error', text: '請輸入外部帳號的密碼。' });
+        return;
+      }
+    }
+
+    // 编辑模式：检测是否有字段变化
+    if (viewMode === 'edit' && editingOriginal) {
+      const changedFields = ['displayName', 'email', 'phone', 'role', 'password',
+        'hasExternal', 'externalUsername', 'externalDomain', 'externalPassword', 'realm', 'registrar', 'outboundProxy', 'protocol'];
+      const hasChanges = changedFields.some(field => {
+        const a = String(editingOriginal[field] ?? '').trim();
+        const b = String(formData[field] ?? '').trim();
+        return a !== b;
+      });
+      if (!hasChanges) {
+        setFormMessage({ type: 'info', text: '沒有可儲存的修改。' });
+        setTimeout(() => setFormMessage({ type: '', text: '' }), 2000);
         return;
       }
     }
