@@ -6512,7 +6512,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       }
 
       if (flexisipAccountId) {
-        const flexisipPayload = {};
+        const flexisipPayload = { username: account.username, algorithm: "SHA-256" };
         if (changedFields.includes('display_name')) flexisipPayload.display_name = displayName;
         if (changedFields.includes('email') && email) flexisipPayload.email = email;
         if (changedFields.includes('phone') && phone) flexisipPayload.phone = phone;
