@@ -6347,24 +6347,33 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
     const sipUri = `sip:${realUsername}@${domain}`;
     let flexisipAccountId = null;
 
+    console.log(`[batch] ===== 第 ${i+1}/${count} 個帳號: ${realUsername}, sipUri: ${sipUri} =====`);
+
     try {
       // 本地唯一性
       let conn = await pool.getConnection();
+      console.log(`[batch] ${realUsername}: 檢查本地重複...`);
       const dup = await conn.query(`SELECT id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1`, [realUsername, domain]);
       conn.release();
       if (dup.length > 0) {
+        console.log(`[batch] ${realUsername}: ❌ 本地已存在 (id=${dup[0].id})`);
         results.push({ username: realUsername, sipUri, success: false, errorCode: "DUPLICATE_LOCAL_SIP_ACCOUNT", message: "本地帳號已存在。" });
         failed++;
         continue;
       }
+      console.log(`[batch] ${realUsername}: 本地無重複`);
 
       // 远端存在性检查
       let remoteExists = false;
       try {
+        console.log(`[batch] ${realUsername}: 搜索遠端 searchAccountBySip(${realUsername}@${domain})...`);
         await searchAccountBySip(`${realUsername}@${domain}`);
         remoteExists = true; // 未抛异常 = 远端已存在
+        console.log(`[batch] ${realUsername}: 遠端已存在`);
       } catch (e) {
+        console.log(`[batch] ${realUsername}: 遠端搜索結果 - status=${e?.status}, message=${e?.message}`);
         if (e?.status !== 404) throw e;
+        console.log(`[batch] ${realUsername}: 遠端不存在 (404)，繼續創建`);
       }
       if (remoteExists) {
         results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_ACCOUNT_ALREADY_EXISTS", message: "遠端帳號已存在。" });
@@ -6373,30 +6382,43 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       }
 
       // Flexisip create
+      console.log(`[batch] ${realUsername}: 調用 flexisipCreateAccount, payload:`, {
+        username: realUsername, sip: sipUri, password: '***', algorithm: "SHA-256",
+        display_name: realUsername, email: `${realUsername}@${domain}`,
+      });
       const flexisipResult = await flexisipCreateAccount({
         username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
         display_name: realUsername, email: `${realUsername}@${domain}`,
       });
+      console.log(`[batch] ${realUsername}: flexisipCreateAccount 返回:`, JSON.stringify(flexisipResult));
       flexisipAccountId = flexisipResult?.id;
 
       if (!flexisipAccountId) {
+        console.log(`[batch] ${realUsername}: ⚠️ flexisipResult 無 id，嘗試 searchAccountBySip 獲取...`);
         try {
           const sr = await searchAccountBySip(`${realUsername}@${domain}`);
           flexisipAccountId = sr?.id;
-        } catch {}
+          console.log(`[batch] ${realUsername}: searchAccountBySip 返回 id=${flexisipAccountId}`);
+        } catch (e2) {
+          console.log(`[batch] ${realUsername}: searchAccountBySip 失敗:`, e2?.message);
+        }
       }
       if (!flexisipAccountId) {
+        console.log(`[batch] ${realUsername}: ❌ 無法獲取 flexisipAccountId`);
         results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_CREATE_NO_ID", message: "Flexisip 創建成功但無法獲取 ID。" });
         failed++;
         continue;
       }
 
+      console.log(`[batch] ${realUsername}: flexisipAccountId=${flexisipAccountId}, 開始 activate...`);
       // Flexisip activate
       await flexisipActivateAccount(flexisipAccountId);
+      console.log(`[batch] ${realUsername}: activate 成功`);
 
       // 本地保存
       conn = await pool.getConnection();
       try {
+        console.log(`[batch] ${realUsername}: 保存到本地 DB...`);
         await conn.beginTransaction();
         const passwordHash = await hashPassword(password);
         const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -6408,10 +6430,12 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         );
         await conn.commit();
         conn.release();
+        console.log(`[batch] ${realUsername}: ✅ 本地保存成功 (localId=${Number(userRes.insertId)})`);
         createdLocalIds.push({ id: Number(userRes.insertId), username: realUsername, flexisipAccountId, sipUri });
         results.push({ username: realUsername, sipUri, success: true, localId: Number(userRes.insertId), flexisipAccountId: String(flexisipAccountId) });
         created++;
       } catch (dbErr) {
+        console.log(`[batch] ${realUsername}: ❌ 本地 DB 保存失敗:`, dbErr?.message, dbErr?.code);
         await conn.rollback().catch(() => {});
         conn.release();
         // 补偿删除
@@ -6420,11 +6444,14 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         failed++;
       }
     } catch (err) {
+      console.log(`[batch] ${realUsername}: ❌ 異常:`, err?.message, err?.code, err?.status, err?.responseBody);
       if (flexisipAccountId) { try { await flexisipDeleteAccount(flexisipAccountId); } catch {} }
       results.push({ username: realUsername, sipUri, success: false, errorCode: err?.code || "FLEXISIP_CREATE_FAILED", message: (err?.message || '創建失敗').substring(0, 200) });
       failed++;
     }
   }
+
+  console.log(`[batch] ===== 批次完成: created=${created}, failed=${failed} =====`);
 
   // 批量一致性校验
   for (const item of createdLocalIds) {

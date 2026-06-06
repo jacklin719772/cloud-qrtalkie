@@ -52,8 +52,11 @@ async function request(method, path, body, options = {}) {
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
   const apiKey = options.apiKey === undefined ? config.apiKey : String(options.apiKey || "");
 
+  const fullUrl = `${config.baseUrl}${normalizedPath}`;
+  console.log(`[flexisip] ${method} ${fullUrl}`, body ? `body=${JSON.stringify(body).substring(0, 300)}` : '');
+
   try {
-    const response = await fetch(`${config.baseUrl}${normalizedPath}`, {
+    const response = await fetch(fullUrl, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -65,6 +68,7 @@ async function request(method, path, body, options = {}) {
     });
 
     const responseBody = await parseResponse(response);
+    console.log(`[flexisip] ${method} ${normalizedPath} => status=${response.status}, body=${JSON.stringify(responseBody).substring(0, 500)}`);
     if (!response.ok) {
       const message =
         responseBody && typeof responseBody === "object" && responseBody.message
