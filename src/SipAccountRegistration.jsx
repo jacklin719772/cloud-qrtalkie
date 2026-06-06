@@ -744,59 +744,57 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleBatchAddSubmit = async (e) => {
     e.preventDefault();
-    const start = Number(batchAddForm.start);
+    const startStr = String(batchAddForm.start || '').trim();
     const count = Number(batchAddForm.count);
 
-    if (!Number.isInteger(start) || start <= 0) {
-      setBatchAddMessage({ type: 'error', text: '請輸入有效的起始帳號数值。' });
+    // 纯数字校验
+    if (!/^\d+$/.test(startStr)) {
+      setBatchAddMessage({ type: 'error', text: '起始 SIP 帳號必須為純數字。' });
       return;
     }
     if (!Number.isInteger(count) || count <= 0) {
       setBatchAddMessage({ type: 'error', text: '請輸入有效的新增數量。' });
       return;
     }
-    if (count > 1000) {
-      setBatchAddMessage({ type: 'error', text: '单次批量新增數量不能超过 1000。' });
-      return;
-    }
-
-    const existingUsernames = new Set(accounts.map(account => String(account.username || '').trim()));
-    const duplicateUsername = Array.from({ length: count }, (_, index) => String(start + index))
-      .find(username => existingUsernames.has(username));
-    if (duplicateUsername) {
-      setBatchAddMessage({ type: 'error', text: `帳號 ${duplicateUsername} 已存在，请调整起始帳號或數量。` });
+    if (count > 200) {
+      setBatchAddMessage({ type: 'error', text: '單次批量新增數量不能超過 200。' });
       return;
     }
 
     setIsBatchAdding(true);
     setBatchAddMessage({ type: '', text: '' });
-    let successCount = 0;
-    const errors = [];
 
-    for (let index = 0; index < count; index += 1) {
-      const username = String(start + index);
-      try {
-        await apiClient.post('/admin/sip-accounts', {
-          ...emptyAccountForm,
-          username,
-          displayName: username,
-          domain: defaultSipDomain,
-        });
-        successCount += 1;
-      } catch (err) {
-        errors.push(`${username}: ${err.message || '儲存失敗'}`);
+    try {
+      const result = await apiClient.post('/admin/sip-accounts/batch', {
+        startAccount: startStr,
+        count,
+        domain: defaultSipDomain,
+        password: emptyAccountForm.password,
+        role: 'user',
+        status: 'active',
+      });
+
+      const summary = result.summary || {};
+      const createdOk = summary.created || 0;
+      const failed = summary.failed || 0;
+      const checkedOk = summary.consistent || 0;
+      const inconsistent = summary.inconsistent || 0;
+
+      if (failed > 0 || inconsistent > 0) {
+        const msgs = [];
+        if (failed > 0) msgs.push(`${failed} 個失敗`);
+        if (inconsistent > 0) msgs.push(`${inconsistent} 個與 Flexisip 不一致`);
+        setBatchAddMessage({ type: 'error', text: `已完成：${createdOk} 個成功，${msgs.join('，')}。請查看詳情。` });
+      } else {
+        setBatchAddMessage({ type: 'success', text: `批量新增完成，${createdOk} 個帳號全部與 Flexisip 資訊一致。` });
       }
-    }
-
-    if (errors.length > 0) {
-      setBatchAddMessage({ type: 'error', text: `已成功增加 ${successCount} 個，失敗 ${errors.length} 個。${errors.slice(0, 3).join('；')}` });
+    } catch (err) {
+      setBatchAddMessage({ type: 'error', text: err.message || '批量新增失敗' });
+    } finally {
       setIsBatchAdding(false);
       await loadAccounts();
-      return;
     }
-
-    setBatchAddMessage({ type: 'success', text: `已成功批量增加 ${successCount} 個帳號。` });
-    await loadAccounts();
+  };
     setIsBatchAdding(false);
     setTimeout(() => {
       setBatchAddOpen(false);

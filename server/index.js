@@ -6310,6 +6310,155 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   }
 });
 
+// POST /api/admin/sip-accounts/batch - 批量新增 SIP 帳號（同步 Flexisip）
+app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行批量操作。" });
+  }
+
+  const payload = request.body || {};
+  const startStr = String(payload.startAccount || '').trim();
+  const count = Number(payload.count || 0);
+  const domain = String(payload.domain || '').trim();
+  const password = String(payload.password || '');
+  const role = payload.role === 'admin' ? 'admin' : 'user';
+
+  // 纯数字校验
+  if (!/^\d+$/.test(startStr)) {
+    return response.status(400).json({ message: "起始 SIP 帳號必須為純數字。", code: "INVALID_BATCH_START_ACCOUNT" });
+  }
+  if (!Number.isInteger(count) || count <= 0 || count > 200) {
+    return response.status(400).json({ message: "數量必須為 1-200 之間的正整數。" });
+  }
+  if (!domain || !password) {
+    return response.status(400).json({ message: "缺少必填參數。" });
+  }
+  if (password.length < 6) {
+    return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+  }
+
+  const results = [];
+  let created = 0, failed = 0, checked = 0, consistent = 0, inconsistent = 0;
+  const createdLocalIds = [];
+
+  for (let i = 0; i < count; i++) {
+    const username = startStr.padStart(startStr.length, '0');
+    const realUsername = String(BigInt(startStr) + BigInt(i)).padStart(startStr.length, '0');
+    const sipUri = `sip:${realUsername}@${domain}`;
+    let flexisipAccountId = null;
+
+    try {
+      // 本地唯一性
+      let conn = await pool.getConnection();
+      const dup = await conn.query(`SELECT id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1`, [realUsername, domain]);
+      conn.release();
+      if (dup.length > 0) {
+        results.push({ username: realUsername, sipUri, success: false, errorCode: "DUPLICATE_LOCAL_SIP_ACCOUNT", message: "本地帳號已存在。" });
+        failed++;
+        continue;
+      }
+
+      // 远端存在性检查
+      let remoteExists = false;
+      try {
+        await searchAccountBySip(`${realUsername}@${domain}`);
+        remoteExists = true; // 未抛异常 = 远端已存在
+      } catch (e) {
+        if (e?.status !== 404) throw e;
+      }
+      if (remoteExists) {
+        results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_ACCOUNT_ALREADY_EXISTS", message: "遠端帳號已存在。" });
+        failed++;
+        continue;
+      }
+
+      // Flexisip create
+      const flexisipResult = await flexisipCreateAccount({
+        username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
+        display_name: realUsername, role,
+      });
+      flexisipAccountId = flexisipResult?.id;
+
+      if (!flexisipAccountId) {
+        try {
+          const sr = await searchAccountBySip(`${realUsername}@${domain}`);
+          flexisipAccountId = sr?.id;
+        } catch {}
+      }
+      if (!flexisipAccountId) {
+        results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_CREATE_NO_ID", message: "Flexisip 創建成功但無法獲取 ID。" });
+        failed++;
+        continue;
+      }
+
+      // Flexisip activate
+      await flexisipActivateAccount(flexisipAccountId);
+
+      // 本地保存
+      conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        const passwordHash = await hashPassword(password);
+        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const userRes = await conn.query(
+          `INSERT INTO sip_users (tenant_id, username, sip_domain, display_name, password_hash, role, status, created_by_admin_user_id,
+             flexisip_account_id, sip_uri, sync_status, sync_attempts, last_synced_at, created_in_flexisip_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, 'active', 1, ?, ?)`,
+          [null, realUsername, domain, realUsername, passwordHash, role, request.admin.id, flexisipAccountId, sipUri, now, now],
+        );
+        await conn.commit();
+        conn.release();
+        createdLocalIds.push({ id: Number(userRes.insertId), username: realUsername, flexisipAccountId, sipUri });
+        results.push({ username: realUsername, sipUri, success: true, localId: Number(userRes.insertId), flexisipAccountId: String(flexisipAccountId) });
+        created++;
+      } catch (dbErr) {
+        await conn.rollback().catch(() => {});
+        conn.release();
+        // 补偿删除
+        try { await flexisipDeleteAccount(flexisipAccountId); } catch {}
+        results.push({ username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED", message: "本地保存失敗，已回滾。" });
+        failed++;
+      }
+    } catch (err) {
+      if (flexisipAccountId) { try { await flexisipDeleteAccount(flexisipAccountId); } catch {} }
+      results.push({ username: realUsername, sipUri, success: false, errorCode: err?.code || "FLEXISIP_CREATE_FAILED", message: (err?.message || '創建失敗').substring(0, 200) });
+      failed++;
+    }
+  }
+
+  // 批量一致性校验
+  for (const item of createdLocalIds) {
+    try {
+      const conn = await pool.getConnection();
+      const rows = await conn.query(`SELECT display_name, email, phone_number, role, status FROM sip_users WHERE id = ?`, [item.id]);
+      conn.release();
+      if (rows.length === 0) { results.find(r => r.username === item.username).check = { checked: false, message: "本地記錄未找到" }; continue; }
+      const local = rows[0];
+
+      let remote;
+      try { remote = await flexisipGetAccount(item.flexisipAccountId); } catch {}
+      if (!remote) { results.find(r => r.username === item.username).check = { checked: false, message: "遠端查詢失敗" }; continue; }
+
+      const diffs = [];
+      if ((local.display_name || '') !== (remote.display_name || '')) diffs.push({ field: 'display_name', label: '顯示名稱', localValue: local.display_name, remoteValue: remote.display_name });
+      const rActive = remote.activated === true || remote.activated === 1;
+      if (local.status !== 'active' || !rActive) diffs.push({ field: 'status', label: '啟用狀態', localValue: local.status, remoteValue: rActive ? 'active' : 'inactive' });
+
+      const checkedObj = { checked: true, consistent: diffs.length === 0, differences: bigIntSafe(diffs) };
+      results.find(r => r.username === item.username).check = checkedObj;
+      checked++;
+      if (diffs.length === 0) consistent++; else inconsistent++;
+    } catch {
+      results.find(r => r.username === item.username).check = { checked: false, message: "校驗異常" };
+    }
+  }
+
+  return response.json(bigIntSafe({
+    summary: { total: count, created, failed, checked, consistent, inconsistent },
+    results,
+  }));
+});
+
 // PUT /api/admin/sip-accounts/:id/status - 啟用/停用 SIP 帳號（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
