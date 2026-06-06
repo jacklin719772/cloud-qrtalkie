@@ -779,6 +779,7 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management .plan-page-current { background: #1e3a5f; border: 1px solid #3b82f6; color: #60a5fa; }
         #plan-management .plan-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #plan-management .plan-page-jump { color: #9ca3af; }
+        #plan-management .plan-table { min-width: 0 !important; }
         #plan-management .plan-table-wrapper { scrollbar-width: none; }
         #plan-management .plan-table-wrapper::-webkit-scrollbar { display: none; }
         #plan-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
