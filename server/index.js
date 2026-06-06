@@ -17,6 +17,7 @@ import {
   FlexisipAccountManagerError,
   searchAccountBySip,
   searchAccountByEmail,
+  listAccounts as flexisipListAccounts,
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
   getAccount as flexisipGetAccount,
@@ -6212,22 +6213,35 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   } catch (createErr) {
     console.error("Flexisip create/activate failed:", createErr?.message || createErr);
 
-    // 422 username already taken → 嘗試通過 email 找回軟刪除帳號
+    // 422 username already taken → 嘗試通過 email / listAccounts 找回軟刪除帳號
     if ((createErr?.status === 422 || createErr?.status === 409) && !flexisipAccountId) {
-      console.log(`單個創建 ${username}: 422 username taken，嘗試通過 email 找回...`);
+      console.log(`單個創建 ${username}: 422 username taken，嘗試找回...`);
+      // 方案 A: email 搜索
       try {
         const foundByEmail = await searchAccountByEmail(email || `${username}@${domain}`);
-        if (foundByEmail?.id) {
-          flexisipAccountId = foundByEmail.id;
+        if (foundByEmail?.id) { flexisipAccountId = foundByEmail.id; }
+      } catch {}
+      // 方案 B: listAccounts 全量查找
+      if (!flexisipAccountId) {
+        try {
+          const allAccounts = await flexisipListAccounts();
+          const list = Array.isArray(allAccounts) ? allAccounts : (allAccounts?.accounts || []);
+          const found = list.find(a => a.username === username);
+          if (found?.id) { flexisipAccountId = found.id; }
+        } catch {}
+      }
+      // 找到了：更新密碼並激活
+      if (flexisipAccountId) {
+        try {
           await flexisipUpdateAccount(flexisipAccountId, {
             password, algorithm: "SHA-256",
             display_name: displayName || username, email: email || `${username}@${domain}`,
           });
           await flexisipActivateAccount(flexisipAccountId);
-          // 恢復成功，繼續執行後續本地保存
+        } catch (recoveryErr) {
+          console.error(`單個創建 ${username}: 恢復失敗:`, recoveryErr?.message);
+          flexisipAccountId = null;
         }
-      } catch (recoveryErr) {
-        console.error(`單個創建 ${username}: email 恢復也失敗:`, recoveryErr?.message);
       }
     }
 
@@ -6421,25 +6435,48 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: flexisipCreateAccount 失敗: status=${e?.status}, message=${e?.message}`);
       }
 
-      // 422 username already taken → 可能是軟刪除殘留，通過 email 找回
+      // 422 username already taken → 可能是軟刪除殘留，通過 email 找回，再透過 listAccounts 兜底
       if (!flexisipAccountId && createErr?.status === 422) {
-        console.log(`[batch] ${realUsername}: 422 username taken，嘗試通過 email 找回軟刪除帳號...`);
+        console.log(`[batch] ${realUsername}: 422 username taken，嘗試找回軟刪除帳號...`);
+        // 方案 A: 通過 email 搜索
         try {
           const foundByEmail = await searchAccountByEmail(`${realUsername}@${domain}`);
           if (foundByEmail?.id) {
             flexisipAccountId = foundByEmail.id;
             console.log(`[batch] ${realUsername}: 通過 email 找到軟刪除帳號 id=${flexisipAccountId}`);
-            // 更新密碼並激活
+          }
+        } catch (e3) {
+          console.log(`[batch] ${realUsername}: email 搜索失敗:`, e3?.message);
+        }
+        // 方案 B: 通過 listAccounts 全量列表查找
+        if (!flexisipAccountId) {
+          try {
+            console.log(`[batch] ${realUsername}: 嘗試 listAccounts 查找...`);
+            const allAccounts = await flexisipListAccounts();
+            const list = Array.isArray(allAccounts) ? allAccounts : (allAccounts?.accounts || []);
+            const found = list.find(a => a.username === realUsername);
+            if (found?.id) {
+              flexisipAccountId = found.id;
+              console.log(`[batch] ${realUsername}: 通過 listAccounts 找到軟刪除帳號 id=${flexisipAccountId}`);
+            } else {
+              console.log(`[batch] ${realUsername}: listAccounts 也未找到（username 被佔用但無法恢復）`);
+            }
+          } catch (e4) {
+            console.log(`[batch] ${realUsername}: listAccounts 失敗:`, e4?.message);
+          }
+        }
+        // 找到了：更新密碼並激活
+        if (flexisipAccountId) {
+          try {
             await flexisipUpdateAccount(flexisipAccountId, {
               password, algorithm: "SHA-256",
               display_name: realUsername, email: `${realUsername}@${domain}`,
             });
             console.log(`[batch] ${realUsername}: 軟刪除帳號密碼已更新`);
-          } else {
-            console.log(`[batch] ${realUsername}: 通過 email 也未找到帳號`);
+          } catch (e5) {
+            console.log(`[batch] ${realUsername}: 更新密碼失敗:`, e5?.message);
+            flexisipAccountId = null; // 無法恢復，重置
           }
-        } catch (e3) {
-          console.log(`[batch] ${realUsername}: email 搜索也失敗:`, e3?.message);
         }
       }
 
