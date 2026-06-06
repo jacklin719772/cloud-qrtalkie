@@ -6536,7 +6536,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
             [errMsg, now, accountId],
           );
           c3.release();
-          return response.status(502).json({ message: "遠端帳號更新失敗。", code: "FLEXISIP_UPDATE_FAILED" });
+          return response.status(502).json({ message: `遠端帳號更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
         }
       }
     }
