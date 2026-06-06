@@ -6141,11 +6141,12 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 
   // ── 步骤 4: 远端存在性检查 ──
   const sipUri = `sip:${username}@${domain}`;
+  const sipAddress = `${username}@${domain}`;  // 用于 searchAccountBySip（不需要 sip: 前缀）
   let flexisipAccountId = null;
   let flexisipCreatePayload = null;
 
   try {
-    await searchAccountBySip(sipUri);
+    await searchAccountBySip(sipAddress);
     // 远端账号已存在
     return response.status(409).json({
       message: "該 SIP 帳號已在通訊服務中存在。",
@@ -6187,7 +6188,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     // 如果 createAccount 没有返回 id，尝试通过 search 查找
     if (!flexisipAccountId) {
       try {
-        const searchResult = await searchAccountBySip(sipUri);
+        const searchResult = await searchAccountBySip(sipAddress);
         flexisipAccountId = searchResult?.id || searchResult?.account?.id;
       } catch {}
     }
