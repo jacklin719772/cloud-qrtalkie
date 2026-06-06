@@ -16,6 +16,7 @@ import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSe
 import {
   FlexisipAccountManagerError,
   searchAccountBySip,
+  searchAccountByEmail,
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
   getAccount as flexisipGetAccount,
@@ -6211,24 +6212,45 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   } catch (createErr) {
     console.error("Flexisip create/activate failed:", createErr?.message || createErr);
 
-    // 如果账号已创建但激活失败，尝试补偿删除
-    if (flexisipAccountId) {
-      try { await flexisipDeleteAccount(flexisipAccountId); } catch (cleanupErr) {
-        console.error("FLEXISIP ACTIVATE FAILED - cleanup also failed. id:", flexisipAccountId, "sipUri:", sipUri, "cleanupErr:", cleanupErr?.message);
-        return response.status(502).json({
-          message: "遠端帳號創建後啟用失敗，且清理失敗，請聯繫管理員。",
-          code: "FLEXISIP_ACTIVATE_FAILED_CLEANUP_FAILED",
-        });
+    // 422 username already taken → 嘗試通過 email 找回軟刪除帳號
+    if ((createErr?.status === 422 || createErr?.status === 409) && !flexisipAccountId) {
+      console.log(`單個創建 ${username}: 422 username taken，嘗試通過 email 找回...`);
+      try {
+        const foundByEmail = await searchAccountByEmail(email || `${username}@${domain}`);
+        if (foundByEmail?.id) {
+          flexisipAccountId = foundByEmail.id;
+          await flexisipUpdateAccount(flexisipAccountId, {
+            password, algorithm: "SHA-256",
+            display_name: displayName || username, email: email || `${username}@${domain}`,
+          });
+          await flexisipActivateAccount(flexisipAccountId);
+          // 恢復成功，繼續執行後續本地保存
+        }
+      } catch (recoveryErr) {
+        console.error(`單個創建 ${username}: email 恢復也失敗:`, recoveryErr?.message);
       }
+    }
+
+    // 如果依然沒有 flexisipAccountId（create 失敗且未恢復），回傳錯誤
+    if (!flexisipAccountId) {
       return response.status(502).json({
-        message: "遠端帳號啟用失敗，已回滾。",
-        code: "FLEXISIP_ACTIVATE_FAILED_ROLLED_BACK",
+        message: createErr?.status === 422 ? "該帳號已被佔用且無法恢復。" : "遠端通訊帳號創建失敗。",
+        code: createErr?.status === 422 ? "FLEXISIP_USERNAME_TAKEN" : "FLEXISIP_CREATE_FAILED",
       });
     }
 
+    // flexisipAccountId 有值但 activate 失敗 → 補償刪除
+    console.error("Flexisip activate failed for id:", flexisipAccountId);
+    try { await flexisipDeleteAccount(flexisipAccountId); } catch (cleanupErr) {
+      console.error("FLEXISIP ACTIVATE FAILED - cleanup also failed. id:", flexisipAccountId, "sipUri:", sipUri, "cleanupErr:", cleanupErr?.message);
+      return response.status(502).json({
+        message: "遠端帳號創建後啟用失敗，且清理失敗，請聯繫管理員。",
+        code: "FLEXISIP_ACTIVATE_FAILED_CLEANUP_FAILED",
+      });
+    }
     return response.status(502).json({
-      message: "遠端通訊帳號創建失敗。",
-      code: "FLEXISIP_CREATE_FAILED",
+      message: "遠端帳號啟用失敗，已回滾。",
+      code: "FLEXISIP_ACTIVATE_FAILED_ROLLED_BACK",
     });
   }
 
@@ -6381,17 +6403,45 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         continue;
       }
 
-      // Flexisip create
+      // Flexisip create (含 422 軟刪除恢復)
       console.log(`[batch] ${realUsername}: 調用 flexisipCreateAccount, payload:`, {
         username: realUsername, sip: sipUri, password: '***', algorithm: "SHA-256",
         display_name: realUsername, email: `${realUsername}@${domain}`,
       });
-      const flexisipResult = await flexisipCreateAccount({
-        username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
-        display_name: realUsername, email: `${realUsername}@${domain}`,
-      });
-      console.log(`[batch] ${realUsername}: flexisipCreateAccount 返回:`, JSON.stringify(flexisipResult));
-      flexisipAccountId = flexisipResult?.id;
+      let createErr = null;
+      try {
+        const flexisipResult = await flexisipCreateAccount({
+          username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
+          display_name: realUsername, email: `${realUsername}@${domain}`,
+        });
+        console.log(`[batch] ${realUsername}: flexisipCreateAccount 返回:`, JSON.stringify(flexisipResult));
+        flexisipAccountId = flexisipResult?.id;
+      } catch (e) {
+        createErr = e;
+        console.log(`[batch] ${realUsername}: flexisipCreateAccount 失敗: status=${e?.status}, message=${e?.message}`);
+      }
+
+      // 422 username already taken → 可能是軟刪除殘留，通過 email 找回
+      if (!flexisipAccountId && createErr?.status === 422) {
+        console.log(`[batch] ${realUsername}: 422 username taken，嘗試通過 email 找回軟刪除帳號...`);
+        try {
+          const foundByEmail = await searchAccountByEmail(`${realUsername}@${domain}`);
+          if (foundByEmail?.id) {
+            flexisipAccountId = foundByEmail.id;
+            console.log(`[batch] ${realUsername}: 通過 email 找到軟刪除帳號 id=${flexisipAccountId}`);
+            // 更新密碼並激活
+            await flexisipUpdateAccount(flexisipAccountId, {
+              password, algorithm: "SHA-256",
+              display_name: realUsername, email: `${realUsername}@${domain}`,
+            });
+            console.log(`[batch] ${realUsername}: 軟刪除帳號密碼已更新`);
+          } else {
+            console.log(`[batch] ${realUsername}: 通過 email 也未找到帳號`);
+          }
+        } catch (e3) {
+          console.log(`[batch] ${realUsername}: email 搜索也失敗:`, e3?.message);
+        }
+      }
 
       if (!flexisipAccountId) {
         console.log(`[batch] ${realUsername}: ⚠️ flexisipResult 無 id，嘗試 searchAccountBySip 獲取...`);
@@ -6404,8 +6454,12 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         }
       }
       if (!flexisipAccountId) {
-        console.log(`[batch] ${realUsername}: ❌ 無法獲取 flexisipAccountId`);
-        results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_CREATE_NO_ID", message: "Flexisip 創建成功但無法獲取 ID。" });
+        const errMsg = createErr
+          ? (createErr?.message || 'Flexisip 創建失敗').substring(0, 200)
+          : "Flexisip 創建成功但無法獲取 ID。";
+        const errCode = createErr?.status === 422 ? "FLEXISIP_USERNAME_TAKEN" : "FLEXISIP_CREATE_FAILED";
+        console.log(`[batch] ${realUsername}: ❌ 無法獲取 flexisipAccountId, errCode=${errCode}`);
+        results.push({ username: realUsername, sipUri, success: false, errorCode: errCode, message: errMsg });
         failed++;
         continue;
       }
