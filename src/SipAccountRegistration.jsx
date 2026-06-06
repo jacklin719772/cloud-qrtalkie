@@ -1636,7 +1636,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <input type="number" min="1" max="1000" step="1" value={batchAddForm.count} onChange={e => setBatchAddForm(prev => ({ ...prev, count: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
               </label>
               <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
-                系統會按單個增加的預設邏輯建立帳號，用戶名從起始帳號開始遞增，顯示名預設與用戶名一致。
+                系統會按單個增加的預設邏輯建立帳號，用戶名從起始帳號開始遞增，顯示名預設與用戶名一致，預設密碼為 12345678。
               </p>
               {batchAddMessage.text && (
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
