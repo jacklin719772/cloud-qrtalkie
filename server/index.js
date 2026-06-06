@@ -6967,10 +6967,10 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
   }
 });
 
-// DELETE /api/admin/sip-accounts/:id - 删除帳號
+// DELETE /api/admin/sip-accounts/:id - 删除帳號（同步 Flexisip）
 app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以删除帳號。" });
+    return response.status(403).json({ message: "只有平台管理員可以刪除帳號。" });
   }
 
   const accountId = Number(request.params.id);
@@ -6981,30 +6981,112 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
   let connection;
   try {
     connection = await pool.getConnection();
-    await connection.beginTransaction();
+    const rows = await connection.query(
+      `SELECT id, tenant_id, username, sip_domain, flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
+    );
+    connection.release();
 
-    const rows = await connection.query(`SELECT id, tenant_id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
-    const account = rows[0];
-    if (!account) {
-      await connection.rollback();
+    if (rows.length === 0) {
       return response.status(404).json({ message: "帳號不存在。" });
     }
+    const account = bigIntSafe(rows[0]);
+
+    // 原有业务校验：已分配租户不能删除
     if (account.tenant_id != null) {
-      await connection.rollback();
-      return response.status(409).json({ message: "已经分配给租戶的帳號不允許删除。" });
+      return response.status(409).json({ message: "已經分配給租戶的帳號不允許刪除。" });
     }
 
-    await connection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
-    await connection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
+    // ── local_only 历史账号：直接本地删除 ──
+    if (account.sync_status === 'local_only' || (!account.flexisip_account_id && !account.sip_uri)) {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+      await connection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
+      await connection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
+      await connection.commit();
+      connection.release();
+      return response.json({ message: "帳號已成功刪除。" });
+    }
 
-    await connection.commit();
-    return response.json({ message: "帳號已成功删除。" });
+    // ── 定位远端 ID ──
+    let flexisipAccountId = account.flexisip_account_id || null;
+    if (!flexisipAccountId && account.sip_uri) {
+      try {
+        const sr = await searchAccountBySip(account.sip_uri);
+        flexisipAccountId = sr?.id;
+      } catch {}
+    }
+    if (!flexisipAccountId && account.username && account.sip_domain) {
+      try {
+        const sr = await searchAccountBySip(`${account.username}@${account.sip_domain}`);
+        flexisipAccountId = sr?.id;
+      } catch {}
+    }
+
+    // ── 删除 Flexisip 远端账号 ──
+    let flexisipDeleted = false;
+    if (flexisipAccountId) {
+      try {
+        await flexisipDeleteAccount(flexisipAccountId);
+        flexisipDeleted = true;
+      } catch (flexisipErr) {
+        if (flexisipErr?.status === 404) {
+          // 远端已不存在，视为删除成功
+          flexisipDeleted = true;
+        } else {
+          const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+          const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+          const c3 = await pool.getConnection();
+          await c3.query(
+            `UPDATE sip_users SET sync_status = 'pending_delete', sync_error = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+            [errMsg, now, accountId],
+          );
+          c3.release();
+          return response.status(502).json({
+            message: "遠端帳號刪除失敗，本地帳號保留。",
+            code: "FLEXISIP_DELETE_FAILED",
+          });
+        }
+      }
+    }
+    // 没有远端 ID 的同步账号：视为远端已不存在
+    if (!flexisipAccountId) flexisipDeleted = true;
+
+    // ── 本地删除 ──
+    connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
+      await connection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
+      await connection.commit();
+      connection.release();
+      return response.json({ message: "帳號已成功刪除。" });
+    } catch (dbErr) {
+      await connection.rollback().catch(() => {});
+      connection.release();
+
+      if (flexisipDeleted && flexisipAccountId) {
+        // 远端已删除但本地删除失败，标记异常
+        const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+        const errMsg = (dbErr?.message || String(dbErr)).substring(0, 500);
+        const c4 = await pool.getConnection();
+        await c4.query(
+          `UPDATE sip_users SET sync_status = 'pending_delete', sync_error = ?, deleted_in_flexisip_at = ?, sync_attempts = sync_attempts + 1, last_synced_at = ? WHERE id = ?`,
+          [errMsg, now, now, accountId],
+        );
+        c4.release();
+        return response.status(500).json({
+          message: "遠端已刪除但本地刪除失敗，請重試。",
+          code: "LOCAL_DELETE_FAILED_AFTER_FLEXISIP_DELETE",
+        });
+      }
+
+      return response.status(500).json({ message: "刪除帳號失敗。" });
+    }
   } catch (error) {
-    if (connection) await connection.rollback().catch(() => {});
-    console.error("Failed to delete SIP account:", error);
-    return response.status(500).json({ message: "删除帳號失败。" });
-  } finally {
-    if (connection) connection.release();
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("Failed to delete SIP account:", error?.message);
+    return response.status(500).json({ message: "刪除帳號失敗。" });
   }
 });
 

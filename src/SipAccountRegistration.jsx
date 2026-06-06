@@ -538,7 +538,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         alert('已经分配给租戶的帳號不允许刪除。');
         return;
       }
-      if (window.confirm(`確定要刪除帳號「${account.username}」吗？`)) {
+      if (window.confirm(`確定要刪除帳號「${account.username}」嗎？`)) {
         setIsLoading(true);
         try {
           await apiClient.delete(`/admin/sip-accounts/${account.id}`);
