@@ -6696,40 +6696,45 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
       });
     }
 
+    // 转换 BigInt 为 Number，避免 JSON 序列化错误
+    const safeRemote = JSON.parse(JSON.stringify(flexisipAccount, (key, value) =>
+      typeof value === 'bigint' ? Number(value) : value
+    ));
+
     // 字段对比（含 syncable 标记）
     const differences = [];
     // Username — 不可同步
-    if ((local.username || '') !== (flexisipAccount.username || '')) {
-      differences.push({ field: 'username', label: '用戶名', localValue: local.username || '—', remoteValue: flexisipAccount.username || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
+    if ((local.username || '') !== (safeRemote.username || '')) {
+      differences.push({ field: 'username', label: '用戶名', localValue: local.username || '—', remoteValue: safeRemote.username || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
     }
     // Domain — 不可同步
-    const remoteDomain = (flexisipAccount.domain || flexisipAccount.sip || '').replace(/^sip:/, '').split('@').pop() || '';
+    const remoteDomain = (safeRemote.domain || safeRemote.sip || '').replace(/^sip:/, '').split('@').pop() || '';
     if ((local.sip_domain || '') !== remoteDomain) {
       differences.push({ field: 'domain', label: '域名', localValue: local.sip_domain || '—', remoteValue: remoteDomain || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
     }
     // Display name — 可同步
-    if ((local.display_name || '') !== (flexisipAccount.display_name || '')) {
-      differences.push({ field: 'display_name', label: '顯示名稱', localValue: local.display_name || '—', remoteValue: flexisipAccount.display_name || '—', syncable: true });
+    if ((local.display_name || '') !== (safeRemote.display_name || '')) {
+      differences.push({ field: 'display_name', label: '顯示名稱', localValue: local.display_name || '—', remoteValue: safeRemote.display_name || '—', syncable: true });
     }
     // Email — 可同步
     const localEmail = (local.email || '').trim().toLowerCase();
-    const remoteEmail = (flexisipAccount.email || '').trim().toLowerCase();
+    const remoteEmail = (safeRemote.email || '').trim().toLowerCase();
     if (localEmail !== remoteEmail) {
-      differences.push({ field: 'email', label: 'Email', localValue: local.email || '—', remoteValue: flexisipAccount.email || '—', syncable: true });
+      differences.push({ field: 'email', label: 'Email', localValue: local.email || '—', remoteValue: safeRemote.email || '—', syncable: true });
     }
     // Phone — 可同步
-    if ((local.phone_number || '') !== (flexisipAccount.phone || '')) {
-      differences.push({ field: 'phone', label: '電話', localValue: local.phone_number || '—', remoteValue: flexisipAccount.phone || '—', syncable: true });
+    if ((local.phone_number || '') !== (safeRemote.phone || '')) {
+      differences.push({ field: 'phone', label: '電話', localValue: local.phone_number || '—', remoteValue: safeRemote.phone || '—', syncable: true });
     }
     // Role — 可同步
     const localRole = local.role || 'user';
-    const remoteRole = flexisipAccount.role || 'user';
+    const remoteRole = safeRemote.role || 'user';
     if (localRole !== remoteRole) {
       differences.push({ field: 'role', label: '角色', localValue: localRole, remoteValue: remoteRole, syncable: true });
     }
     // 状态
     const localActive = local.status === 'active';
-    const remoteActive = flexisipAccount.activated === true || flexisipAccount.activated === 1;
+    const remoteActive = safeRemote.activated === true || safeRemote.activated === 1;
     if (localActive !== remoteActive) {
       differences.push({ field: 'status', label: '啟用狀態', localValue: localActive ? '已啟用' : '已停用', remoteValue: remoteActive ? '已啟用' : '已停用', syncable: true });
     }
@@ -6737,7 +6742,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
     return response.json({
       consistent: differences.length === 0,
       localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
-      remoteData: { id: flexisipAccount.id, display_name: flexisipAccount.display_name, email: flexisipAccount.email, phone: flexisipAccount.phone, activated: flexisipAccount.activated },
+      remoteData: { id: safeRemote.id, display_name: safeRemote.display_name, email: safeRemote.email, phone: safeRemote.phone, activated: safeRemote.activated },
       differences,
     });
   } catch (error) {
