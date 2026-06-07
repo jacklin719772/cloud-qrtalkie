@@ -6182,7 +6182,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     algorithm: "SHA-256",  // Flexisip API 要求此字段，测试验证通过
     email: email || `${username}@${domain}`,
     display_name: displayName || username,
-    phone: phone || undefined,
+    ...(phone && /^\+?\d{7,}$/.test(phone.replace(/[\s\-\(\)]/g, '')) ? { phone: phone.replace(/[\s\-\(\)]/g, '') } : {}),
     role,
   };
 
@@ -6212,13 +6212,26 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   } catch (createErr) {
     console.error("Flexisip create/activate failed:", createErr?.message || createErr);
 
-    // 422/409 username taken → accounts_tombstones 保留，前端提示用戶是否徹底釋放
-    if ((createErr?.status === 422 || createErr?.status === 409) && !flexisipAccountId) {
+    // 检查 422 的具体原因：只有 username taken 才是 tombstone
+    const is422 = createErr?.status === 422 || createErr?.status === 409;
+    const errors = createErr?.responseBody?.errors || {};
+    const isUsernameTaken = is422 && errors.username && errors.username.some(m => /already.*taken|has already/i.test(m));
+
+    if (isUsernameTaken && !flexisipAccountId) {
       return response.status(409).json({
         message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
         code: "FLEXISIP_USERNAME_TOMBSTONED",
         username,
         domain,
+      });
+    }
+
+    // 其他 422 校验错误：直接返回 Flexisip 的错误消息
+    if (is422 && !flexisipAccountId) {
+      const fieldErrors = Object.entries(errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ');
+      return response.status(422).json({
+        message: fieldErrors || createErr?.message || "遠端帳號創建失敗，請檢查輸入資料。",
+        code: "FLEXISIP_VALIDATION_ERROR",
       });
     }
 
@@ -6412,14 +6425,26 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: flexisipCreateAccount 失敗: status=${e?.status}, message=${e?.message}`);
       }
 
-      // 422 username already taken → accounts_tombstones 保留，前端提示用戶
+      // 422: 区分 username taken vs 其他校验错误
       if (!flexisipAccountId && createErr?.status === 422) {
-        console.log(`[batch] ${realUsername}: 422 username taken（accounts_tombstones）`);
-        results.push({
-          username: realUsername, sipUri, success: false,
-          errorCode: "FLEXISIP_USERNAME_TOMBSTONED",
-          message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
-        });
+        const errs422 = createErr?.responseBody?.errors || {};
+        const isUsernameTaken = errs422.username && errs422.username.some(m => /already.*taken|has already/i.test(m));
+        if (isUsernameTaken) {
+          console.log(`[batch] ${realUsername}: 422 username taken（accounts_tombstones）`);
+          results.push({
+            username: realUsername, sipUri, success: false,
+            errorCode: "FLEXISIP_USERNAME_TOMBSTONED",
+            message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
+          });
+        } else {
+          const fieldErrors = Object.entries(errs422).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ');
+          console.log(`[batch] ${realUsername}: 422 validation error:`, fieldErrors);
+          results.push({
+            username: realUsername, sipUri, success: false,
+            errorCode: "FLEXISIP_VALIDATION_ERROR",
+            message: fieldErrors || (createErr?.message || 'Flexisip 校验失败').substring(0, 200),
+          });
+        }
         failed++;
         continue;
       }
