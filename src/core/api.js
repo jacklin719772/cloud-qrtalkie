@@ -6,7 +6,13 @@ export function createApiClient({ apiBaseUrl, getAuthToken }) {
 
     const response = await fetch(`${apiBaseUrl}${path}`, { ...options, headers });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.message || "请求失败，请稍后重试。");
+    if (!response.ok) {
+      const err = new Error(result.message || "请求失败，请稍后重试。");
+      err.code = result.code;
+      err.status = response.status;
+      err.data = result;
+      throw err;
+    }
     return result;
   }
 

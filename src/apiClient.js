@@ -27,8 +27,13 @@ apiClient.interceptors.response.use(
       sessionStorage.removeItem('qrtalkieAdminToken');
       window.location.reload(); // 登入過期，重整頁面讓 App.jsx 將使用者導回首頁
     }
-    const errorMessage = error.response?.data?.message || error.message || '發生未知的錯誤';
-    return Promise.reject(new Error(errorMessage));
+    const data = error.response?.data || {};
+    const errorMessage = data.message || error.message || '發生未知的錯誤';
+    const err = new Error(errorMessage);
+    err.code = data.code;
+    err.status = error.response?.status;
+    err.data = data;
+    return Promise.reject(err);
   }
 );
 
