@@ -396,19 +396,26 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         reason: '管理員重新創建同名帳號',
       });
       if (!releaseResult?.released) {
-        setFormMessage({ type: 'error', text: '釋放失敗：該用戶名保留不存在。' });
-        setIsSaving(false);
-        return;
+        // tombstone 可能已被之前的彻底删除释放，直接尝试创建
+        console.log('Tombstone release returned not-found, retrying create anyway');
       }
-      // 重新提交创建
-      await apiClient.post('/admin/sip-accounts', formData);
-      setFormMessage({ type: 'success', text: '帳號創建成功！' });
-      setTimeout(async () => {
-        setViewMode('list');
-        setFormData(emptyAccountForm);
-        setEditingOriginal(null);
-        await loadAccounts();
-      }, 800);
+      // 重试创建
+      try {
+        await apiClient.post('/admin/sip-accounts', formData);
+        setFormMessage({ type: 'success', text: '帳號創建成功！' });
+        setTimeout(async () => {
+          setViewMode('list');
+          setFormData(emptyAccountForm);
+          setEditingOriginal(null);
+          await loadAccounts();
+        }, 800);
+      } catch (createErr) {
+        if (createErr.code === 'FLEXISIP_USERNAME_TOMBSTONED') {
+          setFormMessage({ type: 'error', text: '釋放失敗，該用戶名仍被保留，請聯繫管理員。' });
+        } else {
+          setFormMessage({ type: 'error', text: createErr.message || '創建失敗' });
+        }
+      }
     } catch (err) {
       setFormMessage({ type: 'error', text: err.message || '操作失敗' });
     } finally {
