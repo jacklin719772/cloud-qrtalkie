@@ -11,7 +11,8 @@ export default function Landing({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [verificationUrl, setVerificationUrl] = useState(''); // 持久显示验证链接
+  const [registeredEmail, setRegisteredEmail] = useState(''); // 记住注册邮箱用于重发验证
+  const [isResending, setIsResending] = useState(false);
   
   // 新增：法律條款彈窗狀態
   const [legalModal, setLegalModal] = useState({
@@ -79,7 +80,7 @@ export default function Landing({ onLogin }) {
   const changeMode = (mode) => {
     setAuthMode(mode);
     clearMessages();
-    setVerificationUrl('');
+    setRegisteredEmail('');
     if (mode !== 'reset') {
       setResetToken('');
       if (new URLSearchParams(window.location.search).get('resetPasswordToken')) {
@@ -179,13 +180,17 @@ export default function Landing({ onLogin }) {
       const result = await apiClient.post('/auth/register', { companyName, email, password, confirmPassword });
       showTimedSuccess(result.message || '註冊成功，請前往信箱完成驗證。');
       if (result.devVerificationUrl) {
-        setVerificationUrl(result.devVerificationUrl);
+        setRegisteredEmail(email);
       }
       e.target.reset();
     } catch (error) {
-      const serverMessage = error.response?.data?.message || error.message;
-      showTimedError(serverMessage || '註冊失敗，請使用系統內未註冊的電子郵件或稍後再試。');
-    } finally {
+      const serverData = error.response?.data || {};
+      if (serverData.code === 'EMAIL_UNVERIFIED') {
+        setRegisteredEmail(serverData.email || email);
+        clearMessages();
+      } else {
+        showTimedError(serverData.message || '註冊失敗，請使用系統內未註冊的電子郵件或稍後再試。');
+      } finally {
       setIsLoading(false);
     }
   };
@@ -253,6 +258,20 @@ export default function Landing({ onLogin }) {
       showTimedError(serverMessage || '無法重置密碼，請稍後再試。');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 重发验证邮件
+  const handleResendVerification = async () => {
+    if (!registeredEmail) return;
+    setIsResending(true);
+    try {
+      const result = await apiClient.post('/auth/resend-verification', { email: registeredEmail });
+      showTimedSuccess(result.message || '驗證郵件已重新發送。');
+    } catch (error) {
+      showTimedError(error.response?.data?.message || '重新發送失敗，請稍後再試。');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -364,13 +383,40 @@ export default function Landing({ onLogin }) {
               <button type="submit" className="primary-btn full" disabled={isLoading}>
                 {isLoading ? '註冊中...' : '註冊並驗證電子郵件'}
               </button>
-              {verificationUrl && (
+              {registeredEmail && (
                 <div style={{ marginTop: '16px', padding: '14px 16px', backgroundColor: '#065f46', borderRadius: '8px', border: '1px solid #059669' }}>
-                  <p style={{ margin: '0 0 8px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 註冊成功！點擊下方連結完成驗證：</p>
-                  <a href={verificationUrl} target="_blank" rel="noreferrer" style={{ color: '#fbbf24', fontSize: '13px', wordBreak: 'break-all', textDecoration: 'underline' }}>
-                    {verificationUrl}
-                  </a>
-                  <p style={{ margin: '8px 0 0', color: '#6ee7b7', fontSize: '11px' }}>若未收到郵件，可直接點擊上方連結完成驗證。</p>
+                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 註冊成功！驗證郵件已發送至 {registeredEmail}</p>
+                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '12px' }}>若未收到郵件，可點擊下方按鈕重新發送。</p>
+                  <button type="button" onClick={handleResendVerification} disabled={isResending}
+                    style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#059669', color: '#fff', border: 'none', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
+                    {isResending ? '發送中...' : '重新發送驗證郵件'}
+                  </button>
+                  {errorMessage && <p style={{ margin: '10px 0 0', color: '#fca5a5', fontSize: '12px' }}>{errorMessage}</p>}
+                  {successMessage && <p style={{ margin: '10px 0 0', color: '#6ee7b7', fontSize: '12px' }}>{successMessage}</p>}
+                </div>
+              )}
+              {!registeredEmail && errorMessage && errorMessage.includes('尚未驗證') && (
+                <div style={{ marginTop: '16px', padding: '14px 16px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+                  <p style={{ margin: '0 0 10px', color: '#fbbf24', fontSize: '13px' }}>&#9888; {errorMessage}</p>
+                  <button type="button" onClick={async () => {
+                    const emailInput = document.querySelector('#signup-form input[name="email"]');
+                    const email = emailInput?.value?.trim();
+                    if (!email) return;
+                    setRegisteredEmail(email);
+                    clearMessages();
+                    setIsResending(true);
+                    try {
+                      const res = await apiClient.post('/auth/resend-verification', { email });
+                      showTimedSuccess(res.message || '驗證郵件已重新發送。');
+                    } catch (e) {
+                      showTimedError(e.response?.data?.message || '發送失敗');
+                    } finally {
+                      setIsResending(false);
+                    }
+                  }}
+                    style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#f59e0b', color: '#111827', border: 'none', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
+                    重新發送驗證郵件
+                  </button>
                 </div>
               )}
               <label className="terms-consent">

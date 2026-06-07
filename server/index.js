@@ -713,11 +713,20 @@ app.post("/api/auth/register", async (request, response) => {
     connection = await pool.getConnection();
 
     const existingUsers = await connection.query(
-      `SELECT id FROM admin_users WHERE email = ? LIMIT 1`,
+      `SELECT id, status FROM admin_users WHERE email = ? LIMIT 1`,
       [email],
     );
     if (existingUsers.length > 0) {
-      return response.status(409).json({ message: "此電子郵件已被註冊，請使用系統內未註冊的電子郵件或直接登入。" });
+      const existing = existingUsers[0];
+      if (existing.status === 'active') {
+        return response.status(409).json({ message: "此電子郵件已被註冊，請直接登入。" });
+      }
+      // 未验证状态：返回特殊代码，前端引导用户重发验证邮件
+      return response.status(409).json({
+        message: "此電子郵件已註冊但尚未驗證，是否重新發送驗證郵件？",
+        code: "EMAIL_UNVERIFIED",
+        email,
+      });
     }
 
     await connection.beginTransaction();
@@ -1012,6 +1021,59 @@ app.post("/api/auth/logout", requireAdmin, async (request, response) => {
   } catch (error) {
     console.error(error);
     return response.status(500).json({ message: "退出系統失敗，請稍後再試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/auth/resend-verification - 重发邮箱验证邮件
+app.post("/api/auth/resend-verification", async (request, response) => {
+  const email = normalizeEmail(request.body.email);
+  if (!isValidEmail(email)) {
+    return response.status(400).json({ message: "請輸入有效的電子郵件地址。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT id, status FROM admin_users WHERE email = ? LIMIT 1`,
+      [email],
+    );
+    const admin = rows[0];
+
+    if (!admin) {
+      return response.status(404).json({ message: "此郵箱尚未註冊。" });
+    }
+    if (admin.status === 'active') {
+      return response.status(409).json({ message: "此郵箱已驗證，請直接登入。" });
+    }
+
+    // 生成新 token
+    const { token, tokenHash } = createEmailToken();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    // 废弃旧 token
+    await connection.query(
+      `UPDATE email_verification_tokens SET used_at = CURRENT_TIMESTAMP WHERE admin_user_id = ? AND used_at IS NULL`,
+      [Number(admin.id)],
+    );
+    // 创建新 token
+    await connection.query(
+      `INSERT INTO email_verification_tokens (admin_user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
+      [Number(admin.id), tokenHash, expiresAt],
+    );
+
+    const verificationUrl = `${appUrl}/?verifyEmailToken=${encodeURIComponent(token)}`;
+    await queueVerificationEmail(connection, { email, verificationUrl });
+
+    return response.json({
+      message: "驗證郵件已重新發送，請檢查您的郵箱。",
+      devVerificationUrl: verificationUrl,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({ message: "重新發送驗證郵件失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
