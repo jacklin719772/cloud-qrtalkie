@@ -106,7 +106,7 @@ export default function TenantDashboard({ onNavigate }) {
         .td-section { margin-bottom: 16px; }
         .td-section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: #f3f4f6; }
         .td-num { width: 24px; height: 24px; border-radius: 7px; background: #3b82f6; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-        .td-card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; box-shadow: none; }
+        .td-card { background: #1a2332; border: 1px solid #2d3a4a; border-radius: 10px; }
         .td-tenant-card { padding: 22px; display: grid; grid-template-columns: 1fr 1px 320px; gap: 24px; align-items: center; }
         .td-logo-box { width: 110px; height: 110px; border-radius: 14px; background: #1a2332; display: flex; align-items: center; justify-content: center; font-size: 42px; }
         .td-divider { height: 100%; background: #1f2937; width: 1px; }
@@ -115,7 +115,7 @@ export default function TenantDashboard({ onNavigate }) {
         .td-meta { line-height: 2; color: #9ca3af; font-size: 13px; }
         .td-contact { line-height: 2.4; font-size: 13px; color: #d1d5db; }
         .td-grid-2 { display: grid; grid-template-columns: 360px 1fr; gap: 14px; }
-        .td-plan { padding: 22px; background: #111827; border-color: #f59e0b; }
+        .td-plan { padding: 22px; background: #1a2332; border-color: #f59e0b; }
         .td-plan-name { font-size: 15px; font-weight: 600; margin: 10px 0 18px; color: #f3f4f6; }
         .td-btn { border: 1px solid #374151; background: #1f2937; color: #93c5fd; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
         .td-btn:hover { background: #1e293b; }
@@ -144,7 +144,7 @@ export default function TenantDashboard({ onNavigate }) {
         .td-metric.purple .td-m-value { color: #8b5cf6; }
         .td-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
         .td-donut { width: 120px; height: 120px; border-radius: 50%; position: relative; margin: 10px auto; }
-        .td-donut-inner { position: absolute; inset: 28px; background: #111827; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; color: #e5e7eb; }
+        .td-donut-inner { position: absolute; inset: 28px; background: #1a2332; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; color: #e5e7eb; }
         .td-spark { height: 70px; background: linear-gradient(180deg,rgba(36,119,255,.12),transparent); border-radius: 10px; position: relative; margin-top: 10px; overflow: hidden; }
         .td-spark:before { content: ""; position: absolute; left: 8px; right: 8px; top: 38px; height: 3px; background: linear-gradient(90deg,#8ab6ff,#2477ff); transform: skewY(-16deg); border-radius: 99px; }
         .td-list { margin: 0; padding: 0; list-style: none; }
@@ -152,7 +152,7 @@ export default function TenantDashboard({ onNavigate }) {
         .td-list li:last-child { border-bottom: 0; }
         .td-wide-metrics { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 12px; }
         .td-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .td-chart { border: 1px solid #1f2937; border-radius: 12px; padding: 14px; background: #111827; }
+        .td-chart { border: 1px solid #1f2937; border-radius: 12px; padding: 14px; background: #1a2332; }
         .td-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
         .td-table th, .td-table td { text-align: left; padding: 10px; border-bottom: 1px solid #1f2937; color: #d1d5db; }
         .td-table th { color: #9ca3af; font-weight: 500; background: #1a2332; }
