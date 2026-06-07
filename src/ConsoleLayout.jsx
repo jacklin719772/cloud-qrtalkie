@@ -688,6 +688,7 @@ export default function ConsoleLayout({ onLogout }) {
         onChangePassword={() => setShowChangePassword(true)}
         isAdmin={identity?.admin?.accountType === 'platform'}
         isTenantAdmin={identity?.admin?.accountType === 'tenant'}
+        onNavigate={(view) => setCurrentView(view)}
       />
 
       <Sidebar

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Menu, User, Key, LogOut, ClipboardList } from 'lucide-react';
+import AdminTodoList from './AdminTodoList';
 
 function getInitials(name) {
   return String(name || 'U')
@@ -24,12 +25,12 @@ export default function Topbar({
   onMarkAllRead,
   isAdmin = false,
   isTenantAdmin = false,
+  onNavigate,
 }) {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isTodoOpen, setIsTodoOpen] = useState(false);
   const userMenuRef = useRef(null);
-  const todoRef = useRef(null);
   const messageCount = messages.length;
 
   useEffect(() => {
@@ -38,13 +39,6 @@ export default function Topbar({
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, [isUserMenuOpen]);
-
-  useEffect(() => {
-    if (!isTodoOpen) return;
-    const h = (e) => { if (!todoRef.current?.contains(e.target)) setIsTodoOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [isTodoOpen]);
 
   return (
     <header className="console-topbar">
@@ -64,7 +58,7 @@ export default function Topbar({
       <div className="console-user" style={{ position: 'relative' }} ref={userMenuRef}>
         <div className="console-message-wrap">
           {(isAdmin || isTenantAdmin) && (
-            <div style={{ position: 'relative' }} ref={todoRef}>
+            <>
               <button
                 className="console-message-btn"
                 type="button"
@@ -75,17 +69,13 @@ export default function Topbar({
               >
                 <ClipboardList size={20} aria-hidden="true" />
               </button>
-              {isTodoOpen && (
-                <div className="console-message-popover" role="menu" style={{ right: 0 }}>
-                  <div className="console-message-head">待辦事項</div>
-                  <div className="console-message-list" style={{ padding: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>
-                      {isAdmin ? '平台管理員待辦事項功能即將推出' : '租戶管理員待辦事項功能即將推出'}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+              <AdminTodoList
+                isOpen={isTodoOpen}
+                onClose={() => setIsTodoOpen(false)}
+                onNavigate={onNavigate}
+                role={isAdmin ? 'platform' : 'tenant'}
+              />
+            </>
           )}
           <button
             className="console-message-btn"
