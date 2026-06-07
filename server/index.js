@@ -15,6 +15,16 @@ import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombs
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
 import {
+  FreepbxApiError,
+  addExtension as freepbxAddExtension,
+  applyConfigAndWait as freepbxApplyConfigAndWait,
+  fetchExtension as freepbxFetchExtension,
+  getExtensionInputSchema as freepbxGetExtensionInputSchema,
+  updateExtension as freepbxUpdateExtension,
+} from "./freepbxApiClient.js";
+import { verifyPjsipExtension } from "./asteriskCommandService.js";
+import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
+import {
   FlexisipAccountManagerError,
   searchAccountBySip,
   createAccount as flexisipCreateAccount,
@@ -12531,6 +12541,192 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
   } catch (error) {
     console.error("Failed to clean logs:", error);
     return response.status(500).json({ message: "清理日誌失敗：" + (error.message || "") });
+  }
+});
+
+// POST /api/pbx/webrtc-accounts - phase-1 standalone FreePBX/Incredible PBX basic PJSIP account test.
+app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => {
+  // TODO: keep this endpoint restricted to trusted SaaS platform administrators before production use.
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平台管理員可以创建PBX测试账号。" });
+  }
+
+  const extension = String(request.body?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC账号必须为纯数字",
+      },
+    });
+  }
+
+  const email = sanitizeString(request.body?.email || `${extension}@example.com`, 160);
+  if (!isValidEmail(email)) {
+    return response.status(400).json({
+      success: false,
+      error: {
+        code: "INVALID_WEBRTC_EMAIL",
+        message: "邮箱格式无效。",
+      },
+    });
+  }
+
+  try {
+    const schema = await freepbxGetExtensionInputSchema();
+    const {
+      displayName,
+      addPayload,
+      updatePayload,
+      webrtcConfig,
+      unsupportedByGraphql,
+      appliedFieldMappings,
+    } = buildFreepbxWebrtcExtensionPayloads(extension, email, schema);
+
+    const existing = await freepbxFetchExtension(extension);
+    if (existing) {
+      return response.status(409).json({
+        success: false,
+        error: {
+          code: "FREEPBX_EXTENSION_ALREADY_EXISTS",
+          message: "该WebRTC账号已存在",
+        },
+      });
+    }
+
+    const createResult = await freepbxAddExtension(addPayload);
+    if (!createResult?.status) {
+      return response.status(502).json({
+        success: false,
+        error: {
+          code: "FREEPBX_EXTENSION_CREATE_FAILED",
+          message: createResult?.message || "FreePBX创建基础PJSIP分机失败",
+        },
+      });
+    }
+
+    let pjsipPasswordConfigured = false;
+    let passwordUpdateMessage = null;
+    try {
+      const updateResult = await freepbxUpdateExtension(extension, updatePayload);
+      pjsipPasswordConfigured = Boolean(updateResult?.status);
+      passwordUpdateMessage = updateResult?.message || null;
+    } catch (error) {
+      passwordUpdateMessage = "PJSIP注册密码或WebRTC参数更新失败。";
+      console.warn("FreePBX extension WebRTC update failed:", {
+        extension,
+        code: error?.code,
+        status: error?.status,
+        message: error?.message,
+      });
+    }
+    if (!pjsipPasswordConfigured) {
+      return response.status(502).json({
+        success: false,
+        error: {
+          code: "FREEPBX_EXTENSION_WEBRTC_UPDATE_FAILED",
+          message: passwordUpdateMessage || "PJSIP注册密码或WebRTC参数更新失败。",
+        },
+        data: {
+          extension,
+          tech: "pjsip",
+          createdInFreepbx: true,
+          pjsipPasswordConfigured: false,
+          freepbxWebrtcFieldsUpdated: false,
+          passwordUpdateMessage,
+          unsupportedByGraphql,
+        },
+      });
+    }
+
+    const applyConfig = await freepbxApplyConfigAndWait();
+    if (!applyConfig.success) {
+      return response.status(502).json({
+        success: false,
+        error: {
+          code: "APPLY_CONFIG_FAILED",
+          message: applyConfig.message || "FreePBX Apply Config failed.",
+        },
+        data: {
+          extension,
+          tech: "pjsip",
+          createdInFreepbx: true,
+          pjsipPasswordConfigured: true,
+          freepbxWebrtcFieldsUpdated: appliedFieldMappings.length > 0,
+          passwordUpdateMessage,
+          displayName,
+          webrtcConfig,
+          appliedFieldMappings,
+          unsupportedByGraphql,
+          applyConfig,
+        },
+      });
+    }
+
+    const asterisk = await verifyPjsipExtension(extension, webrtcConfig);
+    return response.json({
+      success: true,
+      data: {
+        extension,
+        tech: "pjsip",
+        displayName,
+        createdInFreepbx: true,
+        pjsipPasswordConfigured,
+        freepbxWebrtcFieldsUpdated: appliedFieldMappings.length > 0,
+        passwordUpdateMessage,
+        webrtcConfig,
+        appliedFieldMappings,
+        unsupportedByGraphql,
+        applyConfig,
+        applyConfigSuccess: Boolean(applyConfig.success),
+        verifiedInAsterisk: Boolean(asterisk.verified),
+        asterisk: {
+          endpointExists: Boolean(asterisk.endpointExists),
+          authExists: Boolean(asterisk.authExists),
+          aorExists: Boolean(asterisk.aorExists),
+          webrtcChecks: asterisk.webrtcChecks || {},
+          unsupportedOrUnverified: asterisk.unsupportedOrUnverified || [],
+          failedChecks: asterisk.failedChecks || [],
+          details: asterisk.details,
+        },
+        message: asterisk.verified
+          ? "WebRTC基础账号已创建，请登录Incredible PBX后台确认。"
+          : asterisk.endpointExists && asterisk.authExists && asterisk.aorExists
+            ? "账号已创建并已执行 Apply Config，endpoint/auth/aor 已存在，但 WebRTC 关键参数未通过运行态检查。"
+            : "账号已创建并已执行 Apply Config，但 Asterisk runtime 暂未验证到 endpoint/auth/aor，请手工检查。",
+      },
+    });
+  } catch (error) {
+    if (error instanceof FreepbxApiError) {
+      console.error("FreePBX WebRTC basic account request failed:", {
+        extension,
+        code: error.code,
+        status: error.status,
+        message: error.message,
+      });
+      return response.status(502).json({
+        success: false,
+        error: {
+          code: error.code || "FREEPBX_API_ERROR",
+          message: error.message || "FreePBX API请求失败",
+          status: error.status || undefined,
+          responseBody: error.responseBody || undefined,
+        },
+      });
+    }
+
+    console.error("Failed to create FreePBX WebRTC basic account:", {
+      extension,
+      message: error?.message || String(error),
+    });
+    return response.status(500).json({
+      success: false,
+      error: {
+        code: "FREEPBX_WEBRTC_ACCOUNT_CREATE_FAILED",
+        message: "WebRTC基础账号创建失败。",
+      },
+    });
   }
 });
 
