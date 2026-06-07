@@ -13177,7 +13177,7 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
     // Ecard counts
     const [ecardTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ?", [tenantId]);
     const [ecardActive] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ? AND status = 'active'", [tenantId]);
-    const [ecardConfigured] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ? AND ecard_data_json IS NOT NULL", [tenantId]);
+    const [ecardConfigured] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ? AND card_data_json IS NOT NULL", [tenantId]);
     const ecardTotalCount = Number(ecardTotal.cnt);
     const ecardActiveCount = Number(ecardActive.cnt);
     const ecardConfiguredCount = Number(ecardConfigured.cnt);
