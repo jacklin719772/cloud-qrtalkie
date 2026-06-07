@@ -31,7 +31,20 @@ export default function Topbar({
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isTodoOpen, setIsTodoOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const autoShowFired = useRef(false);
   const messageCount = messages.length;
+
+  // 登录时自动显示待办清单
+  useEffect(() => {
+    if (!isAdmin && !isTenantAdmin) return;
+    if (autoShowFired.current) return;
+    const autoShow = localStorage.getItem('qrtalkie_todo_autoshow') !== 'false';
+    if (autoShow) {
+      autoShowFired.current = true;
+      const timer = setTimeout(() => setIsTodoOpen(true), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [isAdmin, isTenantAdmin]);
 
   useEffect(() => {
     if (!isUserMenuOpen) return;
