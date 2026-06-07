@@ -964,6 +964,30 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
           </form>
         </div>
+
+        {/* Tombstone 釋放確認彈窗（必須在 add/edit return 塊內才能渲染） */}
+        {tombstoneRetry && createPortal(
+          <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
+            <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>用戶名已被保留</h3>
+              </div>
+              <div style={{ padding: '24px' }}>
+                <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: 1.7 }}>
+                  帳號 <strong style={{ color: '#fbbf24' }}>{tombstoneRetry.username}@{tombstoneRetry.domain}</strong> 的用戶名已被刪除保留，無法直接重新創建。
+                </p>
+                <p style={{ margin: '12px 0 0', color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
+                  是否徹底釋放該用戶名後再重新創建帳號？
+                </p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                <button className="ghost-btn" type="button" onClick={() => { setTombstoneRetry(null); setFormMessage({ type: '', text: '' }); }}>取消</button>
+                <button className="primary-btn" type="button" onClick={handleTombstoneReleaseAndRetry}>釋放並創建</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
       </section>
     );
   }
