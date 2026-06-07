@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
 
-export default function ChangePasswordDialog({ onClose, identity }) {
+export default function ChangePasswordDialog({ onClose }) {
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -14,8 +14,7 @@ export default function ChangePasswordDialog({ onClose, identity }) {
     if (form.password !== form.confirmPassword) { setMessage({ type: 'error', text: '兩次輸入的密碼不一致。' }); return; }
     setSaving(true);
     try {
-      const endpoint = identity?.admin?.accountType === 'platform' ? `/platform/admins/${identity.admin.id}` : `/tenant/sip-accounts/${identity?.admin?.id}`;
-      await apiClient.put(endpoint, { password: form.password, confirmPassword: form.confirmPassword, displayName: identity?.admin?.displayName || '' });
+      await apiClient.put('/auth/change-password', { password: form.password, confirmPassword: form.confirmPassword });
       setMessage({ type: 'success', text: '密碼已修改。' });
       setTimeout(onClose, 800);
     } catch (e) {

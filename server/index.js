@@ -1026,6 +1026,34 @@ app.post("/api/auth/logout", requireAdmin, async (request, response) => {
   }
 });
 
+// PUT /api/auth/change-password - 当前登录用户修改自己的密码
+app.put("/api/auth/change-password", requireAdmin, async (request, response) => {
+  const password = String(request.body?.password || "");
+  const confirmPassword = String(request.body?.confirmPassword || "");
+
+  if (!password) return response.status(400).json({ message: "請輸入新密碼。" });
+  if (password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+  if (password !== confirmPassword) return response.status(400).json({ message: "兩次輸入的密碼不一致。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const passwordHash = await hashPassword(password);
+    await connection.query(
+      `UPDATE admin_users SET password_hash = ? WHERE id = ?`,
+      [passwordHash, request.admin.id],
+    );
+    // 清除所有 session，强制重新登录
+    await connection.query(`DELETE FROM admin_sessions WHERE admin_user_id = ?`, [request.admin.id]);
+    return response.json({ message: "密碼已修改，請重新登入。" });
+  } catch (error) {
+    console.error("Failed to change password:", error);
+    return response.status(500).json({ message: "修改密碼失敗，請稍後再試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // POST /api/auth/resend-verification - 重发邮箱验证邮件
 app.post("/api/auth/resend-verification", async (request, response) => {
   const email = normalizeEmail(request.body.email);

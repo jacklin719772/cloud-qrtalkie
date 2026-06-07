@@ -812,7 +812,7 @@ export default function ConsoleLayout({ onLogout }) {
       <LoginEmailDialog ref={loginEmailDialogRef} initialEmail={loginEmailInitialValue} />
       <BillingAddressSyncDialog ref={billingAddressSyncDialogRef} />
 
-      {showChangePassword && <ChangePasswordDialog onClose={() => setShowChangePassword(false)} identity={identity} />}
+      {showChangePassword && <ChangePasswordDialog onClose={() => setShowChangePassword(false)} />}
 
       {showAdminHelp && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'flex-end' }} onClick={() => setShowAdminHelp(false)}>
