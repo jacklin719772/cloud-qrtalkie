@@ -19,10 +19,7 @@ const TASKS = [
 ];
 
 export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
-  const [tasks, setTasks] = useState(() => {
-    const saved = localStorage.getItem('qrtalkie_todo_tasks');
-    return saved ? JSON.parse(saved) : TASKS.map(t => ({ ...t, done: false, checking: true }));
-  });
+  const [tasks, setTasks] = useState(() => TASKS.map(t => ({ ...t, done: false, checking: true })));
   const [autoShow, setAutoShow] = useState(() => {
     return localStorage.getItem('qrtalkie_todo_autoshow') !== 'false';
   });
@@ -53,18 +50,21 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
 
   useEffect(() => {
     if (!isOpen) return;
+    // 每次打开都重新检查所有任务
+    setTasks(TASKS.map(t => ({ ...t, done: false, checking: true })));
     let cancelled = false;
     const run = async () => {
       const updated = await Promise.all(
-        tasks.map(async (t) => {
-          if (!t.checking) return t;
+        TASKS.map(async (t) => {
           const done = await checkTask(t);
           return { ...t, done, checking: false };
         })
       );
       if (!cancelled) {
         setTasks(updated);
-        localStorage.setItem('qrtalkie_todo_tasks', JSON.stringify(updated));
+        // 只缓存 done 状态，不缓存 checking（每次打开都重新检查）
+        const cached = updated.map(({ checking, ...rest }) => rest);
+        localStorage.setItem('qrtalkie_todo_tasks', JSON.stringify(cached));
       }
     };
     run();
