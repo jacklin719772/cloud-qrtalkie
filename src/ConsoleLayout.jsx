@@ -42,7 +42,7 @@ import PlatformDashboard from './PlatformDashboard';
 import TenantDashboard from './TenantDashboard';
 const viewTitles = {
   dashboard: '控制台首頁',
-  users: 'SIP 使用者',
+  users: '租戶概覽',
   registrations: '我的帳號',
   domain: '我的套餐',
   'tenant-account-management': '帳號管理',

@@ -99,36 +99,36 @@ export default function TenantDashboard({ onNavigate }) {
   }, [d.ecards?.list, ecardSortKey, ecardSortDir]);
 
   return (
-    <section className="view active" id="tenant-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none' }}>
+    <section className="view active" id="tenant-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none', background: '#0f172a', padding: '24px' }}>
       <style>{`
         #tenant-dashboard::-webkit-scrollbar { display: none; }
         .td-page { max-width: 1440px; }
         .td-section { margin-bottom: 16px; }
-        .td-section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: #0f172a; }
-        .td-num { width: 24px; height: 24px; border-radius: 7px; background: #2477ff; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-        .td-card { background: #fff; border: 1px solid #e3eaf5; border-radius: 16px; box-shadow: 0 8px 24px rgba(31,48,84,.06); }
+        .td-section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: #f3f4f6; }
+        .td-num { width: 24px; height: 24px; border-radius: 7px; background: #3b82f6; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+        .td-card { background: #111827; border: 1px solid #1f2937; border-radius: 10px; box-shadow: none; }
         .td-tenant-card { padding: 22px; display: grid; grid-template-columns: 1fr 1px 320px; gap: 24px; align-items: center; }
-        .td-logo-box { width: 110px; height: 110px; border-radius: 14px; background: linear-gradient(135deg,#e9f5ff,#eefbf4); display: flex; align-items: center; justify-content: center; font-size: 42px; }
-        .td-divider { height: 100%; background: #e3eaf5; width: 1px; }
-        .td-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #0f172a; }
-        .td-tag { display: inline-block; padding: 3px 8px; border-radius: 12px; background: #eaf7ef; color: #18a969; font-size: 12px; margin-left: 8px; }
-        .td-meta { line-height: 2; color: #6b7890; font-size: 13px; }
-        .td-contact { line-height: 2.4; font-size: 13px; }
+        .td-logo-box { width: 110px; height: 110px; border-radius: 14px; background: #1a2332; display: flex; align-items: center; justify-content: center; font-size: 42px; }
+        .td-divider { height: 100%; background: #1f2937; width: 1px; }
+        .td-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: #f3f4f6; }
+        .td-tag { display: inline-block; padding: 3px 8px; border-radius: 12px; background: #065f46; color: #6ee7b7; font-size: 12px; margin-left: 8px; }
+        .td-meta { line-height: 2; color: #9ca3af; font-size: 13px; }
+        .td-contact { line-height: 2.4; font-size: 13px; color: #d1d5db; }
         .td-grid-2 { display: grid; grid-template-columns: 360px 1fr; gap: 14px; }
-        .td-plan { padding: 22px; background: linear-gradient(135deg,#fffaf0,#fff); border-color: #f7d99b; }
-        .td-plan-name { font-size: 15px; font-weight: 600; margin: 10px 0 18px; }
-        .td-btn { border: 1px solid #bdd4ff; background: #fff; color: #2477ff; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-        .td-btn:hover { background: #f0f6ff; }
+        .td-plan { padding: 22px; background: #111827; border-color: #f59e0b; }
+        .td-plan-name { font-size: 15px; font-weight: 600; margin: 10px 0 18px; color: #f3f4f6; }
+        .td-btn { border: 1px solid #374151; background: #1f2937; color: #93c5fd; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        .td-btn:hover { background: #1e293b; }
         .td-usage-grid { padding: 18px; display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
-        .td-usage-item { border: 1px solid #e3eaf5; border-radius: 12px; padding: 15px; }
-        .td-usage-head { display: flex; justify-content: space-between; color: #6b7890; margin-bottom: 12px; font-size: 12px; }
-        .td-value { font-size: 16px; font-weight: 500; color: #071833; }
-        .td-small { font-size: 12px; color: #6b7890; }
-        .td-progress { height: 7px; background: #edf1f7; border-radius: 99px; overflow: hidden; margin-top: 12px; }
-        .td-bar { height: 100%; background: #2477ff; border-radius: 99px; }
-        .td-bar.green { background: #18a969; }
+        .td-usage-item { border: 1px solid #1f2937; border-radius: 12px; padding: 15px; }
+        .td-usage-head { display: flex; justify-content: space-between; color: #9ca3af; margin-bottom: 12px; font-size: 12px; }
+        .td-value { font-size: 16px; font-weight: 500; color: #e5e7eb; }
+        .td-small { font-size: 12px; color: #9ca3af; }
+        .td-progress { height: 7px; background: #1f2937; border-radius: 99px; overflow: hidden; margin-top: 12px; }
+        .td-bar { height: 100%; background: #3b82f6; border-radius: 99px; }
+        .td-bar.green { background: #22c55e; }
         .td-bar.orange { background: #f59e0b; }
-        .td-bar.purple { background: #7c3aed; }
+        .td-bar.purple { background: #8b5cf6; }
         .td-half { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .td-panel { padding: 18px; }
         .td-metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
@@ -136,28 +136,28 @@ export default function TenantDashboard({ onNavigate }) {
         .td-metrics-5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
         .td-metric.small { padding: 10px; }
         .td-metric.small .td-m-value { font-size: 14px; }
-        .td-metric { border: 1px solid #e3eaf5; border-radius: 12px; padding: 14px; background: #fbfdff; }
-        .td-metric .td-m-label { color: #6b7890; margin-bottom: 8px; font-size: 12px; }
-        .td-metric .td-m-value { font-size: 16px; font-weight: 500; color: #071833; }
-        .td-metric.green .td-m-value { color: #18a969; }
+        .td-metric { border: 1px solid #1f2937; border-radius: 12px; padding: 14px; background: #1a2332; }
+        .td-metric .td-m-label { color: #9ca3af; margin-bottom: 8px; font-size: 12px; }
+        .td-metric .td-m-value { font-size: 16px; font-weight: 500; color: #e5e7eb; }
+        .td-metric.green .td-m-value { color: #22c55e; }
         .td-metric.orange .td-m-value { color: #f59e0b; }
-        .td-metric.purple .td-m-value { color: #7c3aed; }
+        .td-metric.purple .td-m-value { color: #8b5cf6; }
         .td-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
         .td-donut { width: 120px; height: 120px; border-radius: 50%; position: relative; margin: 10px auto; }
-        .td-donut-inner { position: absolute; inset: 28px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; }
+        .td-donut-inner { position: absolute; inset: 28px; background: #111827; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; color: #e5e7eb; }
         .td-spark { height: 70px; background: linear-gradient(180deg,rgba(36,119,255,.12),transparent); border-radius: 10px; position: relative; margin-top: 10px; overflow: hidden; }
         .td-spark:before { content: ""; position: absolute; left: 8px; right: 8px; top: 38px; height: 3px; background: linear-gradient(90deg,#8ab6ff,#2477ff); transform: skewY(-16deg); border-radius: 99px; }
         .td-list { margin: 0; padding: 0; list-style: none; }
-        .td-list li { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #eef2f8; font-size: 13px; }
+        .td-list li { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #1f2937; font-size: 13px; color: #d1d5db; }
         .td-list li:last-child { border-bottom: 0; }
         .td-wide-metrics { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 12px; }
         .td-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .td-chart { border: 1px solid #e3eaf5; border-radius: 12px; padding: 14px; background: #fff; }
+        .td-chart { border: 1px solid #1f2937; border-radius: 12px; padding: 14px; background: #111827; }
         .td-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-        .td-table th, .td-table td { text-align: left; padding: 10px; border-bottom: 1px solid #eef2f8; }
-        .td-table th { color: #6b7890; font-weight: 500; background: #f8fbff; }
-        .td-status { padding: 3px 8px; border-radius: 99px; background: #eaf7ef; color: #18a969; font-size: 12px; }
-        .td-status.red { background: #feecec; color: #ef4444; }
+        .td-table th, .td-table td { text-align: left; padding: 10px; border-bottom: 1px solid #1f2937; color: #d1d5db; }
+        .td-table th { color: #9ca3af; font-weight: 500; background: #1a2332; }
+        .td-status { padding: 3px 8px; border-radius: 99px; background: #065f46; color: #6ee7b7; font-size: 12px; }
+        .td-status.red { background: #7f1d1d; color: #fca5a5; }
         .td-building-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 12px; }
         .td-building-bottom { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 12px; }
         .td-circle-rate { width: 90px; height: 90px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: auto; font-size: 18px; font-weight: 500; border: 4px solid #18a969; color: #18a969; }
@@ -197,7 +197,7 @@ export default function TenantDashboard({ onNavigate }) {
           <div className="td-grid-2">
             <div className="td-card td-plan">
               <div className="td-small">当前套餐</div>
-              <div className="td-plan-name">{d.plan?.planName || '未订购'} <span className="td-tag" style={{ background: d.plan?.status === 'active' ? '#eaf7ef' : '#feecec', color: d.plan?.status === 'active' ? '#18a969' : '#ef4444' }}>{d.plan?.status === 'active' ? '正常' : '已过期'}</span></div>
+              <div className="td-plan-name">{d.plan?.planName || '未订购'} <span className="td-tag" style={{ background: d.plan?.status === 'active' ? '#065f46' : '#7f1d1d', color: d.plan?.status === 'active' ? '#6ee7b7' : '#fca5a5' }}>{d.plan?.status === 'active' ? '正常' : '已过期'}</span></div>
               {d.plan ? (
                 <div className="td-meta">
                   账号数量：{d.plan.accountQuantity ?? '-'}<br />
