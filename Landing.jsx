@@ -190,7 +190,8 @@ export default function Landing({ onLogin }) {
         clearMessages();
       } else {
         showTimedError(serverData.message || '註冊失敗，請使用系統內未註冊的電子郵件或稍後再試。');
-      } finally {
+      }
+    } finally {
       setIsLoading(false);
     }
   };
