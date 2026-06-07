@@ -403,26 +403,25 @@ export default function Landing({ onLogin }) {
 
       {/* 動態渲染的法律條款彈窗 */}
       {legalModal.isOpen && (
-        <div className="modal-backdrop" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>
-          <div className="dialog-card legal-card" onClick={e => e.stopPropagation()}>
-            <div className="panel-head">
-              <h2>{legalModal.title}</h2>
-              <button className="icon-btn" type="button" title="關閉" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>x</button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>
+          <div style={{ background: '#111827', borderRadius: '10px', width: 'min(560px, 90vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ flexShrink: 0, padding: '18px 24px', borderBottom: '1px solid #1f2937', background: '#1a2332', borderRadius: '10px 10px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>{legalModal.title}</h2>
+              <button style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }} type="button" title="關閉" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>&#10005;</button>
             </div>
-            <div className="legal-content" style={{ padding: '16px 0' /* Removed lineHeight: '1.6' here, as it will be handled by .policy-markdown-preview */ }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {legalModal.isLoading ? (
-                <p style={{ color: '#64748b', textAlign: 'center' }}>內容載入中...</p>
+                <p style={{ color: '#9ca3af', textAlign: 'center' }}>內容載入中...</p>
               ) : (
-                // 使用 ReactMarkdown 渲染 Markdown 内容
-                <div className="policy-markdown-preview">
+                <div style={{ color: '#d1d5db', fontSize: '14px', lineHeight: 1.8, overflowWrap: 'break-word' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {legalModal.content || ''}
                   </ReactMarkdown>
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button className="primary-btn" type="button" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>我知道了</button>
+            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 10px 10px' }}>
+              <button style={{ padding: '8px 28px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }} type="button" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>我知道了</button>
             </div>
           </div>
         </div>
