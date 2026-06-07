@@ -620,9 +620,9 @@ const TenantAccountManagement = forwardRef(({
     return (
       <section className="view active settings-form-page" id="tenant-account-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#0f172a', fontWeight: 600 }}>帳號詳情</h3>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
                 返回列表
               </button>
@@ -726,10 +726,10 @@ const TenantAccountManagement = forwardRef(({
         .dropdown-menu-portal {
           position: fixed;
           width: 150px;
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #1a2332;
+          border: 1px solid #1f2937;
           border-radius: 6px;
-          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
           padding: 6px;
           z-index: 2147483647;
         }
@@ -738,7 +738,7 @@ const TenantAccountManagement = forwardRef(({
           width: 100%;
           border: 0;
           background: transparent;
-          color: #334155;
+          color: #d1d5db;
           text-align: left;
           border-radius: 4px;
           padding: 8px 10px;
@@ -746,11 +746,11 @@ const TenantAccountManagement = forwardRef(({
           cursor: pointer;
         }
         .dropdown-menu-portal .dropdown-item:hover {
-          background: #f1f5f9;
-          color: #0f172a;
+          background: #1f2937;
+          color: #f3f4f6;
         }
         .dropdown-menu-portal .dropdown-item:disabled {
-          color: #94a3b8;
+          color: #6b7280;
           cursor: not-allowed;
           background: transparent;
         }
@@ -768,7 +768,7 @@ const TenantAccountManagement = forwardRef(({
           cursor: pointer;
         }
         .tenant-account-sort-button span:last-child {
-          color: #94a3b8;
+          color: #6b7280;
           font-size: 12px;
         }
         #tenant-account-management .account-toolbar {
@@ -778,10 +778,10 @@ const TenantAccountManagement = forwardRef(({
           gap: 12px;
           padding: 22px 24px;
           margin-bottom: 24px;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+          box-shadow: none;
         }
         #tenant-account-management .account-filter-left {
           display: flex;
@@ -802,7 +802,7 @@ const TenantAccountManagement = forwardRef(({
           left: 16px;
           top: 50%;
           transform: translateY(-50%);
-          color: #94a3b8;
+          color: #6b7280;
           pointer-events: none;
         }
         #tenant-account-management .account-search input {
@@ -810,16 +810,16 @@ const TenantAccountManagement = forwardRef(({
           height: 46px;
           padding: 0 16px 0 44px;
           border-radius: 9px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #334155;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #d1d5db;
           font-size: 12px;
           outline: none;
           box-sizing: border-box;
         }
-        #tenant-account-management .account-search input::placeholder { color: #94a3b8; }
+        #tenant-account-management .account-search input::placeholder { color: #6b7280; }
         #tenant-account-management .account-search input:focus {
-          border-color: #2563eb;
+          border-color: #60a5fa;
           box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
         }
         #tenant-account-management .account-status-select,
@@ -829,9 +829,9 @@ const TenantAccountManagement = forwardRef(({
           width: 120px;
           padding: 0 12px;
           border-radius: 9px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #334155;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #d1d5db;
           font-size: 12px;
           outline: none;
           cursor: pointer;
@@ -849,9 +849,9 @@ const TenantAccountManagement = forwardRef(({
           height: 34px;
           padding: 0 12px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          color: #475569;
+          background: #1a2332;
+          border: 1px solid #1f2937;
+          color: #9ca3af;
           font-size: 12px;
           display: inline-flex;
           align-items: center;
@@ -860,7 +860,7 @@ const TenantAccountManagement = forwardRef(({
           white-space: nowrap;
         }
         #tenant-account-management .account-stat-pill strong {
-          color: #0f172a;
+          color: #f3f4f6;
           font-size: 12px;
           font-weight: 700;
         }
@@ -869,10 +869,10 @@ const TenantAccountManagement = forwardRef(({
           flex-direction: column;
           flex: 1;
           min-height: 0;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+          box-shadow: none;
           overflow: hidden;
         }
         #tenant-account-management .account-table-wrapper {
@@ -889,12 +889,12 @@ const TenantAccountManagement = forwardRef(({
           table-layout: fixed;
           font-size: 12px;
         }
-        #tenant-account-management .account-table thead { background: #f8fafc; }
+        #tenant-account-management .account-table thead { background: #1a2332; }
         #tenant-account-management .account-table th {
           height: 56px;
           padding: 0 22px;
           text-align: left;
-          color: #475569;
+          color: #9ca3af;
           font-weight: 600;
           border-bottom: 1px solid #e2e8f0;
           white-space: nowrap;
@@ -902,7 +902,7 @@ const TenantAccountManagement = forwardRef(({
         #tenant-account-management .account-table td {
           height: 64px;
           padding: 0 22px;
-          color: #334155;
+          color: #d1d5db;
           border-bottom: 1px solid #e2e8f0;
           white-space: nowrap;
         }
@@ -913,7 +913,7 @@ const TenantAccountManagement = forwardRef(({
           align-items: center;
           justify-content: center;
           border-bottom: 1px solid #e2e8f0;
-          color: #64748b;
+          color: #9ca3af;
         }
         #tenant-account-management .account-table-footer {
           min-height: 74px;
@@ -921,10 +921,10 @@ const TenantAccountManagement = forwardRef(({
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #fff;
+          background: #1a2332;
         }
         #tenant-account-management .account-total {
-          color: #64748b;
+          color: #9ca3af;
           font-size: 12px;
         }
         #tenant-account-management .account-pagination {
@@ -936,9 +936,9 @@ const TenantAccountManagement = forwardRef(({
           height: 38px;
           padding: 0 14px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #475569;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #9ca3af;
           font-size: 11px;
           display: inline-flex;
           align-items: center;
@@ -948,18 +948,18 @@ const TenantAccountManagement = forwardRef(({
           width: 38px;
           height: 38px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #475569;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #9ca3af;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-size: 11px;
         }
         #tenant-account-management .account-page-current {
-          border-color: #2563eb;
-          color: #2563eb;
-          background: #eff6ff;
+          border-color: #60a5fa;
+          color: #60a5fa;
+          background: #1e3a5f;
           font-weight: 600;
         }
         #tenant-account-management .account-page-btn {
@@ -968,25 +968,25 @@ const TenantAccountManagement = forwardRef(({
           line-height: 1;
         }
         #tenant-account-management .account-page-btn:disabled {
-          color: #cbd5e1;
+          color: #4b5563;
           cursor: not-allowed;
-          background: #f8fafc;
+          background: #1a2332;
         }
         #tenant-account-management .account-page-jump {
           display: flex;
           align-items: center;
           gap: 8px;
-          color: #64748b;
+          color: #9ca3af;
           font-size: 11px;
         }
         #tenant-account-management .account-page-input {
           width: 56px;
           height: 36px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
+          border: 1px solid #374151;
           text-align: center;
           outline: none;
-          color: #334155;
+          color: #d1d5db;
           font-size: 11px;
         }
         @media (max-width: 1100px) {
@@ -1034,7 +1034,7 @@ const TenantAccountManagement = forwardRef(({
         <div className="account-table-card">
           <div className="account-table-wrapper">
           <table className="account-table">
-            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#f8fafc' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
               <tr>
                 <th style={{ width: '50px', textAlign: 'center', padding: 0 }}>
                   <input
