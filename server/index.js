@@ -717,7 +717,7 @@ app.post("/api/auth/register", async (request, response) => {
       [email],
     );
     if (existingUsers.length > 0) {
-      return response.status(409).json({ message: "姝ら浕瀛愰兊浠跺凡琚ɑ鍐婏紝璜嬩娇鐢ㄧ郴绲卞収鏈ɑ鍐婄殑闆诲瓙閮典欢鎴栫洿鎺ョ櫥鍏ャ€?" });
+      return response.status(409).json({ message: "此電子郵件已被註冊，請使用系統內未註冊的電子郵件或直接登入。" });
     }
 
     await connection.beginTransaction();
@@ -757,13 +757,13 @@ app.post("/api/auth/register", async (request, response) => {
     await connection.commit();
 
     return response.status(201).json({
-      message: "瑷诲唺鎴愬姛锛岃珛鍓嶅線闆诲瓙閮典欢瀹屾垚椹楄瓑",
+      message: "註冊成功，請前往電子郵件完成驗證。",
       devVerificationUrl: verificationUrl,
     });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "瑷诲唺澶辨晽锛岃珛绋嶅緦鍐嶈│" });
+    return response.status(500).json({ message: "註冊失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -890,7 +890,7 @@ app.post("/api/auth/login", async (request, response) => {
 app.post("/api/auth/forgot-password", async (request, response) => {
   const email = normalizeEmail(request.body.email);
   if (!isValidEmail(email)) {
-    return response.status(400).json({ message: "璜嬭几鍏ユ湁鏁堢殑闆诲瓙閮典欢鍦板潃銆?" });
+    return response.status(400).json({ message: "請輸入有效的電子郵件地址。" });
   }
 
   let connection;
@@ -903,7 +903,7 @@ app.post("/api/auth/forgot-password", async (request, response) => {
 
     const admin = rows[0];
     if (!admin) {
-      return response.status(404).json({ message: "瑭查兊绠变笉瀛樺湪锛岃珛纰鸿獚寰岄噸鏂拌几鍏ャ€?" });
+      return response.status(404).json({ message: "該郵箱不存在，請確認後重新輸入。" });
     }
 
     const { token, tokenHash } = createEmailToken();
@@ -919,13 +919,13 @@ app.post("/api/auth/forgot-password", async (request, response) => {
     const delivery = await queuePasswordResetEmail(connection, { email, resetUrl });
 
     if (!delivery.sent) {
-      return response.status(500).json({ message: "閲嶇疆閮典欢鐧奸€佸け鏁楋紝璜嬬◢寰屽啀瑭︺€?" });
+      return response.status(500).json({ message: "重置郵件發送失敗，請稍後再試。" });
     }
 
-    return response.json({ message: "宸茬櫦閫佸瘑纰奸噸瑷€ｇ祼锛岃珛妾㈡煡鎮ㄧ殑閮电銆?" });
+    return response.json({ message: "已發送密碼重置連結，請檢查您的郵箱。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鐧奸€侀噸缃兊浠讹紝璜嬬◢寰屽啀瑭︺€?" });
+    return response.status(500).json({ message: "無法發送重置郵件，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -938,13 +938,13 @@ app.post("/api/auth/reset-password", async (request, response) => {
   const passwordError = validatePassword(password);
 
   if (!token) {
-    return response.status(400).json({ message: "閲嶇疆閫ｇ祼鐒℃晥锛岃珛閲嶆柊鐢宠珛銆?" });
+    return response.status(400).json({ message: "重置連結無效，請重新申請。" });
   }
   if (passwordError) {
     return response.status(400).json({ message: passwordError });
   }
   if (password !== confirmPassword) {
-    return response.status(400).json({ message: "鍏╂杓稿叆鐨勫瘑纰间笉涓€鑷淬€?" });
+    return response.status(400).json({ message: "兩次輸入的密碼不一致。" });
   }
 
   let connection;
@@ -964,15 +964,15 @@ app.post("/api/auth/reset-password", async (request, response) => {
 
     if (!resetToken || resetToken.used_at) {
       await connection.rollback();
-      return response.status(400).json({ message: "閲嶇疆閫ｇ祼鐒℃晥鎴栧凡浣跨敤锛岃珛閲嶆柊鐢宠珛銆?" });
+      return response.status(400).json({ message: "重置連結無效或已使用，請重新申請。" });
     }
     if (new Date(resetToken.expires_at).getTime() < Date.now()) {
       await connection.rollback();
-      return response.status(400).json({ message: "閲嶇疆閫ｇ祼宸查亷鏈燂紝璜嬮噸鏂扮敵璜嬨€?" });
+      return response.status(400).json({ message: "重置連結已過期，請重新申請。" });
     }
     if (resetToken.status !== 'active') {
       await connection.rollback();
-      return response.status(403).json({ message: "姝ょ鐞嗗摗甯宠櫉灏氭湭鍟熺敤銆?" });
+      return response.status(403).json({ message: "此管理員帳號尚未啟用。" });
     }
 
     const passwordHash = await hashPassword(password);
@@ -991,11 +991,11 @@ app.post("/api/auth/reset-password", async (request, response) => {
     await connection.query(`DELETE FROM admin_sessions WHERE admin_user_id = ?`, [Number(resetToken.admin_user_id)]);
 
     await connection.commit();
-    return response.json({ message: "瀵嗙⒓宸查噸缃紝璜嬩娇鐢ㄦ柊瀵嗙⒓鐧诲叆銆?" });
+    return response.json({ message: "密碼已重置，請使用新密碼登入。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶閲嶇疆瀵嗙⒓锛岃珛绋嶅緦鍐嶈│銆?" });
+    return response.status(500).json({ message: "無法重置密碼，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1008,10 +1008,10 @@ app.post("/api/auth/logout", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
     await connection.query(`DELETE FROM admin_sessions WHERE token_hash = ?`, [hashToken(token)]);
-    return response.json({ message: "宸查€€鍑虹郴绲便€?" });
+    return response.json({ message: "已退出系統。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "閫€鍑虹郴绲卞け鏁楋紝璜嬬◢寰屽啀瑭︺€?" });
+    return response.status(500).json({ message: "退出系統失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1020,7 +1020,7 @@ app.post("/api/auth/logout", requireAdmin, async (request, response) => {
 app.get("/api/auth/verify-email", async (request, response) => {
   const token = String(request.query.token || "");
   if (!token) {
-    return response.status(400).json({ message: "椹楄瓑閫ｇ祼鐒℃晥" });
+    return response.status(400).json({ message: "驗證連結無效" });
   }
 
   let connection;
@@ -1041,7 +1041,7 @@ app.get("/api/auth/verify-email", async (request, response) => {
     const verification = tokens[0];
     if (!verification || verification.used_at) {
       await connection.rollback();
-      return response.status(400).json({ message: "椹楄瓑閫ｇ祼鐒℃晥鎴栧凡浣跨敤" });
+      return response.status(400).json({ message: "驗證連結無效鎴栧凡浣跨敤" });
     }
 
     if (new Date(verification.expires_at).getTime() < Date.now()) {
@@ -1064,11 +1064,11 @@ app.get("/api/auth/verify-email", async (request, response) => {
     );
 
     await connection.commit();
-    return response.json({ message: "闆诲瓙閮典欢椹楄瓑鎴愬姛锛岃珛鐧诲叆" });
+    return response.json({ message: "電子郵件驗證成功，請登入" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "椹楄瓑澶辨晽锛岃珛绋嶅緦鍐嶈│" });
+    return response.status(500).json({ message: "驗證失敗，請稍後再試" });
   } finally {
     if (connection) connection.release();
   }
