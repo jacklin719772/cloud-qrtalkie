@@ -351,7 +351,7 @@ export default function Landing({ onLogin }) {
               <div className="auth-scroll">
                 {errorMessage && <p className="form-message" style={{ color: '#d93025', marginBottom: '1rem' }}>{errorMessage}</p>}
                 {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
-                <label>公司名稱<input name="companyName" placeholder="请输入公司全称或简称" required /></label>
+                <label>公司名稱<input name="companyName" placeholder="請輸入公司全稱或簡稱" required /></label>
                 <label>管理員信箱<input name="email" type="email" placeholder="請輸入正確的郵箱地址" required /></label>
                 <label>密碼<input name="password" type="password" placeholder="至少 8 位字元" required minLength={8} /></label>
                 <label>確認密碼<input name="confirmPassword" type="password" placeholder="再次輸入密碼" required minLength={8} /></label>
