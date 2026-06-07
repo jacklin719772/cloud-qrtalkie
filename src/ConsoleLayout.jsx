@@ -1240,39 +1240,54 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128222; SIP 帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>SIP 帳號管理用於建立和維護 SIP 通訊帳號。每個 SIP 帳號對應一個 SIP 分機，可用於語音通話、視訊通話等通訊服務。管理員可在此批次建立、編輯、分配和刪除 SIP 帳號。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>SIP 帳號管理用於建立和維護 SIP 通訊帳號。每個 SIP 帳號對應一個 SIP 分機，可用於語音通話、視訊通話等通訊服務。管理員可在此批次建立、編輯、分配和刪除 SIP 帳號。所有帳號會同步至服務端。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 SIP 帳號，設定用戶名、密碼、角色、狀態等。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 SIP 帳號，自動遞增用戶名。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 SIP 帳號，設定用戶名、密碼、角色等。若用戶名曾被刪除保留，系統會彈窗詢問是否釋放後重新創建。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 SIP 帳號，自動遞增用戶名。如有「已刪除保留」的帳號，可點擊「釋放並重試」一次性釋放後重新創建。全部成功時彈窗自動關閉。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>導入 CSV</strong> — 從 CSV 檔案批量導入 SIP 帳號。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、密碼、角色等設定。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的 SIP 密碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、郵箱、電話等設定。用戶名和域名不可修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊與服務端同步狀態。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的密碼，同步更新至服務端。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號校驗</strong> — 校驗本地數據與服務端數據是否一致，發現不一致時可手動同步。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量取消分配</strong> — 批次取消帳號與租戶的綁定。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量刪除</strong> — 批次刪除不再使用的帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量刪除</strong> — 批次刪除帳號，彈窗提供兩種模式選擇。（見下方刪除說明）</li>
                 </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#ef4444", fontSize: "14px", marginBottom: "8px" }}>&#9888;&#65039; 刪除操作重要說明（請務必閱讀）</h3>
+                <div style={{ background: "#1e293b", borderRadius: "8px", padding: "16px", border: "1px solid #374151" }}>
+                  <p style={{ color: "#fbbf24", margin: "0 0 12px", fontWeight: 600, fontSize: "14px" }}>刪除帳號將從服務端移除該 SIP 帳號，操作不可逆，請謹慎執行。</p>
+                  <div style={{ marginBottom: "12px" }}>
+                    <div style={{ color: "#fbbf24", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128994; 保留刪除（預設）</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>從服務端刪除帳號，但<strong style={{ color: "#fbbf24" }}>保留該用戶名</strong>。該用戶名將無法再次註冊，防止被他人佔用。日後如需使用同一用戶名，需由超級管理員在資料庫中手動釋放，或透過「徹底刪除」操作釋放。</p>
+                  </div>
+                  <div>
+                    <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128308; 徹底刪除</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>從服務端刪除帳號，同時<strong style={{ color: "#ef4444" }}>永久釋放該用戶名</strong>，允許重新註冊。此操作將清除用戶名的刪除保留記錄，<strong style={{ color: "#ef4444" }}>一旦執行無法恢復</strong>。僅在確定需要重新使用該用戶名時才選擇此選項。</p>
+                  </div>
+                </div>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。新增後不可修改。（必填，純數字）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，預設為 sip.qrtalkie.org。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名</strong> — 來電顯示的名稱，預設與用戶名相同。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。（新增時必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增預設密碼為 12345678）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>手機號碼</strong> — 聯絡電話。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>郵箱</strong> — 聯絡電子郵件。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>手機號碼</strong> — 聯絡電話，需符合國際格式（如 +886912345678），格式不符將不發送至服務端。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>郵箱</strong> — 聯絡電子郵件，預設為「用戶名@域名」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>外部帳號</strong> — 勾選後可設定外部 SIP 中繼參數（用戶名、域名、密碼、Realm、Registrar、Outbound Proxy、通訊協定）。</li>
                 </ul>
               </div>
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code></p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code><br/>帳號校驗：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts/:id/verify</code><br/>釋放保留：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/flexisip/accounts/tombstones/release</code></p>
               </div>
             </div>
           </div>
