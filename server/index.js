@@ -6442,7 +6442,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
           results.push({
             username: realUsername, sipUri, success: false,
             errorCode: "FLEXISIP_VALIDATION_ERROR",
-            message: fieldErrors || (createErr?.message || 'Flexisip 校验失败').substring(0, 200),
+            message: fieldErrors || (createErr?.message || '服務端校验失败').substring(0, 200),
           });
         }
         failed++;
@@ -6461,7 +6461,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       }
       if (!flexisipAccountId) {
         const errMsg = createErr
-          ? (createErr?.message || 'Flexisip 創建失敗').substring(0, 200)
+          ? (createErr?.message || '服務端創建失敗').substring(0, 200)
           : "Flexisip 創建成功但無法獲取 ID。";
         console.log(`[batch] ${realUsername}: ❌ 無法獲取 flexisipAccountId`);
         results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_CREATE_FAILED", message: errMsg });
@@ -6922,7 +6922,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
           differences: [{ field: 'account', label: '遠端帳號', localValue: '存在', remoteValue: '不存在', syncable: false, reason: 'Flexisip 遠端帳號不存在。' }],
         });
       }
-      return response.status(502).json({ message: `無法連接 Flexisip 進行校驗：${err?.message || '未知錯誤'}` });
+      return response.status(502).json({ message: `無法連接服務端進行校驗：${err?.message || '未知錯誤'}` });
     }
 
     if (!flexisipAccount) {
@@ -7018,7 +7018,7 @@ app.post("/api/admin/sip-accounts/:id/sync-to-flexisip", requireAdmin, async (re
     // local_only 不允许同步
     if (local.sync_status === 'local_only' || (!local.flexisip_account_id && !local.sip_uri)) {
       return response.status(400).json({
-        message: "該帳號僅存在於本地，無法同步到 Flexisip。",
+        message: "該帳號僅存在於本地，無法同步到服務端。",
         code: "LOCAL_ONLY_ACCOUNT_CANNOT_SYNC_TO_FLEXISIP",
       });
     }
@@ -12537,7 +12537,7 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
 // GET /api/flexisip/statistics/calls - proxy Flexisip Admin calls statistics.
 app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看 Flexisip 通話統計。" });
+    return response.status(403).json({ message: "只有平台管理員可以查看服務端通話統計。" });
   }
 
   const from = sanitizeString(request.query.from || "", 20);
@@ -12671,7 +12671,7 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
 // POST /api/flexisip/accounts/tombstones/release - release a deleted Flexisip username reservation.
 app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的 Flexisip 用户名。" });
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的服务端用户名。" });
   }
 
   const username = sanitizeString(request.body?.username, 64);
@@ -12734,7 +12734,7 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
     return response.status(500).json({
       success: false,
       code: "FLEXISIP_TOMBSTONE_RELEASE_FAILED",
-      message: "释放已删除的 Flexisip 用户名失败。",
+      message: "释放已删除的服务端用户名失败。",
     });
   }
 });
@@ -12742,7 +12742,7 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
 // POST /api/flexisip/accounts/tombstones/batch-release - 批量释放已删除的 Flexisip 用户名
 app.post("/api/flexisip/accounts/tombstones/batch-release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的 Flexisip 用户名。" });
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的服务端用户名。" });
   }
 
   const items = request.body?.items;

@@ -842,11 +842,16 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       if (failed > 0 || inconsistent > 0) {
         const msgs = [];
         if (failed > 0) msgs.push(`${failed} 個失敗`);
-        if (inconsistent > 0) msgs.push(`${inconsistent} 個與 Flexisip 不一致`);
+        if (inconsistent > 0) msgs.push(`${inconsistent} 個與服務端不一致`);
         setBatchAddMessage({ type: 'error', text: `已完成：${createdOk} 個成功，${msgs.join('，')}。` });
         setBatchAddResults((result.results || []).filter(r => !r.success || r.check?.consistent === false));
       } else {
-        setBatchAddMessage({ type: 'success', text: `批量新增完成，${createdOk} 個帳號全部與 Flexisip 資訊一致。` });
+        setBatchAddMessage({ type: 'success', text: `批量新增完成，${createdOk} 個帳號全部創建成功。` });
+        setTimeout(() => {
+          setBatchAddOpen(false);
+          setBatchAddResults(null);
+          setBatchAddMessage({ type: '', text: '' });
+        }, 1000);
       }
     } catch (err) {
       setBatchAddMessage({ type: 'error', text: err.message || '批量新增失敗' });
@@ -1800,14 +1805,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px',
                 }}>
                   <div style={{ fontWeight: 600, marginBottom: '4px', color: '#fbbf24' }}>保留刪除（預設）</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從 Flexisip 刪除帳號，但保留該用戶名，防止重複註冊</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從服務端刪除帳號，但保留該用戶名，防止重複註冊</div>
                 </button>
                 <button type="button" onClick={() => executeDelete(true)} style={{
                   padding: '14px 16px', borderRadius: '8px', border: '1px solid #dc2626', backgroundColor: '#1e293b',
                   color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px',
                 }}>
                   <div style={{ fontWeight: 600, marginBottom: '4px', color: '#ef4444' }}>徹底刪除</div>
-                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從 Flexisip 刪除帳號並釋放該用戶名，允許重新註冊</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>從服務端刪除帳號並釋放該用戶名，允許重新註冊</div>
                 </button>
               </div>
             </div>
@@ -1861,7 +1866,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   {verifyResult.consistent ? (
                     <div style={{ textAlign: 'center', padding: '20px 0' }}>
                       <p style={{ color: '#22c55e', fontSize: '16px', fontWeight: 600, margin: '0 0 8px' }}>&#10003; 帳號資訊一致</p>
-                      <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>本地數據與 Flexisip 遠端數據完全一致</p>
+                      <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>本地數據與服務端數據完全一致</p>
                     </div>
                   ) : (
                     <>
@@ -1897,7 +1902,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           } finally {
                             setIsSyncing(false);
                           }
-                        }} style={{ padding: '10px 28px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: (isSyncing || !verifyResult.differences?.some(d => d.syncable)) ? 0.5 : 1 }}>{isSyncing ? '同步中...' : '同步至 Flexisip'}</button>
+                        }} style={{ padding: '10px 28px', borderRadius: '8px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '14px', fontWeight: 500, cursor: 'pointer', opacity: (isSyncing || !verifyResult.differences?.some(d => d.syncable)) ? 0.5 : 1 }}>{isSyncing ? '同步中...' : '同步至服務端'}</button>
                         {verifyResult.differences?.some(d => !d.syncable) && !verifyResult.differences?.some(d => d.syncable) && (
                           <p style={{ color: '#fbbf24', fontSize: '12px', textAlign: 'center', margin: '8px 0 0 0' }}>當前差異包含不可同步的 SIP 身份欄位，請人工處理。</p>
                         )}
