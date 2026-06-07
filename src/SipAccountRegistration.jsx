@@ -858,6 +858,34 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
   };
 
+  // 批量释放 tombstone 并重试
+  const handleBatchReleaseAndRetry = async () => {
+    if (!batchAddResults) return;
+    const tombstoned = batchAddResults.filter(r => r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED');
+    if (tombstoned.length === 0) return;
+
+    setIsBatchAdding(true);
+    setBatchAddMessage({ type: '', text: '' });
+    try {
+      // 批量释放
+      const releaseResult = await apiClient.post('/flexisip/accounts/tombstones/batch-release', {
+        items: tombstoned.map(r => ({ username: r.username, domain: defaultSipDomain })),
+        reason: '批量釋放已刪除保留帳號',
+      });
+      const releasedCount = releaseResult.results?.filter(r => r.released).length || 0;
+      if (releasedCount === 0) {
+        setBatchAddMessage({ type: 'error', text: '釋放失敗，請手動處理。' });
+        setIsBatchAdding(false);
+        return;
+      }
+      // 重试批量创建
+      await handleBatchAddSubmit({ preventDefault: () => {} });
+    } catch (err) {
+      setBatchAddMessage({ type: 'error', text: '釋放失敗：' + (err.message || '未知錯誤') });
+      setIsBatchAdding(false);
+    }
+  };
+
   if (viewMode === 'add' || viewMode === 'edit') {
     return (
       <section className="view active settings-form-page" id="sip-account-registration-add" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -1720,20 +1748,30 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
               )}
               {batchAddResults && batchAddResults.length > 0 && (
-                <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', borderRadius: '6px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  {batchAddResults.map((r, i) => (
-                    <div key={i} style={{ padding: '8px 12px', borderBottom: i < batchAddResults.length - 1 ? '1px solid #1f2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{r.username || r.sipUri}</span>
-                      <span style={{ color: r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '#f59e0b' : '#ef4444', fontSize: '12px' }}>
-                        {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已删除保留' :
-                         r.errorCode === 'DUPLICATE_LOCAL_SIP_ACCOUNT' ? '本地已存在' :
-                         r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '远端已存在' :
-                         r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地保存失败' :
-                         r.message || r.errorCode || '失败'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', borderRadius: '6px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    {batchAddResults.map((r, i) => (
+                      <div key={i} style={{ padding: '8px 12px', borderBottom: i < batchAddResults.length - 1 ? '1px solid #1f2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{r.username || r.sipUri}</span>
+                        <span style={{ color: r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '#f59e0b' : '#ef4444', fontSize: '12px' }}>
+                          {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已删除保留' :
+                           r.errorCode === 'DUPLICATE_LOCAL_SIP_ACCOUNT' ? '本地已存在' :
+                           r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '远端已存在' :
+                           r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地保存失败' :
+                           r.message || r.errorCode || '失败'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {batchAddResults.some(r => r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED') && (
+                    <button type="button" disabled={isBatchAdding} onClick={handleBatchReleaseAndRetry} style={{
+                      padding: '10px 16px', borderRadius: '6px', backgroundColor: '#1e293b', color: '#fbbf24',
+                      border: '1px solid #f59e0b', fontSize: '13px', cursor: 'pointer', width: '100%', fontWeight: 500,
+                    }}>
+                      {isBatchAdding ? '釋放中...' : `釋放 ${batchAddResults.filter(r => r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED').length} 個已刪除保留並重試`}
+                    </button>
+                  )}
+                </>
               )}
             </div>
             <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>

@@ -12739,6 +12739,39 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
   }
 });
 
+// POST /api/flexisip/accounts/tombstones/batch-release - 批量释放已删除的 Flexisip 用户名
+app.post("/api/flexisip/accounts/tombstones/batch-release", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的 Flexisip 用户名。" });
+  }
+
+  const items = request.body?.items;
+  if (!Array.isArray(items) || items.length === 0 || items.length > 200) {
+    return response.status(400).json({ message: "items 必须是 1-200 条记录。" });
+  }
+
+  const reason = sanitizeString(request.body?.reason, 500) || '批量释放';
+
+  const results = [];
+  for (const item of items) {
+    const username = sanitizeString(item?.username, 64);
+    const domain = sanitizeString(item?.domain, 64);
+    if (!username || !domain) {
+      results.push({ username, domain, released: false, error: '缺少 username 或 domain' });
+      continue;
+    }
+    try {
+      const r = await releaseAccountTombstone({ username, domain });
+      results.push({ username, domain, released: r.released, ...r });
+    } catch (e) {
+      results.push({ username, domain, released: false, error: e?.message });
+    }
+  }
+
+  console.warn("Flexisip batch tombstone release:", { adminId: request.admin.id, total: items.length, released: results.filter(r => r.released).length, reason });
+  return response.json({ results });
+});
+
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
