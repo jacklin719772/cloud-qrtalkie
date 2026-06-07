@@ -11,6 +11,7 @@ export default function Landing({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [verificationUrl, setVerificationUrl] = useState(''); // 持久显示验证链接
   
   // 新增：法律條款彈窗狀態
   const [legalModal, setLegalModal] = useState({
@@ -78,6 +79,7 @@ export default function Landing({ onLogin }) {
   const changeMode = (mode) => {
     setAuthMode(mode);
     clearMessages();
+    setVerificationUrl('');
     if (mode !== 'reset') {
       setResetToken('');
       if (new URLSearchParams(window.location.search).get('resetPasswordToken')) {
@@ -176,6 +178,9 @@ export default function Landing({ onLogin }) {
     try {
       const result = await apiClient.post('/auth/register', { companyName, email, password, confirmPassword });
       showTimedSuccess(result.message || '註冊成功，請前往信箱完成驗證。');
+      if (result.devVerificationUrl) {
+        setVerificationUrl(result.devVerificationUrl);
+      }
       e.target.reset();
     } catch (error) {
       const serverMessage = error.response?.data?.message || error.message;
@@ -359,6 +364,15 @@ export default function Landing({ onLogin }) {
               <button type="submit" className="primary-btn full" disabled={isLoading}>
                 {isLoading ? '註冊中...' : '註冊並驗證電子郵件'}
               </button>
+              {verificationUrl && (
+                <div style={{ marginTop: '16px', padding: '14px 16px', backgroundColor: '#065f46', borderRadius: '8px', border: '1px solid #059669' }}>
+                  <p style={{ margin: '0 0 8px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 註冊成功！點擊下方連結完成驗證：</p>
+                  <a href={verificationUrl} target="_blank" rel="noreferrer" style={{ color: '#fbbf24', fontSize: '13px', wordBreak: 'break-all', textDecoration: 'underline' }}>
+                    {verificationUrl}
+                  </a>
+                  <p style={{ margin: '8px 0 0', color: '#6ee7b7', fontSize: '11px' }}>若未收到郵件，可直接點擊上方連結完成驗證。</p>
+                </div>
+              )}
               <label className="terms-consent">
                 <input id="terms-consent" name="termsConsent" type="checkbox" required />
                 <span>
