@@ -3,9 +3,9 @@ import { ClipboardList, ExternalLink } from 'lucide-react';
 import apiClient from './apiClient';
 
 const TASKS = [
-  { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/admin/platform-admins' },
-  { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/legal/privacy' },
-  { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/legal/terms' },
+  { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins' },
+  { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy' },
+  { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service' },
   { id: 'ecard_styles', label: '設置電子名片樣式', view: 'ecard-styles-management', api: '/admin/ecard-styles' },
   { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account' },
   { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-methods' },
