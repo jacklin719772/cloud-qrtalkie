@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ClipboardList, ExternalLink } from 'lucide-react';
 import apiClient from './apiClient';
 
-const TASKS = [
+const PLATFORM_TASKS = [
   { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins', key: 'admins' },
   { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy', key: 'content' },
   { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service', key: 'content' },
@@ -18,7 +18,16 @@ const TASKS = [
   { id: 'pending_subscriptions', label: '審核待訂閱套餐', view: 'plan-management', api: '/admin/billing-orders?status=pending_review', key: 'orders' },
 ];
 
+const TENANT_TASKS = [
+  { id: 'has_subscription', label: '是否已訂閱套餐', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'subscription' },
+  { id: 'pending_review_order', label: '是否有訂單待提交審核', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'pending_review' },
+  { id: 'contact_books', label: '是否已建立通訊錄', view: 'contact-books', api: '/contact-books', key: 'contactBooks' },
+  { id: 'ecards', label: '是否已創建電子名片', view: 'e-business-card', api: '/tenant/ecard-accounts', key: 'accounts' },
+  { id: 'call_center', label: '是否已設置呼叫中心', view: 'call-center', api: '/call-centers', key: 'list' },
+];
+
 export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
+  const TASKS = role === 'platform' ? PLATFORM_TASKS : TENANT_TASKS;
   const [tasks, setTasks] = useState(() => TASKS.map(t => ({ ...t, done: false, checking: true })));
   const [autoShow, setAutoShow] = useState(() => {
     return localStorage.getItem('qrtalkie_todo_autoshow') !== 'false';
@@ -27,17 +36,31 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
   const checkTask = useCallback(async (task) => {
     try {
       const result = await apiClient.get(task.api);
-      const val = result?.[task.key];
+      let val = result?.[task.key];
+
+      // 呼叫中心响应格式: { code: 0, data: { list: [...] } }
+      if (task.id === 'call_center') {
+        val = result?.data?.list;
+      }
+
       if (val === undefined || val === null) return false;
       if (typeof val === 'string') return val.length > 0;
       if (Array.isArray(val)) {
+        // 平台：待审核订阅
         if (task.id === 'pending_subscriptions') {
-          return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review').length > 0;
+          return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review' || s.orderStatus === 'pending_review').length > 0;
+        }
+        // 租户：已订阅套餐（审核通过/已生效）
+        if (task.check === 'subscription') {
+          return val.filter(o => o.orderStatus === 'reviewed' || o.orderStatus === 'active_effective' || o.paymentStatus === 'paid').length > 0;
+        }
+        // 租户：待提交审核
+        if (task.check === 'pending_review') {
+          return val.filter(o => o.orderStatus === 'pending_review').length > 0;
         }
         return val.length > 0;
       }
       if (typeof val === 'object') {
-        // offline_account returns single { account: {...} }
         if (task.id === 'offline_account') return !!(val.bankName || val.accountName || val.id);
         return Object.keys(val).length > 0;
       }
@@ -68,7 +91,7 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
     };
     run();
     return () => { cancelled = true; };
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, role]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleAutoShow = () => {
     const next = !autoShow;
