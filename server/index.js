@@ -13325,7 +13325,7 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
       },
       alerts: alerts,
       cloudStorage: { used: 128, limit: 500 },
-    });
+    }));
   } catch (error) {
     console.error("Failed to fetch tenant dashboard:", error);
     return response.status(500).json({ message: "读取租户概览失败。" });
