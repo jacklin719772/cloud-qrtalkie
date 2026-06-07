@@ -789,7 +789,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         });
       } else {
         setFormMessage({ type: 'error', text: err.message || '儲存失敗。' });
-      } finally {
+      }
+    } finally {
       setIsSaving(false);
     }
   };
