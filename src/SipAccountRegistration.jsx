@@ -1776,7 +1776,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" onClick={() => setDeleteConfirm(null)}>取消</button>
+              <button type="button" onClick={() => setDeleteConfirm(null)} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
             </div>
           </div>
         </div>,
