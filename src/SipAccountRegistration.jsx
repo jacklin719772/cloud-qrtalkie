@@ -353,9 +353,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
 
-    if (window.confirm(`確定要刪除选中的 ${selectedIds.length} 個帳號吗？`)) {
-      setDeleteConfirm({ account: null, isBatch: true, ids: selectedIds });
-    }
+    setDeleteConfirm({ account: null, isBatch: true, ids: selectedIds });
   };
 
   // 执行删除（permanent: true = 彻底删除，false = 保留删除）
