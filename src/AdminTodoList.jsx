@@ -3,19 +3,19 @@ import { ClipboardList, ExternalLink } from 'lucide-react';
 import apiClient from './apiClient';
 
 const TASKS = [
-  { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins' },
-  { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy' },
-  { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service' },
-  { id: 'ecard_styles', label: '設置電子名片樣式', view: 'ecard-styles-management', api: '/admin/ecard-styles' },
-  { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account' },
-  { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-methods' },
-  { id: 'discount_data', label: '設置折扣資料', view: 'discount-data', api: '/billing/discounts' },
-  { id: 'addon_services', label: '設置增值服務', view: 'addons', api: '/billing/addon-services' },
-  { id: 'plans', label: '設置套餐資料', view: 'plans', api: '/billing/plans' },
-  { id: 'devices', label: '設置門控設備', view: 'device-management', api: '/admin/devices' },
-  { id: 'sip_accounts', label: '添加 SIP 帳號', view: 'sip-account-registration', api: '/admin/sip-accounts' },
-  { id: 'web_accounts', label: '添加 Web 帳號', view: 'sip-account-allocation', api: '/admin/web-accounts' },
-  { id: 'pending_subscriptions', label: '審核待訂閱套餐', view: 'plan-management', api: '/billing/pending-subscriptions' },
+  { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins', key: 'admins' },
+  { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy', key: 'content' },
+  { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service', key: 'content' },
+  { id: 'ecard_styles', label: '設置電子名片樣式', view: 'ecard-styles-management', api: '/admin/ecard-styles', key: 'styles' },
+  { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account', key: 'account' },
+  { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-method-settings', key: 'methods' },
+  { id: 'discount_data', label: '設置折扣資料', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
+  { id: 'addon_services', label: '設置增值服務', view: 'addons', api: '/billing/addon-services', key: 'addons' },
+  { id: 'plans', label: '設置套餐資料', view: 'plans', api: '/billing/plans', key: 'plans' },
+  { id: 'devices', label: '設置門控設備', view: 'device-management', api: '/admin/gate-devices', key: 'devices' },
+  { id: 'sip_accounts', label: '添加 SIP 帳號', view: 'sip-account-registration', api: '/admin/sip-accounts', key: 'accounts' },
+  { id: 'web_accounts', label: '添加 Web 帳號', view: 'sip-account-allocation', api: '/admin/web-accounts', key: 'accounts' },
+  { id: 'pending_subscriptions', label: '審核待訂閱套餐', view: 'plan-management', api: '/admin/billing-orders?status=pending_review', key: 'orders' },
 ];
 
 export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
@@ -27,22 +27,21 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
   const checkTask = useCallback(async (task) => {
     try {
       const result = await apiClient.get(task.api);
-      if (task.id === 'platform_admin') {
-        const list = Array.isArray(result) ? result : (result?.admins || result?.data || []);
-        return list.length > 0;
+      const val = result?.[task.key];
+      if (val === undefined || val === null) return false;
+      if (typeof val === 'string') return val.length > 0;
+      if (Array.isArray(val)) {
+        if (task.id === 'pending_subscriptions') {
+          return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review').length > 0;
+        }
+        return val.length > 0;
       }
-      if (task.id === 'privacy_policy' || task.id === 'terms_of_service') {
-        return !!(result?.content || result?.html || result?.text);
+      if (typeof val === 'object') {
+        // offline_account returns single { account: {...} }
+        if (task.id === 'offline_account') return !!(val.bankName || val.accountName || val.id);
+        return Object.keys(val).length > 0;
       }
-      if (task.id === 'offline_account') {
-        return !!(result?.bankName || result?.accountName);
-      }
-      if (task.id === 'pending_subscriptions') {
-        const list = Array.isArray(result) ? result : (result?.subscriptions || result?.data || []);
-        return list.filter(s => s.status === 'pending' || s.status === 'pending_review').length > 0;
-      }
-      const list = Array.isArray(result) ? result : (result?.data || result?.items || result?.accounts || []);
-      return list.length > 0;
+      return false;
     } catch {
       return false;
     }
