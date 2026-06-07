@@ -38,6 +38,27 @@ export default function Landing({ onLogin }) {
     return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
   }, []);
 
+  // 处理 URL 中的邮箱验证 token
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyToken = params.get('verifyEmailToken');
+    if (!verifyToken) return;
+
+    const verify = async () => {
+      try {
+        const result = await apiClient.get(`/auth/verify-email?token=${encodeURIComponent(verifyToken)}`);
+        showTimedSuccess(result.message || '電子郵件驗證成功，請登入。');
+        // 清除 URL 中的 token
+        const url = new URL(window.location);
+        url.searchParams.delete('verifyEmailToken');
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+      } catch (error) {
+        showTimedError(error.response?.data?.message || '驗證失敗，連結可能已過期。');
+      }
+    };
+    verify();
+  }, []);
+
   const clearMessages = () => {
     setErrorMessage('');
     setSuccessMessage('');
