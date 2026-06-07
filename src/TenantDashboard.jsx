@@ -102,8 +102,7 @@ export default function TenantDashboard({ onNavigate }) {
     <section className="view active" id="tenant-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none', background: '#0f172a', padding: '24px' }}>
       <style>{`
         #tenant-dashboard::-webkit-scrollbar { display: none; }
-        #console .main.domain-home-mode .page-heading { margin-bottom: 12px; margin-top: -6px; }
-        #console .main.domain-home-mode .page-heading h1 { color: #f3f4f6; }
+        #console .main.domain-home-mode .page-heading { margin-bottom: 4px; margin-top: -16px; }
         .td-page { max-width: 1440px; }
         .td-section { margin-bottom: 16px; }
         .td-section-title { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; font-size: 16px; font-weight: 600; color: #f3f4f6; }
