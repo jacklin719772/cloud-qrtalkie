@@ -1700,11 +1700,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       {/* 重設密碼彈窗 */}
       {batchAddOpen && createPortal(
         <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
-          <form onSubmit={handleBatchAddSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+          <form onSubmit={handleBatchAddSubmit} style={{ backgroundColor: '#111827', borderRadius: '8px', width: '460px', maxWidth: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>批量新增帳號</h3>
             </div>
-            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>起始用戶帳號 <RequiredMark /></span>
                 <input type="number" min="1" step="1" value={batchAddForm.start} onChange={e => setBatchAddForm(prev => ({ ...prev, start: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required />
@@ -1720,7 +1720,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#10b981', lineHeight: 1.6 }}>{batchAddMessage.text}</p>
               )}
               {batchAddResults && batchAddResults.length > 0 && (
-                <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', borderRadius: '6px', border: '1px solid #1f2937', scrollbarWidth: 'none' }}>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', borderRadius: '6px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {batchAddResults.map((r, i) => (
                     <div key={i} style={{ padding: '8px 12px', borderBottom: i < batchAddResults.length - 1 ? '1px solid #1f2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{r.username || r.sipUri}</span>
@@ -1736,7 +1736,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => { setBatchAddOpen(false); setBatchAddResults(null); }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
