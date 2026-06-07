@@ -134,109 +134,119 @@ export default function Tenant({ onOpenLoginEmail }) {
 
   return (
     <section className="view active" id="tenant" style={{ backgroundColor: '#0f172a', minHeight: '100%', padding: '24px' }}>
-      <form className="tenant-settings-form" id="tenant-settings-form" onSubmit={handleSubmit} style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <div className="tenant-scroll-area" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+      <style>{`
+        #console #tenant .tenant-settings-form {
+          background: #111827 !important;
+          border: 1px solid #1f2937 !important;
+        }
+        #console #tenant .tenant-fixed-actions {
+          background: #111827 !important;
+          border-top: 1px solid #1f2937 !important;
+          box-shadow: none !important;
+        }
+        #console #tenant .tenant-field-grid label {
+          color: #9ca3af !important;
+        }
+        #console #tenant .settings-block-head h3 {
+          color: #f3f4f6 !important;
+        }
+        #console #tenant .tenant-field-grid input,
+        #console #tenant .tenant-field-grid textarea,
+        #console #tenant .tenant-field-grid select {
+          background: #1a2332 !important;
+          color: #e5e7eb !important;
+          border: 1px solid #374151 !important;
+          border-radius: 6px !important;
+        }
+        #console #tenant .tenant-field-grid input:focus,
+        #console #tenant .tenant-field-grid textarea:focus {
+          border-color: #3b82f6 !important;
+          outline: none !important;
+        }
+        #console #tenant .tenant-field-grid input[readonly] {
+          background: #0f172a !important;
+          color: #6b7280 !important;
+        }
+        #console #tenant .tenant-fixed-actions button.ghost-btn,
+        #console #tenant .tenant-fixed-actions button:not(.primary-btn) {
+          background: #1f2937 !important;
+          color: #d1d5db !important;
+          border: 1px solid #374151 !important;
+        }
+        #console #tenant .tenant-fixed-actions button.primary-btn {
+          background: #3b82f6 !important;
+          color: #fff !important;
+          border: none !important;
+        }
+        #console #tenant .tenant-fixed-actions .form-message {
+          color: #9ca3af !important;
+        }
+        #console #tenant .tenant-fixed-actions .form-message.error {
+          color: #ef4444 !important;
+        }
+        #console #tenant .tenant-fixed-actions .form-message.success {
+          color: #22c55e !important;
+        }
+        #console #tenant .required-mark {
+          color: #ef4444 !important;
+        }
+        #console #tenant .tenant-field-grid {
+          gap: 16px 24px !important;
+        }
+        #console #tenant .input-action .ghost-btn {
+          background: #1f2937 !important;
+          color: #d1d5db !important;
+          border: 1px solid #374151 !important;
+        }
+      `}</style>
+      <form className="tenant-settings-form" id="tenant-settings-form" onSubmit={handleSubmit}>
+        <div className="tenant-scroll-area">
           {isLoading && <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>載入租戶設定中...</p>}
           {!isLoading && isPlatformAccount && <p style={{ color: '#ef4444', textAlign: 'center', padding: '40px 0' }}>平台管理員沒有租戶設定資料。</p>}
 
           {!isLoading && !isPlatformAccount && (
             <>
-              <div style={{ backgroundColor: '#111827', borderRadius: '10px', border: '1px solid #1f2937', padding: '24px', marginBottom: '20px' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>租戶基本資訊</h3>
+              <section className="settings-block">
+                <div className="settings-block-head">
+                  <h3>租戶基本資訊</h3>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>租戶編號</span>
-                    <input name="tenantNumber" value={formData.tenantNumber} readOnly
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#0f172a', color: '#6b7280', fontSize: '13px', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>公司名稱 <RequiredMark /></span>
-                    <input name="companyName" value={formData.companyName} onChange={updateField('companyName')} required
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>企業信箱</span>
-                    <input name="enterpriseEmail" type="email" value={formData.enterpriseEmail} onChange={updateField('enterpriseEmail')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>企業聯絡人</span>
-                    <input name="contactPerson" value={formData.contactPerson} onChange={updateField('contactPerson')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>聯絡電話</span>
-                    <input name="contactPhone" type="tel" value={formData.contactPhone} onChange={updateField('contactPhone')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>郵遞區號</span>
-                    <input name="postalCode" inputMode="numeric" value={formData.postalCode} onChange={updateField('postalCode')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>帳單郵寄地址</span>
-                    <textarea name="billingAddress" rows="3" value={formData.billingAddress} onChange={updateField('billingAddress')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', resize: 'vertical' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
+                <div className="tenant-field-grid">
+                  <label>租戶編號<input name="tenantNumber" value={formData.tenantNumber} readOnly /></label>
+                  <label>公司名稱 <RequiredMark /><input name="companyName" value={formData.companyName} onChange={updateField('companyName')} required /></label>
+                  <label>企業信箱<input name="enterpriseEmail" type="email" value={formData.enterpriseEmail} onChange={updateField('enterpriseEmail')} /></label>
+                  <label>企業聯絡人<input name="contactPerson" value={formData.contactPerson} onChange={updateField('contactPerson')} /></label>
+                  <label>聯絡電話<input name="contactPhone" type="tel" value={formData.contactPhone} onChange={updateField('contactPhone')} /></label>
+                  <label>郵遞區號<input name="postalCode" inputMode="numeric" value={formData.postalCode} onChange={updateField('postalCode')} /></label>
+                  <label className="span-2">帳單郵寄地址<textarea name="billingAddress" rows="3" value={formData.billingAddress} onChange={updateField('billingAddress')}></textarea></label>
                 </div>
-              </div>
+              </section>
 
-              <div style={{ backgroundColor: '#111827', borderRadius: '10px', border: '1px solid #1f2937', padding: '24px', marginBottom: '20px' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>管理員登入資訊</h3>
+              <section className="settings-block">
+                <div className="settings-block-head">
+                  <h3>管理員登入資訊</h3>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>登入信箱 <RequiredMark /></span>
-                    <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input name="loginEmail" type="email" value={formData.loginEmail} readOnly
-                        style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#0f172a', color: '#6b7280', fontSize: '13px', outline: 'none' }} />
-                      <button type="button"
-                        onClick={() => onOpenLoginEmail(formData.loginEmail)}
-                        style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        修改
-                      </button>
+                <div className="tenant-field-grid">
+                  <label>
+                    登入信箱 <RequiredMark />
+                    <span className="input-action">
+                      <input name="loginEmail" type="email" value={formData.loginEmail} readOnly />
+                      <button className="ghost-btn" type="button" onClick={() => onOpenLoginEmail(formData.loginEmail)}>修改</button>
                     </span>
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>暱稱</span>
-                    <input name="adminNickname" value={formData.adminNickname} onChange={updateField('adminNickname')} placeholder="顯示在右上角的名稱"
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>聯絡電話</span>
-                    <input name="adminPhone" type="tel" value={formData.adminPhone} onChange={updateField('adminPhone')}
-                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                  </label>
+                  <label>暱稱<input name="adminNickname" value={formData.adminNickname} onChange={updateField('adminNickname')} placeholder="顯示在右上角的名稱" /></label>
+                  <label>聯絡電話<input name="adminPhone" type="tel" value={formData.adminPhone} onChange={updateField('adminPhone')} /></label>
                 </div>
-              </div>
+              </section>
             </>
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0' }}>
-          {message.text && <p style={{ margin: 0, fontSize: '13px', color: message.type === 'error' ? '#ef4444' : '#22c55e' }}>{message.text}</p>}
-          <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-            <button type="button" onClick={handleReset} disabled={isSaving || isLoading || isPlatformAccount}
-              style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>
-              取消
-            </button>
-            <button type="submit" disabled={isSaving || isLoading || isPlatformAccount}
-              style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
-              {isSaving ? '儲存中...' : '儲存修改'}
-            </button>
-          </div>
+        <div className="tenant-fixed-actions">
+          {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
+          <menu className="form-actions">
+            <button className="ghost-btn" id="cancel-tenant-settings" type="button" onClick={handleReset} disabled={isSaving || isLoading || isPlatformAccount}>取消</button>
+            <button className="primary-btn" id="save-tenant-settings" type="submit" disabled={isSaving || isLoading || isPlatformAccount}>{isSaving ? '儲存中...' : '儲存修改'}</button>
+          </menu>
         </div>
       </form>
     </section>
