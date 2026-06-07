@@ -13233,7 +13233,7 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
     // Device alerts (mock for now)
     const alerts = [];
 
-    return response.json({
+    return response.json(bigIntSafe({
       tenant: {
         id: Number(tenant.id),
         name: tenant.name || "",
