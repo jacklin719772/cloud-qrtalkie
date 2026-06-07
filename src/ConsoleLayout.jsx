@@ -686,6 +686,8 @@ export default function ConsoleLayout({ onLogout }) {
         onToggleSidebar={() => setIsSidebarCollapsed((value) => !value)}
         onLogout={onLogout}
         onChangePassword={() => setShowChangePassword(true)}
+        isAdmin={identity?.admin?.accountType === 'platform'}
+        isTenantAdmin={identity?.admin?.accountType === 'tenant'}
       />
 
       <Sidebar
