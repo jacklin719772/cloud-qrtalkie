@@ -3136,7 +3136,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
       const couponBody = `平台已為您分配優惠碼「${couponInfo.display_name || couponInfo.coupon_code}」（${discountText} 折扣），購買套餐時輸入 ${couponInfo.coupon_code} 即可享受優惠。`;
 
       const dedupeKey = `coupon_assigned_${assignmentId}`;
-      const [notifResult] = await connection.query(
+      const notifResult = await connection.query(
         `INSERT INTO notification_events (
            tenant_id, scope_type, scope_id, event_type, sender_type, sender_id,
            dedupe_key, title, body, severity, status, target_view
@@ -3164,7 +3164,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
     return response.status(201).json({ message: "優惠碼已分配。", id: Number(result.insertId) });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
-    console.error("分配優惠碼失敗 - sqlMessage:", error?.sqlMessage, "code:", error?.code, "errno:", error?.errno, "message:", error?.message);
+    console.error(error);
     return response.status(500).json({ message: "分配優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
