@@ -451,7 +451,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         }
         #purchase-plan .plan-nav-btn:hover { background: #374151 !important; border-color: #3b82f6 !important; }
         #purchase-plan .plan-choice {
-          background: #1a2332 !important;
+          background: #1e293b !important;
           border: 1px solid #374151 !important;
           color: #e5e7eb !important;
         }
