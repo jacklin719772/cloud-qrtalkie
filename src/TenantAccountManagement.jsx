@@ -721,7 +721,7 @@ const TenantAccountManagement = forwardRef(({
   }
 
   return (
-    <section className="view active" id="tenant-account-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <section className="view active" id="tenant-account-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
       <style jsx>{`
         .dropdown-menu-portal {
           position: fixed;
