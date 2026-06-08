@@ -231,11 +231,11 @@ const Plans = forwardRef((props, ref) => {
 
   const handleBatchDisable = async () => {
     if (selectedIds.length === 0) {
-      window.alert('请至少选择一条记录进行操作。');
+      window.alert('请至少选择一条記錄进行操作。');
       return;
     }
     
-    if (window.confirm(`确定要停用选中的 ${selectedIds.length} 个套餐吗？`)) {
+    if (window.confirm(`确定要停用选中的 ${selectedIds.length} 個套餐吗？`)) {
       setIsSaving(true);
       showMessage('', '');
       try {
@@ -256,11 +256,11 @@ const Plans = forwardRef((props, ref) => {
 
   const handleBatchEnable = async () => {
     if (selectedIds.length === 0) {
-      window.alert('请至少选择一条记录进行操作。');
+      window.alert('请至少选择一条記錄进行操作。');
       return;
     }
     
-    if (window.confirm(`确定要启用选中的 ${selectedIds.length} 个套餐吗？`)) {
+    if (window.confirm(`确定要启用选中的 ${selectedIds.length} 個套餐吗？`)) {
       setIsSaving(true);
       showMessage('', '');
       try {
@@ -336,11 +336,11 @@ const Plans = forwardRef((props, ref) => {
     if (!editingPlan) return;
 
     if (!(editingPlan.planCode || '').trim()) {
-      alert('请输入套餐代碼');
+      alert('请輸入套餐代碼');
       return;
     }
     if (!(editingPlan.name || '').trim()) {
-      alert('请输入套餐名稱');
+      alert('请輸入套餐名稱');
       return;
     }
 
@@ -449,7 +449,7 @@ const Plans = forwardRef((props, ref) => {
           color: #64748b !important;
         }
         
-        /* --- 分页信息排版 --- */
+        /* --- 分页資訊排版 --- */
         #plans .pagination-info {
           font-size: 13px !important;
           font-weight: 500;
@@ -814,7 +814,7 @@ const Plans = forwardRef((props, ref) => {
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingLeft: '4px' }}>
                       {availableAddons.length === 0 ? (
-                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>暂无增值服务项目</span>
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>暫無增值服务项目</span>
                       ) : availableAddons.map(addon => {
                         const currentAddons = (editingPlan?.addonServices || '').split(',').map(s => s.trim()).filter(Boolean);
                         const isChecked = currentAddons.includes(addon.addonCode);
@@ -940,7 +940,7 @@ const Plans = forwardRef((props, ref) => {
                     style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: '#374151', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.2s' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#4b5563'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#374151'}
-                    aria-label="清除搜索"
+                    aria-label="清除搜尋"
                     title="清除"
                   >
                     <X size={14} strokeWidth={2.5} />
@@ -1010,7 +1010,7 @@ const Plans = forwardRef((props, ref) => {
                             checked={selectedIds.includes(plan.id)}
                             onChange={(e) => togglePlanSelection(plan.id, e.target.checked)}
                             style={{ cursor: 'pointer' }}
-                            aria-label={`选择套餐 ${plan.name}`}
+                            aria-label={`選擇套餐 ${plan.name}`}
                           />
                         </td>
                         <td>#{plan.id}</td>
@@ -1302,7 +1302,7 @@ const Plans = forwardRef((props, ref) => {
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingLeft: '4px', marginTop: '4px' }}>
                       {availableAddons.length === 0 ? (
-                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>暂无增值服务项目</span>
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>暫無增值服务项目</span>
                       ) : availableAddons.map(addon => {
                         const currentAddons = (editingPlan?.addonServices || '').split(',').map(s => s.trim()).filter(Boolean);
                         const isChecked = currentAddons.includes(addon.addonCode);

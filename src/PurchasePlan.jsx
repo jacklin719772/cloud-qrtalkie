@@ -622,14 +622,18 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           <label className="purchase-side-label">優惠碼：</label>
           <div className="coupon-entry">
             <select name="tenantCouponId" value={selectedCouponAssignmentId} onChange={e => handleCouponChange(e.target.value)}>
-              <option value="">不使用优惠码</option>
+              <option value="">不使用優惠碼</option>
               {availableCoupons.map(coupon => (
                 <option key={coupon.assignmentId} value={coupon.assignmentId}>
                   {formatCouponOption(coupon)}
                 </option>
               ))}
             </select>
-            {availableCoupons.length === 0 && <div className="coupon-summary">暂无可用优惠码</div>}
+            {availableCoupons.length === 0 ? (
+              <div className="coupon-summary" style={{ color: '#9ca3af' }}>暫無可用優惠碼</div>
+            ) : (
+              <div className="coupon-summary" style={{ color: '#9ca3af' }}>請選擇優惠碼</div>
+            )}
             {appliedCoupon && <div className="coupon-summary">{appliedCoupon.displayName || appliedCoupon.couponCode} 已套用</div>}
           </div>
 
