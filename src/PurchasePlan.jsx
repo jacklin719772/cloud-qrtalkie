@@ -489,6 +489,11 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           color: #e5e7eb !important;
         }
         #purchase-plan .number-stepper span { color: #9ca3af !important; }
+        #purchase-plan .renewal-plan-readonly {
+          background: #1a2332 !important;
+          border: 1px solid #374151 !important;
+          color: #e5e7eb !important;
+        }
         #purchase-plan .billing-address-line textarea {
           background: #1a2332 !important;
           color: #e5e7eb !important;
@@ -523,7 +528,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           <div className="purchase-side-label">{isRenewalMode ? '續訂套餐：' : '選擇套餐：'}</div>
           {isReadonlyPlan ? (
             <div className="renewal-plan-readonly" title={selectedPlan?.name || ''}>
-              {selectedPlan?.name || '原订单套餐'}
+              {selectedPlan?.name || '原訂單套餐'}
             </div>
           ) : (
             <div className="purchase-plan-carousel">
