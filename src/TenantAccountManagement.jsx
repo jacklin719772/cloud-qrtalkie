@@ -896,14 +896,15 @@ const TenantAccountManagement = forwardRef(({
           text-align: left;
           color: #9ca3af;
           font-weight: 600;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           white-space: nowrap;
+          background: #1a2332 !important;
         }
         #tenant-account-management .account-table td {
           height: 64px;
           padding: 0 22px;
           color: #d1d5db;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           white-space: nowrap;
         }
         #tenant-account-management .account-empty {
@@ -912,7 +913,7 @@ const TenantAccountManagement = forwardRef(({
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           color: #9ca3af;
         }
         #tenant-account-management .account-table-footer {
