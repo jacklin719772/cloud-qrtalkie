@@ -195,7 +195,7 @@ export default function OrderDetail({ orderId, onBack }) {
                       || prices.find(p => p.currency === currency)
                       || prices[0]
                       || { currency, unitPrice: 0 };
-                    const unit = addon.billingUnit === 'tenant' ? '租户' : addon.billingUnit === 'unit' ? '个' : '项';
+                    const unit = addon.billingUnit === 'tenant' ? '租戶' : addon.billingUnit === 'unit' ? '個' : '項';
                     return (
                       <div key={addon.id} className="addon-service-row selected" style={{ cursor: 'default', opacity: 1 }}>
                         <span>{addon.name}</span>
