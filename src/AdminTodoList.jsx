@@ -54,9 +54,9 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
         if (task.check === 'subscription') {
           return val.filter(o => o.orderStatus === 'review_approved').length > 0;
         }
-        // 租户：待提交审核
+        // 租户：待提交审核（有未提交/未完成的订单）
         if (task.check === 'pending_review') {
-          return val.filter(o => o.orderStatus === 'pending_review').length > 0;
+          return val.filter(o => !['review_approved', 'review_rejected', 'cancelled'].includes(o.orderStatus)).length > 0;
         }
         return val.length > 0;
       }
