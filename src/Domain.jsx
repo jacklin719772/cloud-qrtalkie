@@ -262,7 +262,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       <div className="domain-toolbar">
         <div className="domain-search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="search" placeholder="搜尋方案名稱或訂單編號" value={query} onChange={e => setQuery(e.target.value)} />
+          <input type="search" placeholder="搜尋套餐名稱或訂單編號" value={query} onChange={e => setQuery(e.target.value)} />
         </div>
         <div className="domain-stats">
           {statusFilterOptions.map(o => (
@@ -279,7 +279,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
             <thead>
               <tr>
                 <th>訂單編號</th>
-                <th>方案名稱</th>
+                <th>套餐名稱</th>
                 <th>訂單狀態</th>
                 <th>審核狀態</th>
                 <th>帳號數量</th>
