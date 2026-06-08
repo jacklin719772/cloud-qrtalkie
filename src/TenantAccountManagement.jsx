@@ -609,9 +609,9 @@ const TenantAccountManagement = forwardRef(({
     const readonlyInputStyle = {
       padding: '10px',
       borderRadius: '6px',
-      border: '1px solid #e2e8f0',
+      border: '1px solid #1f2937',
       outline: 'none',
-      backgroundColor: '#f8fafc',
+      backgroundColor: '#1a2332',
       color: '#64748b',
     };
     const labelStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
@@ -708,8 +708,8 @@ const TenantAccountManagement = forwardRef(({
                   { label: '客服坐席', key: 'agent', msg: '尚未配置為客服坐席', doneMsg: '已配置為客服坐席' },
                   { label: '門禁入口', key: 'entrance', msg: '尚未配置為門禁入口', doneMsg: '已配置為門禁入口' },
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
-                ].map(item => { const done = configStatus[item.key] || false; return (<div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
-                      <span style={{ fontSize: '13px', color: '#334155' }}>{item.label}</span>
+                ].map(item => { const done = configStatus[item.key] || false; return (<div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #1f2937' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
+                      <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{done ? item.doneMsg : item.msg}</span>
                     </div>
                     <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button></div>);})}</div>
@@ -1054,7 +1054,7 @@ const TenantAccountManagement = forwardRef(({
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>开始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>结束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
                 {showDomain && <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('domain')}><span>域名</span><span>{getSortIndicator('domain')}</span></button></th>}
-                <th style={{ position: 'sticky', right: 0, backgroundColor: '#f8fafc', zIndex: 3, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center' }}>操作</th>
+                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1078,7 +1078,7 @@ const TenantAccountManagement = forwardRef(({
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
-                    <td style={{ color: '#0f172a', fontWeight: 500 }}>{account.username}</td>
+                    <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{account.username}</td>
                     <td>{account.displayName || '-'}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.webAccount || '—'}</td>
                     <td style={{ fontSize: '12px' }}>{account.contactBookName || '—'}</td>
@@ -1087,7 +1087,7 @@ const TenantAccountManagement = forwardRef(({
                     <td>{formatDate(account.serviceStartsAt)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
                     {showDomain && <td>{account.domain || '-'}</td>}
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#fff', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions tenant-account-more-menu" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => handleAction('details', account)}>詳情</button>
                         <button
@@ -1157,14 +1157,14 @@ const TenantAccountManagement = forwardRef(({
             if (event.target === event.currentTarget) setDetailAccount(null);
           }}
         >
-          <div style={{ width: 'min(560px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>帳號詳情</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號詳情</h3>
               <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ padding: '4px 10px' }}>關閉</button>
             </div>
             <div style={{ overflow: 'auto', flex: 1, padding: '18px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px 14px', fontSize: '14px', color: '#334155' }}>
-              <span style={{ color: '#64748b' }}>帳號</span><strong style={{ color: '#0f172a', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px 14px', fontSize: '14px', color: '#d1d5db' }}>
+              <span style={{ color: '#64748b' }}>帳號</span><strong style={{ color: '#f3f4f6', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
               <span style={{ color: '#64748b' }}>顯示名稱</span><span>{detailAccount.displayName || '-'}</span>
               <span style={{ color: '#64748b' }}>狀態</span><span>{getStatusBadge(detailAccount.status)}</span>
               <span style={{ color: '#64748b' }}>订单编号</span><span>{detailAccount.orderNo || '-'}</span>
@@ -1175,7 +1175,7 @@ const TenantAccountManagement = forwardRef(({
               <span style={{ color: '#64748b' }}>结束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
             </div>
             <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '14px', paddingTop: '14px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '12px' }}>配置情況</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '12px' }}>配置情況</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
                   { label: '電子名片', key: 'ecard', msg: '尚未配置電子名片', doneMsg: '已配置電子名片' },
@@ -1183,10 +1183,10 @@ const TenantAccountManagement = forwardRef(({
                   { label: '門禁入口', key: 'entrance', msg: '尚未配置為門禁入口', doneMsg: '已配置為門禁入口' },
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
                 ].map(item => (
-                  <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #1f2937' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.done ? '#16a34a' : '#94a3b8' }}></span>
-                      <span style={{ fontSize: '13px', color: '#334155' }}>{item.label}</span>
+                      <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{done ? item.doneMsg : item.msg}</span>
                     </div>
                     <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button>
@@ -1217,35 +1217,35 @@ const TenantAccountManagement = forwardRef(({
         >
           <form
             onSubmit={submitEditAccount}
-            style={{ width: 'min(560px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>編輯帳號</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯帳號</h3>
               <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>顯示名稱</span>
-                <input value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <input value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>电子郵箱</span>
-                <input type="email" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <input type="email" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>移动電話</span>
-                <input value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <input value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼</span>
-                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼確認</span>
-                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
               {editMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>}
               <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit}>取消</button>
               <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
@@ -1272,10 +1272,10 @@ const TenantAccountManagement = forwardRef(({
         >
           <form
             onSubmit={submitResetPassword}
-            style={{ width: 'min(480px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+            style={{ width: 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>重設密碼</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3>
               <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
@@ -1286,7 +1286,7 @@ const TenantAccountManagement = forwardRef(({
                   value={resetPasswordForm.password}
                   onChange={(event) => setResetPasswordForm((form) => ({ ...form, password: event.target.value }))}
                   autoComplete="new-password"
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1296,11 +1296,11 @@ const TenantAccountManagement = forwardRef(({
                   value={resetPasswordForm.confirmPassword}
                   onChange={(event) => setResetPasswordForm((form) => ({ ...form, confirmPassword: event.target.value }))}
                   autoComplete="new-password"
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }}
                 />
               </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
               {resetPasswordMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: resetPasswordMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetPasswordMessage.text}</p>}
               <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
@@ -1325,15 +1325,15 @@ const TenantAccountManagement = forwardRef(({
             if (event.target === event.currentTarget) closeContactBookConfig();
           }}
         >
-          <form onSubmit={saveContactBookConfig} style={{ width: 'min(560px, 100%)', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
+          <form onSubmit={saveContactBookConfig} style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>通訊錄配置</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄配置</h3>
               <button className="ghost-btn" type="button" onClick={closeContactBookConfig} style={{ padding: '4px 10px' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>帳號</span>
-                <input value={contactBookTargets.length > 1 ? `已選擇 ${contactBookTargets.length} 個帳號` : `${contactBookAccount.username || '-'}${contactBookAccount.domain ? ` | ${contactBookAccount.domain}` : ''}`} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', backgroundColor: '#f8fafc', color: '#64748b' }} />
+                <input value={contactBookTargets.length > 1 ? `已選擇 ${contactBookTargets.length} 個帳號` : `${contactBookAccount.username || '-'}${contactBookAccount.domain ? ` | ${contactBookAccount.domain}` : ''}`} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#64748b' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通讯录</span>
@@ -1341,7 +1341,7 @@ const TenantAccountManagement = forwardRef(({
                   value={selectedContactBookId}
                   onChange={(event) => setSelectedContactBookId(event.target.value)}
                   disabled={isLoadingContactBooks || isSavingContactBook}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', backgroundColor: '#fff', color: '#334155' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#111827', color: '#d1d5db' }}
                 >
                   <option value="">未配置</option>
                   {contactBooks.map((book) => (
@@ -1353,7 +1353,7 @@ const TenantAccountManagement = forwardRef(({
               {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>暫無已創建的通讯录。</p>}
               {contactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: contactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{contactBookMessage.text}</p>}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
               <button className="ghost-btn" type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook}>取消</button>
               <button className="primary-btn" type="submit" disabled={isLoadingContactBooks || isSavingContactBook}>{isSavingContactBook ? '儲存中...' : '儲存'}</button>
             </div>
@@ -1364,7 +1364,7 @@ const TenantAccountManagement = forwardRef(({
       {/* 二維碼管理對話框 */}
       {qrDialogAccount && createPortal((
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setQrDialogAccount(null)}>
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '28px 24px 20px', maxWidth: '480px', width: '90%', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: '#111827', borderRadius: '16px', padding: '28px 24px 20px', maxWidth: '480px', width: '90%', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>二維碼管理 — {qrDialogAccount.username}</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1372,12 +1372,12 @@ const TenantAccountManagement = forwardRef(({
                 <button onClick={() => setQrDialogAccount(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px' }}>✕</button>
               </div>
             </div>
-            <img src={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username) + '&t=' + qrRefreshKey} alt="QR" style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+            <img src={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username) + '&t=' + qrRefreshKey} alt="QR" style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #1f2937' }} />
             <div style={{ display: 'flex', gap: '6px', marginTop: '16px', justifyContent: 'center', flexWrap: 'nowrap' }}>
               <button onClick={async () => { try { const r = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username)); const b = await r.blob(); const img = await createImageBitmap(b); const canvas = document.createElement('canvas'); const label = '二維碼管理 ' + (qrDialogAccount.username || ''); const ctx = canvas.getContext('2d'); ctx.font = 'bold 14px system-ui'; const tw = ctx.measureText(label).width; const maxW = Math.max(200, tw + 20); canvas.width = maxW; canvas.height = 240; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, (maxW - 200) / 2, 10); ctx.fillStyle = '#0f172a'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, maxW / 2, 230); const blob2 = await new Promise(r2 => canvas.toBlob(r2, 'image/png')); const a = document.createElement('a'); a.href = URL.createObjectURL(blob2); a.download = (qrDialogAccount.username || 'qrcode') + '-' + (qrDialogAccount.displayName || 'unknown') + '-qrcode.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>⬇ 下載</button>
-              <button onClick={async () => { try { const r = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username)); const b = await r.blob(); const img = await createImageBitmap(b); const canvas = document.createElement('canvas'); const label = '二維碼管理 ' + (qrDialogAccount.username || ''); const ctx = canvas.getContext('2d'); ctx.font = 'bold 14px system-ui'; const tw = ctx.measureText(label).width; const maxW = Math.max(200, tw + 20); canvas.width = maxW; canvas.height = 240; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, (maxW - 200) / 2, 10); ctx.fillStyle = '#0f172a'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, maxW / 2, 230); const blob2 = await new Promise(r2 => canvas.toBlob(r2, 'image/png')); await navigator.clipboard.write([new ClipboardItem({[blob2.type]: blob2})]); window.alert('已複製'); } catch(e) { try { await navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製</button>
-              <button onClick={() => { navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username).then(() => window.alert('鏈接已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製鏈接</button>
-              <button onClick={() => { if (qrDialogAccount.email) { window.alert('郵件已發送至 ' + qrDialogAccount.email); } else { window.alert('該帳號未設定郵箱'); } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✉ 郵件</button>
+              <button onClick={async () => { try { const r = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username)); const b = await r.blob(); const img = await createImageBitmap(b); const canvas = document.createElement('canvas'); const label = '二維碼管理 ' + (qrDialogAccount.username || ''); const ctx = canvas.getContext('2d'); ctx.font = 'bold 14px system-ui'; const tw = ctx.measureText(label).width; const maxW = Math.max(200, tw + 20); canvas.width = maxW; canvas.height = 240; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, (maxW - 200) / 2, 10); ctx.fillStyle = '#0f172a'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, maxW / 2, 230); const blob2 = await new Promise(r2 => canvas.toBlob(r2, 'image/png')); await navigator.clipboard.write([new ClipboardItem({[blob2.type]: blob2})]); window.alert('已複製'); } catch(e) { try { await navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製</button>
+              <button onClick={() => { navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username).then(() => window.alert('鏈接已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製鏈接</button>
+              <button onClick={() => { if (qrDialogAccount.email) { window.alert('郵件已發送至 ' + qrDialogAccount.email); } else { window.alert('該帳號未設定郵箱'); } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✉ 郵件</button>
             </div>
           </div>
         </div>
