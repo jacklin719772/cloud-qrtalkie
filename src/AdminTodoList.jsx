@@ -19,7 +19,7 @@ const PLATFORM_TASKS = [
 ];
 
 const TENANT_TASKS = [
-  { id: 'has_subscription', label: '是否已訂閱套餐', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'subscription' },
+  { id: 'has_subscription', label: '是否有已生效套餐', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'subscription' },
   { id: 'pending_review_order', label: '是否有訂單待提交審核', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'pending_review' },
   { id: 'contact_books', label: '是否已建立通訊錄', view: 'contact-books', api: '/contact-books', key: 'contactBooks' },
   { id: 'ecards', label: '是否已創建電子名片', view: 'e-business-card', api: '/tenant/ecard-accounts', key: 'accounts' },
@@ -50,9 +50,9 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
         if (task.id === 'pending_subscriptions') {
           return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review' || s.orderStatus === 'pending_review').length > 0;
         }
-        // 租户：已订阅套餐（审核通过/已生效）
+        // 租户：是否有已生效套餐（审核通过）
         if (task.check === 'subscription') {
-          return val.filter(o => o.orderStatus === 'reviewed' || o.orderStatus === 'active_effective' || o.paymentStatus === 'paid').length > 0;
+          return val.filter(o => o.orderStatus === 'review_approved').length > 0;
         }
         // 租户：待提交审核
         if (task.check === 'pending_review') {
