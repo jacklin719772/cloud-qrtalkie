@@ -370,7 +370,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   if (loading) return <div className="panel" style={{ padding: '40px', textAlign: 'center' }}>載入套餐資料中...</div>;
 
   return (
-    <section className="view active" id="purchase-plan">
+    <section className="view active" id="purchase-plan" style={{ background: '#0f172a' }}>
       <style>{`
         #purchase-plan.view.active { height: 100%; flex: 1 0 0; min-height: 0; }
         #purchase-plan .purchase-page-form {
@@ -379,14 +379,71 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         }
         #purchase-plan .purchase-page-form::-webkit-scrollbar { display: none; }
         #purchase-plan .purchase-card {
-          background: #ffffff;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
           padding: 28px 36px;
           max-width: 860px;
           margin: 0 auto;
           width: 100%;
+          color: #e5e7eb;
         }
         #purchase-plan .purchase-page-actions { margin-top: 24px; }
+        #purchase-plan .billing-detail-box {
+          background: #111827 !important;
+          border: 1px solid #1f2937 !important;
+        }
+        #purchase-plan .billing-detail-head {
+          background: #1a2332 !important;
+          border-bottom: 1px solid #1f2937 !important;
+        }
+        #purchase-plan .billing-detail-head strong { color: #f3f4f6 !important; }
+        #purchase-plan .billing-detail-head span { color: #9ca3af !important; }
+        #purchase-plan .billing-detail-row {
+          color: #d1d5db !important;
+          border-bottom: 1px solid #1f2937 !important;
+        }
+        #purchase-plan .billing-detail-row strong { color: #f3f4f6 !important; }
+        #purchase-plan .billing-detail-row b { color: #e5e7eb !important; }
+        #purchase-plan .billing-detail-row.discount b { color: #60a5fa !important; }
+        #purchase-plan .billing-detail-header {
+          color: #9ca3af !important;
+          background: #1a2332 !important;
+        }
+        #purchase-plan .billing-detail-total {
+          background: #1a2332 !important;
+        }
+        #purchase-plan .billing-detail-total span { color: #f3f4f6 !important; }
+        #purchase-plan .billing-detail-total strong { color: #60a5fa !important; }
+        #purchase-plan .addon-service-row {
+          background: #1a2332;
+          border: 1px solid #1f2937;
+          color: #d1d5db;
+        }
+        #purchase-plan .addon-service-row:hover { background: #1e293b; }
+        #purchase-plan .addon-service-row.selected {
+          background: #1e3a5f;
+          border-color: #3b82f6;
+          color: #e5e7eb;
+        }
+        #purchase-plan .addon-service-row strong { color: #f3f4f6; }
+        #purchase-plan input[type='text'],
+        #purchase-plan input[type='number'],
+        #purchase-plan input[type='email'],
+        #purchase-plan select {
+          background: #1a2332;
+          color: #e5e7eb;
+          border: 1px solid #374151;
+          border-radius: 6px;
+          padding: 10px 12px;
+        }
+        #purchase-plan input:focus, #purchase-plan select:focus {
+          border-color: #3b82f6;
+          outline: none;
+        }
+        #purchase-plan label { color: #9ca3af; }
+        #purchase-plan .primary-btn { background: #3b82f6; color: #fff; border: none; }
+        #purchase-plan .ghost-btn { background: #1f2937; color: #d1d5db; border: 1px solid #374151; }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form" onSubmit={handleCheckout}>
         <div className="purchase-card">
