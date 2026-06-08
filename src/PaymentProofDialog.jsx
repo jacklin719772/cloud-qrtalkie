@@ -340,6 +340,7 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
         #payment-proof-form .proof-upload-empty svg { color: #6b7280; }
         #payment-proof-form .proof-upload-empty small { color: #6b7280; }
         #payment-proof-form .link-btn { color: #60a5fa; background: transparent; border: none; cursor: pointer; }
+        #payment-proof-form .proof-preview { background: #1a2332 !important; }
         #payment-proof-form .proof-image-action { background: #1f2937; border: 1px solid #374151; color: #d1d5db; }
         #payment-proof-form .proof-image-remove { color: #fca5a5; }
         #payment-proof-form .payment-proof-fields label { color: #9ca3af; }
