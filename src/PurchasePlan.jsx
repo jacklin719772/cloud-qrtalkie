@@ -444,11 +444,46 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         #purchase-plan label { color: #9ca3af; }
         #purchase-plan .primary-btn { background: #3b82f6; color: #fff; border: none; }
         #purchase-plan .ghost-btn { background: #1f2937; color: #d1d5db; border: 1px solid #374151; }
+        #purchase-plan .plan-nav-btn {
+          background: #1f2937 !important;
+          border: 1px solid #374151 !important;
+          color: #93c5fd !important;
+        }
+        #purchase-plan .plan-nav-btn:hover { background: #374151 !important; border-color: #3b82f6 !important; }
+        #purchase-plan .plan-choice {
+          background: #1a2332 !important;
+          border: 1px solid #374151 !important;
+          color: #e5e7eb !important;
+        }
+        #purchase-plan .plan-choice strong { color: #f3f4f6 !important; }
+        #purchase-plan .plan-choice span { color: #60a5fa !important; }
+        #purchase-plan .plan-choice small { color: #9ca3af !important; }
+        #purchase-plan .plan-choice em { color: #9ca3af !important; }
+        #purchase-plan .plan-choice b { color: #d1d5db !important; }
+        #purchase-plan .plan-choice.selected {
+          border-color: #3b82f6 !important;
+          box-shadow: 0 0 18px rgba(59, 130, 246, 0.2) !important;
+        }
+        #purchase-plan .plan-choice.selected::after {
+          background: linear-gradient(135deg, transparent 0 48%, #3b82f6 49% 100%) !important;
+        }
+        #purchase-plan .purchase-side-label { color: #d1d5db !important; font-weight: 600; }
+        #purchase-plan .number-stepper button {
+          background: #1f2937 !important;
+          border: 1px solid #374151 !important;
+          color: #d1d5db !important;
+        }
+        #purchase-plan .number-stepper button:hover { background: #374151 !important; }
+        #purchase-plan .number-stepper input {
+          background: #1a2332 !important;
+          border-color: #374151 !important;
+          color: #e5e7eb !important;
+        }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form" onSubmit={handleCheckout}>
         <div className="purchase-card">
           <div className="purchase-form-body">
-          <div className="purchase-side-label">{isRenewalMode ? '续订套餐：' : '選擇套餐：'}</div>
+          <div className="purchase-side-label">{isRenewalMode ? '續訂套餐：' : '選擇套餐：'}</div>
           {isReadonlyPlan ? (
             <div className="renewal-plan-readonly" title={selectedPlan?.name || ''}>
               {selectedPlan?.name || '原订单套餐'}
