@@ -3164,7 +3164,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
     return response.status(201).json({ message: "優惠碼已分配。", id: Number(result.insertId) });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
-    console.error(error);
+    console.error("分配優惠碼失敗 - sqlMessage:", error?.sqlMessage, "code:", error?.code, "errno:", error?.errno, "message:", error?.message);
     return response.status(500).json({ message: "分配優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
