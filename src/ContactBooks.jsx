@@ -679,7 +679,7 @@ const ContactBooks = forwardRef((props, ref) => {
                           {book.entryCount || 0}
                         </span>
                       </td>
-                      <td>{book.creatorName || book.createdBy || book.creatorNickname || book.adminNickname || book.adminName || '系统'}</td>
+                      <td>{book.creatorName || book.createdBy || book.creatorNickname || book.adminNickname || book.adminName || '系統'}</td>
                       <td>{formatDate(book.createdAt)}</td>
                       <td style={{ textAlign: 'center' }}>
                         <div className="row-actions contact-books-more-menu" style={{ display: 'inline-flex', gap: '8px' }}>
@@ -739,38 +739,38 @@ const ContactBooks = forwardRef((props, ref) => {
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名称 <span style={{ color: '#ef4444' }}>*</span></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
                   <input required value={newBookForm.name} onChange={(e) => setNewBookForm(p => ({ ...p, name: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="例如：开发部通訊錄" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>描述</span>
-                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="请输入通訊錄描述..." />
+                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="請输入通訊錄描述..." />
                 </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的账号 ({newBookForm.accountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({newBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         newBookForm.accountIds,
                         (id) => toggleNewBookAccount('accountIds', id),
-                        accountSearchKeyword ? '没有符合条件的账号' : '暫無可选择账号'
+                        accountSearchKeyword ? '没有符合条件的帳號' : '暫無可選擇帳號'
                       )}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的账号 ({newBookForm.assignedAccountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({newBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active'),
                         newBookForm.assignedAccountIds,
                         (id) => toggleNewBookAccount('assignedAccountIds', id),
-                        accountSearchKeyword ? '没有符合条件的账号' : '暫無启用账号可分配'
+                        accountSearchKeyword ? '没有符合条件的帳號' : '暫無啟用帳號可分配'
                       )}
                     </div>
                   </div>
@@ -795,7 +795,7 @@ const ContactBooks = forwardRef((props, ref) => {
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名称</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱</span>
                   <div style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#334155', fontSize: '14px' }}>{detailBook.name || '-'}</div>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -806,22 +806,22 @@ const ContactBooks = forwardRef((props, ref) => {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的账号 ({detailBook.includedAccounts?.length || 0})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({detailBook.includedAccounts?.length || 0})</span>
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
                       <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
-                    ) : renderReadonlyAccountList(detailBook.includedAccounts, '该通訊錄暫無包含账号')}
+                    ) : renderReadonlyAccountList(detailBook.includedAccounts, '该通訊錄暫無包含帳號')}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的账号 ({detailBook.assignedAccounts?.length || 0})</span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({detailBook.assignedAccounts?.length || 0})</span>
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
                       <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
-                    ) : renderReadonlyAccountList(detailBook.assignedAccounts, '该通訊錄暫無分配账号')}
+                    ) : renderReadonlyAccountList(detailBook.assignedAccounts, '该通訊錄暫無分配帳號')}
                   </div>
                 </div>
               </div>
@@ -841,7 +841,7 @@ const ContactBooks = forwardRef((props, ref) => {
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名称 <span style={{ color: '#ef4444' }}>*</span></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
                   <input required value={editBookForm.name} onChange={(event) => setEditBookForm(form => ({ ...form, name: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', color: '#334155', fontSize: '14px' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -853,7 +853,7 @@ const ContactBooks = forwardRef((props, ref) => {
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <input
                   type="search"
-                  placeholder="搜索账号、名称、邮件或电话"
+                  placeholder="搜尋帳號、名稱、邮件或電話"
                   value={accountSearchKeyword}
                   onChange={(e) => setAccountSearchKeyword(e.target.value)}
                   style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '13px', width: '220px' }}
@@ -862,7 +862,7 @@ const ContactBooks = forwardRef((props, ref) => {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的账号 ({editBookForm.accountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({editBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
@@ -871,13 +871,13 @@ const ContactBooks = forwardRef((props, ref) => {
                         tenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         editBookForm.accountIds,
                         (id) => toggleEditAccount('accountIds', id),
-                        '暫無可选择账号'
+                        '暫無可選擇帳號'
                       )}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的账号 ({editBookForm.assignedAccountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({editBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
@@ -886,7 +886,7 @@ const ContactBooks = forwardRef((props, ref) => {
                         tenantAccounts.filter(acc => acc.status === 'active'),
                         editBookForm.assignedAccountIds,
                         (id) => toggleEditAccount('assignedAccountIds', id),
-                        '暫無启用账号可分配'
+                        '暫無啟用帳號可分配'
                       )}
                     </div>
                   </div>

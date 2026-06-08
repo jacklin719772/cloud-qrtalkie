@@ -63,7 +63,7 @@ function getStatusBadge(status) {
     active: { label: '啟用中', bg: '#dcfce7', color: '#15803d' },
     inactive: { label: '未啟用', bg: '#f1f5f9', color: '#475569' },
     disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
-    expired: { label: '已过期', bg: '#fef3c7', color: '#b45309' },
+    expired: { label: '已過期', bg: '#fef3c7', color: '#b45309' },
     pending: { label: '待啟用', bg: '#e0f2fe', color: '#0369a1' },
   };
   const item = map[status] || { label: status || '未知', bg: '#f1f5f9', color: '#475569' };
@@ -79,7 +79,7 @@ function getStatusLabel(status) {
     active: '啟用中',
     inactive: '未啟用',
     disabled: '已停用',
-    expired: '已过期',
+    expired: '已過期',
     pending: '待啟用',
   };
   return map[status] || status || '未知';
@@ -161,7 +161,7 @@ const TenantAccountManagement = forwardRef(({
     } catch (error) {
       console.error('Failed to load contact books:', error);
       setContactBooks([]);
-      setContactBookMessage({ type: 'error', text: error.message || '读取通讯录失敗' });
+      setContactBookMessage({ type: 'error', text: error.message || '讀取通訊錄失敗' });
     } finally {
       setIsLoadingContactBooks(false);
     }
@@ -313,7 +313,7 @@ const TenantAccountManagement = forwardRef(({
 
   function openEditAccount(account) {
     if (!canUseAccountActions(account)) {
-      window.alert('已过期帳號不能編輯。');
+      window.alert('已過期帳號不能編輯。');
       return;
     }
     setEditAccount(account);
@@ -375,7 +375,7 @@ const TenantAccountManagement = forwardRef(({
     const targets = Array.isArray(account) ? account : [account];
     const usableTargets = targets.filter(canUseAccountActions);
     if (usableTargets.length === 0) {
-      window.alert('已过期帳號不能重設密碼。');
+      window.alert('已過期帳號不能重設密碼。');
       return;
     }
     setResetPasswordAccount(usableTargets);
@@ -435,12 +435,12 @@ const TenantAccountManagement = forwardRef(({
   function getSelectedActionableAccounts(actionLabel) {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
     if (selectedAccounts.length === 0) {
-      window.alert('请先選擇帳號。');
+      window.alert('請先選擇帳號。');
       return [];
     }
     const usableAccounts = selectedAccounts.filter(canUseAccountActions);
     if (usableAccounts.length === 0) {
-      window.alert(`已过期帳號不能${actionLabel}。`);
+      window.alert(`已過期帳號不能${actionLabel}。`);
       return [];
     }
     return usableAccounts;
@@ -487,12 +487,12 @@ const TenantAccountManagement = forwardRef(({
     const body = [
       '您好，',
       '',
-      `请及时查看并维护您的 ${accountLabel} 帳號信息。`,
-      '首次获得帳號后请务必修改帳號初始密碼。',
+      `請及时查看并维护您的 ${accountLabel} 帳號資訊。`,
+      '首次获得帳號后請务必修改帳號初始密碼。',
       '',
       '--',
       'QRTalkie Cloud',
-      '重設密碼：请登录控制台，在帳號管理中修改初始密碼。如无法登录，请联系管理員协助重設。',
+      '重設密碼：請登入控制台，在帳號管理中修改初始密碼。如无法登入，請聯繫管理員协助重設。',
     ].join('\n');
     window.location.href = `mailto:${recipients.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
@@ -502,7 +502,7 @@ const TenantAccountManagement = forwardRef(({
     const targets = contactBookTargets.length > 0 ? contactBookTargets : (contactBookAccount ? [contactBookAccount] : []);
     if (targets.length === 0) return;
     const targetText = targets.length === 1 ? `帳號 ${targets[0].username}` : `所选 ${targets.length} 個帳號`;
-    if (!window.confirm(`確定要儲存${targetText}的通讯录配置吗？`)) return;
+    if (!window.confirm(`確定要儲存${targetText}的通訊錄配置吗？`)) return;
     setIsSavingContactBook(true);
     setContactBookMessage({ type: '', text: '' });
     try {
@@ -544,7 +544,7 @@ const TenantAccountManagement = forwardRef(({
     }
     if (action === 'email') {
       if (!canUseAccountActions(account)) {
-        window.alert('已过期帳號不能發送邮件。');
+        window.alert('已過期帳號不能發送邮件。');
         return;
       }
       if (!account.email) {
@@ -555,16 +555,16 @@ const TenantAccountManagement = forwardRef(({
     const body = [
       '您好，',
       '',
-      `您的 ${accountLabel} 帳號信息如下：`,
+      `您的 ${accountLabel} 帳號資訊如下：`,
       `帳號：${account.username || '-'}`,
       ...(showDomain ? [`域名：${account.domain || '-'}`] : []),
       `顯示名稱：${account.displayName || '-'}`,
         '',
-        '首次获得帳號后请务必修改帳號初始密碼。',
+        '首次获得帳號后請务必修改帳號初始密碼。',
         '',
         '--',
         'QRTalkie Cloud',
-        '重設密碼：请登录控制台，在帳號管理中修改初始密碼。如无法登录，请联系管理員协助重設。',
+        '重設密碼：請登入控制台，在帳號管理中修改初始密碼。如无法登入，請聯繫管理員协助重設。',
       ].join('\n');
       window.location.href = `mailto:${account.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       return;
@@ -588,7 +588,7 @@ const TenantAccountManagement = forwardRef(({
     }
     if (action === 'toggle_status') {
       if (!canUseAccountActions(account)) {
-        window.alert('已过期帳號不能啟用或停用。');
+        window.alert('已過期帳號不能啟用或停用。');
         return;
       }
       const nextStatus = account.status === 'active' ? 'disabled' : 'active';
@@ -629,7 +629,7 @@ const TenantAccountManagement = forwardRef(({
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>用户名</span>
@@ -647,7 +647,7 @@ const TenantAccountManagement = forwardRef(({
                 </label>
                 {enableContactBook && (
                   <label style={labelStyle}>
-                    <span style={labelTextStyle}>通讯录</span>
+                    <span style={labelTextStyle}>通訊錄</span>
                     <input value={detailAccount.contactBookName || '未配置'} readOnly style={readonlyInputStyle} />
                   </label>
                 )}
@@ -661,31 +661,31 @@ const TenantAccountManagement = forwardRef(({
                 </label>
               </div>
 
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>套餐与服务信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>套餐与服务資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
-                  <span style={labelTextStyle}>订单编号</span>
+                  <span style={labelTextStyle}>訂單編號</span>
                   <input value={detailAccount.orderNo || '-'} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  <span style={labelTextStyle}>开始日期</span>
+                  <span style={labelTextStyle}>開始日期</span>
                   <input value={formatDate(detailAccount.serviceStartsAt)} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  <span style={labelTextStyle}>结束日期</span>
+                  <span style={labelTextStyle}>結束日期</span>
                   <input value={formatDate(detailAccount.serviceExpiresAt)} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>套餐狀態</span>
-                  <input value={isPackageExpired(detailAccount.serviceExpiresAt) ? '已过期套餐' : '生效中套餐'} readOnly style={readonlyInputStyle} />
+                  <input value={isPackageExpired(detailAccount.serviceExpiresAt) ? '已過期套餐' : '生效中套餐'} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  <span style={labelTextStyle}>即将过期</span>
+                  <span style={labelTextStyle}>即将過期</span>
                   <input value={isExpiringSoon(detailAccount.serviceExpiresAt) ? '是' : '否'} readOnly style={readonlyInputStyle} />
                 </label>
               </div>
 
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>联系信息</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>聯繫資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>手機号</span>
@@ -1013,12 +1013,12 @@ const TenantAccountManagement = forwardRef(({
           <div className="account-filter-left">
             <label className="account-search">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="search" placeholder={`搜尋 ${accountLabel} 帳號、顯示名稱或订单编号`} value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} />
+              <input type="search" placeholder={`搜尋 ${accountLabel} 帳號、顯示名稱或訂單編號`} value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} />
             </label>
             <select className="account-package-select" value={packageFilter} onChange={(event) => setPackageFilter(event.target.value)}>
               <option value="all">全部套餐</option>
               <option value="active">生效中套餐</option>
-              <option value="expired">已过期套餐</option>
+              <option value="expired">已過期套餐</option>
             </select>
             <select className="account-status-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">全部</option>
@@ -1031,7 +1031,7 @@ const TenantAccountManagement = forwardRef(({
             <span className="account-stat-pill">啟用中<strong>{accountStats.active}</strong></span>
             <span className="account-stat-pill">未啟用<strong>{accountStats.inactive}</strong></span>
             <span className="account-stat-pill">已停用<strong>{accountStats.disabled}</strong></span>
-            <span className="account-stat-pill">已过期<strong>{accountStats.expired}</strong></span>
+            <span className="account-stat-pill">已過期<strong>{accountStats.expired}</strong></span>
           </div>
         </div>
 
@@ -1056,10 +1056,10 @@ const TenantAccountManagement = forwardRef(({
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('displayName')}><span>顯示名稱</span><span>{getSortIndicator('displayName')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('webAccount')}><span>Web 帳號</span><span>{getSortIndicator('webAccount')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('contactBookName')}><span>通訊錄</span><span>{getSortIndicator('contactBookName')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>订单编号</span><span>{getSortIndicator('orderNo')}</span></button></th>
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>訂單編號</span><span>{getSortIndicator('orderNo')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('status')}><span>狀態</span><span>{getSortIndicator('status')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>开始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>结束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>開始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>結束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
                 {showDomain && <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('domain')}><span>域名</span><span>{getSortIndicator('domain')}</span></button></th>}
                 <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
               </tr>
@@ -1175,12 +1175,12 @@ const TenantAccountManagement = forwardRef(({
               <span style={{ color: '#64748b' }}>帳號</span><strong style={{ color: '#f3f4f6', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
               <span style={{ color: '#64748b' }}>顯示名稱</span><span>{detailAccount.displayName || '-'}</span>
               <span style={{ color: '#64748b' }}>狀態</span><span>{getStatusBadge(detailAccount.status)}</span>
-              <span style={{ color: '#64748b' }}>订单编号</span><span>{detailAccount.orderNo || '-'}</span>
+              <span style={{ color: '#64748b' }}>訂單編號</span><span>{detailAccount.orderNo || '-'}</span>
               <span style={{ color: '#64748b' }}>域名</span><span>{detailAccount.domain || '-'}</span>
               <span style={{ color: '#64748b' }}>郵箱</span><span>{detailAccount.email || '-'}</span>
               <span style={{ color: '#64748b' }}>電話</span><span>{detailAccount.phone || '-'}</span>
-              <span style={{ color: '#64748b' }}>开始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
-              <span style={{ color: '#64748b' }}>结束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
+              <span style={{ color: '#64748b' }}>開始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
+              <span style={{ color: '#64748b' }}>結束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
             </div>
             <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '14px', paddingTop: '14px' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '12px' }}>配置情況</div>
@@ -1246,11 +1246,11 @@ const TenantAccountManagement = forwardRef(({
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼</span>
-                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼確認</span>
-                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改请留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
               </label>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #e2e8f0', backgroundColor: '#1a2332' }}>
@@ -1344,7 +1344,7 @@ const TenantAccountManagement = forwardRef(({
                 <input value={contactBookTargets.length > 1 ? `已選擇 ${contactBookTargets.length} 個帳號` : `${contactBookAccount.username || '-'}${contactBookAccount.domain ? ` | ${contactBookAccount.domain}` : ''}`} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#64748b' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通讯录</span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通訊錄</span>
                 <select
                   value={selectedContactBookId}
                   onChange={(event) => setSelectedContactBookId(event.target.value)}
@@ -1357,8 +1357,8 @@ const TenantAccountManagement = forwardRef(({
                   ))}
                 </select>
               </label>
-              {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>正在載入通讯录...</p>}
-              {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>暫無已創建的通讯录。</p>}
+              {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>正在載入通訊錄...</p>}
+              {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>暫無已創建的通訊錄。</p>}
               {contactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: contactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{contactBookMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #e2e8f0' }}>
