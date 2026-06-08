@@ -25,7 +25,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const [couponCode, setCouponCode] = useState('');
   const [selectedCouponAssignmentId, setSelectedCouponAssignmentId] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [paymentType, setPaymentType] = useState('online');
+  const [paymentType, setPaymentType] = useState('offline');
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -497,6 +497,24 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         #purchase-plan .billing-address-line textarea:focus {
           border-color: #3b82f6 !important;
           outline: none !important;
+        }
+        #purchase-plan .offline-payment-info {
+          background: #1a2332 !important;
+          border: 1px solid #1f2937 !important;
+          color: #d1d5db !important;
+        }
+        #purchase-plan .offline-payment-info p { color: #60a5fa !important; }
+        #purchase-plan .offline-payment-info dt { color: #9ca3af !important; }
+        #purchase-plan .offline-payment-info dd { color: #e5e7eb !important; }
+        #purchase-plan .option-pill {
+          background: #1a2332 !important;
+          border: 1px solid #374151 !important;
+          color: #9ca3af !important;
+        }
+        #purchase-plan .option-pill.selected {
+          background: #3b82f6 !important;
+          border-color: #3b82f6 !important;
+          color: #fff !important;
         }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form" onSubmit={handleCheckout}>
