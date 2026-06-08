@@ -1370,11 +1370,11 @@ export default function PlanManagement({ onNavigate }) {
                       ) : detailOrder.items && detailOrder.items.length > 0 ? (
                         <table style={{ width: '100%', minWidth: '400px', tableLayout: 'fixed', wordBreak: 'break-all', borderCollapse: 'collapse', fontSize: '13px', color: '#e5e7eb' }}>
                           <thead>
-                            <tr>
-                              <th style={{ width: '40px', textAlign: 'left', padding: '8px', borderBottom: '1px solid #cbd5e1', color: '#64748b', fontWeight: 500 }}>序号</th>
-                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #cbd5e1', color: '#64748b', fontWeight: 500 }}>项目</th>
-                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #cbd5e1', color: '#64748b', fontWeight: 500 }}>计算方式</th>
-                              <th style={{ width: '100px', textAlign: 'right', padding: '8px', borderBottom: '1px solid #cbd5e1', color: '#64748b', fontWeight: 500 }}>金額</th>
+                            <tr style={{ background: '#1a2332' }}>
+                              <th style={{ width: '40px', textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>序號</th>
+                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>項目</th>
+                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>計算方式</th>
+                              <th style={{ width: '100px', textAlign: 'right', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>金額</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1382,7 +1382,7 @@ export default function PlanManagement({ onNavigate }) {
                               <tr key={index}>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>{index + 1}</td>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>{item.itemName}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#64748b' }}>{itemFormula(item)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>{itemFormula(item)}</td>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600 }}>{formatMoney(item.lineAmount, item.currency)}</td>
                               </tr>
                             ))}
