@@ -910,13 +910,13 @@ const TenantAccountManagement = forwardRef(({
           white-space: nowrap;
         }
         #tenant-account-management .account-empty {
-          height: 380px;
+          flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border-bottom: 1px solid #1f2937;
           color: #9ca3af;
+          min-height: 200px;
         }
         #tenant-account-management .account-table-footer {
           min-height: 74px;
@@ -1036,6 +1036,9 @@ const TenantAccountManagement = forwardRef(({
         </div>
 
         <div className="account-table-card">
+          {paginatedAccounts.length === 0 && !isLoading ? (
+            <div className="account-empty">{emptyText}</div>
+          ) : (
           <div className="account-table-wrapper">
           <table className="account-table">
             <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
@@ -1126,6 +1129,7 @@ const TenantAccountManagement = forwardRef(({
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="account-table-footer">
             <div className="account-total">共 {filteredAccounts.length} 條</div>
