@@ -61,10 +61,15 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         setAvailableCoupons(couponsRes.coupons || []);
         setBillingAddress(tenant?.billingAddress || '');
 
-        // 設定預設值
+        // 設定預設值：預設為線下支付
         if (activePlans.length > 0) setSelectedPlanId(activePlans[0].id);
-        const onlinePms = activePms.filter(pm => pm.methodType === 'online');
-        if (onlinePms.length > 0) setSelectedPaymentMethodCode(onlinePms[0].methodCode);
+        const offlinePm = activePms.find(pm => pm.methodType === 'offline');
+        if (offlinePm) {
+          setSelectedPaymentMethodCode(offlinePm.methodCode);
+        } else {
+          const onlinePms = activePms.filter(pm => pm.methodType === 'online');
+          if (onlinePms.length > 0) setSelectedPaymentMethodCode(onlinePms[0].methodCode);
+        }
 
         if (purchaseContext?.orderId) {
           const orderRes = await apiClient.get(`/billing/orders/${purchaseContext.orderId}`);
