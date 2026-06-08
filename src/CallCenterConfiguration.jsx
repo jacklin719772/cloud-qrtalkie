@@ -25,7 +25,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
     handleBatchDelete,
   }));
 
-  // --- 获取真实後台數據 ---
+  // --- 獲取真实後台數據 ---
   const fetchCallCenters = async () => {
     setLoading(true);
     try {
@@ -81,7 +81,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
     try {
       const res = await apiClient.put(`/call-centers/${item.id}/status`, { status: nextStatus });
       if (res && res.code === 0) {
-        fetchCallCenters(); // 重新拉取以更新列表与统计数字
+        fetchCallCenters(); // 重新拉取以更新列表與統計数字
       } else {
         alert(res?.message || '狀態更新失敗');
       }
@@ -178,7 +178,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  // 下拉菜单定位逻辑 (与 Ecard 完全一致)
+  // 下拉菜单定位逻辑 (與 Ecard 完全一致)
   useEffect(() => {
     if (!openDropdownId || !dropdownAnchorRef.current) return;
     const updatePosition = () => {
@@ -209,7 +209,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
     };
   }, [openDropdownId]);
 
-  // 依赖项变化时重新获取數據
+  // 依赖项变化时重新獲取數據
   useEffect(() => {
     setSelectedIds([]); // 切换分页或筛选条件时清空选中
     fetchCallCenters();
@@ -245,7 +245,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           overflow: hidden;
         }
         
-        /* --- 查詢与统计工具栏 --- */
+        /* --- 查詢與統計工具栏 --- */
         .cc-toolbar {
           display: flex;
           align-items: center;
