@@ -46,9 +46,9 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
       if (val === undefined || val === null) return false;
       if (typeof val === 'string') return val.length > 0;
       if (Array.isArray(val)) {
-        // 平台：待审核订阅
+        // 平台：待审核订阅（有则未完成，无则完成）
         if (task.id === 'pending_subscriptions') {
-          return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review' || s.orderStatus === 'pending_review').length > 0;
+          return val.filter(s => s.status === 'pending_review' || s.order_status === 'pending_review' || s.orderStatus === 'pending_review').length === 0;
         }
         // 租户：是否有已生效套餐（审核通过）
         if (task.check === 'subscription') {
