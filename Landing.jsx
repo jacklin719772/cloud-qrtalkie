@@ -11,7 +11,7 @@ export default function Landing({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [registeredEmail, setRegisteredEmail] = useState(''); // 记住注册邮箱用于重发验证
+  const [registeredEmail, setRegisteredEmail] = useState(''); // 記住註冊信箱用於重發驗證
   const [isResending, setIsResending] = useState(false);
   
   // 新增：法律條款彈窗狀態
@@ -38,7 +38,7 @@ export default function Landing({ onLogin }) {
     return () => { clearTimeout(fadeTimer); clearTimeout(removeTimer); };
   }, []);
 
-  // 处理 URL 中的邮箱验证 token
+  // 處理 URL 中的信箱驗證 token
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const verifyToken = params.get('verifyEmailToken');
@@ -143,7 +143,7 @@ export default function Landing({ onLogin }) {
       }
       onLogin();
     } catch (error) {
-      // 优先获取后端返回的自定义错误信息，防止显示默认的 HTTP 状态报错
+      // 優先獲取後端返回的自定義錯誤資訊，防止顯示預設的 HTTP 狀態報錯
       const serverMessage = error.response?.data?.message || error.message;
       showTimedError(serverMessage);
     } finally {
@@ -283,7 +283,7 @@ export default function Landing({ onLogin }) {
     }
   };
 
-  // 重发验证邮件
+  // 重發驗證郵件
   const handleResendVerification = async () => {
     if (!registeredEmail) return;
     setIsResending(true);
