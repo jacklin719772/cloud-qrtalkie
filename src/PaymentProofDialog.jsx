@@ -346,6 +346,7 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
         #payment-proof-form .payment-proof-fields label { color: #9ca3af; }
         #payment-proof-form .payment-proof-fields input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; border-radius: 6px; padding: 10px; }
         #payment-proof-form .payment-proof-fields input[readonly] { background: #0f172a; color: #6b7280; }
+        #payment-proof-form .payment-proof-fields input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
         #payment-proof-form .form-message.error { color: #ef4444; }
         #payment-proof-form .form-message.success { color: #22c55e; }
         #payment-proof-form .form-message.info { color: #60a5fa; }
