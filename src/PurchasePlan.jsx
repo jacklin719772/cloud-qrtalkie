@@ -484,6 +484,15 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           color: #e5e7eb !important;
         }
         #purchase-plan .number-stepper span { color: #9ca3af !important; }
+        #purchase-plan .billing-address-line textarea {
+          background: #1a2332 !important;
+          color: #e5e7eb !important;
+          border: 1px solid #374151 !important;
+        }
+        #purchase-plan .billing-address-line textarea:focus {
+          border-color: #3b82f6 !important;
+          outline: none !important;
+        }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form" onSubmit={handleCheckout}>
         <div className="purchase-card">
