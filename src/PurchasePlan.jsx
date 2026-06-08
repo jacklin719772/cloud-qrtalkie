@@ -303,11 +303,11 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
       return;
     }
     if (isRenewalMode && currentRenewalAccountCount > 0 && desiredRenewalAccountCount > currentRenewalAccountCount) {
-      setError('当前续订暂不支持增加账号数量，请减少账号数量或使用重新购买。');
+      setError('當前續訂暫不支援增加帳號數量，請減少帳號數量或使用重新購買。');
       return;
     }
     if (canSelectRetainedAccounts && selectedRetainedSipUserIds.size > desiredRenewalAccountCount) {
-      setError(`本次续订最多保留 ${desiredRenewalAccountCount} 个账号，请调整保留账号选择。`);
+      setError(`本次續訂最多保留 ${desiredRenewalAccountCount} 個帳號，請調整保留帳號選擇。`);
       return;
     }
 
@@ -573,17 +573,17 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
 
           {isRenewalMode && currentRenewalAccountCount > 0 && (
             <>
-              <label className="purchase-side-label" style={{ alignSelf: 'flex-start', marginTop: '12px' }}>保留账号：</label>
+              <label className="purchase-side-label" style={{ alignSelf: 'flex-start', marginTop: '12px' }}>保留帳號：</label>
               <div className="renewal-account-panel">
                 <div className="renewal-account-toolbar">
                   <div className="renewal-account-summary">
-                    当前已有 {currentRenewalAccountCount} 个账号，本次续订 {desiredRenewalAccountCount || 0} 个账号，已选择 {selectedRetainedSipUserIds.size} 个。
+                    當前已有 {currentRenewalAccountCount} 個帳號，本次續訂 {desiredRenewalAccountCount || 0} 個帳號，已選擇 {selectedRetainedSipUserIds.size} 個。
                     {canSelectRetainedAccounts
-                      ? ` 最多保留 ${desiredRenewalAccountCount} 个，未保留部分将在审核时重新分配。`
-                      : ' 当前续订暂不支持增加账号数量。'}
+                      ? ` 最多保留 ${desiredRenewalAccountCount} 個，未保留部分將在審核時重新分配。`
+                      : ' 當前續訂暫不支援增加帳號數量。'}
                   </div>
-                  <div className="renewal-account-actions" aria-label="保留账号选择操作">
-                    <button type="button" className="link-btn" onClick={selectAllRetainedAccounts} disabled={!canSelectRetainedAccounts}>全选</button>
+                  <div className="renewal-account-actions" aria-label="保留帳號選擇操作">
+                    <button type="button" className="link-btn" onClick={selectAllRetainedAccounts} disabled={!canSelectRetainedAccounts}>全選</button>
                     <button type="button" className="link-btn" onClick={clearRetainedAccounts} disabled={!canSelectRetainedAccounts}>清空</button>
                   </div>
                 </div>
