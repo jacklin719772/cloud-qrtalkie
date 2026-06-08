@@ -468,10 +468,14 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           background: linear-gradient(135deg, transparent 0 48%, #3b82f6 49% 100%) !important;
         }
         #purchase-plan .purchase-side-label { color: #d1d5db !important; font-weight: 600; }
+        #purchase-plan .number-stepper {
+          background: #111827 !important;
+          border-color: #374151 !important;
+        }
         #purchase-plan .number-stepper button {
           background: #1f2937 !important;
-          border: 1px solid #374151 !important;
-          color: #d1d5db !important;
+          border: 0 !important;
+          color: #93c5fd !important;
         }
         #purchase-plan .number-stepper button:hover { background: #374151 !important; }
         #purchase-plan .number-stepper input {
@@ -479,6 +483,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           border-color: #374151 !important;
           color: #e5e7eb !important;
         }
+        #purchase-plan .number-stepper span { color: #9ca3af !important; }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form" onSubmit={handleCheckout}>
         <div className="purchase-card">
