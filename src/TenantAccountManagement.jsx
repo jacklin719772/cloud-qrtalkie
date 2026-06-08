@@ -881,7 +881,9 @@ const TenantAccountManagement = forwardRef(({
           min-height: 0;
           overflow-x: auto;
           overflow-y: auto;
+          scrollbar-width: none;
         }
+        #tenant-account-management .account-table-wrapper::-webkit-scrollbar { display: none; }
         #tenant-account-management .account-table {
           width: 100%;
           min-width: 1180px;
