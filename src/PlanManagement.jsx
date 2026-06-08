@@ -1364,17 +1364,17 @@ export default function PlanManagement({ onNavigate }) {
                     </div>
                   </div>
                   {showCostDetails && (
-                    <div style={{ gridColumn: '1 / -1', marginTop: '4px', padding: '16px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px solid #1f2937', minWidth: 0, overflowX: 'auto' }}>
+                    <div style={{ gridColumn: '1 / -1', marginTop: '4px', padding: '16px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px solid #1f2937', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                       {isLoadingDetail ? (
-                        <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', margin: 0 }}>載入明细中...</p>
+                        <p style={{ color: '#9ca3af', fontSize: '13px', textAlign: 'center', margin: 0 }}>載入明細中...</p>
                       ) : detailOrder.items && detailOrder.items.length > 0 ? (
-                        <table style={{ width: '100%', minWidth: '400px', tableLayout: 'fixed', wordBreak: 'break-all', borderCollapse: 'collapse', fontSize: '13px', color: '#e5e7eb' }}>
+                        <table style={{ width: '100%', minWidth: '400px', borderCollapse: 'collapse', fontSize: '13px', color: '#e5e7eb' }}>
                           <thead>
                             <tr style={{ background: '#1a2332' }}>
-                              <th style={{ width: '40px', textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>序號</th>
-                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>項目</th>
-                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>計算方式</th>
-                              <th style={{ width: '100px', textAlign: 'right', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>金額</th>
+                              <th style={{ width: '40px', textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', whiteSpace: 'nowrap' }}>序號</th>
+                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', whiteSpace: 'nowrap' }}>項目</th>
+                              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', whiteSpace: 'nowrap' }}>計算方式</th>
+                              <th style={{ width: '100px', textAlign: 'right', padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', whiteSpace: 'nowrap', position: 'sticky', right: 0, zIndex: 1 }}>金額</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1383,15 +1383,15 @@ export default function PlanManagement({ onNavigate }) {
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>{index + 1}</td>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>{item.itemName}</td>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>{itemFormula(item)}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600 }}>{formatMoney(item.lineAmount, item.currency)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600, position: 'sticky', right: 0, background: '#1a2332', zIndex: 1 }}>{formatMoney(item.lineAmount, item.currency)}</td>
                               </tr>
                             ))}
                             {Number(detailOrder.discountAmount || 0) > 0 && (
                               <tr>
                                 <td style={{ padding: '8px', borderBottom: '1px solid #1f2937' }}>-</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>优惠折扣</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#64748b' }}>{detailOrder.coupon?.couponCode || '折扣'}</td>
-                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600, color: '#ef4444' }}>- {formatMoney(detailOrder.discountAmount, detailOrder.currency)}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', fontWeight: 500 }}>優惠折扣</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>{detailOrder.coupon?.couponCode || '折扣'}</td>
+                                <td style={{ padding: '8px', borderBottom: '1px solid #1f2937', textAlign: 'right', fontWeight: 600, color: '#ef4444', position: 'sticky', right: 0, background: '#1a2332', zIndex: 1 }}>- {formatMoney(detailOrder.discountAmount, detailOrder.currency)}</td>
                               </tr>
                             )}
                           </tbody>
