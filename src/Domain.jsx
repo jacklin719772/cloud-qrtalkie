@@ -225,9 +225,9 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
         .domain-table tr:hover td:last-child { background: #1a2332; }
         .domain-table tr:hover td { background: #1a2332; }
         .domain-empty { text-align: center; padding: 60px 20px; color: #6b7280; font-size: 14px; }
-        .domain-footer { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e2e8f0; background: #fff; font-size: 13px; color: #9ca3af; }
+        .domain-footer { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #1f2937; background: #111827; font-size: 13px; color: #9ca3af; }
         .domain-pagination { display: flex; align-items: center; gap: 8px; }
-        .domain-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #fff; color: #9ca3af; font-size: 12px; outline: none; cursor: pointer; }
+        .domain-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #1a2332; color: #e5e7eb; font-size: 12px; outline: none; cursor: pointer; }
         .domain-page-btn { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #9ca3af; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
         .domain-page-btn:disabled { color: #4b5563; cursor: not-allowed; background: #1a2332; }
         .domain-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #2563eb; background: #1e3a5f; color: #60a5fa; font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 13px; }
