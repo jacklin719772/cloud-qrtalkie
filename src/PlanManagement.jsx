@@ -1310,7 +1310,7 @@ export default function PlanManagement({ onNavigate }) {
               <button onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '20px' }}>&times;</button>
             </div>
             
-            <div className="modal-body" style={{ position: 'relative', padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="modal-body" style={{ position: 'relative', padding: '24px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="detail-section">
                 <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基本信息</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
