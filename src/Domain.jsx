@@ -201,50 +201,63 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
   }
 
   return (
-    <section className="view active" id="domain" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <section className="view active" id="domain" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
       <style>{`
         .domain-page { display: flex; flex-direction: column; height: 100%; }
-        .domain-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px; margin-bottom: 24px; background: rgba(255,255,255,0.96); border: 1px solid #e6eef8; border-radius: 14px; box-shadow: 0 10px 26px rgba(15,23,42,0.08); flex-wrap: wrap; }
+        .domain-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 24px; margin-bottom: 24px; background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: none; flex-wrap: wrap; }
         .domain-search { position: relative; width: 260px; }
-        .domain-search input { width: 100%; height: 46px; padding: 0 16px 0 42px; border: 1px solid #d8e2ef; border-radius: 9px; font-size: 13px; outline: none; color: #334155; box-sizing: border-box; }
-        .domain-search input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .domain-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .domain-search input { width: 100%; height: 46px; padding: 0 16px 0 42px; border: 1px solid #374151; border-radius: 9px; font-size: 13px; outline: none; color: #d1d5db; box-sizing: border-box; }
+        .domain-search input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+        .domain-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6b7280; }
         .domain-stats { display: flex; gap: 6px; flex-wrap: wrap; }
-        .domain-stat-pill { padding: 6px 14px; border-radius: 999px; font-size: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-        .domain-stat-pill:hover { border-color: #93c5fd; }
-        .domain-stat-pill.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .domain-stat-pill { padding: 6px 14px; border-radius: 999px; font-size: 12px; border: 1px solid #374151; background: #1a2332; color: #9ca3af; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .domain-stat-pill:hover { border-color: #3b82f6; }
+        .domain-stat-pill.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
         .domain-stat-pill strong { font-weight: 700; color: inherit; }
-        .domain-table-card { flex: 1; min-height: 0; background: rgba(255,255,255,0.96); border: 1px solid #e6eef8; border-radius: 14px; box-shadow: 0 12px 30px rgba(15,23,42,0.08); overflow: hidden; display: flex; flex-direction: column; }
-        .domain-table-wrap { flex: 1; overflow: auto; }
+        .domain-table-card { flex: 1; min-height: 0; background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; }
+        .domain-table-wrap { flex: 1; overflow: auto; scrollbar-width: none; } .domain-table-wrap::-webkit-scrollbar { display: none; }
         .domain-table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; }
-        .domain-table thead { position: sticky; top: 0; z-index: 2; background: #f8fafc; }
-        .domain-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #64748b; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-        .domain-table td { padding: 12px 16px; color: #334155; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
-        .domain-table th:last-child, .domain-table td:last-child { position: sticky; right: 0; z-index: 1; background: #fff; box-shadow: -2px 0 4px rgba(15,23,42,0.04); }
-        .domain-table thead th:last-child { z-index: 3; background: #f8fafc; }
-        .domain-table tr:hover td:last-child { background: #f8fafc; }
-        .domain-table tr:hover td { background: #f8fafc; }
-        .domain-empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 14px; }
-        .domain-footer { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e2e8f0; background: #fff; font-size: 13px; color: #64748b; }
+        .domain-table thead { position: sticky; top: 0; z-index: 2; background: #1a2332; }
+        .domain-table th { background: #1a2332; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #9ca3af; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        .domain-table td { padding: 12px 16px; color: #d1d5db; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+        .domain-table th:last-child, .domain-table td:last-child { position: sticky; right: 0; z-index: 1; background: #111827; box-shadow: -2px 0 4px rgba(0,0,0,0.2); }
+        .domain-table thead th:last-child { z-index: 3; background: #1a2332; }
+        .domain-table tr:hover td:last-child { background: #1a2332; }
+        .domain-table tr:hover td { background: #1a2332; }
+        .domain-empty { text-align: center; padding: 60px 20px; color: #6b7280; font-size: 14px; }
+        .domain-footer { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e2e8f0; background: #fff; font-size: 13px; color: #9ca3af; }
         .domain-pagination { display: flex; align-items: center; gap: 8px; }
-        .domain-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #d8e2ef; background: #fff; color: #475569; font-size: 12px; outline: none; cursor: pointer; }
-        .domain-page-btn { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #d8e2ef; background: #fff; color: #475569; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
-        .domain-page-btn:disabled { color: #cbd5e1; cursor: not-allowed; }
-        .domain-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #2563eb; background: #eff6ff; color: #2563eb; font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+        .domain-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #fff; color: #9ca3af; font-size: 12px; outline: none; cursor: pointer; }
+        .domain-page-btn { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #9ca3af; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .domain-page-btn:disabled { color: #4b5563; cursor: not-allowed; background: #1a2332; }
+        .domain-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #2563eb; background: #1e3a5f; color: #60a5fa; font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 13px; }
         .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
         .badge.online { background: #dcfce7; color: #15803d; }
         .badge.failed { background: #fee2e2; color: #dc2626; }
         .badge.pending { background: #fef3c7; color: #b45309; }
-        .badge.expired { background: #f1f5f9; color: #94a3b8; }
+        .badge.expired { background: #f1f5f9; color: #6b7280; }
         .badge.expiring { background: #fef3c7; color: #b45309; }
-        .ghost-btn { background: none; border: none; cursor: pointer; color: #64748b; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+        .ghost-btn { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
         .ghost-btn:hover { background: #f1f5f9; }
-        .dropdown-portal { position: fixed; width: 150px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,23,42,0.15); padding: 4px; z-index: 2147483647; }
-        .dropdown-portal button { display: block; width: 100%; border: none; background: none; padding: 8px 12px; text-align: left; font-size: 12px; color: #334155; cursor: pointer; border-radius: 4px; }
+        .dropdown-portal { position: fixed; width: 150px; background: #fff; border: 1px solid #374151; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,23,42,0.15); padding: 4px; z-index: 2147483647; }
+        .dropdown-portal button { display: block; width: 100%; border: none; background: none; padding: 8px 12px; text-align: left; font-size: 12px; color: #d1d5db; cursor: pointer; border-radius: 4px; }
         .dropdown-portal button:hover { background: #f1f5f9; }
-        .dropdown-portal button:disabled { color: #94a3b8; cursor: not-allowed; }
+        .dropdown-portal button:disabled { color: #6b7280; cursor: not-allowed; }
         .dropdown-portal button.danger { color: #dc2626; }
-      `}</style>
+      
+        .domain-search input { background: #1a2332; }
+        .domain-search input::placeholder { color: #6b7280; }
+        .domain-page-size { background: #1a2332; color: #e5e7eb; }
+        .domain-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        .dropdown-portal { position: fixed; background: #1a2332; border: 1px solid #1f2937; border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.4); padding: 6px; z-index: 99999; min-width: 140px; }
+        .dropdown-portal button { display: block; width: 100%; text-align: left; padding: 8px 14px; border: none; background: transparent; color: #d1d5db; font-size: 13px; border-radius: 4px; cursor: pointer; }
+        .dropdown-portal button:hover { background: #1f2937; color: #f3f4f6; }
+        .badge.online { background: #065f46; color: #6ee7b7; }
+        .badge.failed { background: #7f1d1d; color: #fca5a5; }
+        .badge.pending { background: #1e293b; color: #fbbf24; }
+        .domain-table tr:hover td { background: #1e293b; }
+        .domain-table tr:hover td:last-child { background: #1e293b; }
+`}</style>
 
       <div className="domain-toolbar">
         <div className="domain-search">
