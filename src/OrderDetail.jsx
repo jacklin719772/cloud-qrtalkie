@@ -20,6 +20,21 @@ function formatMoney(amount, currency = 'USD') {
   return `${currency} ${Number(amount || 0).toFixed(2)}`;
 }
 
+function orderStatusLabel(status) {
+  const map = {
+    pending_payment: '待付款',
+    pending_review: '待審核',
+    review_approved: '已生效',
+    review_rejected: '審核未通過',
+    payment_submitted: '已提交付款',
+    cancelled: '已取消',
+    active_effective: '生效中',
+    inactive_expired: '已過期',
+    expiring_soon: '即將到期',
+  };
+  return map[status] || status || '-';
+}
+
 export default function OrderDetail({ orderId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -266,7 +281,7 @@ export default function OrderDetail({ orderId, onBack }) {
             </div>
 
             <label className="purchase-side-label">訂單狀態：</label>
-            <div className="od-readonly-text">{order.orderStatus || '-'}</div>
+            <div className="od-readonly-text">{orderStatusLabel(order.orderStatus)}</div>
 
             <label className="purchase-side-label">付款日期：</label>
             <div className="od-readonly-text">{formatChineseDate(order.payment?.paymentDate || order.paymentDate)}</div>
