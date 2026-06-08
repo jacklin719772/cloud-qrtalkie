@@ -424,7 +424,7 @@ const ContactBooks = forwardRef((props, ref) => {
   };
 
   return (
-    <section className="view active" id="contact-books-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <section className="view active" id="contact-books-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
       <style>{`
         #contact-books-management .contact-book-toolbar {
           display: flex;
@@ -433,10 +433,10 @@ const ContactBooks = forwardRef((props, ref) => {
           gap: 12px;
           padding: 22px 24px;
           margin-bottom: 24px;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+          box-shadow: none;
         }
         #contact-books-management .contact-book-filter-left {
           display: flex;
@@ -452,9 +452,9 @@ const ContactBooks = forwardRef((props, ref) => {
           height: 46px;
           padding: 0 16px;
           border-radius: 9px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #334155;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #d1d5db;
           font-size: 13px;
           outline: none;
         }
@@ -464,9 +464,9 @@ const ContactBooks = forwardRef((props, ref) => {
           width: 120px;
           padding: 0 12px;
           border-radius: 9px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #334155;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #d1d5db;
           font-size: 13px;
           outline: none;
           cursor: pointer;
@@ -485,9 +485,9 @@ const ContactBooks = forwardRef((props, ref) => {
           height: 34px;
           padding: 0 12px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          color: #475569;
+          background: #1a2332;
+          border: 1px solid #1f2937;
+          color: #9ca3af;
           font-size: 13px;
           display: inline-flex;
           align-items: center;
@@ -496,7 +496,7 @@ const ContactBooks = forwardRef((props, ref) => {
           white-space: nowrap;
         }
         #contact-books-management .contact-book-stat-pill strong {
-          color: #0f172a;
+          color: #f3f4f6;
           font-size: 13px;
           font-weight: 700;
         }
@@ -505,10 +505,10 @@ const ContactBooks = forwardRef((props, ref) => {
           flex-direction: column;
           flex: 1;
           min-height: 0;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+          box-shadow: none;
           overflow: hidden;
         }
         #contact-books-management .contact-book-table-wrapper {
@@ -527,20 +527,20 @@ const ContactBooks = forwardRef((props, ref) => {
           position: sticky;
           top: 0;
           z-index: 2;
-          background: #f8fafc;
+          background: #1a2332;
         }
         #contact-books-management .contact-book-table th {
           height: 56px;
           padding: 0 22px;
           text-align: left;
-          color: #475569;
+          color: #9ca3af;
           font-weight: 600;
           border-bottom: 1px solid #e2e8f0;
         }
         #contact-books-management .contact-book-table td {
           height: 64px;
           padding: 0 22px;
-          color: #334155;
+          color: #d1d5db;
           border-bottom: 1px solid #e2e8f0;
         }
         #contact-books-management .contact-book-table-footer {
@@ -549,10 +549,10 @@ const ContactBooks = forwardRef((props, ref) => {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #fff;
+          background: #1a2332;
         }
         #contact-books-management .contact-book-total {
-          color: #64748b;
+          color: #9ca3af;
           font-size: 13px;
         }
         #contact-books-management .contact-book-pagination {
@@ -564,9 +564,9 @@ const ContactBooks = forwardRef((props, ref) => {
           height: 38px;
           padding: 0 14px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #475569;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #9ca3af;
           font-size: 11px;
           display: inline-flex;
           align-items: center;
@@ -576,34 +576,45 @@ const ContactBooks = forwardRef((props, ref) => {
           width: 38px;
           height: 38px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #475569;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #9ca3af;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           font-size: 11px;
         }
         #contact-books-management .contact-book-page-current {
-          border-color: #2563eb;
-          color: #2563eb;
-          background: #eff6ff;
+          border-color: #60a5fa;
+          color: #60a5fa;
+          background: #1e3a5f;
           font-weight: 600;
         }
         #contact-books-management .contact-book-page-btn {
           cursor: pointer;
         }
         #contact-books-management .contact-book-page-btn:disabled {
-          color: #cbd5e1;
+          color: #4b5563;
           cursor: not-allowed;
-          background: #f8fafc;
+          background: #1a2332;
         }
-        .dropdown-menu-portal { position: fixed; width: 150px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16); padding: 6px; z-index: 2147483647; }
-        .dropdown-menu-portal .dropdown-item { display: block; width: 100%; border: 0; background: transparent; color: #334155; text-align: left; border-radius: 4px; padding: 8px 10px; font-size: 13px; cursor: pointer; }
-        .dropdown-menu-portal .dropdown-item:hover { background: #f1f5f9; color: #0f172a; }
+        .dropdown-menu-portal { position: fixed; width: 150px; background: #1a2332; border: 1px solid #1f2937; border-radius: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4); padding: 6px; z-index: 2147483647; }
+        .dropdown-menu-portal .dropdown-item { display: block; width: 100%; border: 0; background: transparent; color: #d1d5db; text-align: left; border-radius: 4px; padding: 8px 10px; font-size: 13px; cursor: pointer; }
+        .dropdown-menu-portal .dropdown-item:hover { background: #1f2937; color: #f3f4f6; }
         .dropdown-menu-portal .dropdown-item-danger { color: #ef4444; }
-        .dropdown-menu-portal .dropdown-item-danger:hover { background: #fef2f2; color: #dc2626; }
-      `}</style>
+        .dropdown-menu-portal .dropdown-item-danger:hover { background: #3b1111; color: #fca5a5; }
+      
+        #contact-books-management .contact-book-table th { background: #1a2332 !important; }
+        #contact-books-management .contact-book-search input { background: #1a2332; }
+        #contact-books-management .contact-book-search input::placeholder { color: #6b7280; }
+        #contact-books-management .contact-book-search input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+        #contact-books-management .contact-book-status-select { background: #1a2332; color: #e5e7eb; }
+        #contact-books-management .contact-book-table-wrapper { scrollbar-width: none; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar { display: none; }
+        #contact-books-management .contact-book-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
+        #contact-books-management .contact-book-table tbody tr { background: #111827; }
+        #contact-books-management .contact-book-table tbody tr:hover { background: #1e293b; }
+`}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
         <div className="contact-book-toolbar">
           <div className="contact-book-filter-left">
