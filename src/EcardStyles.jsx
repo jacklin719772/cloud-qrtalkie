@@ -50,8 +50,8 @@ export default function EcardStyles() {
     status: 'active',
     description: '',
     sortOrder: 0,
-    samples: [], // 用于存储上傳的範例圖片
-    backgrounds: [] // 用于存储名片的可选背景圖片
+    samples: [], // 用於存储上傳的範例圖片
+    backgrounds: [] // 用於存储名片的可选背景圖片
   });
 
   const [codeModalOpen, setCodeModalOpen] = useState(false);
@@ -138,7 +138,7 @@ export default function EcardStyles() {
   const openAddPage = () => {
     setFormData({
       id: null,
-      styleCode: `ECARD-${Date.now().toString().slice(-6)}`, // 系统自动基于时间戳產生，保证唯一
+      styleCode: `ECARD-${Date.now().toString().slice(-6)}`, // 系统自动基於时间戳產生，保证唯一
       styleName: '',
       styleType: 'with_company',
       status: 'active',
@@ -192,7 +192,7 @@ export default function EcardStyles() {
       });
       setViewMode('edit');
     } catch (err) {
-      alert(err.message || '获取詳情失败');
+      alert(err.message || '獲取詳情失败');
     }
   };
 
@@ -203,7 +203,7 @@ export default function EcardStyles() {
       id: Date.now() + index,
       file,
       url: URL.createObjectURL(file),
-      isCover: formData.samples.length === 0 && index === 0 // 預設第一张为封面
+      isCover: formData.samples.length === 0 && index === 0 // 預設第一张為封面
     }));
     setFormData(prev => ({ ...prev, samples: [...prev.samples, ...newSamples] }));
   };
@@ -332,7 +332,7 @@ export default function EcardStyles() {
               <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', marginBottom: '16px', marginTop: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基础信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式编号 <span style={{ color: '#ef4444' }}>*</span></span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式編號 <span style={{ color: '#ef4444' }}>*</span></span>
                   <input required value={formData.styleCode} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} placeholder="系统自动產生" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -379,14 +379,14 @@ export default function EcardStyles() {
                         <button type="button" onClick={(e) => { e.stopPropagation(); removeSample(sample.id); }} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', marginLeft: 'auto', display: 'flex' }} title="刪除"><Trash2 size={14} color="#ef4444" /></button>
                       </div>
                       {!sample.isCover && (
-                        <button type="button" onClick={() => setCover(sample.id)} style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', transition: 'background 0.2s' }} onMouseOver={e => e.target.style.background = 'rgba(15, 23, 42, 0.95)'} onMouseOut={e => e.target.style.background = 'rgba(15, 23, 42, 0.75)'}>设为封面</button>
+                        <button type="button" onClick={() => setCover(sample.id)} style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap', backdropFilter: 'blur(4px)', transition: 'background 0.2s' }} onMouseOver={e => e.target.style.background = 'rgba(15, 23, 42, 0.95)'} onMouseOut={e => e.target.style.background = 'rgba(15, 23, 42, 0.75)'}>设為封面</button>
                       )}
                     </div>
                   ))}
                 </div>
               ) : (
                 <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
-                  暂无範例圖片，请點击右上角「上傳展示圖片」。支持 JPG, PNG, WEBP，建议尺寸 1920x1080（横版），单张不超过 5MB。
+                  暫無範例圖片，請點击右上角「上傳展示圖片」。支持 JPG, PNG, WEBP，建议尺寸 1920x1080（横版），单张不超过 5MB。
                 </div>
               )}
 
@@ -445,7 +445,7 @@ export default function EcardStyles() {
                             }));
                           }}
                           style={{ width: '100%', background: 'transparent', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '4px', color: '#fff', outline: 'none', fontSize: '13px', padding: '4px 8px' }}
-                          placeholder="输入背景名稱"
+                          placeholder="輸入背景名稱"
                           onFocus={e => e.target.style.borderColor = '#fff'}
                           onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.3)'}
                         />
@@ -455,7 +455,7 @@ export default function EcardStyles() {
                 </div>
               ) : (
                 <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
-                  暂无背景圖片，请點击右上角「上傳背景圖片」补充图库。用户在使用该模板时可任选其中一张作为背景。
+                  暫無背景圖片，請點击右上角「上傳背景圖片」补充图库。用户在使用该模板时可任选其中一张作為背景。
                 </div>
               )}
             </div>
@@ -486,12 +486,12 @@ export default function EcardStyles() {
                           {currentBg?.url || currentBg?.imageUrl ? (
                             <img src={getFullImageUrl(currentBg?.url || currentBg?.imageUrl)} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                           ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>暂无圖片</div>
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>暫無圖片</div>
                           )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#9ca3af' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span>所属樣式：</span>
+                            <span>所屬樣式：</span>
                             <strong style={{ color: '#f3f4f6' }}>{formData.styleName || '-'}</strong>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -501,7 +501,7 @@ export default function EcardStyles() {
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span>圖片尺寸：</span>
                             <strong style={{ color: '#f3f4f6' }}>
-                              {currentBg?.imageWidth && currentBg?.imageHeight ? `${currentBg.imageWidth} × ${currentBg.imageHeight}` : '未记录'}
+                              {currentBg?.imageWidth && currentBg?.imageHeight ? `${currentBg.imageWidth} × ${currentBg.imageHeight}` : '未記錄'}
                             </strong>
                           </div>
                         </div>
@@ -530,7 +530,7 @@ export default function EcardStyles() {
                     >
                       <option value="layout_json">layout_json (布局配置)</option>
                       <option value="default_style_json">default_style_json (預設樣式)</option>
-                      <option value="display_config_json">display_config_json (显示控制)</option>
+                      <option value="display_config_json">display_config_json (顯示控制)</option>
                     </select>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button type="button" onClick={() => jsonFileInputRef.current?.click()} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#111827', color: '#9ca3af', border: '1px solid #1f2937', cursor: 'pointer', fontSize: '12px' }}>導入 JSON 文件</button>
@@ -553,7 +553,7 @@ export default function EcardStyles() {
                           if (error instanceof SyntaxError) {
                             setJsonError('JSON 格式错误：' + error.message);
                           } else {
-                            setJsonError('JSON 文件读取失败');
+                            setJsonError('JSON 文件讀取失败');
                           }
                         } finally {
                           e.target.value = '';
@@ -593,10 +593,10 @@ export default function EcardStyles() {
                     <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
                       <li>直接粘贴已经调试好的 JSON 内容</li>
                       <li>支持 layout_json / default_style_json / display_config_json</li>
-                      <li>儲存后用于 Ecard 預覽和圖片產生</li>
+                      <li>儲存后用於 Ecard 預覽和圖片產生</li>
                       <li>JSON 必须是合法對象格式</li>
                     </ul>
-                    <p style={{ margin: '12px 0 0', fontSize: '12px', color: '#9ca3af' }}>直接粘贴已调试好的 JSON，儲存后用于 Ecard 預覽和圖片產生。</p>
+                    <p style={{ margin: '12px 0 0', fontSize: '12px', color: '#9ca3af' }}>直接粘贴已调试好的 JSON，儲存后用於 Ecard 預覽和圖片產生。</p>
                   </div>
                 </div>
               </div>
@@ -1003,7 +1003,7 @@ export default function EcardStyles() {
               type="search"
               value={keyword} 
               onChange={e => setKeyword(e.target.value)} 
-              placeholder="搜尋樣式名稱 / 编号" 
+              placeholder="搜尋樣式名稱 / 編號" 
             />
           </label>
           <select className="ecard-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
@@ -1018,7 +1018,7 @@ export default function EcardStyles() {
           </select>
         </div>
         <div className="ecard-stats">
-          <span className="ecard-stat-pill">樣式总数<strong>{totalCount}</strong></span>
+          <span className="ecard-stat-pill">樣式總數<strong>{totalCount}</strong></span>
           <span className="ecard-stat-pill">包含企业名稱<strong style={{ color: '#16a34a' }}>{withCompanyCount}</strong></span>
           <span className="ecard-stat-pill">不包含企业名稱<strong style={{ color: '#3b82f6' }}>{withoutCompanyCount}</strong></span>
         </div>
@@ -1033,7 +1033,7 @@ export default function EcardStyles() {
                 <th>樣式名稱</th>
                 <th>狀態</th>
                 <th>類型</th>
-                <th>範例数量</th>
+                <th>範例數量</th>
                 <th>新增人</th>
                 <th>新增时间</th>
                 <th className="ecard-action-head">操作</th>
@@ -1041,9 +1041,9 @@ export default function EcardStyles() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>加载中...</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>載入中...</td></tr>
               ) : filteredStyles.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>没有匹配的樣式记录</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>没有匹配的樣式記錄</td></tr>
               ) : (
                 filteredStyles.map(item => (
                   <tr key={item.id}>
@@ -1236,7 +1236,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #d8e2ef', borderRadius: '8px' }}>暂无範例圖片</p>
+                <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #d8e2ef', borderRadius: '8px' }}>暫無範例圖片</p>
               )}
 
               <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
@@ -1252,7 +1252,7 @@ export default function EcardStyles() {
                   ))}
                 </div>
               ) : (
-                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暂无背景圖片</p>
+                <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #e2e8f0', borderRadius: '8px' }}>暫無背景圖片</p>
               )}
             </div>
           </div>
