@@ -134,7 +134,7 @@ export default function OrderDetail({ orderId, onBack }) {
   if (!order) return <div className="panel" style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>暫無數據</div>;
 
   return (
-    <section className="view active" id="order-detail">
+    <section className="view active" id="order-detail" style={{ background: '#0f172a' }}>
       <style>{`
         #order-detail.view.active { display: flex; flex-direction: column; overflow: hidden; height: 100%; flex: 1 0 0; min-height: 0; }
         #order-detail .purchase-page-form {
@@ -143,14 +143,34 @@ export default function OrderDetail({ orderId, onBack }) {
         }
         #order-detail .purchase-page-form::-webkit-scrollbar { display: none; }
         #order-detail .purchase-page-form .od-card {
-          background: #ffffff;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
           padding: 28px 36px;
           max-width: 860px;
           margin: 0 auto;
         }
-        .od-readonly-text { padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-weight: 600; color: #334155; }
-        .od-readonly-area { padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #475569; white-space: pre-wrap; min-height: 40px; }
+        .od-readonly-text { padding: 10px 14px; background: #1a2332; border: 1px solid #1f2937; border-radius: 8px; font-size: 14px; font-weight: 600; color: #e5e7eb; }
+        .od-readonly-area { padding: 10px 14px; background: #1a2332; border: 1px solid #1f2937; border-radius: 8px; font-size: 13px; color: #d1d5db; white-space: pre-wrap; min-height: 40px; }
+        #order-detail .purchase-side-label { color: #d1d5db !important; font-weight: 600; }
+        #order-detail .billing-detail-box { background: #111827 !important; border: 1px solid #1f2937 !important; }
+        #order-detail .billing-detail-head { background: #1a2332 !important; border-bottom: 1px solid #1f2937 !important; }
+        #order-detail .billing-detail-head strong { color: #f3f4f6 !important; }
+        #order-detail .billing-detail-head span { color: #9ca3af !important; }
+        #order-detail .billing-detail-row { color: #d1d5db !important; border-bottom: 1px solid #1f2937 !important; }
+        #order-detail .billing-detail-row strong { color: #f3f4f6 !important; }
+        #order-detail .billing-detail-row b { color: #e5e7eb !important; }
+        #order-detail .billing-detail-row.discount b { color: #60a5fa !important; }
+        #order-detail .billing-detail-header { color: #9ca3af !important; background: #1a2332 !important; }
+        #order-detail .billing-detail-total { background: #1a2332 !important; }
+        #order-detail .billing-detail-total span { color: #f3f4f6 !important; }
+        #order-detail .billing-detail-total strong { color: #60a5fa !important; }
+        #order-detail .addon-service-row { background: #1a2332; border: 1px solid #1f2937; color: #d1d5db; }
+        #order-detail .addon-service-row strong { color: #f3f4f6; }
+        #order-detail .offline-payment-info { background: #1a2332 !important; border: 1px solid #1f2937 !important; color: #d1d5db !important; }
+        #order-detail .offline-payment-info p { color: #60a5fa !important; }
+        #order-detail .offline-payment-info dt { color: #9ca3af !important; }
+        #order-detail .offline-payment-info dd { color: #e5e7eb !important; }
       `}</style>
       <form className="purchase-page-form" id="purchase-page-form">
         <div className="od-card">
