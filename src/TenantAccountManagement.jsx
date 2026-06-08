@@ -988,6 +988,7 @@ const TenantAccountManagement = forwardRef(({
           text-align: center;
           outline: none;
           color: #d1d5db;
+          background: #1a2332;
           font-size: 11px;
         }
         @media (max-width: 1100px) {
