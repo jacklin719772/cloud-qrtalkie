@@ -1307,7 +1307,6 @@ export default function PlanManagement({ onNavigate }) {
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '640px', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', maxHeight: '85vh', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
             <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#e5e7eb' }}>訂單詳情</h3>
-              <button onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '20px' }}>&times;</button>
             </div>
             
             <div className="modal-body" style={{ position: 'relative', padding: '24px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1410,10 +1409,6 @@ export default function PlanManagement({ onNavigate }) {
                   功能开发中，将在此处展示已分配至该訂單的 SIP 帳號列表...
                 </div>
               </div>
-            </div>
-            
-            <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid #1f2937', display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setDetailOrder(null); setShowCostDetails(false); }} className="secondary-btn">关闭</button>
             </div>
           </div>
         </div>,
