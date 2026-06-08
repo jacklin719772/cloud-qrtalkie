@@ -19,6 +19,10 @@ export default defineConfig({
       '/ecard-images': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
+      },
+      '/payment-proofs': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
       }
     }
   }
