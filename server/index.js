@@ -3646,12 +3646,12 @@ app.post("/api/billing/plans", requireAdmin, async (request, response) => {
     await connection.beginTransaction();
     const planId = await savePlanData(connection, request.body);
     await connection.commit();
-    return response.status(201).json({ message: "濂楅宸插垱寤恒€?", id: planId });
+    return response.status(201).json({ message: "套餐已創建。", id: planId });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "濂楅浠ｇ爜宸插瓨鍦ㄣ€?" });
-    return response.status(error.statusCode || 500).json({ message: error.message || "鍒涘缓濂楅澶辫触銆?" });
+    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐代碼已存在。" });
+    return response.status(error.statusCode || 500).json({ message: error.message || "創建套餐失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3670,12 +3670,12 @@ app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
     await connection.beginTransaction();
     await savePlanData(connection, request.body, planId);
     await connection.commit();
-    return response.json({ message: "濂楅宸叉洿鏂般€?", id: planId });
+    return response.json({ message: "套餐已更新。", id: planId });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "濂楅浠ｇ爜宸插瓨鍦ㄣ€?" });
-    return response.status(error.statusCode || 500).json({ message: error.message || "鏇存柊濂楅澶辫触銆?" });
+    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐代碼已存在。" });
+    return response.status(error.statusCode || 500).json({ message: error.message || "更新套餐失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3709,11 +3709,11 @@ app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => 
     }
 
     await connection.commit();
-    return response.json({ message: "濂楅宸插垹闄ゃ€?" });
+    return response.json({ message: "套餐已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鍒犻櫎濂楅澶辫触銆?" });
+    return response.status(500).json({ message: "刪除套餐失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -4466,7 +4466,7 @@ async function buildBillingOrderDraft(connection, request, payload) {
   );
   const plan = planRows[0];
   if (!plan) {
-    const error = new Error("濂楅涓嶅瓨鍦ㄦ垨宸插仠鐢ㄣ€?");
+    const error = new Error("套餐不存在或已停用。");
     error.statusCode = 404;
     throw error;
   }
@@ -4480,7 +4480,7 @@ async function buildBillingOrderDraft(connection, request, payload) {
     addonId: null,
     couponId: null,
     itemCode: plan.plan_code,
-    itemName: `${plan.name} 濂楅`,
+    itemName: `${plan.name} 套餐`,
     quantity,
     months,
     unitPrice: Number(plan.unit_price),
@@ -4597,7 +4597,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
     const plan = planRows[0];
     if (!plan) {
       await connection.rollback();
-      return response.status(404).json({ message: "濂楅涓嶅瓨鍦ㄦ垨宸插仠鐢ㄣ€?" });
+      return response.status(404).json({ message: "套餐不存在或已停用。" });
     }
 
     const currency = plan.currency || "USD";
@@ -4609,7 +4609,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
       addonId: null,
       couponId: null,
       itemCode: plan.plan_code,
-      itemName: `${plan.name} 濂楅`,
+      itemName: `${plan.name} 套餐`,
       quantity,
       months,
       unitPrice: Number(plan.unit_price),
@@ -5480,7 +5480,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         addon_id: null,
         coupon_id: source.coupon_id ? Number(source.coupon_id) : null,
         item_code: source.coupon_code || null,
-        item_name: "优惠折扣",
+        item_name: "優惠折扣",
         description: null,
         account_quantity: null,
         quantity: 1,
