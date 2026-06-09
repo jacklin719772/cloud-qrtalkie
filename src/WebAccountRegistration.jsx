@@ -1042,13 +1042,13 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           white-space: nowrap;
         }
         #web-account-registration .web-empty {
-          height: 380px;
+          flex: 1;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border-bottom: 1px solid #e2e8f0;
-          color: #64748b;
+          color: #9ca3af;
+          min-height: 200px;
         }
         @media (max-width: 1100px) {
           #web-account-registration .web-toolbar {
@@ -1136,6 +1136,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
 
         <div className="web-table-card">
+          {paginatedAccounts.length === 0 && !isLoading ? (
+            <div className="web-empty">
+              <div>暫無 Web 帳號</div>
+            </div>
+          ) : (
           <div className="web-table-wrapper">
             <table className="web-table">
               <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
@@ -1159,15 +1164,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               </tr>
             </thead>
             <tbody>
-              {paginatedAccounts.length === 0 ? (
-                <tr>
-                  <td colSpan="10" style={{ padding: 0, textAlign: 'center' }}>
-                    <div className="web-empty">
-                      <div>{isLoading ? '載入中...' : '暫無 Web 帳號'}</div>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
+              {paginatedAccounts.length > 0 && paginatedAccounts.map((account) => (
                 paginatedAccounts.map((account) => (
                   <tr key={account.id}>
                     <td style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={selectedIds.includes(account.id)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...new Set([...ids, account.id])] : ids.filter((id) => id !== account.id))} /></td>
@@ -1202,10 +1199,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     </td>
                   </tr>
                 ))
-              )}
+              }
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="web-table-footer">
           <div className="web-total">共 {filteredAccounts.length} 筆記錄</div>
