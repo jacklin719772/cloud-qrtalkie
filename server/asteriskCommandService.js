@@ -40,9 +40,28 @@ function parseAsteriskParameterTable(output) {
   return table;
 }
 
+function normalizeKeyLabel(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 function getTableValue(table, key) {
   if (!table || typeof table !== "object") return "";
   return String(table[key] ?? "").trim();
+}
+
+function getTableValueByAliases(table, aliases = []) {
+  if (!table || typeof table !== "object") return "";
+  const normalizedAliases = aliases.map((alias) => normalizeKeyLabel(alias)).filter(Boolean);
+  if (!normalizedAliases.length) return "";
+  for (const [key, value] of Object.entries(table)) {
+    if (normalizedAliases.includes(normalizeKeyLabel(key))) {
+      return String(value ?? "").trim();
+    }
+  }
+  return "";
 }
 
 function parseBooleanValue(value) {
@@ -104,10 +123,17 @@ function normalizeValue(value) {
 }
 
 function extractEndpointValue(output, field) {
-  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const matches = Array.from(String(output || "").matchAll(new RegExp(`^\\s*${escaped}\\s*:\\s*(.*?)\\s*$`, "gim")));
-  const match = matches[matches.length - 1];
-  return match ? match[1].trim() : "";
+  const aliases = Array.isArray(field) ? field : [field];
+  for (const alias of aliases) {
+    const escaped = String(alias).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matches = Array.from(String(output || "").matchAll(new RegExp(`^\\s*${escaped}\\s*:\\s*(.*?)\\s*$`, "gim")));
+    const match = matches[matches.length - 1];
+    if (match && String(match[1] ?? "").trim() !== "") return String(match[1] || "").trim();
+  }
+  const table = parseAsteriskParameterTable(output);
+  const aliased = getTableValueByAliases(table, aliases);
+  if (aliased !== "") return aliased;
+  return "";
 }
 
 function isEnabledValue(value) {
@@ -142,48 +168,48 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
     .map((codec) => codec.trim().toLowerCase())
     .filter(Boolean);
   const checks = {
-    transport: compareEndpointField(output, ["transport"], (value) => normalizeValue(value) === normalizeValue(expected.transport)),
+    transport: compareEndpointField(output, ["transport", "Transport"], (value) => normalizeValue(value) === normalizeValue(expected.transport)),
     allowUnauthenticatedOptions: compareEndpointField(
       output,
-      ["allow_unauthenticated_options"],
+      ["allow_unauthenticated_options", "Allow Unauthenticated OPTIONS", "Allow Unauthenticated", "Allow OPTIONS"],
       isEnabledValue,
     ),
-    webrtc: compareEndpointField(output, ["webrtc"], isEnabledValue),
-    useAvpf: compareEndpointField(output, ["use_avpf", "avpf"], isEnabledValue),
-    iceSupport: compareEndpointField(output, ["ice_support", "icesupport"], isEnabledValue),
-    rtcpMux: compareEndpointField(output, ["rtcp_mux"], isEnabledValue),
-    bundle: compareEndpointField(output, ["bundle"], isEnabledValue),
-    mediaEncryption: compareEndpointField(output, ["media_encryption"], (value) => normalizeValue(value).includes("dtls")),
+    webrtc: compareEndpointField(output, ["webrtc", "WebRTC"], isEnabledValue),
+    useAvpf: compareEndpointField(output, ["use_avpf", "avpf", "AVPF"], isEnabledValue),
+    iceSupport: compareEndpointField(output, ["ice_support", "icesupport", "ICE Support"], isEnabledValue),
+    rtcpMux: compareEndpointField(output, ["rtcp_mux", "RTCP Mux"], isEnabledValue),
+    bundle: compareEndpointField(output, ["bundle", "Bundle"], isEnabledValue),
+    mediaEncryption: compareEndpointField(output, ["media_encryption", "Media Encryption"], (value) => normalizeValue(value).includes("dtls")),
     mediaEncryptionOptimistic: compareEndpointField(
       output,
-      ["media_encryption_optimistic"],
+      ["media_encryption_optimistic", "Media Encryption Optimistic"],
       isEnabledValue,
     ),
-    dtlsAutoGenerateCert: compareEndpointField(output, ["dtls_auto_generate_cert"], isEnabledValue),
+    dtlsAutoGenerateCert: compareEndpointField(output, ["dtls_auto_generate_cert", "DTLS Auto Generate Cert"], isEnabledValue),
     mediaUseReceivedTransport: compareEndpointField(
       output,
-      ["media_use_received_transport"],
+      ["media_use_received_transport", "Media Use Received Transport"],
       isEnabledValue,
     ),
-    directMedia: compareEndpointField(output, ["direct_media"], isDisabledValue),
-    sessionTimers: compareEndpointField(output, ["timers"], isDisabledValue),
+    directMedia: compareEndpointField(output, ["direct_media", "Direct Media"], isDisabledValue),
+    sessionTimers: compareEndpointField(output, ["timers", "Session Timers"], isDisabledValue),
     mediaAddress: compareEndpointField(
       output,
-      ["media_address"],
+      ["media_address", "Media Address"],
       (value) => normalizeValue(value) === normalizeValue(expected.mediaAddress),
     ),
-    rtpTimeout: compareEndpointField(output, ["rtp_timeout"], (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0")),
+    rtpTimeout: compareEndpointField(output, ["rtp_timeout", "RTP Timeout"], (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0")),
     rtpTimeoutHold: compareEndpointField(
       output,
-      ["rtp_timeout_hold"],
+      ["rtp_timeout_hold", "RTP Timeout Hold"],
       (value) => normalizeValue(value) === String(expected.rtpTimeoutHold ?? "0"),
     ),
-    codecs: compareEndpointField(output, ["allow"], (value) => {
+    codecs: compareEndpointField(output, ["allow", "Allow"], (value) => {
       const actual = parseCodecs(value);
       return allowedCodecs.every((codec) => actual.includes(codec));
     }),
-    asymmetricRtpCodec: compareEndpointField(output, ["asymmetric_rtp_codec"], isEnabledValue),
-    sendPai: compareEndpointField(output, ["send_pai"], isEnabledValue),
+    asymmetricRtpCodec: compareEndpointField(output, ["asymmetric_rtp_codec", "Asymmetric RTP Codec"], isEnabledValue),
+    sendPai: compareEndpointField(output, ["send_pai", "Send PAI"], isEnabledValue),
   };
   const unsupportedOrUnverified = [
     {
@@ -494,28 +520,28 @@ export async function getPjsipEndpointConfig(extension) {
   } catch {
     summary.aorExists = Boolean(summary.aorExists);
   }
-  summary.transport = getTableValue(table, "transport");
-  summary.allow = getTableValue(table, "allow");
-  summary.context = getTableValue(table, "context");
-  summary.callerid = getTableValue(table, "callerid");
-  summary.media_address = getTableValue(table, "media_address");
-  summary.direct_media = parseBooleanTableValue(getTableValue(table, "direct_media"));
-  summary.webrtc = parseBooleanTableValue(getTableValue(table, "webrtc"));
-  summary.use_avpf = parseBooleanTableValue(getTableValue(table, "use_avpf")) || parseBooleanTableValue(getTableValue(table, "avpf"));
-  summary.ice_support = parseBooleanTableValue(getTableValue(table, "ice_support")) || parseBooleanTableValue(getTableValue(table, "icesupport"));
-  summary.rtcp_mux = parseBooleanTableValue(getTableValue(table, "rtcp_mux"));
-  summary.bundle = parseBooleanTableValue(getTableValue(table, "bundle"));
-  summary.media_encryption = getTableValue(table, "media_encryption");
-  summary.media_encryption_optimistic = parseBooleanTableValue(getTableValue(table, "media_encryption_optimistic"));
-  summary.media_use_received_transport = parseBooleanTableValue(getTableValue(table, "media_use_received_transport"));
-  summary.dtls_auto_generate_cert = getTableValue(table, "dtls_auto_generate_cert");
-  summary.dtls_setup = getTableValue(table, "dtls_setup");
-  summary.dtls_verify = getTableValue(table, "dtls_verify");
-  summary.send_pai = parseBooleanTableValue(getTableValue(table, "send_pai"));
-  summary.allow_unauthenticated_options = parseBooleanTableValue(getTableValue(table, "allow_unauthenticated_options"));
-  summary.rtp_timeout = Number.parseInt(getTableValue(table, "rtp_timeout"), 10) || 0;
-  summary.rtp_timeout_hold = Number.parseInt(getTableValue(table, "rtp_timeout_hold"), 10) || 0;
-  summary.asymmetric_rtp_codec = parseBooleanTableValue(getTableValue(table, "asymmetric_rtp_codec"));
+  summary.transport = getTableValueByAliases(table, ["transport", "Transport"]);
+  summary.allow = getTableValueByAliases(table, ["allow", "Allow"]);
+  summary.context = getTableValueByAliases(table, ["context", "Context"]);
+  summary.callerid = getTableValueByAliases(table, ["callerid", "Caller ID", "CallerID"]);
+  summary.media_address = getTableValueByAliases(table, ["media_address", "Media Address"]);
+  summary.direct_media = parseBooleanTableValue(getTableValueByAliases(table, ["direct_media", "Direct Media"]));
+  summary.webrtc = parseBooleanTableValue(getTableValueByAliases(table, ["webrtc", "WebRTC"]));
+  summary.use_avpf = parseBooleanTableValue(getTableValueByAliases(table, ["use_avpf", "avpf", "AVPF"]));
+  summary.ice_support = parseBooleanTableValue(getTableValueByAliases(table, ["ice_support", "icesupport", "ICE Support"]));
+  summary.rtcp_mux = parseBooleanTableValue(getTableValueByAliases(table, ["rtcp_mux", "RTCP Mux"]));
+  summary.bundle = parseBooleanTableValue(getTableValueByAliases(table, ["bundle", "Bundle"]));
+  summary.media_encryption = getTableValueByAliases(table, ["media_encryption", "Media Encryption"]);
+  summary.media_encryption_optimistic = parseBooleanTableValue(getTableValueByAliases(table, ["media_encryption_optimistic", "Media Encryption Optimistic"]));
+  summary.media_use_received_transport = parseBooleanTableValue(getTableValueByAliases(table, ["media_use_received_transport", "Media Use Received Transport"]));
+  summary.dtls_auto_generate_cert = getTableValueByAliases(table, ["dtls_auto_generate_cert", "DTLS Auto Generate Cert"]);
+  summary.dtls_setup = getTableValueByAliases(table, ["dtls_setup", "DTLS Setup"]);
+  summary.dtls_verify = getTableValueByAliases(table, ["dtls_verify", "DTLS Verify"]);
+  summary.send_pai = parseBooleanTableValue(getTableValueByAliases(table, ["send_pai", "Send PAI"]));
+  summary.allow_unauthenticated_options = parseBooleanTableValue(getTableValueByAliases(table, ["allow_unauthenticated_options", "Allow Unauthenticated OPTIONS", "Allow Unauthenticated", "Allow OPTIONS"]));
+  summary.rtp_timeout = Number.parseInt(getTableValueByAliases(table, ["rtp_timeout", "RTP Timeout"]), 10) || 0;
+  summary.rtp_timeout_hold = Number.parseInt(getTableValueByAliases(table, ["rtp_timeout_hold", "RTP Timeout Hold"]), 10) || 0;
+  summary.asymmetric_rtp_codec = parseBooleanTableValue(getTableValueByAliases(table, ["asymmetric_rtp_codec", "Asymmetric RTP Codec"]));
   summary.rawAvailable = true;
   return summary;
 }
