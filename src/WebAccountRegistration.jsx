@@ -1022,11 +1022,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         #web-account-registration .web-table {
           width: 100%;
           min-width: 1180px;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           table-layout: fixed;
           font-size: 12px;
         }
-        #web-account-registration .web-table thead { background: #f8fafc; }
+        #web-account-registration .web-table thead { background: #1a2332; }
         #web-account-registration .web-table th {
           height: 56px;
           padding: 0 22px;
