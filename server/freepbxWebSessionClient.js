@@ -1,14 +1,18 @@
-const DEFAULT_WEB_TIMEOUT_MS = 15000;
+import { getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
+
+const DEFAULT_WEB_PAGE_TIMEOUT_MS = 60000;
+const DEFAULT_WEB_SUBMIT_TIMEOUT_MS = 60000;
 const DEFAULT_CONFIG_PATH = "/admin/config.php";
 const EXTENSION_PATTERN = /^\d+$/;
 
 export class FreepbxWebSessionError extends Error {
-  constructor(message, { code = "FREEPBX_WEB_SESSION_ERROR", status = 0, cause = null } = {}) {
+  constructor(message, { code = "FREEPBX_WEB_SESSION_ERROR", status = 0, cause = null, details = null } = {}) {
     super(message);
     this.name = "FreepbxWebSessionError";
     this.code = code;
     this.status = status;
     if (cause) this.cause = cause;
+    if (details) this.details = details;
   }
 }
 
@@ -40,12 +44,14 @@ function splitSetCookie(value) {
 }
 
 function getConfig() {
-  const timeoutMs = Number(process.env.FREEPBX_WEB_TIMEOUT_MS || process.env.FREEPBX_API_TIMEOUT_MS || DEFAULT_WEB_TIMEOUT_MS);
+  const pageTimeoutMs = Number(process.env.FREEPBX_WEB_PAGE_TIMEOUT_MS || DEFAULT_WEB_PAGE_TIMEOUT_MS);
+  const submitTimeoutMs = Number(process.env.FREEPBX_WEB_SUBMIT_TIMEOUT_MS || DEFAULT_WEB_SUBMIT_TIMEOUT_MS);
   return {
     baseUrl: String(process.env.FREEPBX_WEB_BASE_URL || process.env.FREEPBX_BASE_URL || "http://127.0.0.1").replace(/\/+$/, ""),
     username: String(process.env.FREEPBX_WEB_USERNAME || ""),
     password: String(process.env.FREEPBX_WEB_PASSWORD || ""),
-    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_WEB_TIMEOUT_MS,
+    pageTimeoutMs: Number.isFinite(pageTimeoutMs) && pageTimeoutMs > 0 ? pageTimeoutMs : DEFAULT_WEB_PAGE_TIMEOUT_MS,
+    submitTimeoutMs: Number.isFinite(submitTimeoutMs) && submitTimeoutMs > 0 ? submitTimeoutMs : DEFAULT_WEB_SUBMIT_TIMEOUT_MS,
   };
 }
 
@@ -168,7 +174,8 @@ export function getFreepbxWebConfigForOutput() {
   const config = getConfig();
   return {
     baseUrl: config.baseUrl,
-    timeoutMs: config.timeoutMs,
+    pageTimeoutMs: config.pageTimeoutMs,
+    submitTimeoutMs: config.submitTimeoutMs,
     hasUsername: Boolean(config.username),
     hasPassword: Boolean(config.password),
   };
@@ -184,7 +191,9 @@ export class FreepbxWebSessionClient {
     const url = pathOrUrl.startsWith("http")
       ? new URL(pathOrUrl)
       : new URL(pathOrUrl, `${this.config.baseUrl}/`);
-    const { controller, timeout } = withTimeout(this.config.timeoutMs);
+    const timeoutMs = Number(options.timeoutMs || this.config.pageTimeoutMs);
+    const phase = String(options.phase || "request");
+    const { controller, timeout } = withTimeout(timeoutMs);
     try {
       const headers = {
         Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
@@ -208,11 +217,23 @@ export class FreepbxWebSessionClient {
       const text = await response.text();
       return { response, text, url: url.toString() };
     } catch (error) {
+      const isTimeout = error?.name === "AbortError";
       throw new FreepbxWebSessionError(
-        error?.name === "AbortError"
-          ? `FreePBX Web request timed out after ${this.config.timeoutMs}ms.`
+        isTimeout
+          ? `FreePBX Web request timed out after ${timeoutMs}ms.`
           : "FreePBX Web request failed.",
-        { code: "FREEPBX_WEB_REQUEST_FAILED", cause: error },
+        {
+          code: "FREEPBX_WEB_REQUEST_FAILED",
+          cause: error,
+          details: {
+            phase,
+            timeoutMs,
+            errorName: error?.name || "Error",
+            errorMessage: isTimeout ? "Request timed out" : "Request failed",
+            httpStatus: null,
+            responseSummary: null,
+          },
+        },
       );
     } finally {
       clearTimeout(timeout);
@@ -226,7 +247,24 @@ export class FreepbxWebSessionClient {
       });
     }
 
-    const loginPage = await this.request(DEFAULT_CONFIG_PATH);
+    const loginPage = await this.request(DEFAULT_CONFIG_PATH, {
+      phase: "loginPage",
+      timeoutMs: this.config.pageTimeoutMs,
+    });
+    if (!loginPage.response.ok) {
+      throw new FreepbxWebSessionError("FreePBX login page request failed.", {
+        code: "FREEPBX_WEB_LOGIN_PAGE_FAILED",
+        status: loginPage.response.status,
+        details: {
+          phase: "loginPage",
+          timeoutMs: this.config.pageTimeoutMs,
+          errorName: "HttpError",
+          errorMessage: "FreePBX returned non-2xx response",
+          httpStatus: loginPage.response.status,
+          responseSummary: "FreePBX returned non-2xx response",
+        },
+      });
+    }
     if (!hasLoginForm(loginPage.text)) return true;
 
     const body = new URLSearchParams({
@@ -239,6 +277,8 @@ export class FreepbxWebSessionClient {
         "Content-Type": "application/x-www-form-urlencoded",
         Referer: loginPage.url,
       },
+      phase: "loginSubmit",
+      timeoutMs: this.config.submitTimeoutMs,
       body,
     });
 
@@ -255,11 +295,22 @@ export class FreepbxWebSessionClient {
     assertValidExtension(extension);
     await this.login();
     const path = `${DEFAULT_CONFIG_PATH}?display=extensions&extdisplay=${encodeURIComponent(extension)}`;
-    const result = await this.request(path);
+    const result = await this.request(path, {
+      phase: "getExtensionForm",
+      timeoutMs: this.config.pageTimeoutMs,
+    });
     if (!result.response.ok) {
       throw new FreepbxWebSessionError("FreePBX extension edit page request failed.", {
         code: "FREEPBX_EXTENSION_FORM_REQUEST_FAILED",
         status: result.response.status,
+        details: {
+          phase: "getExtensionForm",
+          timeoutMs: this.config.pageTimeoutMs,
+          errorName: "HttpError",
+          errorMessage: "FreePBX returned non-2xx response",
+          httpStatus: result.response.status,
+          responseSummary: "FreePBX returned non-2xx response",
+        },
       });
     }
     const form = parseForm(result.text);
@@ -279,12 +330,22 @@ export class FreepbxWebSessionClient {
         "Content-Type": "application/x-www-form-urlencoded",
         Referer: form.pageUrl || `${this.config.baseUrl}${DEFAULT_CONFIG_PATH}`,
       },
+      timeoutMs: this.config.submitTimeoutMs,
+      phase: "submitExtensionForm",
       body,
     });
     if (!result.response.ok) {
       throw new FreepbxWebSessionError("FreePBX extension form submit failed.", {
         code: "FREEPBX_EXTENSION_FORM_SUBMIT_FAILED",
         status: result.response.status,
+        details: {
+          phase: "submitExtensionForm",
+          timeoutMs: this.config.submitTimeoutMs,
+          errorName: "HttpError",
+          errorMessage: "FreePBX returned non-2xx response",
+          httpStatus: result.response.status,
+          responseSummary: "FreePBX returned non-2xx response",
+        },
       });
     }
     return {
@@ -305,17 +366,20 @@ export function inspectWebrtcFormFields(fieldNames) {
 }
 
 export function getWebrtcFormTargetFields() {
-  const mediaAddress = process.env.FREEPBX_WEBRTC_MEDIA_ADDRESS || "35.221.190.216";
-  const transport = process.env.FREEPBX_WEBRTC_TRANSPORT || "0.0.0.0-wss";
-  const codecs = String(process.env.FREEPBX_WEBRTC_ALLOW_CODECS || "ulaw,h264")
-    .split(",")
+  const config = getWebrtcRuntimeConfig();
+  const mediaAddress = config.mediaAddress;
+  const transport = config.transport;
+  const codecs = String(config.formAllowedCodecs || "")
+    .split("&")
     .map((codec) => codec.trim())
     .filter(Boolean)
     .join("&");
 
   return [
     { name: "displayName", value: null, candidates: ["name"] },
+    { name: "context", value: config.context, candidates: ["context"] },
     { name: "voicemail", value: "disabled", candidates: ["vm"] },
+    { name: "maxContacts", value: config.maxContacts, candidates: ["maxContacts", "max_contacts"] },
     { name: "transport", value: transport, candidates: ["devinfo_transport", "transport"] },
     { name: "avpf", value: "yes", candidates: ["devinfo_avpf", "avpf"] },
     { name: "iceSupport", value: "yes", candidates: ["devinfo_icesupport", "icesupport"] },
@@ -346,6 +410,7 @@ export function getWebrtcFormTargetFields() {
     { name: "dtlsSetup", value: "actpass", candidates: ["dtls_setup"] },
     { name: "dtlsRekey", value: "0", candidates: ["dtls_rekey"] },
     { name: "dtlsAutoGenerateCert", value: "1", candidates: ["dtls_auto_generate_cert"] },
+    { name: "sendRpid", value: "pai", candidates: ["sendrpid", "send_rpid", "devinfo_sendrpid"] },
     { name: "callWaiting", value: "enabled", candidates: ["callwaiting"] },
     { name: "callWaitingTone", value: "enabled", candidates: ["cwtone"] },
     { name: "webrtcEnable", value: "yes", candidates: ["webrtc_enable"] },
@@ -358,6 +423,7 @@ function preferredFieldName(candidates) {
 
 export function buildWebrtcFormUpdate(form, extension) {
   assertValidExtension(extension);
+  const config = getWebrtcRuntimeConfig();
   const fields = new Map(Array.from(form.fields.entries()).map(([name, values]) => [name, [...values]]));
   const applied = [];
   const missing = [];
@@ -365,10 +431,10 @@ export function buildWebrtcFormUpdate(form, extension) {
   setField(fields, "action", "edit");
   setField(fields, "extdisplay", extension);
   setField(fields, "extension", extension);
-  setField(fields, "name", `訪客${extension}`);
+  setField(fields, "name", `${config.displayNamePrefix}${extension}`);
 
   for (const target of getWebrtcFormTargetFields()) {
-    const value = target.name === "displayName" ? `訪客${extension}` : target.value;
+    const value = target.name === "displayName" ? `${config.displayNamePrefix}${extension}` : target.value;
     const existingFieldName = target.candidates.find((candidate) => fields.has(candidate));
     const fieldName = existingFieldName || preferredFieldName(target.candidates);
     if (fieldName) {

@@ -1,57 +1,6 @@
+import { getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
+
 const EXTENSION_PATTERN = /^\d+$/;
-const DEFAULT_WEBRTC_PASSWORD = "Lin1971wn719772";
-const DEFAULT_MEDIA_ADDRESS = "35.221.190.216";
-const DEFAULT_TRANSPORT = "0.0.0.0-wss";
-const DEFAULT_ALLOWED_CODECS = "ulaw,h264";
-const DEFAULT_MAX_CONTACTS = "20";
-
-const WEBRTC_TARGET_FIELDS = [
-  { field: "transport", target: DEFAULT_TRANSPORT, candidates: ["transport"] },
-  { field: "avpf", target: "yes", candidates: ["avpf"] },
-  { field: "iceSupport", target: "yes", candidates: ["icesupport", "iceSupport"] },
-  { field: "rtcpMux", target: "yes", candidates: ["rtcp_mux", "rtcpMux"] },
-  { field: "disallow", target: "all", candidates: ["disallow"] },
-  { field: "allow", target: DEFAULT_ALLOWED_CODECS, candidates: ["allow"] },
-  { field: "mailbox", target: "", candidates: ["mailbox"] },
-  { field: "removeExisting", target: "yes", candidates: ["remove_existing", "removeExisting"] },
-  {
-    field: "mediaUseReceivedTransport",
-    target: "yes",
-    candidates: ["media_use_received_transport", "mediaUseReceivedTransport"],
-  },
-  { field: "aggregateMwi", target: "yes", candidates: ["aggregate_mwi", "aggregateMwi"] },
-  { field: "webrtc", target: "yes", candidates: ["webrtc"] },
-  { field: "sessionTimers", target: "no", candidates: ["timers", "sessionTimers"] },
-  { field: "directMedia", target: "no", candidates: ["direct_media", "directMedia"] },
-  { field: "mediaAddress", target: DEFAULT_MEDIA_ADDRESS, candidates: ["media_address", "mediaAddress"] },
-  {
-    field: "mediaEncryptionOptimistic",
-    target: "yes",
-    candidates: ["media_encryption_optimistic", "mediaEncryptionOptimistic", "allowNonEncryptedMedia"],
-  },
-  { field: "mediaEncryption", target: "dtls", candidates: ["media_encryption", "mediaEncryption"] },
-  { field: "dtlsEnable", target: "yes", candidates: ["dtls_enable", "dtlsEnable"] },
-  {
-    field: "dtlsAutoGenerateCert",
-    target: "yes",
-    candidates: ["dtls_auto_generate_cert", "dtlsAutoGenerateCert"],
-  },
-  { field: "callWaitingTone", target: "enable", candidates: ["callWaitingTone", "callwaiting"] },
-];
-
-function readEnv(name, fallback) {
-  const value = process.env[name];
-  if (value === undefined || value === null || String(value).trim() === "") return fallback;
-  return String(value).trim();
-}
-
-function normalizeCodecs(value) {
-  const codecs = String(value || DEFAULT_ALLOWED_CODECS)
-    .split(",")
-    .map((codec) => codec.trim())
-    .filter(Boolean);
-  return codecs.length ? codecs : DEFAULT_ALLOWED_CODECS.split(",");
-}
 
 function assertValidExtension(extension) {
   if (!EXTENSION_PATTERN.test(String(extension || ""))) {
@@ -78,14 +27,20 @@ function setIfSupported(payload, schemaFields, candidates, value) {
 }
 
 export function getFreepbxWebrtcDefaults() {
-  const allowedCodecs = normalizeCodecs(readEnv("FREEPBX_WEBRTC_ALLOW_CODECS", DEFAULT_ALLOWED_CODECS));
+  const runtime = getWebrtcRuntimeConfig();
   return {
-    defaultPassword: readEnv("FREEPBX_WEBRTC_DEFAULT_PASSWORD", DEFAULT_WEBRTC_PASSWORD),
-    mediaAddress: readEnv("FREEPBX_WEBRTC_MEDIA_ADDRESS", DEFAULT_MEDIA_ADDRESS),
-    transport: readEnv("FREEPBX_WEBRTC_TRANSPORT", DEFAULT_TRANSPORT),
-    allowedCodecs,
-    allowedCodecsString: allowedCodecs.join(","),
-    maxContacts: readEnv("FREEPBX_WEBRTC_MAX_CONTACTS", DEFAULT_MAX_CONTACTS),
+    defaultPassword: runtime.defaultPassword,
+    displayNamePrefix: runtime.displayNamePrefix,
+    emailDomain: runtime.emailDomain,
+    context: runtime.context,
+    mediaAddress: runtime.mediaAddress,
+    transport: runtime.transport,
+    allowedCodecsString: runtime.allowedCodecsString,
+    maxContacts: runtime.maxContacts,
+    formAllowedCodecs: runtime.formAllowedCodecs,
+    disallowCodecs: runtime.disallowCodecs,
+    endpointGeneratedExpected: runtime.endpointGeneratedExpected,
+    endpointCustomPostOverlay: runtime.endpointCustomPostOverlay,
   };
 }
 
@@ -94,20 +49,63 @@ export function getFreepbxWebrtcPublicConfig(defaults = getFreepbxWebrtcDefaults
     transport: defaults.transport,
     allowedCodecs: defaults.allowedCodecsString,
     mediaAddress: defaults.mediaAddress,
+    displayNamePrefix: defaults.displayNamePrefix,
+    emailDomain: defaults.emailDomain,
+    context: defaults.context,
     maxContacts: defaults.maxContacts,
   };
+}
+
+function buildTargetFields(defaults) {
+  return [
+    { field: "transport", target: defaults.transport, candidates: ["transport"] },
+    { field: "avpf", target: "yes", candidates: ["avpf"] },
+    { field: "iceSupport", target: "yes", candidates: ["icesupport", "iceSupport"] },
+    { field: "rtcpMux", target: "yes", candidates: ["rtcp_mux", "rtcpMux"] },
+    { field: "disallow", target: defaults.disallowCodecs || "all", candidates: ["disallow"] },
+    { field: "allow", target: defaults.formAllowedCodecs, candidates: ["allow"] },
+    { field: "mailbox", target: "", candidates: ["mailbox"] },
+    { field: "removeExisting", target: "yes", candidates: ["remove_existing", "removeExisting"] },
+    {
+      field: "mediaUseReceivedTransport",
+      target: "yes",
+      candidates: ["media_use_received_transport", "mediaUseReceivedTransport"],
+    },
+    { field: "aggregateMwi", target: "yes", candidates: ["aggregate_mwi", "aggregateMwi"] },
+    { field: "webrtc", target: "yes", candidates: ["webrtc"] },
+    { field: "sessionTimers", target: "no", candidates: ["timers", "sessionTimers"] },
+    { field: "directMedia", target: "no", candidates: ["direct_media", "directMedia"] },
+    { field: "mediaAddress", target: defaults.mediaAddress, candidates: ["media_address", "mediaAddress"] },
+    {
+      field: "mediaEncryptionOptimistic",
+      target: "yes",
+      candidates: ["media_encryption_optimistic", "mediaEncryptionOptimistic", "allowNonEncryptedMedia"],
+    },
+    { field: "mediaEncryption", target: "dtls", candidates: ["media_encryption", "mediaEncryption"] },
+    { field: "dtlsEnable", target: "yes", candidates: ["dtls_enable", "dtlsEnable"] },
+    {
+      field: "dtlsAutoGenerateCert",
+      target: "yes",
+      candidates: ["dtls_auto_generate_cert", "dtlsAutoGenerateCert"],
+    },
+    { field: "sendRpid", target: "pai", candidates: ["sendrpid", "sendRpid", "devinfo_sendrpid"] },
+    { field: "callWaitingTone", target: "enable", candidates: ["callWaitingTone", "callwaiting"] },
+    { field: "context", target: defaults.context, candidates: ["context"] },
+    { field: "maxContacts", target: defaults.maxContacts, candidates: ["maxContacts", "max_contacts"] },
+  ];
 }
 
 export function buildFreepbxWebrtcExtensionPayloads(extension, email, schema) {
   assertValidExtension(extension);
   const defaults = getFreepbxWebrtcDefaults();
-  const displayName = `訪客${extension}`;
+  const displayName = `${defaults.displayNamePrefix}${extension}`;
   const addSchema = schema?.addExtensionInput || {};
   const updateSchema = schema?.updateExtensionInput || {};
   const addPayload = {};
   const updatePayload = {};
   const unsupportedByGraphql = [];
   const appliedFieldMappings = [];
+  const targetFields = buildTargetFields(defaults);
 
   const addBase = {
     extensionId: String(extension),
@@ -133,14 +131,7 @@ export function buildFreepbxWebrtcExtensionPayloads(extension, email, schema) {
     if (Object.prototype.hasOwnProperty.call(updateSchema, key)) updatePayload[key] = coerceValue(value, updateSchema[key]);
   }
 
-  const targets = WEBRTC_TARGET_FIELDS.map((target) => {
-    if (target.field === "transport") return { ...target, target: defaults.transport };
-    if (target.field === "allow") return { ...target, target: defaults.allowedCodecsString };
-    if (target.field === "mediaAddress") return { ...target, target: defaults.mediaAddress };
-    return target;
-  });
-
-  for (const target of targets) {
+  for (const target of targetFields) {
     const appliedField = setIfSupported(updatePayload, updateSchema, target.candidates, target.target);
     if (appliedField) {
       appliedFieldMappings.push({

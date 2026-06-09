@@ -1,6 +1,6 @@
 ﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "dotenv/config";
 import express from "express";
-import { mkdir, unlink, writeFile, readFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
@@ -14,6 +14,8 @@ import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombs
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
+import { buildWebrtcFormUpdate, FreepbxWebSessionClient } from "./freepbxWebSessionClient.js";
+import { getAsteriskPathConfig, getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
 import {
   FreepbxApiError,
   addExtension as freepbxAddExtension,
@@ -24,6 +26,25 @@ import {
 } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
+import {
+  buildExpectedGeneratedEndpointSection,
+  buildFourFieldEndpointOverlay,
+  buildWorkflowReport,
+  compareEndpointFields,
+  createWorkflowSteps,
+  getEndpointComparisonFields,
+  loadEndpointCustomPostBackup,
+  markStepFailed,
+  markStepRollback,
+  markStepRunning,
+  markStepSkipped,
+  markStepSuccess,
+  parsePjsipSection,
+  restoreEndpointCustomPostFromBackup,
+  sha256File,
+  skipRemainingSteps,
+  writeAtomicFile,
+} from "./webrtcAccountWorkflow.js";
 import {
   FlexisipAccountManagerError,
   searchAccountBySip,
@@ -59,6 +80,8 @@ const paymentProofsDir = path.join(projectRoot, "assets/payment-proofs");
 const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icons");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
 const callCenterImagesDir = path.join(projectRoot, "assets/call-center-images");
+const ASTERISK_PATHS = getAsteriskPathConfig();
+const WEBRTC_RUNTIME = getWebrtcRuntimeConfig();
 
 app.use(express.json({ limit: "12mb" }));
 app.use((request, response, next) => {
@@ -12638,155 +12661,532 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
 app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => {
   // TODO: keep this endpoint restricted to trusted SaaS platform administrators before production use.
   if (request.admin.accountType !== "platform") {
-    return response.status(403).json({ message: "只有平台管理員可以创建PBX测试账号。" });
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以建立 PBX 測試帳號。",
+      error: {
+        code: "WEBRTC_ACCOUNT_CREATE_FAILED",
+        message: "只有平台管理員可以建立 PBX 測試帳號。",
+      },
+    });
   }
 
   const extension = String(request.body?.extension || "").trim();
-  if (!/^\d+$/.test(extension)) {
-    return response.status(400).json({
-      success: false,
-      error: {
-        code: "INVALID_WEBRTC_EXTENSION",
-        message: "WebRTC账号必须为纯数字",
-      },
+  const displayName = `${WEBRTC_RUNTIME.displayNamePrefix || "訪客"}${extension || ""}`;
+  const reportPath = `/tmp/freepbx-webrtc-create-final-${extension || "unknown"}-report.md`;
+  const steps = createWorkflowSteps();
+  const responseData = {
+    extension: extension || "",
+    displayName,
+    createdInFreepbx: false,
+    pjsipPasswordConfigured: false,
+    webFormSubmitted: false,
+    firstReloadExecuted: false,
+    generatedEndpointVerified: false,
+    endpointCustomPostWritten: false,
+    secondReloadExecuted: false,
+    runtimeVerified: false,
+    baselineVerified: false,
+    rollbackExecuted: false,
+    rollbackSuccess: null,
+    asteriskRestartExecuted: false,
+    backupDir: "",
+    reportPath,
+    failedFields: [],
+    warningFields: [],
+    steps,
+  };
+
+  const finalizeReport = async (success, message, error = null, httpStatus = 200) => {
+    if (!success) {
+      const finalizeStep = steps.find((step) => step.key === "finalize");
+      if (finalizeStep && finalizeStep.status === "pending") {
+        markStepFailed(steps, "finalize", { success: false });
+      } else if (finalizeStep && finalizeStep.status === "running") {
+        markStepFailed(steps, "finalize", { success: false });
+      }
+    } else {
+      const finalizeStep = steps.find((step) => step.key === "finalize");
+      if (finalizeStep && finalizeStep.status === "pending") {
+        markStepSuccess(steps, "finalize", { success: true });
+      }
+    }
+    const reportContent = buildWorkflowReport({
+      success,
+      message,
+      extension,
+      displayName,
+      backupDir: responseData.backupDir,
+      reportPath,
+      createdInFreepbx: responseData.createdInFreepbx,
+      pjsipPasswordConfigured: responseData.pjsipPasswordConfigured,
+      webFormSubmitted: responseData.webFormSubmitted,
+      firstReloadExecuted: responseData.firstReloadExecuted,
+      generatedEndpointVerified: responseData.generatedEndpointVerified,
+      endpointCustomPostWritten: responseData.endpointCustomPostWritten,
+      secondReloadExecuted: responseData.secondReloadExecuted,
+      runtimeVerified: responseData.runtimeVerified,
+      baselineVerified: responseData.baselineVerified,
+      rollbackExecuted: responseData.rollbackExecuted,
+      rollbackSuccess: responseData.rollbackSuccess,
+      rollbackMessage: responseData.rollbackMessage || "",
+      baseline: responseData.baseline,
+      baselineNormal: Boolean(
+        responseData.baseline?.[WEBRTC_RUNTIME.fallbackReferenceExtension]?.verified &&
+        responseData.baseline?.[WEBRTC_RUNTIME.referenceExtension]?.verified,
+      ),
+      failedFields: responseData.failedFields,
+      warningFields: responseData.warningFields,
+      steps,
+      endpointComparison: responseData.endpointComparison || [],
     });
+    await writeFile(reportPath, reportContent, "utf8").catch(() => {});
+    return response.status(httpStatus).json({
+      success,
+      message,
+      ...(error ? { error } : {}),
+      data: responseData,
+    });
+  };
+
+  if (!/^\d+$/.test(extension)) {
+    markStepFailed(steps, "validate_extension");
+    skipRemainingSteps(steps, "check_existing_extension", "已略過");
+    return finalizeReport(false, "WebRTC 帳號建立失敗", {
+      code: "INVALID_WEBRTC_EXTENSION",
+      message: "WebRTC 帳號必須為純數字",
+    }, 400);
   }
 
   const email = sanitizeString(request.body?.email || `${extension}@example.com`, 160);
   if (!isValidEmail(email)) {
-    return response.status(400).json({
-      success: false,
-      error: {
-        code: "INVALID_WEBRTC_EMAIL",
-        message: "邮箱格式无效。",
-      },
-    });
+    markStepFailed(steps, "validate_extension", { email });
+    skipRemainingSteps(steps, "check_existing_extension", "已略過");
+    return finalizeReport(false, "WebRTC 帳號建立失敗", {
+      code: "WEBRTC_ACCOUNT_CREATE_FAILED",
+      message: "電子郵件格式無效。",
+    }, 400);
   }
 
   try {
+    markStepRunning(steps, "validate_extension");
+    markStepSuccess(steps, "validate_extension");
+
+    markStepRunning(steps, "check_existing_extension");
+    const existing = await freepbxFetchExtension(extension);
+    if (existing) {
+      markStepFailed(steps, "check_existing_extension");
+      skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_EXTENSION_ALREADY_EXISTS",
+        message: "該 WebRTC 帳號已存在，請更換帳號",
+      }, 409);
+    }
+    markStepSuccess(steps, "check_existing_extension");
+
+    markStepRunning(steps, "backup_asterisk_configs");
+    const backupOutput = execSync("node scripts/backup-asterisk-pjsip-configs.js --confirm yes", {
+      encoding: "utf8",
+      timeout: 60000,
+      maxBuffer: 1024 * 1024,
+    });
+    const backupDir = backupOutput.match(/Backup dir:\s*(\S+)/)?.[1] || "";
+    const manifestPath = backupOutput.match(/Manifest:\s*(\S+)/)?.[1] || "";
+    const filesCopied = Number(backupOutput.match(/Files copied:\s*(\d+)/)?.[1] || 0);
+    const filesMissing = Number(backupOutput.match(/Files missing:\s*(\d+)/)?.[1] || 0);
+    const warnings = Number(backupOutput.match(/Warnings:\s*(\d+)/)?.[1] || 0);
+    if (!backupDir || filesCopied <= 0) {
+      markStepFailed(steps, "backup_asterisk_configs", { backupDir, filesCopied, filesMissing, warnings });
+      skipRemainingSteps(steps, "create_freepbx_extension", "已略過");
+      responseData.backupDir = backupDir || "";
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "ASTERISK_CONFIG_BACKUP_FAILED",
+        message: "Asterisk PJSIP 配置備份失敗，已停止建立流程",
+      }, 500);
+    }
+    responseData.backupDir = backupDir;
+    responseData.manifestPath = manifestPath;
+    responseData.backupSummary = { filesCopied, filesMissing, warnings };
+    markStepSuccess(steps, "backup_asterisk_configs", { backupDir, manifestPath, filesCopied, filesMissing, warnings });
+
     const schema = await freepbxGetExtensionInputSchema();
     const {
       displayName,
       addPayload,
       updatePayload,
       webrtcConfig,
-      unsupportedByGraphql,
-      appliedFieldMappings,
     } = buildFreepbxWebrtcExtensionPayloads(extension, email, schema);
 
-    const existing = await freepbxFetchExtension(extension);
-    if (existing) {
-      return response.status(409).json({
-        success: false,
-        error: {
-          code: "FREEPBX_EXTENSION_ALREADY_EXISTS",
-          message: "该WebRTC账号已存在",
-        },
-      });
+    markStepRunning(steps, "create_freepbx_extension");
+    let createResult;
+    try {
+      createResult = await freepbxAddExtension(addPayload);
+    } catch (error) {
+      markStepFailed(steps, "create_freepbx_extension", { createError: error?.code || error?.message || "error" });
+      skipRemainingSteps(steps, "update_pjsip_password", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_EXTENSION_CREATE_FAILED",
+        message: "FreePBX 基礎 PJSIP 分機建立失敗",
+      }, 502);
     }
-
-    const createResult = await freepbxAddExtension(addPayload);
     if (!createResult?.status) {
-      return response.status(502).json({
-        success: false,
-        error: {
-          code: "FREEPBX_EXTENSION_CREATE_FAILED",
-          message: createResult?.message || "FreePBX创建基础PJSIP分机失败",
-        },
-      });
+      markStepFailed(steps, "create_freepbx_extension", { createStatus: createResult?.status ?? null });
+      skipRemainingSteps(steps, "update_pjsip_password", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_EXTENSION_CREATE_FAILED",
+        message: "FreePBX 基礎 PJSIP 分機建立失敗",
+      }, 502);
     }
+    responseData.createdInFreepbx = true;
+    markStepSuccess(steps, "create_freepbx_extension", { createdInFreepbx: true });
 
     let pjsipPasswordConfigured = false;
-    let passwordUpdateMessage = null;
+    let passwordUpdateMessage = "";
+    markStepRunning(steps, "update_pjsip_password");
+    let updateResult;
     try {
-      const updateResult = await freepbxUpdateExtension(extension, updatePayload);
-      pjsipPasswordConfigured = Boolean(updateResult?.status);
-      passwordUpdateMessage = updateResult?.message || null;
+      updateResult = await freepbxUpdateExtension(extension, updatePayload);
     } catch (error) {
-      passwordUpdateMessage = "PJSIP注册密码或WebRTC参数更新失败。";
-      console.warn("FreePBX extension WebRTC update failed:", {
-        extension,
-        code: error?.code,
-        status: error?.status,
-        message: error?.message,
-      });
+      markStepFailed(steps, "update_pjsip_password", { updateError: error?.code || error?.message || "error" });
+      skipRemainingSteps(steps, "submit_freepbx_webrtc_form", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_PASSWORD_UPDATE_FAILED",
+        message: "PJSIP 註冊密碼設定失敗",
+      }, 502);
     }
+    pjsipPasswordConfigured = Boolean(updateResult?.status);
+    passwordUpdateMessage = updateResult?.message || "";
     if (!pjsipPasswordConfigured) {
-      return response.status(502).json({
-        success: false,
-        error: {
-          code: "FREEPBX_EXTENSION_WEBRTC_UPDATE_FAILED",
-          message: passwordUpdateMessage || "PJSIP注册密码或WebRTC参数更新失败。",
-        },
-        data: {
-          extension,
-          tech: "pjsip",
-          createdInFreepbx: true,
-          pjsipPasswordConfigured: false,
-          freepbxWebrtcFieldsUpdated: false,
-          passwordUpdateMessage,
-          unsupportedByGraphql,
-        },
-      });
+      markStepFailed(steps, "update_pjsip_password", { pjsipPasswordConfigured: false });
+      skipRemainingSteps(steps, "submit_freepbx_webrtc_form", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_PASSWORD_UPDATE_FAILED",
+        message: "PJSIP 註冊密碼設定失敗",
+      }, 502);
     }
+    responseData.pjsipPasswordConfigured = true;
+    markStepSuccess(steps, "update_pjsip_password", { pjsipPasswordConfigured: true });
 
-    const applyConfig = await freepbxApplyConfigAndWait();
-    if (!applyConfig.success) {
-      return response.status(502).json({
-        success: false,
-        error: {
-          code: "APPLY_CONFIG_FAILED",
-          message: applyConfig.message || "FreePBX Apply Config failed.",
-        },
-        data: {
-          extension,
-          tech: "pjsip",
-          createdInFreepbx: true,
-          pjsipPasswordConfigured: true,
-          freepbxWebrtcFieldsUpdated: appliedFieldMappings.length > 0,
-          passwordUpdateMessage,
-          displayName,
-          webrtcConfig,
-          appliedFieldMappings,
-          unsupportedByGraphql,
-          applyConfig,
-        },
+    markStepRunning(steps, "submit_freepbx_webrtc_form");
+    const webClient = new FreepbxWebSessionClient();
+    let form;
+    let update;
+    let formSubmitted;
+    try {
+      form = await webClient.getExtensionForm(extension);
+      update = buildWebrtcFormUpdate(form, extension);
+      formSubmitted = await webClient.submitExtensionForm(form, update.fields);
+    } catch (error) {
+      markStepFailed(steps, "submit_freepbx_webrtc_form", {
+        formError: error?.code || error?.message || "error",
+        ...(error?.details || {}),
+        httpStatus: error?.status || error?.details?.httpStatus || null,
       });
+      skipRemainingSteps(steps, "first_fwconsole_reload", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_WEB_FORM_SUBMIT_FAILED",
+        message: "FreePBX WebRTC 進階配置提交失敗",
+      }, 502);
     }
-
-    const asterisk = await verifyPjsipExtension(extension, webrtcConfig);
-    return response.json({
-      success: true,
-      data: {
-        extension,
-        tech: "pjsip",
-        displayName,
-        createdInFreepbx: true,
-        pjsipPasswordConfigured,
-        freepbxWebrtcFieldsUpdated: appliedFieldMappings.length > 0,
-        passwordUpdateMessage,
-        webrtcConfig,
-        appliedFieldMappings,
-        unsupportedByGraphql,
-        applyConfig,
-        applyConfigSuccess: Boolean(applyConfig.success),
-        verifiedInAsterisk: Boolean(asterisk.verified),
-        asterisk: {
-          endpointExists: Boolean(asterisk.endpointExists),
-          authExists: Boolean(asterisk.authExists),
-          aorExists: Boolean(asterisk.aorExists),
-          webrtcChecks: asterisk.webrtcChecks || {},
-          unsupportedOrUnverified: asterisk.unsupportedOrUnverified || [],
-          failedChecks: asterisk.failedChecks || [],
-          details: asterisk.details,
-        },
-        message: asterisk.verified
-          ? "WebRTC基础账号已创建，请登录Incredible PBX后台确认。"
-          : asterisk.endpointExists && asterisk.authExists && asterisk.aorExists
-            ? "账号已创建并已执行 Apply Config，endpoint/auth/aor 已存在，但 WebRTC 关键参数未通过运行态检查。"
-            : "账号已创建并已执行 Apply Config，但 Asterisk runtime 暂未验证到 endpoint/auth/aor，请手工检查。",
-      },
+    if (formSubmitted.loginShown) {
+      markStepFailed(steps, "submit_freepbx_webrtc_form", { loginShown: true });
+      skipRemainingSteps(steps, "first_fwconsole_reload", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FREEPBX_WEB_FORM_SUBMIT_FAILED",
+        message: "FreePBX WebRTC 進階配置提交失敗",
+      }, 502);
+    }
+    responseData.webFormSubmitted = true;
+    responseData.webForm = {
+      fieldCount: form.fieldNames.length,
+      appliedFields: update.applied.map((item) => ({
+        target: item.target,
+        fieldName: item.fieldName,
+      })),
+      missingFormFields: update.missing.map((item) => item.target),
+    };
+    markStepSuccess(steps, "submit_freepbx_webrtc_form", {
+      fieldCount: form.fieldNames.length,
+      missingFormFields: update.missing.map((item) => item.target),
     });
+
+    markStepRunning(steps, "first_fwconsole_reload");
+    let applyConfig1;
+    try {
+      applyConfig1 = await freepbxApplyConfigAndWait();
+    } catch (error) {
+      applyConfig1 = { success: false, message: error?.message || "reload failed" };
+    }
+    if (!applyConfig1.success) {
+      markStepFailed(steps, "first_fwconsole_reload", { success: false, message: applyConfig1.message || "" });
+      skipRemainingSteps(steps, "verify_generated_endpoint", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FWCONSOLE_RELOAD_FAILED",
+        message: "FreePBX 配置套用失敗",
+      }, 502);
+    }
+    responseData.firstReloadExecuted = true;
+    responseData.firstReload = {
+      success: true,
+      transactionId: applyConfig1.transactionId || null,
+      waitStrategy: applyConfig1.waitStrategy || null,
+    };
+    markStepSuccess(steps, "first_fwconsole_reload", {
+      transactionId: applyConfig1.transactionId || null,
+      waitStrategy: applyConfig1.waitStrategy || null,
+    });
+
+    markStepRunning(steps, "verify_generated_endpoint");
+    const endpointConf = await readFile(ASTERISK_PATHS.endpointConf, "utf8");
+    const referenceSection = parsePjsipSection(endpointConf, WEBRTC_RUNTIME.referenceExtension || WEBRTC_RUNTIME.fallbackReferenceExtension || "");
+    const generatedSection = parsePjsipSection(endpointConf, extension);
+    const expectedSection = buildExpectedGeneratedEndpointSection(extension, referenceSection?.fields || {}, webrtcConfig);
+    const endpointComparison = compareEndpointFields(
+      generatedSection?.fields || {},
+      expectedSection.fields,
+      getEndpointComparisonFields(),
+    );
+    const generatedEndpointVerified = Boolean(generatedSection) && endpointComparison.every((item) => item.passed);
+    responseData.generatedEndpointVerified = generatedEndpointVerified;
+    responseData.generatedSection = generatedSection;
+    responseData.endpointComparison = endpointComparison;
+    responseData.failedFields = endpointComparison.filter((item) => !item.passed).map((item) => item.field);
+    if (!generatedEndpointVerified) {
+      markStepFailed(steps, "verify_generated_endpoint", { failedFields: responseData.failedFields });
+      skipRemainingSteps(steps, "write_endpoint_custom_overlay", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "GENERATED_ENDPOINT_VERIFY_FAILED",
+        message: "FreePBX 生成的 Endpoint 配置不符合 WebRTC 要求",
+      }, 502);
+    }
+    markStepSuccess(steps, "verify_generated_endpoint", { passedFields: endpointComparison.filter((item) => item.passed).map((item) => item.field) });
+
+    markStepRunning(steps, "write_endpoint_custom_overlay");
+    const overlayPreview = buildFourFieldEndpointOverlay(extension);
+    const targetFile = ASTERISK_PATHS.endpointCustomPostConf;
+    let overlayManifestPath = "";
+    let currentSha256 = "";
+    let currentText = "";
+    let currentStat = null;
+    let upsert = null;
+    let newSha256 = "";
+    try {
+      const backupInfo = await loadEndpointCustomPostBackup(responseData.backupDir);
+      overlayManifestPath = backupInfo.manifestPath;
+      currentSha256 = await sha256File(targetFile);
+      if (currentSha256 !== backupInfo.targetEntry.sha256) {
+        markStepFailed(steps, "write_endpoint_custom_overlay", { currentSha256, expectedSha256: backupInfo.targetEntry.sha256 });
+        skipRemainingSteps(steps, "second_fwconsole_reload", "已略過");
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "WEBRTC_ACCOUNT_CREATE_FAILED",
+          message: "Asterisk 配置自備份後已變更",
+        }, 409);
+      }
+      currentText = await readFile(targetFile, "utf8");
+      currentStat = await stat(targetFile);
+      const start = `; BEGIN SaaS WebRTC 4-field endpoint overlay ${extension}`;
+      const end = `; END SaaS WebRTC 4-field endpoint overlay ${extension}`;
+      const startIndex = currentText.indexOf(start);
+      const endIndex = currentText.indexOf(end);
+      const normalized = overlayPreview.endsWith("\n") ? overlayPreview : `${overlayPreview}\n`;
+      if (startIndex >= 0 && endIndex > startIndex) {
+        const afterEnd = endIndex + end.length;
+        const nextNewline = currentText.indexOf("\n", afterEnd);
+        const replaceEnd = nextNewline >= 0 ? nextNewline + 1 : currentText.length;
+        upsert = {
+          action: "replace",
+          content: `${currentText.slice(0, startIndex)}${normalized}${currentText.slice(replaceEnd)}`,
+        };
+      } else {
+        const separator = currentText.endsWith("\n") ? "\n" : "\n\n";
+        upsert = { action: "append", content: `${currentText}${separator}${normalized}` };
+      }
+      await writeAtomicFile(targetFile, upsert.content, currentStat.mode & 0o7777);
+      await chown(targetFile, currentStat.uid, currentStat.gid);
+      await chmod(targetFile, currentStat.mode & 0o7777);
+      newSha256 = await sha256File(targetFile);
+    } catch (error) {
+      markStepFailed(steps, "write_endpoint_custom_overlay", { writeError: error?.code || error?.message || "error" });
+      skipRemainingSteps(steps, "second_fwconsole_reload", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "ENDPOINT_CUSTOM_POST_WRITE_FAILED",
+        message: "WebRTC Runtime 補充參數寫入失敗",
+      }, 502);
+    }
+    responseData.endpointCustomPostWritten = true;
+    responseData.endpointCustomPost = {
+      targetFile,
+      action: upsert.action,
+      oldSha256: currentSha256,
+      newSha256,
+      manifestPath: overlayManifestPath,
+    };
+    markStepSuccess(steps, "write_endpoint_custom_overlay", {
+      targetFile,
+      action: upsert.action,
+      oldSha256: currentSha256,
+      newSha256,
+    });
+
+    markStepRunning(steps, "second_fwconsole_reload");
+    const channelsOutput = execSync("asterisk -rx \"core show channels\"", { encoding: "utf8" });
+    responseData.coreShowChannelsChecked = true;
+    responseData.activeChannelsIgnored = /active call|active channels/i.test(String(channelsOutput || "")) ? true : false;
+    let applyConfig2;
+    try {
+      applyConfig2 = await freepbxApplyConfigAndWait();
+    } catch (error) {
+      applyConfig2 = { success: false, message: error?.message || "reload failed" };
+    }
+    if (!applyConfig2.success) {
+      markStepFailed(steps, "second_fwconsole_reload", { success: false, message: applyConfig2.message || "" });
+      skipRemainingSteps(steps, "verify_runtime_endpoint", "已略過");
+      responseData.rollbackExecuted = true;
+      markStepRunning(steps, "rollback_endpoint_custom_post");
+      try {
+        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
+        await freepbxApplyConfigAndWait();
+        responseData.rollbackSuccess = true;
+        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
+        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
+      } catch (rollbackError) {
+        responseData.rollbackSuccess = false;
+        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "ROLLBACK_FAILED",
+          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+        }, 500);
+      }
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "FWCONSOLE_RELOAD_FAILED",
+        message: "FreePBX 配置套用失敗",
+      }, 502);
+    }
+    responseData.secondReloadExecuted = true;
+    responseData.secondReload = {
+      success: true,
+      transactionId: applyConfig2.transactionId || null,
+      waitStrategy: applyConfig2.waitStrategy || null,
+    };
+    markStepSuccess(steps, "second_fwconsole_reload", {
+      transactionId: applyConfig2.transactionId || null,
+      waitStrategy: applyConfig2.waitStrategy || null,
+    });
+
+    markStepRunning(steps, "verify_runtime_endpoint");
+    let asterisk;
+    try {
+      asterisk = await verifyPjsipExtension(extension, webrtcConfig);
+    } catch (error) {
+      asterisk = {
+        verified: false,
+        endpointExists: false,
+        authExists: false,
+        aorExists: false,
+        failedChecks: ["runtime_error"],
+        unsupportedOrUnverified: [],
+        details: { runtimeError: error?.message || "runtime error" },
+      };
+    }
+    responseData.runtimeVerified = Boolean(asterisk.verified);
+    responseData.runtime = asterisk;
+    responseData.warningFields = (asterisk.unsupportedOrUnverified || []).map((item) => item.field);
+    responseData.failedFields = asterisk.failedChecks || [];
+    if (!asterisk.verified) {
+      markStepFailed(steps, "verify_runtime_endpoint", { failedFields: responseData.failedFields });
+      responseData.rollbackExecuted = true;
+      markStepRunning(steps, "rollback_endpoint_custom_post");
+      try {
+        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
+        await freepbxApplyConfigAndWait();
+        responseData.rollbackSuccess = true;
+        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
+        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
+      } catch (rollbackError) {
+        responseData.rollbackSuccess = false;
+        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "ROLLBACK_FAILED",
+          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+        }, 500);
+      }
+      responseData.baseline = {
+        [WEBRTC_RUNTIME.fallbackReferenceExtension]: await verifyPjsipExtension(WEBRTC_RUNTIME.fallbackReferenceExtension, webrtcConfig),
+        [WEBRTC_RUNTIME.referenceExtension]: await verifyPjsipExtension(WEBRTC_RUNTIME.referenceExtension, webrtcConfig),
+      };
+      responseData.baselineVerified = Boolean(
+        responseData.baseline[WEBRTC_RUNTIME.fallbackReferenceExtension]?.verified &&
+        responseData.baseline[WEBRTC_RUNTIME.referenceExtension]?.verified,
+      );
+      responseData.baselineNormal = responseData.baselineVerified;
+      markStepRunning(steps, "verify_baseline_endpoints");
+      if (!responseData.baselineVerified) {
+        markStepFailed(steps, "verify_baseline_endpoints");
+        responseData.rollbackExecuted = true;
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "BASELINE_ENDPOINT_VERIFY_FAILED",
+          message: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
+        }, 502);
+      }
+      markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });
+      markStepRollback(steps, "rollback_endpoint_custom_post", { rollbackSuccess: true });
+      markStepRunning(steps, "finalize");
+      markStepFailed(steps, "finalize", { success: false });
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "RUNTIME_VERIFY_FAILED",
+        message: "WebRTC Runtime 參數驗證失敗",
+      }, 502);
+    }
+    markStepSuccess(steps, "verify_runtime_endpoint", {
+      endpointExists: Boolean(asterisk.endpointExists),
+      authExists: Boolean(asterisk.authExists),
+      aorExists: Boolean(asterisk.aorExists),
+    });
+
+    markStepRunning(steps, "verify_baseline_endpoints");
+    const baseline9001 = await verifyPjsipExtension(WEBRTC_RUNTIME.fallbackReferenceExtension, webrtcConfig);
+    const baseline9002 = await verifyPjsipExtension(WEBRTC_RUNTIME.referenceExtension, webrtcConfig);
+    responseData.baseline = {
+      [WEBRTC_RUNTIME.fallbackReferenceExtension]: baseline9001,
+      [WEBRTC_RUNTIME.referenceExtension]: baseline9002,
+    };
+    responseData.baselineVerified = Boolean(baseline9001?.verified && baseline9002?.verified);
+    responseData.baselineNormal = responseData.baselineVerified;
+    if (!responseData.baselineVerified) {
+      markStepFailed(steps, "verify_baseline_endpoints", { baselineVerified: false });
+      responseData.rollbackExecuted = true;
+      markStepRunning(steps, "rollback_endpoint_custom_post");
+      try {
+        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
+        await freepbxApplyConfigAndWait();
+        responseData.rollbackSuccess = true;
+        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
+        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
+      } catch (rollbackError) {
+        responseData.rollbackSuccess = false;
+        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "ROLLBACK_FAILED",
+          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+        }, 500);
+      }
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "BASELINE_ENDPOINT_VERIFY_FAILED",
+        message: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
+      }, 502);
+    }
+    markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });
+
+    markStepSkipped(steps, "rollback_endpoint_custom_post", "未觸發回滾");
+    responseData.rollbackExecuted = false;
+    responseData.rollbackSuccess = null;
+    markStepRunning(steps, "finalize");
+    markStepSuccess(steps, "finalize", { success: true });
+
+    return finalizeReport(true, "WebRTC 帳號已建立完成", null, 200);
   } catch (error) {
     if (error instanceof FreepbxApiError) {
       console.error("FreePBX WebRTC basic account request failed:", {
@@ -12795,28 +13195,22 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         status: error.status,
         message: error.message,
       });
-      return response.status(502).json({
-        success: false,
-        error: {
-          code: error.code || "FREEPBX_API_ERROR",
-          message: error.message || "FreePBX API请求失败",
-          status: error.status || undefined,
-          responseBody: error.responseBody || undefined,
-        },
-      });
+      markStepFailed(steps, "finalize");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "WEBRTC_ACCOUNT_CREATE_FAILED",
+        message: "WebRTC 帳號建立失敗",
+      }, 500);
     }
 
     console.error("Failed to create FreePBX WebRTC basic account:", {
       extension,
       message: error?.message || String(error),
     });
-    return response.status(500).json({
-      success: false,
-      error: {
-        code: "FREEPBX_WEBRTC_ACCOUNT_CREATE_FAILED",
-        message: "WebRTC基础账号创建失败。",
-      },
-    });
+    markStepFailed(steps, "finalize");
+    return finalizeReport(false, "WebRTC 帳號建立失敗", {
+      code: error?.code || "WEBRTC_ACCOUNT_CREATE_FAILED",
+      message: error?.message || "WebRTC 帳號建立失敗",
+    }, 500);
   }
 });
 

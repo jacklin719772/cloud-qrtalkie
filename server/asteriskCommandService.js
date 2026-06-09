@@ -82,9 +82,16 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
     .filter(Boolean);
   const checks = {
     transport: compareEndpointField(output, ["transport"], (value) => normalizeValue(value) === normalizeValue(expected.transport)),
+    allowUnauthenticatedOptions: compareEndpointField(
+      output,
+      ["allow_unauthenticated_options"],
+      isEnabledValue,
+    ),
+    webrtc: compareEndpointField(output, ["webrtc"], isEnabledValue),
     useAvpf: compareEndpointField(output, ["use_avpf", "avpf"], isEnabledValue),
     iceSupport: compareEndpointField(output, ["ice_support", "icesupport"], isEnabledValue),
     rtcpMux: compareEndpointField(output, ["rtcp_mux"], isEnabledValue),
+    bundle: compareEndpointField(output, ["bundle"], isEnabledValue),
     mediaEncryption: compareEndpointField(output, ["media_encryption"], (value) => normalizeValue(value).includes("dtls")),
     mediaEncryptionOptimistic: compareEndpointField(
       output,
@@ -104,10 +111,18 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
       ["media_address"],
       (value) => normalizeValue(value) === normalizeValue(expected.mediaAddress),
     ),
+    rtpTimeout: compareEndpointField(output, ["rtp_timeout"], (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0")),
+    rtpTimeoutHold: compareEndpointField(
+      output,
+      ["rtp_timeout_hold"],
+      (value) => normalizeValue(value) === String(expected.rtpTimeoutHold ?? "0"),
+    ),
     codecs: compareEndpointField(output, ["allow"], (value) => {
       const actual = parseCodecs(value);
       return allowedCodecs.every((codec) => actual.includes(codec));
     }),
+    asymmetricRtpCodec: compareEndpointField(output, ["asymmetric_rtp_codec"], isEnabledValue),
+    sendPai: compareEndpointField(output, ["send_pai"], isEnabledValue),
   };
   const unsupportedOrUnverified = [
     {
