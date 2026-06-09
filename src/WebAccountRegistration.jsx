@@ -66,6 +66,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [consistencyResult, setConsistencyResult] = useState(null);
   const [isCheckingConsistency, setIsCheckingConsistency] = useState(false);
 
+  // 详情弹窗
+  const [detailAccount, setDetailAccount] = useState(null);
+  const [detailConfig, setDetailConfig] = useState(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
   const STEP_LABELS = [
     '驗證 WebRTC 帳號格式',
     '檢查 FreePBX 帳號是否已存在',
@@ -571,8 +576,17 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   async function handleAction(action, account) {
     setOpenDropdownId(null);
     if (action === 'details') {
-      setViewingAccount(account);
-      setViewMode('detail');
+      setDetailAccount(account);
+      setDetailConfig(null);
+      setIsLoadingDetail(true);
+      try {
+        const result = await apiClient.get(`/pbx/webrtc-accounts/${account.username}/config`);
+        setDetailConfig(result.data || result);
+      } catch {
+        setDetailConfig(null);
+      } finally {
+        setIsLoadingDetail(false);
+      }
       return;
     }
     if (action === 'edit') {
@@ -795,43 +809,6 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button type="button" onClick={() => setViewMode('list')} disabled={isImporting} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="button" onClick={handleImportSubmit} disabled={isImporting || importRows.length === 0 || importRows.some((row) => row.error)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isImporting ? '導入中...' : '执行導入'}</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  if (viewMode === 'detail' && viewingAccount) {
-    const fieldStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#0f172a', color: '#e5e7eb' };
-    return (
-      <section className="view active settings-form-page" id="web-account-registration-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>Web 帳號詳情</h3>
-              <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                {[
-                  ['用戶名', viewingAccount.username || '-'],
-                  ['顯示名稱', viewingAccount.displayName || '-'],
-                  ['SIP Domain', viewingAccount.domain || '-'],
-                  ['角色', viewingAccount.role || '-'],
-                  ['狀態', viewingAccount.status || '-'],
-                  ['手機號碼', viewingAccount.phone || '-'],
-                  ['郵箱', viewingAccount.email || '-'],
-                  ['所屬租戶', viewingAccount.tenantName || '未分配'],
-                  ['建立人', viewingAccount.creatorName || '-'],
-                  ['建立時間', viewingAccount.createdAt || '-'],
-                ].map(([label, value]) => (
-                  <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>{label}</span>
-                    <input value={value} readOnly style={fieldStyle} />
-                  </label>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -1304,6 +1281,59 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
       </div>
       </div>
+
+      {/* 帳號詳情彈窗 */}
+      {detailAccount && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(e) => { if (e.target === e.currentTarget) { setDetailAccount(null); setDetailConfig(null); } }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '80vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ flexShrink: 0, padding: '18px 20px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號詳情 — {detailAccount.username}</h3>
+              <button onClick={() => { setDetailAccount(null); setDetailConfig(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {/* 基础信息 */}
+              <div style={{ marginBottom: '16px' }}>
+                <h4 style={{ margin: '0 0 '10px', fontSize: '13px', fontWeight: 600, color: '#60a5fa' }}>基础資訊</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '6px 12px', fontSize: '13px' }}>
+                  {[
+                    ['用戶名', detailAccount.username],
+                    ['顯示名稱', detailAccount.displayName],
+                    ['Domain', detailAccount.domain],
+                    ['角色', detailAccount.role],
+                    ['狀態', detailAccount.status],
+                    ['電話', detailAccount.phone || '-'],
+                    ['郵箱', detailAccount.email || '-'],
+                    ['租戶', detailAccount.tenantName || '未分配'],
+                    ['建立者', detailAccount.creatorName || '-'],
+                    ['建立時間', detailAccount.createdAt || '-'],
+                  ].map(([k, v]) => (<React.Fragment key={k}><span style={{ color: '#9ca3af', textAlign: 'right' }}>{k}</span><span style={{ color: '#e5e7eb' }}>{v || '-'}</span></React.Fragment>))}
+                </div>
+              </div>
+              {/* API 配置详情 */}
+              {isLoadingDetail ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px' }}>載入配置中...</p>
+              ) : detailConfig?.runtime ? (
+                <div>
+                  <h4 style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#60a5fa' }}>Web SIP 服務器配置</h4>
+                  <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden' }}>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      {Object.entries(detailConfig.runtime).map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', padding: '5px 12px', borderBottom: '1px solid #1f2937', fontSize: '12px' }}>
+                          <span style={{ flex: '0 0 180px', color: '#9ca3af', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k}</span>
+                          <span style={{ flex: 1, color: '#e5e7eb', wordBreak: 'break-all' }}>{String(v ?? '-')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : detailConfig ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center' }}>無法獲取服務器配置</p>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 一致性檢查彈窗 */}
       {consistencyAccount && createPortal(
