@@ -815,7 +815,7 @@ app.post("/api/auth/login", async (request, response) => {
   const password = String(request.body.password || "");
 
   if (!username || !password) {
-    return response.status(400).json({ message: "请输入有效的登录账号和密码。" });
+    return response.status(400).json({ message: "請輸入有效的登入帳號和密碼。" });
   }
 
   let connection;
@@ -922,7 +922,7 @@ app.post("/api/auth/login", async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "登录失败，请稍后再试。" });
+    return response.status(500).json({ message: "登入失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1678,7 +1678,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
   const confirmPassword = String(request.body?.confirmPassword || "");
 
   if (email && !isValidEmail(email)) {
-    return response.status(400).json({ message: "请输入有效的电子邮箱。" });
+    return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
   }
   if (password || confirmPassword) {
     if (password.length < 6) {
@@ -1888,7 +1888,7 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
 
     if (rows.length !== assignedAccountIds.length) {
       await connection.rollback();
-      return response.status(404).json({ message: "部分帳號不存在，请刷新后重试。" });
+      return response.status(404).json({ message: "部分帳號不存在，請刷新後重試。" });
     }
 
     const today = new Date().setHours(0, 0, 0, 0);
@@ -5467,7 +5467,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const requestedAccountCount = accountsPerQuantity * requestedQuantity;
     if (requestedAccountCount > entitlementRows.length) {
       await connection.rollback();
-      return response.status(409).json({ message: "当前续订暂不支持增加帳號數量，请使用重新购买或等待增量续订功能。" });
+      return response.status(409).json({ message: "当前续订暂不支持增加帳號數量，請使用重新购买或等待增量续订功能。" });
     }
     if (requestedRetainedSipUserIds.length > requestedAccountCount) {
       await connection.rollback();
@@ -8852,8 +8852,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       ? `已为该訂單分配 ${requiredAccountCount} 个 SIP 帳號及对应 WebRTC 帳號`
       : `已为该訂單分配 ${requiredAccountCount} 个 SIP 帳號`;
     const notificationBody = status === "review_approved"
-      ? `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。${assignedAccountText}，请前往“帳號管理”查看已分配帳號。`
-      : `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。请前往“我的套餐”查看审核意见并重新提交审核。`;
+      ? `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。${assignedAccountText}，請前往“帳號管理”查看已分配帳號。`
+      : `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。請前往“我的套餐”查看审核意见并重新提交审核。`;
     const notificationTargetView = status === "review_approved" ? "tenant-account-management" : "domain";
     const notificationResult = await connection.query(
       `INSERT INTO notification_events (
@@ -9020,7 +9020,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
 // GET /api/tenant/ecard-styles - 租戶侧获取已啟用的 Ecard 样式
 app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員请使用样式管理页面。" });
+    return response.status(403).json({ message: "平台管理員請使用樣式管理頁面。" });
   }
   if (!request.admin.tenantId) {
     return response.status(403).json({ message: "只有租戶管理員可以查看 Ecard 样式。" });
@@ -12264,7 +12264,7 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
   const platformRole = ["admin","operator","finance","support","auditor"].includes(request.body?.platformRole)
     ? request.body.platformRole : "admin";
 
-  if (!email || !isValidEmail(email)) return response.status(400).json({ message: "请输入有效的电子邮箱。" });
+  if (!email || !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
   if (password.length < 6) return response.status(400).json({ message: "密码至少需要 6 个字符。" });
 
   let connection;
@@ -12306,7 +12306,7 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
     ? request.body.platformRole : null;
   const password = String(request.body?.password || "");
 
-  if (email && !isValidEmail(email)) return response.status(400).json({ message: "请输入有效的电子邮箱。" });
+  if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
   if (password && password.length < 6) return response.status(400).json({ message: "密码至少需要 6 个字符。" });
 
   let connection;
