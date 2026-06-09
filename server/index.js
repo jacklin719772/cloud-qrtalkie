@@ -14253,9 +14253,9 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       try {
         const passwordHash = await hashPassword(WEBRTC_RUNTIME.defaultPassword || "");
         await dbConn.query(
-          `INSERT INTO web_users (tenant_id, username, sip_domain, display_name, password_hash, role, status, created_by_admin_user_id)
-           VALUES (?, ?, ?, ?, ?, 'user', 'active', ?)`,
-          [null, extension, webrtcDomain, displayName, passwordHash, request.admin.id],
+          `INSERT INTO web_users (tenant_id, username, sip_domain, display_name, email, password_hash, role, status, created_by_admin_user_id)
+           VALUES (?, ?, ?, ?, ?, ?, 'user', 'active', ?)`,
+          [null, extension, webrtcDomain, displayName, `${extension}@${webrtcDomain}`, passwordHash, request.admin.id],
         );
         responseData.savedToDatabase = true;
       } finally {
