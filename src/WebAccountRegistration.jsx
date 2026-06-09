@@ -84,7 +84,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     } catch (err) {
       const data = err.response?.data || err.data || {};
       setAddSteps(data.data?.steps || data.steps || []);
-      setAddMessage({ type: 'error', text: data.message || data.error?.message || err.message || '建立失敗' });
+      setAddMessage({ type: 'error', text: data.error?.message || data.message || err.message || '建立失敗' });
     } finally {
       setIsAdding(false);
     }
