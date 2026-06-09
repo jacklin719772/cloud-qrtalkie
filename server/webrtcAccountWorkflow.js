@@ -303,6 +303,55 @@ export function parsePjsipSection(content, sectionName) {
   return { sectionName, startLine: start + 1, endLine: end, body, fields };
 }
 
+export function parseEndpointCustomPostOverlay(content, extension) {
+  const text = String(content || "");
+  const startMarker = `; BEGIN SaaS WebRTC 4-field endpoint overlay ${extension}`;
+  const endMarker = `; END SaaS WebRTC 4-field endpoint overlay ${extension}`;
+  const startIndex = text.indexOf(startMarker);
+  const endIndex = text.indexOf(endMarker);
+
+  if (startIndex < 0 || endIndex < startIndex) {
+    return {
+      exists: false,
+      fields: {},
+      marker: {
+        start: startMarker,
+        end: endMarker,
+      },
+    };
+  }
+
+  const block = text.slice(startIndex, endIndex + endMarker.length);
+  const fields = {};
+  for (const line of block.split(/\n/)) {
+    const match = line.match(/^\s*([^;#][^=]*)=(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    const value = match[2].trim();
+    fields[key] = value;
+  }
+
+  return {
+    exists: true,
+    fields,
+    marker: {
+      start: startMarker,
+      end: endMarker,
+    },
+  };
+}
+
+export async function readEndpointCustomPostOverlay(extension) {
+  const content = await readFile(ENDPOINT_CUSTOM_POST_FILE, "utf8").catch(() => "");
+  const overlay = parseEndpointCustomPostOverlay(content, String(extension));
+  return {
+    file: ENDPOINT_CUSTOM_POST_FILE,
+    exists: overlay.exists,
+    fields: overlay.fields,
+    marker: overlay.marker,
+  };
+}
+
 export function buildExpectedGeneratedEndpointSection(extension, referenceFields = {}, defaults = {}) {
   const runtime = getWebrtcRuntimeConfig();
   const fields = {

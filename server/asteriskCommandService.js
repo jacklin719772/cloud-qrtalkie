@@ -27,6 +27,31 @@ function extractLineValue(output, field) {
   return match ? match[1].trim() : "";
 }
 
+function parseAsteriskParameterTable(output) {
+  const table = {};
+  for (const line of String(output || "").split(/\r?\n/)) {
+    const match = line.match(/^\s*([^:]+?)\s*:\s*(.*)$/);
+    if (!match) continue;
+    const key = String(match[1] || "").trim();
+    const value = String(match[2] || "").trim();
+    if (!key) continue;
+    table[key] = value;
+  }
+  return table;
+}
+
+function getTableValue(table, key) {
+  if (!table || typeof table !== "object") return "";
+  return String(table[key] ?? "").trim();
+}
+
+function parseBooleanTableValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  return normalized === "yes" || normalized === "true" || normalized === "1";
+}
+
 function extractEndpointSummary(output) {
   const text = String(output || "");
   const endpointLineRaw = text.match(/^Endpoint:\s+(.+)$/im)?.[1]?.trim() || "";
@@ -391,4 +416,106 @@ export async function getPjsipEndpointStatusBatch(extensions) {
     count: items.length,
     items,
   };
+}
+
+function parseEndpointRuntimeSummary(output, extension) {
+  const text = String(output || "");
+  const endpointLine = text.match(/^Endpoint:\s+(.+)$/im)?.[1]?.trim() || "";
+  const endpointParts = endpointLine.split(/\s+/).filter(Boolean);
+  const contactLine = text.match(/^Contact:\s+(.+)$/im)?.[1]?.trim() || "";
+  const contactParts = contactLine.split(/\s+/).filter(Boolean);
+  const contactStatusToken = contactParts[2] || contactParts[1] || "";
+  const contactStatus = normalizeContactStatus(contactStatusToken);
+  const endpointStatusToken = endpointParts[2] || "";
+  const channelMatch = endpointLine.match(/\b(\d+)\s+of\s+/i);
+  const endpointExists = new RegExp(`^\\s*Endpoint:\\s+${String(extension)}\\/${String(extension)}\\b`, "im").test(text)
+    || new RegExp(`^\\s*InAuth:\\s+${String(extension)}-auth\\/${String(extension)}\\b`, "im").test(text)
+    || new RegExp(`^\\s*Aor:\\s+${String(extension)}\\b`, "im").test(text);
+  const notFound = /unable to find object|endpoint not found|no such endpoint|not found|does not exist/i.test(text);
+  const exists = endpointExists && !notFound;
+  const rttMatch = contactLine.match(/(?:\b|\s)(\d+(?:\.\d+)?)\s*ms\b/i)
+    || contactLine.match(/(?:\b|\s)(\d+(?:\.\d+)?)\s*$/i);
+
+  return {
+    endpointExists: exists,
+    authExists: new RegExp(`^\\s*InAuth:\\s+${String(extension)}-auth\\/${String(extension)}\\b`, "im").test(text),
+    aorExists: new RegExp(`^\\s*Aor:\\s+${String(extension)}\\b`, "im").test(text),
+    status: contactStatus === "Avail" ? "online" : contactStatus === "Unavailable" ? "offline" : exists ? "offline" : "not_found",
+    statusText: contactStatus === "Avail" ? "在線" : contactStatus === "Unavailable" ? "離線" : exists ? "離線" : "帳號不存在",
+    tech: "PJSIP",
+    resource: String(extension),
+    channelCount: channelMatch ? Number(channelMatch[1] || 0) : 0,
+    transport: extractEndpointValue(text, "transport") || "",
+    contactStatus,
+    aor: extractEndpointValue(text, "aors") || String(extension),
+    auth: extractEndpointValue(text, "auth") || `${extension}-auth`,
+    lastSeen: null,
+    rttMs: rttMatch ? Number.parseFloat(rttMatch[1]) || null : null,
+    context: extractEndpointValue(text, "context") || "",
+    callerid: extractEndpointValue(text, "callerid") || "",
+    webrtc: isEnabledValue(extractEndpointValue(text, "webrtc")),
+    use_avpf: isEnabledValue(extractEndpointValue(text, "use_avpf")) || isEnabledValue(extractEndpointValue(text, "avpf")),
+    ice_support: isEnabledValue(extractEndpointValue(text, "ice_support")) || isEnabledValue(extractEndpointValue(text, "icesupport")),
+    rtcp_mux: isEnabledValue(extractEndpointValue(text, "rtcp_mux")),
+    bundle: isEnabledValue(extractEndpointValue(text, "bundle")),
+    media_encryption: normalizeValue(extractEndpointValue(text, "media_encryption")).includes("dtls") ? "dtls" : normalizeValue(extractEndpointValue(text, "media_encryption")) || "",
+    media_encryption_optimistic: isEnabledValue(extractEndpointValue(text, "media_encryption_optimistic")),
+    media_use_received_transport: isEnabledValue(extractEndpointValue(text, "media_use_received_transport")),
+    direct_media: isDisabledValue(extractEndpointValue(text, "direct_media")),
+    timers: isDisabledValue(extractEndpointValue(text, "timers")) ? "no" : extractEndpointValue(text, "timers") || "",
+    media_address: extractEndpointValue(text, "media_address") || "",
+    allow: extractEndpointValue(text, "allow") || "",
+    dtls_auto_generate_cert: extractEndpointValue(text, "dtls_auto_generate_cert") || "",
+    dtls_setup: extractEndpointValue(text, "dtls_setup") || "",
+    dtls_verify: extractEndpointValue(text, "dtls_verify") || "",
+    send_pai: isEnabledValue(extractEndpointValue(text, "send_pai")),
+    allow_unauthenticated_options: isEnabledValue(extractEndpointValue(text, "allow_unauthenticated_options")),
+    rtp_timeout: Number.parseInt(extractEndpointValue(text, "rtp_timeout"), 10) || 0,
+    rtp_timeout_hold: Number.parseInt(extractEndpointValue(text, "rtp_timeout_hold"), 10) || 0,
+    asymmetric_rtp_codec: isEnabledValue(extractEndpointValue(text, "asymmetric_rtp_codec")),
+    rawAvailable: Boolean(text && !notFound),
+  };
+}
+
+export async function getPjsipEndpointConfig(extension) {
+  assertValidExtension(extension);
+  const endpointOutput = await showPjsipEndpoint(extension);
+  const table = parseAsteriskParameterTable(endpointOutput);
+  const summary = parseEndpointRuntimeSummary(endpointOutput, String(extension));
+  try {
+    const authOutput = await showPjsipAuth(extension);
+    summary.authExists = summary.authExists || summarizeExists(authOutput, `Auth:  ${extension}-auth/`);
+  } catch {
+    summary.authExists = Boolean(summary.authExists);
+  }
+  try {
+    const aorOutput = await showPjsipAor(extension);
+    summary.aorExists = summary.aorExists || summarizeExists(aorOutput, `Aor:  ${extension}`);
+  } catch {
+    summary.aorExists = Boolean(summary.aorExists);
+  }
+  summary.transport = getTableValue(table, "transport");
+  summary.allow = getTableValue(table, "allow");
+  summary.context = getTableValue(table, "context");
+  summary.callerid = getTableValue(table, "callerid");
+  summary.media_address = getTableValue(table, "media_address");
+  summary.direct_media = parseBooleanTableValue(getTableValue(table, "direct_media"));
+  summary.webrtc = parseBooleanTableValue(getTableValue(table, "webrtc"));
+  summary.use_avpf = parseBooleanTableValue(getTableValue(table, "use_avpf")) || parseBooleanTableValue(getTableValue(table, "avpf"));
+  summary.ice_support = parseBooleanTableValue(getTableValue(table, "ice_support")) || parseBooleanTableValue(getTableValue(table, "icesupport"));
+  summary.rtcp_mux = parseBooleanTableValue(getTableValue(table, "rtcp_mux"));
+  summary.bundle = parseBooleanTableValue(getTableValue(table, "bundle"));
+  summary.media_encryption = getTableValue(table, "media_encryption");
+  summary.media_encryption_optimistic = parseBooleanTableValue(getTableValue(table, "media_encryption_optimistic"));
+  summary.media_use_received_transport = parseBooleanTableValue(getTableValue(table, "media_use_received_transport"));
+  summary.dtls_auto_generate_cert = getTableValue(table, "dtls_auto_generate_cert");
+  summary.dtls_setup = getTableValue(table, "dtls_setup");
+  summary.dtls_verify = getTableValue(table, "dtls_verify");
+  summary.send_pai = parseBooleanTableValue(getTableValue(table, "send_pai"));
+  summary.allow_unauthenticated_options = parseBooleanTableValue(getTableValue(table, "allow_unauthenticated_options"));
+  summary.rtp_timeout = Number.parseInt(getTableValue(table, "rtp_timeout"), 10) || 0;
+  summary.rtp_timeout_hold = Number.parseInt(getTableValue(table, "rtp_timeout_hold"), 10) || 0;
+  summary.asymmetric_rtp_codec = parseBooleanTableValue(getTableValue(table, "asymmetric_rtp_codec"));
+  summary.rawAvailable = true;
+  return summary;
 }
