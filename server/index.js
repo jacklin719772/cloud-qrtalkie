@@ -22,6 +22,7 @@ import {
   applyConfigAndWait as freepbxApplyConfigAndWait,
   fetchExtension as freepbxFetchExtension,
   getExtensionInputSchema as freepbxGetExtensionInputSchema,
+  deleteExtension as freepbxDeleteExtension,
   updateExtension as freepbxUpdateExtension,
 } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
@@ -45,7 +46,9 @@ import {
   markStepSkipped,
   markStepSuccess,
   parsePjsipSection,
+  parseEndpointCustomPostOverlay,
   readEndpointCustomPostOverlay,
+  removeEndpointCustomPostOverlay,
   restoreEndpointCustomPostFromBackup,
   sha256File,
   skipRemainingSteps,
@@ -12966,11 +12969,566 @@ async function handleWebrtcAccountConfigQuery(request, response) {
   }
 }
 
+const DELETE_WEBRTC_WORKFLOW_STEP_DEFS = [
+  {
+    key: "validate_request",
+    label: "驗證刪除請求",
+    running: "正在驗證刪除請求",
+    success: "刪除請求格式正確",
+    failed: "刪除請求格式不正確",
+  },
+  {
+    key: "backup_asterisk_configs",
+    label: "備份 Asterisk PJSIP 配置",
+    running: "正在備份 Asterisk PJSIP 配置",
+    success: "Asterisk PJSIP 配置備份完成",
+    failed: "Asterisk PJSIP 配置備份失敗，已停止刪除流程",
+    skipped: "已略過",
+  },
+  {
+    key: "check_extensions",
+    label: "檢查 FreePBX 帳號是否存在",
+    running: "正在檢查 FreePBX 帳號是否存在",
+    success: "FreePBX 帳號存在性檢查完成",
+    failed: "FreePBX 帳號存在性檢查失敗",
+  },
+  {
+    key: "delete_freepbx_extensions",
+    label: "刪除 FreePBX 分機",
+    running: "正在刪除 FreePBX 分機",
+    success: "FreePBX 分機刪除完成",
+    failed: "FreePBX 分機刪除失敗",
+    skipped: "已略過",
+  },
+  {
+    key: "remove_endpoint_custom_overlays",
+    label: "移除 WebRTC Runtime 疊加設定",
+    running: "正在移除 WebRTC Runtime 疊加設定",
+    success: "WebRTC Runtime 疊加設定已處理",
+    failed: "WebRTC Runtime 疊加設定移除失敗",
+    skipped: "已略過",
+  },
+  {
+    key: "apply_freepbx_config",
+    label: "套用 FreePBX 配置",
+    running: "正在執行 sudo fwconsole reload 套用 FreePBX 配置",
+    success: "FreePBX 配置已套用",
+    failed: "FreePBX 配置套用失敗",
+    skipped: "已略過",
+  },
+  {
+    key: "verify_deleted",
+    label: "驗證刪除結果",
+    running: "正在驗證刪除結果",
+    success: "WebRTC 帳號刪除驗證通過",
+    failed: "WebRTC 帳號刪除驗證失敗",
+    skipped: "已略過",
+  },
+  {
+    key: "finalize",
+    label: "完成刪除流程",
+    running: "正在完成 WebRTC 帳號刪除流程",
+    success: "WebRTC 帳號刪除流程完成",
+    failed: "WebRTC 帳號刪除流程未完成",
+  },
+];
+
+function createDeleteWorkflowSteps() {
+  return DELETE_WEBRTC_WORKFLOW_STEP_DEFS.map((item) => ({
+    key: item.key,
+    label: item.label,
+    status: "pending",
+    message: "",
+    startedAt: "",
+    finishedAt: "",
+    details: {},
+  }));
+}
+
+function getDeleteStep(steps, key) {
+  return steps.find((step) => step.key === key) || null;
+}
+
+function setDeleteStepStatus(steps, key, status, message, details = {}) {
+  const step = getDeleteStep(steps, key);
+  if (!step) return null;
+  if (!step.startedAt) step.startedAt = new Date().toISOString();
+  step.status = status;
+  step.message = message;
+  step.details = { ...step.details, ...details };
+  if (status !== "running" && !step.finishedAt) step.finishedAt = new Date().toISOString();
+  if (status === "running") step.finishedAt = "";
+  return step;
+}
+
+function markDeleteStepRunning(steps, key) {
+  const def = DELETE_WEBRTC_WORKFLOW_STEP_DEFS.find((item) => item.key === key);
+  return setDeleteStepStatus(steps, key, "running", def?.running || "正在處理中");
+}
+
+function markDeleteStepSuccess(steps, key, details = {}) {
+  const def = DELETE_WEBRTC_WORKFLOW_STEP_DEFS.find((item) => item.key === key);
+  return setDeleteStepStatus(steps, key, "success", def?.success || "處理成功", details);
+}
+
+function markDeleteStepFailed(steps, key, details = {}) {
+  const def = DELETE_WEBRTC_WORKFLOW_STEP_DEFS.find((item) => item.key === key);
+  return setDeleteStepStatus(steps, key, "failed", def?.failed || "處理失敗", details);
+}
+
+function markDeleteStepSkipped(steps, key, message = "") {
+  const def = DELETE_WEBRTC_WORKFLOW_STEP_DEFS.find((item) => item.key === key);
+  return setDeleteStepStatus(steps, key, "skipped", message || def?.skipped || "已略過");
+}
+
+function skipDeleteSteps(steps, fromKey, message = "已略過") {
+  const startIndex = steps.findIndex((step) => step.key === fromKey);
+  if (startIndex < 0) return;
+  for (let index = startIndex; index < steps.length; index += 1) {
+    if (steps[index].status === "pending") {
+      markDeleteStepSkipped(steps, steps[index].key, message);
+    }
+  }
+}
+
+function parseBackupScriptOutput(output) {
+  const text = String(output || "");
+  return {
+    backupDir: text.match(/Backup dir:\s*(\S+)/)?.[1] || "",
+    manifestPath: text.match(/Manifest:\s*(\S+)/)?.[1] || "",
+    filesCopied: Number(text.match(/Files copied:\s*(\d+)/)?.[1] || 0),
+    filesMissing: Number(text.match(/Files missing:\s*(\d+)/)?.[1] || 0),
+    warnings: Number(text.match(/Warnings:\s*(\d+)/)?.[1] || 0),
+  };
+}
+
+async function handleWebrtcAccountDelete(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以刪除 WebRTC 帳號。",
+      error: {
+        code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+        message: "只有平台管理員可以刪除 WebRTC 帳號。",
+      },
+    });
+  }
+
+  const rawFromPath = String(request.params?.extension || "").trim();
+  const rawFromBody = Array.isArray(request.body?.extensions) ? request.body.extensions : [];
+  const requested = rawFromPath ? [rawFromPath] : rawFromBody.map((item) => String(item || "").trim()).filter(Boolean);
+  const uniqueRequested = Array.from(new Set(requested));
+  const steps = createDeleteWorkflowSteps();
+  const responseData = {
+    requested: uniqueRequested,
+    deleted: [],
+    notFound: [],
+    failed: [],
+    backupDir: "",
+    overlayUpdated: false,
+    reloadExecuted: false,
+    asteriskRestartExecuted: false,
+    rollbackExecuted: false,
+    rollbackSuccess: null,
+    rollbackMessage: "",
+    items: [],
+    steps,
+  };
+
+  const finalizeDeleteResponse = async (success, message, error = null, httpStatus = 200) => {
+    const finalizeStep = getDeleteStep(steps, "finalize");
+    if (success) {
+      if (finalizeStep && finalizeStep.status === "pending") {
+        markDeleteStepSuccess(steps, "finalize", { success: true });
+      }
+    } else if (finalizeStep && (finalizeStep.status === "pending" || finalizeStep.status === "running")) {
+      markDeleteStepFailed(steps, "finalize", { success: false });
+    }
+    return response.status(httpStatus).json({
+      success,
+      message,
+      ...(error ? { error } : {}),
+      data: responseData,
+    });
+  };
+
+  if (!uniqueRequested.length) {
+    markDeleteStepFailed(steps, "validate_request");
+    skipDeleteSteps(steps, "check_extensions", "已略過");
+    return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+      code: "INVALID_WEBRTC_EXTENSION",
+      message: "WebRTC 帳號必須為純數字",
+    }, 400);
+  }
+
+  if (uniqueRequested.length > 100) {
+    markDeleteStepFailed(steps, "validate_request");
+    skipDeleteSteps(steps, "check_extensions", "已略過");
+    return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+      code: "TOO_MANY_EXTENSIONS",
+      message: "刪除帳號數量不得超過 100 筆",
+    }, 400);
+  }
+
+  if (uniqueRequested.some((extension) => !/^\d+$/.test(extension))) {
+    markDeleteStepFailed(steps, "validate_request");
+    skipDeleteSteps(steps, "check_extensions", "已略過");
+    return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+      code: "INVALID_WEBRTC_EXTENSION",
+      message: "WebRTC 帳號必須為純數字",
+    }, 400);
+  }
+
+  try {
+    markDeleteStepRunning(steps, "validate_request");
+    markDeleteStepSuccess(steps, "validate_request", { requested: uniqueRequested });
+
+    markDeleteStepRunning(steps, "check_extensions");
+    const overlayContent = await readFile(ASTERISK_PATHS.endpointCustomPostConf, "utf8").catch(() => "");
+    const overlays = new Map();
+    const existing = [];
+    const notFound = [];
+    const items = [];
+
+    for (const extension of uniqueRequested) {
+      let existsBefore = false;
+      let freepbxRecord = null;
+      try {
+        freepbxRecord = await freepbxFetchExtension(extension);
+        existsBefore = Boolean(freepbxRecord);
+      } catch (error) {
+        responseData.failed.push({
+          extension,
+          code: error?.code || "FREEPBX_EXTENSION_QUERY_FAILED",
+          message: "WebRTC 帳號刪除失敗",
+          stage: "check",
+        });
+        items.push({
+          extension,
+          existsBefore: false,
+          deletedInFreepbx: false,
+          overlayRemoved: false,
+          verifiedDeleted: false,
+          queryFailed: true,
+          status: "failed",
+          message: "WebRTC 帳號刪除失敗",
+        });
+        continue;
+      }
+      const overlay = parseEndpointCustomPostOverlay(overlayContent, extension);
+      overlays.set(extension, overlay);
+      if (existsBefore) existing.push(extension);
+      else notFound.push(extension);
+      items.push({
+        extension,
+        existsBefore,
+        deletedInFreepbx: false,
+        overlayRemoved: false,
+        verifiedDeleted: false,
+        status: existsBefore ? "pending" : "not_found",
+        message: existsBefore ? "正在刪除 WebRTC 帳號" : "WebRTC 帳號不存在",
+      });
+    }
+
+    responseData.items = items;
+    responseData.notFound = notFound.slice();
+    markDeleteStepSuccess(steps, "check_extensions", {
+      requested: uniqueRequested,
+      existing: existing.slice(),
+      notFound: notFound.slice(),
+    });
+
+    const needsOverlayChange = uniqueRequested.some((extension) => Boolean(overlays.get(extension)?.exists));
+    const needsFreepbxDelete = existing.length > 0;
+    if (!needsOverlayChange && !needsFreepbxDelete) {
+      markDeleteStepSkipped(steps, "backup_asterisk_configs", "無需變更");
+      markDeleteStepSkipped(steps, "delete_freepbx_extensions", "已略過");
+      markDeleteStepSkipped(steps, "remove_endpoint_custom_overlays", "已略過");
+      markDeleteStepSkipped(steps, "apply_freepbx_config", "已略過");
+      markDeleteStepSkipped(steps, "verify_deleted", "已略過");
+      responseData.overlayUpdated = false;
+      responseData.reloadExecuted = false;
+      responseData.items = items.map((item) => ({
+        ...item,
+        status: item.status === "pending" ? "not_found" : item.status,
+        message: item.status === "pending" ? "WebRTC 帳號不存在" : item.message,
+      }));
+      responseData.notFound = responseData.items.filter((item) => item.status === "not_found").map((item) => item.extension);
+      responseData.deleted = [];
+      if (responseData.failed.length > 0) {
+        markDeleteStepFailed(steps, "finalize", { failed: responseData.failed.map((item) => item.extension) });
+        return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+          code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+          message: "WebRTC 帳號刪除過程中有項目失敗",
+        }, 502);
+      }
+      return finalizeDeleteResponse(true, "WebRTC 帳號刪除完成");
+    }
+
+    markDeleteStepRunning(steps, "backup_asterisk_configs");
+    const backupOutput = execSync("node scripts/backup-asterisk-pjsip-configs.js --confirm yes", {
+      encoding: "utf8",
+      timeout: 60000,
+      maxBuffer: 1024 * 1024,
+    });
+    const backupInfo = parseBackupScriptOutput(backupOutput);
+    if (!backupInfo.backupDir || backupInfo.filesCopied <= 0) {
+      markDeleteStepFailed(steps, "backup_asterisk_configs", backupInfo);
+      skipDeleteSteps(steps, "delete_freepbx_extensions", "已略過");
+      return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+        code: "ASTERISK_CONFIG_BACKUP_FAILED",
+        message: "Asterisk PJSIP 配置備份失敗，已停止刪除流程",
+      }, 500);
+    }
+    responseData.backupDir = backupInfo.backupDir;
+    responseData.backupSummary = backupInfo;
+    markDeleteStepSuccess(steps, "backup_asterisk_configs", backupInfo);
+
+    const backupInfoLoaded = await loadEndpointCustomPostBackup(responseData.backupDir);
+    const currentSha256 = await sha256File(ASTERISK_PATHS.endpointCustomPostConf).catch(() => "");
+    if (currentSha256 && backupInfoLoaded?.targetEntry?.sha256 && currentSha256 !== backupInfoLoaded.targetEntry.sha256) {
+      markDeleteStepFailed(steps, "backup_asterisk_configs", {
+        currentSha256,
+        expectedSha256: backupInfoLoaded.targetEntry.sha256,
+      });
+      skipDeleteSteps(steps, "delete_freepbx_extensions", "已略過");
+      return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+        code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+        message: "Asterisk 配置自備份後已變更",
+      }, 409);
+    }
+
+    markDeleteStepRunning(steps, "delete_freepbx_extensions");
+    const deleteResults = [];
+    for (const extension of uniqueRequested) {
+      const item = items.find((entry) => entry.extension === extension) || {
+        extension,
+        existsBefore: false,
+        deletedInFreepbx: false,
+        overlayRemoved: false,
+        verifiedDeleted: false,
+        status: "pending",
+        message: "",
+      };
+      if (!item.existsBefore) {
+        deleteResults.push(item);
+        continue;
+      }
+      try {
+        const deleteResult = await freepbxDeleteExtension(extension);
+        const deleted = Boolean(deleteResult?.status);
+        item.deletedInFreepbx = deleted;
+        item.status = deleted ? "deleted" : "failed";
+        item.message = deleted ? "WebRTC 帳號已刪除" : "WebRTC 帳號刪除失敗";
+        if (!deleted) {
+          responseData.failed.push({
+            extension,
+            code: "FREEPBX_EXTENSION_DELETE_FAILED",
+            message: "WebRTC 帳號刪除失敗",
+            stage: "delete",
+          });
+        } else {
+          responseData.deleted.push(extension);
+        }
+      } catch (error) {
+        item.deletedInFreepbx = false;
+        item.status = "failed";
+        item.message = "WebRTC 帳號刪除失敗";
+        responseData.failed.push({
+          extension,
+          code: error?.code || "FREEPBX_EXTENSION_DELETE_FAILED",
+          message: "WebRTC 帳號刪除失敗",
+          stage: "delete",
+        });
+      }
+      deleteResults.push(item);
+    }
+    responseData.items = deleteResults;
+    markDeleteStepSuccess(steps, "delete_freepbx_extensions", {
+      deleted: responseData.deleted.slice(),
+      failed: responseData.failed.map((item) => item.extension),
+    });
+
+    markDeleteStepRunning(steps, "remove_endpoint_custom_overlays");
+    const currentOverlayContent = await readFile(ASTERISK_PATHS.endpointCustomPostConf, "utf8").catch(() => "");
+    let nextOverlayContent = currentOverlayContent;
+    let overlayUpdated = false;
+    for (const extension of uniqueRequested) {
+      const removal = removeEndpointCustomPostOverlay(nextOverlayContent, extension);
+      if (removal.removed) {
+        overlayUpdated = true;
+        nextOverlayContent = removal.content;
+        const item = responseData.items.find((entry) => entry.extension === extension);
+        if (item) item.overlayRemoved = true;
+      }
+    }
+
+    if (overlayUpdated) {
+      const currentStat = await stat(ASTERISK_PATHS.endpointCustomPostConf);
+      await writeAtomicFile(ASTERISK_PATHS.endpointCustomPostConf, nextOverlayContent, currentStat.mode & 0o7777);
+      await chown(ASTERISK_PATHS.endpointCustomPostConf, currentStat.uid, currentStat.gid);
+      await chmod(ASTERISK_PATHS.endpointCustomPostConf, currentStat.mode & 0o7777);
+    }
+    responseData.overlayUpdated = overlayUpdated;
+    markDeleteStepSuccess(steps, "remove_endpoint_custom_overlays", {
+      overlayUpdated,
+      removed: responseData.items.filter((item) => item.overlayRemoved).map((item) => item.extension),
+    });
+
+    markDeleteStepRunning(steps, "apply_freepbx_config");
+    const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
+      success: false,
+      message: error?.message || "reload failed",
+    }));
+    if (!applyConfig?.success) {
+      markDeleteStepFailed(steps, "apply_freepbx_config", { success: false, message: applyConfig?.message || "" });
+      responseData.rollbackExecuted = Boolean(overlayUpdated);
+      if (overlayUpdated) {
+        try {
+          const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
+          await freepbxApplyConfigAndWait();
+          responseData.rollbackSuccess = true;
+          responseData.rollbackMessage = `已從備份還原：${restorePath}`;
+        } catch (rollbackError) {
+          responseData.rollbackSuccess = false;
+          responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+          return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+            code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+            message: "WebRTC Runtime 疊加設定刪除後回滾失敗，請人工檢查備份文件",
+          }, 500);
+        }
+      }
+      return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+        code: "FWCONSOLE_RELOAD_FAILED",
+        message: "FreePBX 配置套用失敗",
+      }, 502);
+    }
+    responseData.reloadExecuted = true;
+    responseData.applyConfig = {
+      success: true,
+      transactionId: applyConfig.transactionId || null,
+      waitStrategy: applyConfig.waitStrategy || null,
+    };
+    markDeleteStepSuccess(steps, "apply_freepbx_config", {
+      transactionId: applyConfig.transactionId || null,
+      waitStrategy: applyConfig.waitStrategy || null,
+    });
+
+    markDeleteStepRunning(steps, "verify_deleted");
+    const verificationItems = [];
+    let allVerified = true;
+    for (const extension of uniqueRequested) {
+      const freepbxAfter = await freepbxFetchExtension(extension).catch(() => null);
+      const runtimeAfter = await getPjsipEndpointStatus(extension).catch(() => ({
+        exists: false,
+        status: "unknown",
+        statusText: "狀態未知",
+      }));
+      const overlayAfter = await readEndpointCustomPostOverlay(extension).catch(() => ({
+        exists: false,
+        fields: {},
+        file: ASTERISK_PATHS.endpointCustomPostConf,
+      }));
+      const verifiedDeleted = !freepbxAfter && !runtimeAfter?.exists;
+      if (!verifiedDeleted) allVerified = false;
+      const item = responseData.items.find((entry) => entry.extension === extension);
+      if (item) {
+        if (item.queryFailed) {
+          allVerified = false;
+          item.verifiedDeleted = false;
+          verificationItems.push({
+            extension,
+            existsBefore: Boolean(item?.existsBefore),
+            freepbxExistsAfter: Boolean(freepbxAfter),
+            runtimeExistsAfter: Boolean(runtimeAfter?.exists),
+            overlayExistsAfter: Boolean(overlayAfter?.exists),
+            verifiedDeleted: false,
+            queryFailed: true,
+          });
+          continue;
+        }
+        item.verifiedDeleted = verifiedDeleted;
+        item.status = verifiedDeleted ? (item.existsBefore ? "deleted" : "not_found") : "failed";
+        item.message = verifiedDeleted
+          ? (item.existsBefore ? "WebRTC 帳號已刪除" : "WebRTC 帳號不存在")
+          : "WebRTC 帳號刪除驗證失敗";
+      }
+      verificationItems.push({
+        extension,
+        existsBefore: Boolean(item?.existsBefore),
+        freepbxExistsAfter: Boolean(freepbxAfter),
+        runtimeExistsAfter: Boolean(runtimeAfter?.exists),
+        overlayExistsAfter: Boolean(overlayAfter?.exists),
+        verifiedDeleted,
+      });
+    }
+    responseData.items = responseData.items.map((item) => ({
+      ...item,
+      status: item.verifiedDeleted ? (item.existsBefore ? "deleted" : "not_found") : item.status,
+      message: item.verifiedDeleted
+        ? (item.existsBefore ? "WebRTC 帳號已刪除" : "WebRTC 帳號不存在")
+        : item.message,
+    }));
+    responseData.verified = allVerified;
+    responseData.verification = verificationItems;
+    if (!allVerified || responseData.failed.length > 0) {
+      markDeleteStepFailed(steps, "verify_deleted", { failed: verificationItems.filter((item) => !item.verifiedDeleted).map((item) => item.extension) });
+      responseData.rollbackExecuted = Boolean(overlayUpdated);
+      if (overlayUpdated && responseData.rollbackSuccess !== true) {
+        try {
+          const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
+          await freepbxApplyConfigAndWait();
+          responseData.rollbackSuccess = true;
+          responseData.rollbackMessage = `已從備份還原：${restorePath}`;
+        } catch (rollbackError) {
+          responseData.rollbackSuccess = false;
+          responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+          return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+            code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+            message: "WebRTC 帳號刪除驗證失敗，且回滾失敗",
+          }, 500);
+        }
+      }
+      return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+        code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+        message: responseData.failed.length > 0
+          ? "WebRTC 帳號刪除過程中有項目失敗"
+          : "WebRTC 帳號刪除驗證失敗",
+      }, 502);
+    }
+    markDeleteStepSuccess(steps, "verify_deleted", {
+      verified: verificationItems,
+    });
+
+    markDeleteStepSkipped(steps, "finalize", "未觸發回滾");
+    responseData.rollbackExecuted = false;
+    responseData.rollbackSuccess = null;
+    responseData.deleted = responseData.items.filter((item) => item.status === "deleted").map((item) => item.extension);
+    responseData.notFound = responseData.items.filter((item) => item.status === "not_found").map((item) => item.extension);
+    responseData.failed = responseData.items.filter((item) => item.status === "failed").map((item) => ({
+      extension: item.extension,
+      code: "WEBRTC_ACCOUNT_DELETE_FAILED",
+      message: item.message || "WebRTC 帳號刪除失敗",
+    }));
+    markDeleteStepRunning(steps, "finalize");
+    markDeleteStepSuccess(steps, "finalize", { success: true });
+    return finalizeDeleteResponse(true, "WebRTC 帳號刪除完成");
+  } catch (error) {
+    markDeleteStepFailed(steps, "finalize");
+    return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+      code: error?.code || "WEBRTC_ACCOUNT_DELETE_FAILED",
+      message: "WebRTC 帳號刪除失敗",
+    }, 500);
+  }
+}
+
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
 app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
+app.delete("/api/pbx/webrtc-accounts", requireAdmin, handleWebrtcAccountDelete);
+app.delete("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountDelete);
 app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
