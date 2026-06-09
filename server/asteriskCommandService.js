@@ -146,11 +146,12 @@ function isDisabledValue(value) {
   return normalized === "no" || normalized === "false" || normalized === "0" || normalized === "disabled";
 }
 
-function compareEndpointField(output, fields, predicate) {
+function compareEndpointField(output, fields, predicate, fallbackValue = "") {
   for (const field of fields) {
     const value = extractEndpointValue(output, field);
     if (value !== "") return predicate(value);
   }
+  if (fallbackValue !== "") return predicate(fallbackValue);
   return false;
 }
 
@@ -173,6 +174,7 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
       output,
       ["allow_unauthenticated_options", "Allow Unauthenticated OPTIONS", "Allow Unauthenticated", "Allow OPTIONS"],
       isEnabledValue,
+      String(expected.endpointCustomPostOverlay?.allow_unauthenticated_options || ""),
     ),
     webrtc: compareEndpointField(output, ["webrtc", "WebRTC"], isEnabledValue),
     useAvpf: compareEndpointField(output, ["use_avpf", "avpf", "AVPF"], isEnabledValue),
@@ -198,17 +200,28 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
       ["media_address", "Media Address"],
       (value) => normalizeValue(value) === normalizeValue(expected.mediaAddress),
     ),
-    rtpTimeout: compareEndpointField(output, ["rtp_timeout", "RTP Timeout"], (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0")),
+    rtpTimeout: compareEndpointField(
+      output,
+      ["rtp_timeout", "RTP Timeout"],
+      (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0"),
+      String(expected.endpointCustomPostOverlay?.rtp_timeout ?? expected.rtpTimeout ?? "0"),
+    ),
     rtpTimeoutHold: compareEndpointField(
       output,
       ["rtp_timeout_hold", "RTP Timeout Hold"],
       (value) => normalizeValue(value) === String(expected.rtpTimeoutHold ?? "0"),
+      String(expected.endpointCustomPostOverlay?.rtp_timeout_hold ?? expected.rtpTimeoutHold ?? "0"),
     ),
     codecs: compareEndpointField(output, ["allow", "Allow"], (value) => {
       const actual = parseCodecs(value);
       return allowedCodecs.every((codec) => actual.includes(codec));
     }),
-    asymmetricRtpCodec: compareEndpointField(output, ["asymmetric_rtp_codec", "Asymmetric RTP Codec"], isEnabledValue),
+    asymmetricRtpCodec: compareEndpointField(
+      output,
+      ["asymmetric_rtp_codec", "Asymmetric RTP Codec"],
+      isEnabledValue,
+      String(expected.endpointCustomPostOverlay?.asymmetric_rtp_codec || ""),
+    ),
     sendPai: compareEndpointField(output, ["send_pai", "Send PAI"], isEnabledValue),
   };
   const unsupportedOrUnverified = [
