@@ -14217,6 +14217,25 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     markStepRunning(steps, "finalize");
     markStepSuccess(steps, "finalize", { success: true });
 
+    // 同步到 SaaS 数据库
+    try {
+      const dbConn = await pool.getConnection();
+      try {
+        const passwordHash = await hashPassword(WEBRTC_RUNTIME.defaultPassword || "");
+        await dbConn.query(
+          `INSERT INTO web_users (tenant_id, username, sip_domain, display_name, password_hash, role, status, created_by_admin_user_id)
+           VALUES (?, ?, ?, ?, ?, 'user', 'active', ?)`,
+          [null, extension, webrtcDomain, displayName, passwordHash, request.admin.id],
+        );
+        responseData.savedToDatabase = true;
+      } finally {
+        dbConn.release();
+      }
+    } catch (dbErr) {
+      console.error("Failed to save WebRTC account to database:", dbErr?.message);
+      responseData.savedToDatabase = false;
+    }
+
     return finalizeReport(true, "WebRTC 帳號已建立完成", null, 200);
   } catch (error) {
     if (responseData.createdInFreepbx && !responseData.rollbackExecuted) {
