@@ -447,3 +447,29 @@ export function buildWebrtcFormUpdate(form, extension) {
 
   return { fields, applied, missing };
 }
+
+export function buildFreepbxDisplayNameFormUpdate(form, extension, displayName) {
+  assertValidExtension(extension);
+  const fields = new Map(Array.from(form.fields.entries()).map(([name, values]) => [name, [...values]]));
+  const trimmedDisplayName = String(displayName || "").trim();
+  const callerIdValue = `"${trimmedDisplayName}" <${extension}>`;
+
+  setField(fields, "action", "edit");
+  setField(fields, "extdisplay", extension);
+  setField(fields, "extension", extension);
+  if (fields.has("name")) setField(fields, "name", trimmedDisplayName);
+  if (fields.has("displayName")) setField(fields, "displayName", trimmedDisplayName);
+  if (fields.has("callerid")) setField(fields, "callerid", callerIdValue);
+  if (fields.has("outboundcid")) setField(fields, "outboundcid", callerIdValue);
+
+  return {
+    fields,
+    applied: [
+      ...(fields.has("name") ? [{ target: "name", fieldName: "name", value: trimmedDisplayName }] : []),
+      ...(fields.has("displayName") ? [{ target: "displayName", fieldName: "displayName", value: trimmedDisplayName }] : []),
+      ...(fields.has("callerid") ? [{ target: "callerid", fieldName: "callerid", value: callerIdValue }] : []),
+      ...(fields.has("outboundcid") ? [{ target: "outboundcid", fieldName: "outboundcid", value: callerIdValue }] : []),
+    ],
+    missing: [],
+  };
+}

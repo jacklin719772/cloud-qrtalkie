@@ -14,7 +14,7 @@ import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombs
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
 import { FlexisipAdminSessionError, getCallsStatistics } from "./flexisipAdminSessionClient.js";
-import { buildWebrtcFormUpdate, FreepbxWebSessionClient } from "./freepbxWebSessionClient.js";
+import { buildFreepbxDisplayNameFormUpdate, buildWebrtcFormUpdate, FreepbxWebSessionClient } from "./freepbxWebSessionClient.js";
 import { getAsteriskPathConfig, getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
 import {
   FreepbxApiError,
@@ -22,7 +22,6 @@ import {
   applyConfigAndWait as freepbxApplyConfigAndWait,
   fetchExtension as freepbxFetchExtension,
   getExtensionInputSchema as freepbxGetExtensionInputSchema,
-  updateExtensionDisplayName as freepbxUpdateExtensionDisplayName,
   updateExtension as freepbxUpdateExtension,
 } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
@@ -13033,15 +13032,18 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
       });
     }
 
-    const schema = await freepbxGetExtensionInputSchema();
-    const updateResult = await freepbxUpdateExtensionDisplayName(extension, displayName, schema);
-    if (!updateResult?.status) {
+    const beforeConfig = await getPjsipEndpointConfig(extension).catch(() => null);
+    const webClient = new FreepbxWebSessionClient();
+    const form = await webClient.getExtensionForm(extension);
+    const update = buildFreepbxDisplayNameFormUpdate(form, extension, displayName);
+    const submitResult = await webClient.submitExtensionForm(form, update.fields);
+    if (!submitResult || submitResult.loginShown) {
       return response.status(500).json({
         success: false,
         message: "WebRTC 帳號顯示名稱更新失敗",
         error: {
           code: "FREEPBX_DISPLAY_NAME_UPDATE_FAILED",
-          message: updateResult?.message || "WebRTC 帳號顯示名稱更新失敗",
+          message: "WebRTC 帳號顯示名稱更新失敗",
         },
         data: {
           extension,
@@ -13071,22 +13073,44 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
       });
     }
 
-    const applyConfig = await freepbxApplyConfigAndWait();
-    if (!applyConfig?.success) {
+    const afterConfig = await getPjsipEndpointConfig(extension).catch(() => null);
+    const compareFields = [
+      "transport",
+      "allow",
+      "media_address",
+      "direct_media",
+      "webrtc",
+      "use_avpf",
+      "ice_support",
+      "rtcp_mux",
+      "bundle",
+      "media_encryption",
+      "media_use_received_transport",
+      "dtls_auto_generate_cert",
+      "dtls_setup",
+      "dtls_verify",
+      "allow_unauthenticated_options",
+      "rtp_timeout",
+      "rtp_timeout_hold",
+      "asymmetric_rtp_codec",
+    ];
+    const beforeFields = beforeConfig || {};
+    const afterFields = afterConfig || {};
+    const changedWebrtcFields = compareEndpointFields(beforeFields, afterFields, compareFields).filter((item) => !item.passed);
+    if (changedWebrtcFields.length) {
       return response.status(500).json({
         success: false,
-        message: "WebRTC 帳號顯示名稱更新失敗",
+        message: "顯示名稱更新導致 WebRTC 配置改變，已停止操作",
         error: {
-          code: "WEBRTC_DISPLAY_NAME_UPDATE_FAILED",
-          message: "WebRTC 帳號顯示名稱更新失敗",
+          code: "WEBRTC_DISPLAY_NAME_UPDATE_CHANGED_WEBRTC_CONFIG",
+          message: "顯示名稱更新導致 WebRTC 配置改變，已停止操作",
         },
         data: {
           extension,
           displayName,
-          updated: true,
+          updated: false,
           needReload: true,
-          applyConfigSuccess: false,
-          applyConfig,
+          changedFields: changedWebrtcFields,
         },
       });
     }
@@ -13098,9 +13122,8 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
         extension,
         displayName,
         updated,
-        needReload: false,
-        applyConfigSuccess: true,
-        applyConfig,
+        needReload: true,
+        applyConfigSuccess: false,
       },
     });
   } catch (error) {
