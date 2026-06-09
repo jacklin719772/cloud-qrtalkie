@@ -13,6 +13,11 @@ sudo git pull
 echo "=== 重启后端 API (端口 3001) ==="
 fuser -k 3001/tcp 2>/dev/null
 sleep 1
+# 加载环境变量：.env（基础配置）+ env.freepbx.test（PBX 配置）
+set -a
+source .env
+[ -f env.freepbx.test ] && source env.freepbx.test
+set +a
 nohup node server/index.js > server.log 2>&1 &
 echo "后端已启动 (PID: $!) (日志: server.log)"
 
