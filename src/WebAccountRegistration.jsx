@@ -1165,7 +1165,6 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </thead>
             <tbody>
               {paginatedAccounts.length > 0 && paginatedAccounts.map((account) => (
-                paginatedAccounts.map((account) => (
                   <tr key={account.id}>
                     <td style={{ width: '50px', textAlign: 'center', padding: 0 }}><input type="checkbox" checked={selectedIds.includes(account.id)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...new Set([...ids, account.id])] : ids.filter((id) => id !== account.id))} /></td>
                     <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{account.username}</td>
