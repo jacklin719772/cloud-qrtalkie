@@ -67,6 +67,7 @@ import {
 } from "./flexisipAccountManagerClient.js";
 
 const app = express();
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const port = Number(process.env.API_PORT || 3001);
 const appUrl = process.env.APP_URL || "http://127.0.0.1:5173";
 const sipDomain = process.env.SIP_DOMAIN || "sip.qrtalkie.org";
@@ -14125,7 +14126,19 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     markStepRunning(steps, "verify_runtime_endpoint");
     let asterisk;
     try {
-      asterisk = await verifyPjsipExtension(extension, webrtcConfig);
+      const maxAttempts = Number(process.env.WEBRTC_RUNTIME_VERIFY_RETRIES || 12);
+      const retryDelayMs = Number(process.env.WEBRTC_RUNTIME_VERIFY_DELAY_MS || 2000);
+      let lastResult = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        lastResult = await verifyPjsipExtension(extension, webrtcConfig);
+        responseData.runtimeRetryCount = attempt;
+        responseData.runtimeRetryDelayMs = retryDelayMs;
+        if (lastResult?.verified) break;
+        if (attempt < maxAttempts) {
+          await delay(retryDelayMs);
+        }
+      }
+      asterisk = lastResult;
     } catch (error) {
       asterisk = {
         verified: false,
