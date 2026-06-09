@@ -1021,7 +1021,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
         #web-account-registration .web-table {
           width: 100%;
-          min-width: 1180px;
+          min-width: 900px;
           border-collapse: separate;
           border-spacing: 0;
           table-layout: fixed;
@@ -1235,20 +1235,20 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <tr>
                 <th style={{ width: '50px', textAlign: 'center', padding: 0, background: '#1a2332' }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
                 {[
-                  ['username', '用戶名', '150px'],
-                  ['displayName', '顯示名稱', '150px'],
-                  ['domain', 'SIP Domain', '150px'],
-                  ['role', '角色', '100px'],
-                  ['status', '狀態', '100px'],
-                  ['tenantName', '所属租戶', '150px'],
-                  ['createdAt', '創建時間', '150px'],
-                  ['creatorName', '創建人', '150px'],
+                  ['username', '用戶名', '110px'],
+                  ['displayName', '顯示名稱', '110px'],
+                  ['domain', 'Domain', '120px'],
+                  ['role', '角色', '60px'],
+                  ['status', '狀態', '80px'],
+                  ['tenantName', '租戶', '100px'],
+                  ['createdAt', '創建時間', '110px'],
+                  ['creatorName', '創建者', '100px'],
                 ].map(([key, label, width]) => (
                   <th key={key} style={{ width, background: '#1a2332' }}>
                     <button type="button" className="web-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
                   </th>
                 ))}
-                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
+                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '120px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1263,7 +1263,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     <td>{account.tenantName || '未分配'}</td>
                     <td>{account.createdAt || '-'}</td>
                     <td>{account.creatorName || '-'}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', color: '#e5e7eb', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', color: '#e5e7eb', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '120px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                         <button className="ghost-btn" type="button" title="一致性檢查" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleCheckConsistency(account)}>🔍</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', account)}>詳情</button>
