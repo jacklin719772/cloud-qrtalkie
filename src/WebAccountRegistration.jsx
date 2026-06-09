@@ -59,6 +59,23 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [addMessage, setAddMessage] = useState({ type: '', text: '' });
   const [addSteps, setAddSteps] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [simulatedStep, setSimulatedStep] = useState(-1);
+
+  const STEP_LABELS = [
+    '驗證 WebRTC 帳號格式',
+    '檢查 FreePBX 帳號是否已存在',
+    '備份 Asterisk PJSIP 配置',
+    '建立 FreePBX 基礎分機',
+    '設定 PJSIP 註冊密碼',
+    '補全 FreePBX WebRTC 進階配置',
+    '套用 FreePBX 配置',
+    '驗證 FreePBX 生成的 Endpoint 配置',
+    '補齊 WebRTC Runtime 參數',
+    '重新套用 Runtime 補充配置',
+    '驗證 WebRTC Runtime 狀態',
+    '確認既有標準帳號未受影響',
+    '完成建立流程',
+  ];
 
   const stepStatusIcons = { pending: '○', running: '◌', success: '✓', failed: '✗', skipped: '—', rollback: '↺' };
   const stepStatusColors = { pending: '#4b5563', running: '#60a5fa', success: '#22c55e', failed: '#ef4444', skipped: '#6b7280', rollback: '#f59e0b' };
@@ -72,9 +89,18 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setIsAdding(true);
     setAddMessage({ type: '', text: '' });
     setAddSteps([]);
+    setSimulatedStep(0);
+
+    // 模拟进度：每 3 秒前进一步
+    const timer = setInterval(() => {
+      setSimulatedStep(s => Math.min(s + 1, STEP_LABELS.length - 1));
+    }, 3000);
+
     try {
       const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
+      clearInterval(timer);
       setAddSteps(result.data?.steps || []);
+      setSimulatedStep(-1);
       if (result.success) {
         setAddMessage({ type: 'success', text: result.message || 'WebRTC 帳號建立成功' });
         setTimeout(() => { setShowAddModal(false); setAddSteps([]); loadAccounts(); }, 3000);
@@ -82,8 +108,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setAddMessage({ type: 'error', text: result.message || 'WebRTC 帳號建立失敗' });
       }
     } catch (err) {
+      clearInterval(timer);
       const data = err.response?.data || err.data || {};
       setAddSteps(data.data?.steps || data.steps || []);
+      setSimulatedStep(-1);
       setAddMessage({ type: 'error', text: data.error?.message || data.message || err.message || '建立失敗' });
     } finally {
       setIsAdding(false);
@@ -1255,7 +1283,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       </div>
 
       {showAddModal && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !isAdding) { setShowAddModal(false); setAddSteps([]); setAddMessage({ type: '', text: '' }); } }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !isAdding) { setShowAddModal(false); setAddSteps([]); setSimulatedStep(-1); setAddMessage({ type: '', text: '' }); } }}>
           <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增 WebRTC 帳號</h3>
@@ -1285,16 +1313,31 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               {addMessage.text && (
                 <p style={{ margin: 0, fontSize: '13px', color: addMessage.type === 'error' ? '#ef4444' : addMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{addMessage.text}</p>
               )}
+              {isAdding && (
+                <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '14px' }}>
+                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                      {STEP_LABELS[simulatedStep] || '準備中...'}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#60a5fa' }}>
+                      {simulatedStep + 1}/{STEP_LABELS.length}
+                    </span>
+                  </div>
+                  <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', width: `${Math.round(((simulatedStep + 1) / STEP_LABELS.length) * 100)}%`,
+                      background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                      borderRadius: '2px', transition: 'width 0.5s ease',
+                    }} />
+                  </div>
+                </div>
+              )}
               {addSteps.length > 0 && (
                 <div style={{ maxHeight: '260px', overflowY: 'auto', background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {addSteps.map((step, i) => (
                     <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: i < addSteps.length - 1 ? '1px solid #1f2937' : 'none' }}>
                       <span style={{ width: '18px', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: stepStatusColors[step.status] || '#6b7280', flexShrink: 0 }}>
-                        {isAdding && step.status === 'running' ? (
-                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</span>
-                        ) : (
-                          stepStatusIcons[step.status] || '○'
-                        )}
+                        {stepStatusIcons[step.status] || '○'}
                       </span>
                       <span style={{ flex: 1, fontSize: '12px', color: step.status === 'pending' ? '#6b7280' : step.status === 'failed' ? '#ef4444' : '#d1d5db' }}>
                         {step.label}
@@ -1306,14 +1349,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   ))}
                 </div>
               )}
-              {isAdding && addSteps.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#60a5fa', fontSize: '13px' }}>
-                  正在建立 WebRTC 帳號，請稍候...
-                </div>
-              )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" onClick={() => { if (!isAdding) { setShowAddModal(false); setAddSteps([]); setAddMessage({ type: '', text: '' }); } }} disabled={isAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isAdding ? 'not-allowed' : 'pointer' }}>取消</button>
+              <button type="button" onClick={() => { if (!isAdding) { setShowAddModal(false); setAddSteps([]); setSimulatedStep(-1); setAddMessage({ type: '', text: '' }); } }} disabled={isAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isAdding ? 'not-allowed' : 'pointer' }}>取消</button>
               <button type="button" onClick={handleAddWebrtcAccount} disabled={isAdding || !addExtension} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: addExtension && !isAdding ? '#3b82f6' : '#1e3a5f', color: addExtension && !isAdding ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: addExtension && !isAdding ? 'pointer' : 'not-allowed' }}>{isAdding ? '建立中...' : '確認新增'}</button>
             </div>
           </div>
