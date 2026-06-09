@@ -82,7 +82,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setAddMessage({ type: 'error', text: result.message || 'WebRTC 帳號建立失敗' });
       }
     } catch (err) {
-      setAddMessage({ type: 'error', text: err.message || '建立失敗' });
+      const data = err.response?.data || err.data || {};
+      setAddSteps(data.data?.steps || data.steps || []);
+      setAddMessage({ type: 'error', text: data.message || data.error?.message || err.message || '建立失敗' });
     } finally {
       setIsAdding(false);
     }
