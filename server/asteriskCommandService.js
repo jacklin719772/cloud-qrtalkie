@@ -20,6 +20,42 @@ function assertValidExtension(extension) {
   }
 }
 
+function extractLineValue(output, field) {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = Array.from(String(output || "").matchAll(new RegExp(`^\\s*${escaped}\\s*:\\s*(.*?)\\s*$`, "gim")));
+  const match = matches[matches.length - 1];
+  return match ? match[1].trim() : "";
+}
+
+function extractEndpointSummary(output) {
+  const text = String(output || "");
+  const endpointLineRaw = text.match(/^Endpoint:\s+(.+)$/im)?.[1]?.trim() || "";
+  const contactLineRaw = text.match(/^Contact:\s+(.+)$/im)?.[1]?.trim() || "";
+  const endpointLineParts = endpointLineRaw.split(/\s+/).filter(Boolean);
+  const contactLineParts = contactLineRaw.split(/\s+/).filter(Boolean);
+  const endpointStatusToken = endpointLineParts[2] || "";
+  const endpointChannelToken = endpointLineParts[3] || "";
+  const contactStatusToken = contactLineParts[2] || contactLineParts[1] || "";
+  const contactRttToken = contactLineParts[contactLineParts.length - 1] || "";
+  const contactRttValue = Number.parseFloat(String(contactRttToken).replace(/[^\d.]/g, ""));
+  const channelCountMatch = endpointLineRaw.match(/\b(\d+)\s+of\s+/i);
+  const transport = extractLineValue(text, "transport");
+  const tech = extractLineValue(text, "aors") ? "PJSIP" : "";
+  return {
+    endpointLine: endpointLineRaw,
+    contactLine: contactLineRaw,
+    endpointStatusToken,
+    endpointChannelToken,
+    contactStatusToken,
+    rttMs: Number.isFinite(contactRttValue) ? contactRttValue : null,
+    channelCount: channelCountMatch ? Number(channelCountMatch[1] || 0) : null,
+    transport,
+    tech,
+    aor: extractLineValue(text, "aors") || "",
+    auth: extractLineValue(text, "auth") || "",
+  };
+}
+
 function redactAsteriskOutput(output) {
   return String(output || "")
     .replace(/(password\s*:\s*).*/gi, "$1[REDACTED]")
@@ -225,4 +261,134 @@ export async function verifyPjsipExtension(extension, expectedWebrtcConfig = nul
     result.aorExists &&
     (expectedWebrtcConfig ? Boolean(result.webrtcVerified) : true);
   return result;
+}
+
+function normalizeContactStatus(value) {
+  const normalized = normalizeValue(value);
+  if (!normalized) return "";
+  if (normalized.includes("avail") || normalized.includes("reach")) return "Avail";
+  if (normalized.includes("unavail")) return "Unavailable";
+  if (normalized.includes("unknown")) return "Unknown";
+  if (normalized.includes("lapsed")) return "Lapsed";
+  if (normalized.includes("nonqual")) return "NonQual";
+  return value;
+}
+
+function mapStatusFromContact(output, exists) {
+  if (!exists) {
+    return {
+      status: "not_found",
+      statusText: "帳號不存在",
+    };
+  }
+  const summary = extractEndpointSummary(output);
+  const contactStatus = normalizeContactStatus(summary.contactStatusToken || summary.endpointStatusToken || summary.contactLine);
+  const normalized = normalizeValue(contactStatus);
+  if (normalized === "avail" || normalized === "reachable") {
+    return {
+      status: "online",
+      statusText: "在線",
+    };
+  }
+  if (normalized === "unavailable" || normalized === "unavail") {
+    return {
+      status: "offline",
+      statusText: "離線",
+    };
+  }
+  if (normalized === "unknown") {
+    return {
+      status: "unknown",
+      statusText: "狀態未知",
+    };
+  }
+  return {
+    status: "offline",
+    statusText: "離線",
+  };
+}
+
+export async function getPjsipEndpointStatus(extension) {
+  assertValidExtension(extension);
+  const result = {
+    extension: String(extension),
+    exists: false,
+    status: "unknown",
+    statusText: "狀態未知",
+    tech: "PJSIP",
+    resource: String(extension),
+    channelCount: 0,
+    transport: "",
+    contactStatus: "",
+    aor: String(extension),
+    auth: `${extension}-auth`,
+    lastSeen: null,
+    rttMs: null,
+    source: "asterisk",
+  };
+
+  try {
+    const output = await showPjsipEndpoint(extension);
+    const summary = extractEndpointSummary(output);
+    const identityPatterns = [
+      new RegExp(`^\\s*Endpoint:\\s+${String(extension)}\\/${String(extension)}\\b`, "im"),
+      new RegExp(`^\\s*InAuth:\\s+${String(extension)}-auth\\/${String(extension)}\\b`, "im"),
+      new RegExp(`^\\s*Aor:\\s+${String(extension)}\\b`, "im"),
+    ];
+    const notFound = /unable to find object|endpoint not found|no such endpoint|not found|does not exist/i.test(output);
+    const exists = identityPatterns.some((pattern) => pattern.test(output)) && !notFound;
+    result.exists = exists;
+    result.channelCount = Number.isFinite(summary.channelCount) ? summary.channelCount : 0;
+    result.transport = summary.transport || "";
+    result.tech = summary.tech || "PJSIP";
+    result.aor = summary.aor || String(extension);
+    result.auth = summary.auth || `${extension}-auth`;
+    const contactStatusSource = summary.endpointStatusToken || summary.contactStatusToken || summary.contactLine;
+    result.contactStatus = normalizeContactStatus(contactStatusSource);
+    const mapped = mapStatusFromContact(output, exists);
+    result.status = mapped.status;
+    result.statusText = mapped.statusText;
+    if (!exists) {
+      result.status = "not_found";
+      result.statusText = "帳號不存在";
+      result.channelCount = 0;
+      result.contactStatus = "";
+    }
+    if (exists && result.status === "unknown" && result.contactStatus) {
+      const normalized = normalizeValue(result.contactStatus);
+      if (normalized === "avail" || normalized === "reachable") {
+        result.status = "online";
+        result.statusText = "在線";
+      } else if (normalized === "unavailable" || normalized === "unavail") {
+        result.status = "offline";
+        result.statusText = "離線";
+      }
+    }
+    if (exists) {
+      const rttMatch = String(summary.contactLine || "").match(/(?:\b|\s)(\d+(?:\.\d+)?)\s*ms\b/i)
+        || String(summary.contactLine || "").match(/(?:\b|\s)(\d+(?:\.\d+)?)\s*$/i);
+      if (rttMatch) {
+        const parsed = Number.parseFloat(rttMatch[1]);
+        result.rttMs = Number.isFinite(parsed) ? parsed : null;
+      }
+    }
+  } catch (error) {
+    result.status = "unknown";
+    result.statusText = "狀態未知";
+    result.error = error instanceof AsteriskCommandError ? error.message : "Asterisk status query failed.";
+  }
+
+  return result;
+}
+
+export async function getPjsipEndpointStatusBatch(extensions) {
+  const list = Array.isArray(extensions) ? extensions : [];
+  const items = [];
+  for (const extension of list) {
+    items.push(await getPjsipEndpointStatus(extension));
+  }
+  return {
+    count: items.length,
+    items,
+  };
 }
