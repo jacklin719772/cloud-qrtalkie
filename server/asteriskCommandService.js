@@ -123,7 +123,7 @@ function isDisabledValue(value) {
 function compareEndpointField(output, fields, predicate) {
   for (const field of fields) {
     const value = extractEndpointValue(output, field);
-    if (value) return predicate(value);
+    if (value !== "") return predicate(value);
   }
   return false;
 }
