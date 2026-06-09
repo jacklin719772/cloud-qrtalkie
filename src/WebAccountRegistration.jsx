@@ -1175,8 +1175,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         #web-account-registration .web-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
         #web-account-registration .web-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #web-account-registration .web-page-jump { color: #9ca3af; }
-        #web-account-registration .web-table-wrapper { scrollbar-width: none; }
-        #web-account-registration .web-table-wrapper::-webkit-scrollbar { display: none; }
+        #web-account-registration .web-table-wrapper { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        #web-account-registration .web-table-wrapper::-webkit-scrollbar { height: 6px; }
+        #web-account-registration .web-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        #web-account-registration .web-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         #web-account-registration .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #web-account-registration .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #web-account-registration .form-message { color: #d1d5db; }
