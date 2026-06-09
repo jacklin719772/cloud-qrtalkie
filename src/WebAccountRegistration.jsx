@@ -53,6 +53,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
+  // WebRTC 新增弹窗
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addExtension, setAddExtension] = useState('');
+  const [addMessage, setAddMessage] = useState({ type: '', text: '' });
+  const [isAdding, setIsAdding] = useState(false);
   const [resetConfirmPasswordValue, setResetConfirmPasswordValue] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' });
@@ -194,8 +199,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }
 
   function startAdd() {
-    setViewMode('add');
-    resetForm();
+    setShowAddModal(true);
+    setAddExtension('');
+    setAddMessage({ type: '', text: '' });
   }
 
   function startEdit(account) {
@@ -597,7 +603,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setSelectedIds((ids) => ids.filter((id) => !pageIds.has(id)));
   }
 
-  if (viewMode === 'add' || viewMode === 'edit') {
+  if (viewMode === 'edit') {
     return (
       <section className="view active settings-form-page" id="web-account-registration-form" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
@@ -1216,6 +1222,46 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
       </div>
       </div>
+
+      {showAddModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowAddModal(false); setAddMessage({ type: '', text: '' }); } }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增 WebRTC 帳號</h3>
+              <button type="button" onClick={() => { setShowAddModal(false); setAddMessage({ type: '', text: '' }); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>WebRTC 分機號 <b style={{ color: '#ef4444' }}>*</b></span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="請輸入純數字分機號，如 9521"
+                  value={addExtension}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '');
+                    setAddExtension(v);
+                  }}
+                  style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
+                  onFocus={e => e.target.style.borderColor = '#3b82f6'}
+                  onBlur={e => e.target.style.borderColor = '#374151'}
+                />
+              </label>
+              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: 1.6 }}>
+                系統將自動以「訪客{addExtension || '分機號'}」作為顯示名稱，密碼與其他參數由預設模板配置。
+              </p>
+              {addMessage.text && (
+                <p style={{ margin: 0, fontSize: '13px', color: addMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{addMessage.text}</p>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={() => { setShowAddModal(false); setAddMessage({ type: '', text: '' }); }} disabled={isAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={() => { setAddMessage({ type: 'info', text: 'WebRTC 帳號創建功能即將推出' }); }} disabled={isAdding || !addExtension} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: addExtension ? '#3b82f6' : '#1e3a5f', color: addExtension ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: addExtension ? 'pointer' : 'not-allowed' }}>{isAdding ? '創建中...' : '確認新增'}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {batchAddOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAddOpen(false); }}>
