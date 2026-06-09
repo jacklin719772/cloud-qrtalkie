@@ -12658,6 +12658,90 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
 });
 
 // POST /api/pbx/webrtc-accounts - phase-1 standalone FreePBX/Incredible PBX basic PJSIP account test.
+async function resolveWebrtcAccountQuery(extension) {
+  const matched = await freepbxFetchExtension(extension);
+  if (!matched) {
+    return {
+      exists: false,
+      source: "freepbx",
+      summary: null,
+    };
+  }
+
+  return {
+    exists: true,
+    source: "freepbx",
+    summary: {
+      extension: String(matched.extension || matched.extensionId || extension),
+      name: String(matched.name || matched.user?.name || ""),
+      tech: String(matched.tech || ""),
+    },
+  };
+}
+
+async function handleWebrtcAccountQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 WebRTC 帳號。",
+      error: {
+        code: "WEBRTC_ACCOUNT_QUERY_FAILED",
+        message: "只有平台管理員可以查詢 WebRTC 帳號。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || request.query?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  try {
+    const result = await resolveWebrtcAccountQuery(extension);
+    if (result.exists) {
+      return response.json({
+        success: true,
+        message: "WebRTC 帳號已存在",
+        data: {
+          extension,
+          exists: true,
+          source: result.source,
+          summary: result.summary,
+        },
+      });
+    }
+
+    return response.json({
+      success: true,
+      message: "WebRTC 帳號不存在，可以建立",
+      data: {
+        extension,
+        exists: false,
+        source: result.source,
+        summary: null,
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      success: false,
+      message: "WebRTC 帳號查詢失敗",
+      error: {
+        code: "FREEPBX_EXTENSION_QUERY_FAILED",
+        message: "WebRTC 帳號查詢失敗",
+      },
+    });
+  }
+}
+
+app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
+app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
 app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => {
   // TODO: keep this endpoint restricted to trusted SaaS platform administrators before production use.
   if (request.admin.accountType !== "platform") {
