@@ -3,6 +3,8 @@ import { createReadStream } from "node:fs";
 import { copyFile, chmod, chown, mkdir, readFile, stat, writeFile, rename, mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import os from "node:os";
+import { applyConfigAndWait as freepbxApplyConfigAndWait, deleteExtension as freepbxDeleteExtension, fetchExtension as freepbxFetchExtension } from "./freepbxApiClient.js";
+import { verifyPjsipExtension } from "./asteriskCommandService.js";
 import { getAsteriskPathConfig, getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
 
 const ASTERISK_PATHS = getAsteriskPathConfig();
@@ -95,13 +97,40 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
     failed: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
   },
   {
-    key: "rollback_endpoint_custom_post",
+    key: "rollback_freepbx_extension",
+    label: "回滾 FreePBX WebRTC 帳號",
+    running: "正在回滾 FreePBX WebRTC 帳號",
+    success: "FreePBX WebRTC 帳號已回滾",
+    failed: "FreePBX WebRTC 帳號回滾失敗，請人工檢查",
+    skipped: "未觸發回滾",
+    rollback: "FreePBX WebRTC 帳號已回滾",
+  },
+  {
+    key: "rollback_endpoint_custom_overlay",
     label: "回滾 WebRTC Runtime 補充配置",
     running: "正在回滾 WebRTC Runtime 補充配置",
     success: "WebRTC Runtime 補充配置已回滾",
     failed: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
     skipped: "未觸發回滾",
     rollback: "WebRTC Runtime 補充配置已回滾",
+  },
+  {
+    key: "rollback_apply_config",
+    label: "重新套用回滾結果",
+    running: "正在重新套用回滾結果",
+    success: "回滾結果已重新套用",
+    failed: "回滾結果套用失敗",
+    skipped: "未觸發回滾",
+    rollback: "回滾結果已重新套用",
+  },
+  {
+    key: "rollback_verify_removed",
+    label: "驗證回滾後帳號已移除",
+    running: "正在驗證回滾後帳號是否已移除",
+    success: "回滾後帳號已移除",
+    failed: "回滾後帳號仍存在，請立即檢查",
+    skipped: "未觸發回滾",
+    rollback: "回滾後帳號已移除",
   },
   {
     key: "finalize",
@@ -271,6 +300,191 @@ export async function restoreEndpointCustomPostFromBackup(backupDir) {
   return targetEntry.backupPath;
 }
 
+export async function rollbackCreatedFreepbxAccount({
+  extension,
+  responseData,
+  steps,
+}) {
+  const ext = String(extension || "").trim();
+  if (!ext || !responseData?.createdInFreepbx) {
+    return {
+      attempted: false,
+      success: null,
+      deletedInFreepbx: false,
+      overlayRemoved: false,
+      applyConfigSuccess: null,
+      verifyRemoved: null,
+      message: "",
+    };
+  }
+
+  if (responseData.rollbackExecuted) {
+    return {
+      attempted: true,
+      success: Boolean(responseData.rollbackSuccess),
+      deletedInFreepbx: Boolean(responseData.rollbackDetails?.deletedInFreepbx),
+      overlayRemoved: Boolean(responseData.rollbackDetails?.overlayRemoved),
+      applyConfigSuccess: Boolean(responseData.rollbackDetails?.applyConfigSuccess),
+      verifyRemoved: Boolean(responseData.rollbackDetails?.verifyRemoved),
+      message: responseData.rollbackMessage || "",
+    };
+  }
+
+  responseData.rollbackExecuted = true;
+  responseData.rollbackDetails = responseData.rollbackDetails || {};
+
+  let deletedInFreepbx = false;
+  let overlayRemoved = false;
+  let applyConfigSuccess = false;
+  let verifyRemoved = false;
+  let rollbackMessage = "";
+
+  markStepRunning(steps, "rollback_freepbx_extension");
+  try {
+    const existingBefore = await freepbxFetchExtension(ext);
+    if (!existingBefore) {
+      deletedInFreepbx = true;
+      rollbackMessage = "FreePBX 帳號已不存在，略過刪除";
+      markStepRollback(steps, "rollback_freepbx_extension", { deletedInFreepbx: false, notFound: true });
+    } else {
+      const deleteResult = await freepbxDeleteExtension(ext);
+      deletedInFreepbx = Boolean(deleteResult?.status);
+      if (deletedInFreepbx) {
+        markStepRollback(steps, "rollback_freepbx_extension", {
+          deletedInFreepbx: true,
+          message: deleteResult?.message || "",
+        });
+      } else {
+        markStepFailed(steps, "rollback_freepbx_extension", {
+          deletedInFreepbx: false,
+          message: deleteResult?.message || "delete failed",
+        });
+      }
+      rollbackMessage = deleteResult?.message || rollbackMessage;
+    }
+  } catch (error) {
+    markStepFailed(steps, "rollback_freepbx_extension", {
+      deleteError: error?.code || error?.message || "error",
+    });
+  }
+
+  markStepRunning(steps, "rollback_endpoint_custom_overlay");
+  try {
+    const currentOverlay = await readEndpointCustomPostOverlay(ext);
+    if (currentOverlay.exists) {
+      const currentText = await readFile(ENDPOINT_CUSTOM_POST_FILE, "utf8");
+      const removed = removeEndpointCustomPostOverlay(currentText, ext);
+      if (removed.removed) {
+        const currentStat = await stat(ENDPOINT_CUSTOM_POST_FILE);
+        await writeAtomicFile(ENDPOINT_CUSTOM_POST_FILE, removed.content, currentStat.mode & 0o7777);
+        await chown(ENDPOINT_CUSTOM_POST_FILE, currentStat.uid, currentStat.gid);
+        await chmod(ENDPOINT_CUSTOM_POST_FILE, currentStat.mode & 0o7777);
+        overlayRemoved = true;
+      }
+    } else {
+      overlayRemoved = true;
+    }
+    markStepRollback(steps, "rollback_endpoint_custom_overlay", {
+      overlayRemoved,
+      overlayExists: Boolean(currentOverlay.exists),
+    });
+  } catch (error) {
+    markStepFailed(steps, "rollback_endpoint_custom_overlay", {
+      rollbackError: error?.code || error?.message || "error",
+    });
+  }
+
+  markStepRunning(steps, "rollback_apply_config");
+  let applyConfig = null;
+  try {
+    applyConfig = await freepbxApplyConfigAndWait();
+    applyConfigSuccess = Boolean(applyConfig?.success);
+    if (applyConfigSuccess) {
+      markStepRollback(steps, "rollback_apply_config", {
+        success: true,
+        transactionId: applyConfig?.transactionId || null,
+        waitStrategy: applyConfig?.waitStrategy || null,
+      });
+    } else {
+      markStepFailed(steps, "rollback_apply_config", {
+        success: false,
+        message: applyConfig?.message || "",
+      });
+    }
+  } catch (error) {
+    applyConfigSuccess = false;
+    markStepFailed(steps, "rollback_apply_config", {
+      success: false,
+      message: error?.message || "reload failed",
+    });
+  }
+
+  markStepRunning(steps, "rollback_verify_removed");
+  let runtimeState = null;
+  let freepbxState = null;
+  try {
+    freepbxState = await freepbxFetchExtension(ext);
+  } catch {
+    freepbxState = null;
+  }
+  try {
+    runtimeState = await verifyPjsipExtension(ext, getWebrtcRuntimeConfig());
+  } catch (error) {
+    runtimeState = {
+      endpointExists: false,
+      authExists: false,
+      aorExists: false,
+      verified: false,
+      failedChecks: ["runtime_error"],
+      unsupportedOrUnverified: [],
+      details: { runtimeError: error?.message || "runtime error" },
+    };
+  }
+  const overlayState = await readEndpointCustomPostOverlay(ext).catch(() => ({ exists: false }));
+  verifyRemoved = !freepbxState && !runtimeState?.endpointExists && !runtimeState?.authExists && !runtimeState?.aorExists && !overlayState?.exists;
+  if (verifyRemoved) {
+    markStepRollback(steps, "rollback_verify_removed", {
+      freepbxExists: Boolean(freepbxState),
+      endpointExists: Boolean(runtimeState?.endpointExists),
+      authExists: Boolean(runtimeState?.authExists),
+      aorExists: Boolean(runtimeState?.aorExists),
+      overlayExists: Boolean(overlayState?.exists),
+    });
+  } else {
+    markStepFailed(steps, "rollback_verify_removed", {
+      freepbxExists: Boolean(freepbxState),
+      endpointExists: Boolean(runtimeState?.endpointExists),
+      authExists: Boolean(runtimeState?.authExists),
+      aorExists: Boolean(runtimeState?.aorExists),
+      overlayExists: Boolean(overlayState?.exists),
+    });
+  }
+
+  responseData.rollbackDetails = {
+    deletedInFreepbx,
+    overlayRemoved,
+    applyConfigSuccess,
+    verifyRemoved,
+    freepbxExistsAfterRollback: Boolean(freepbxState),
+    runtime: runtimeState,
+    overlay: overlayState,
+  };
+  responseData.rollbackSuccess = Boolean(deletedInFreepbx && overlayRemoved && applyConfigSuccess && verifyRemoved);
+  responseData.rollbackMessage = responseData.rollbackSuccess
+    ? "已刪除 FreePBX 帳號並清除 Runtime Overlay"
+    : "回滾未完全完成，請人工檢查";
+
+  return {
+    attempted: true,
+    success: responseData.rollbackSuccess,
+    deletedInFreepbx,
+    overlayRemoved,
+    applyConfigSuccess,
+    verifyRemoved,
+    message: responseData.rollbackMessage,
+  };
+}
+
 export async function writeAtomicFile(filePath, content, mode) {
   const dir = dirname(filePath);
   const tempDir = await mkdtemp(join(dir, ".saas-overlay-"));
@@ -337,6 +551,51 @@ export function parseEndpointCustomPostOverlay(content, extension) {
     marker: {
       start: startMarker,
       end: endMarker,
+    },
+  };
+}
+
+export function removeEndpointCustomPostOverlay(content, extension) {
+  const text = String(content || "");
+  const { start, end } = buildFourFieldEndpointOverlayMarker(String(extension));
+  const startIndex = text.indexOf(start);
+  const endIndex = text.indexOf(end);
+
+  if (startIndex < 0 || endIndex < startIndex) {
+    return {
+      removed: false,
+      action: "none",
+      content: text,
+      marker: {
+        start,
+        end,
+      },
+    };
+  }
+
+  const afterEnd = endIndex + end.length;
+  let replaceStart = startIndex;
+  let replaceEnd = afterEnd;
+  if (text.slice(replaceEnd, replaceEnd + 1) === "\r") {
+    replaceEnd += 1;
+  }
+  if (text.slice(replaceEnd, replaceEnd + 1) === "\n") {
+    replaceEnd += 1;
+  }
+  if (replaceStart >= 2 && text.slice(replaceStart - 2, replaceStart) === "\n\n") {
+    replaceStart -= 1;
+  } else if (replaceStart >= 1 && text.slice(replaceStart - 1, replaceStart) === "\n") {
+    replaceStart -= 1;
+  }
+
+  const contentAfterRemoval = `${text.slice(0, replaceStart)}${text.slice(replaceEnd)}`.replace(/\n{3,}/g, "\n\n");
+  return {
+    removed: true,
+    action: "remove",
+    content: contentAfterRemoval,
+    marker: {
+      start,
+      end,
     },
   };
 }

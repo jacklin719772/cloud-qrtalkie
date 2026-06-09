@@ -45,12 +45,12 @@ function getTableValue(table, key) {
   return String(table[key] ?? "").trim();
 }
 
-function parseBooleanTableValue(value) {
-  const normalized = String(value || "")
-    .trim()
-    .toLowerCase();
+function parseBooleanValue(value) {
+  const normalized = String(value || "").trim().toLowerCase();
   return normalized === "yes" || normalized === "true" || normalized === "1";
 }
+
+const parseBooleanTableValue = parseBooleanValue;
 
 function extractEndpointSummary(output) {
   const text = String(output || "");

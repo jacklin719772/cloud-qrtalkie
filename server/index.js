@@ -49,6 +49,7 @@ import {
   parseEndpointCustomPostOverlay,
   readEndpointCustomPostOverlay,
   removeEndpointCustomPostOverlay,
+  rollbackCreatedFreepbxAccount,
   restoreEndpointCustomPostFromBackup,
   sha256File,
   skipRemainingSteps,
@@ -13861,6 +13862,11 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       updatePayload,
       webrtcConfig,
     } = buildFreepbxWebrtcExtensionPayloads(extension, email, schema);
+    const rollbackCreatedAccount = async () => rollbackCreatedFreepbxAccount({
+      extension,
+      responseData,
+      steps,
+    });
 
     markStepRunning(steps, "create_freepbx_extension");
     let createResult;
@@ -13894,6 +13900,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     } catch (error) {
       markStepFailed(steps, "update_pjsip_password", { updateError: error?.code || error?.message || "error" });
       skipRemainingSteps(steps, "submit_freepbx_webrtc_form", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "FREEPBX_PASSWORD_UPDATE_FAILED",
         message: "PJSIP 註冊密碼設定失敗",
@@ -13904,6 +13911,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     if (!pjsipPasswordConfigured) {
       markStepFailed(steps, "update_pjsip_password", { pjsipPasswordConfigured: false });
       skipRemainingSteps(steps, "submit_freepbx_webrtc_form", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "FREEPBX_PASSWORD_UPDATE_FAILED",
         message: "PJSIP 註冊密碼設定失敗",
@@ -13928,6 +13936,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         httpStatus: error?.status || error?.details?.httpStatus || null,
       });
       skipRemainingSteps(steps, "first_fwconsole_reload", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "FREEPBX_WEB_FORM_SUBMIT_FAILED",
         message: "FreePBX WebRTC 進階配置提交失敗",
@@ -13936,6 +13945,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     if (formSubmitted.loginShown) {
       markStepFailed(steps, "submit_freepbx_webrtc_form", { loginShown: true });
       skipRemainingSteps(steps, "first_fwconsole_reload", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "FREEPBX_WEB_FORM_SUBMIT_FAILED",
         message: "FreePBX WebRTC 進階配置提交失敗",
@@ -13965,6 +13975,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     if (!applyConfig1.success) {
       markStepFailed(steps, "first_fwconsole_reload", { success: false, message: applyConfig1.message || "" });
       skipRemainingSteps(steps, "verify_generated_endpoint", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "FWCONSOLE_RELOAD_FAILED",
         message: "FreePBX 配置套用失敗",
@@ -13999,6 +14010,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     if (!generatedEndpointVerified) {
       markStepFailed(steps, "verify_generated_endpoint", { failedFields: responseData.failedFields });
       skipRemainingSteps(steps, "write_endpoint_custom_overlay", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "GENERATED_ENDPOINT_VERIFY_FAILED",
         message: "FreePBX 生成的 Endpoint 配置不符合 WebRTC 要求",
@@ -14053,6 +14065,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     } catch (error) {
       markStepFailed(steps, "write_endpoint_custom_overlay", { writeError: error?.code || error?.message || "error" });
       skipRemainingSteps(steps, "second_fwconsole_reload", "已略過");
+      await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "ENDPOINT_CUSTOM_POST_WRITE_FAILED",
         message: "WebRTC Runtime 補充參數寫入失敗",
@@ -14086,21 +14099,11 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     if (!applyConfig2.success) {
       markStepFailed(steps, "second_fwconsole_reload", { success: false, message: applyConfig2.message || "" });
       skipRemainingSteps(steps, "verify_runtime_endpoint", "已略過");
-      responseData.rollbackExecuted = true;
-      markStepRunning(steps, "rollback_endpoint_custom_post");
-      try {
-        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
-        await freepbxApplyConfigAndWait();
-        responseData.rollbackSuccess = true;
-        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
-        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
-      } catch (rollbackError) {
-        responseData.rollbackSuccess = false;
-        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
-        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+      await rollbackCreatedAccount().catch(() => {});
+      if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
         }, 500);
       }
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
@@ -14140,21 +14143,11 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     responseData.failedFields = asterisk.failedChecks || [];
     if (!asterisk.verified) {
       markStepFailed(steps, "verify_runtime_endpoint", { failedFields: responseData.failedFields });
-      responseData.rollbackExecuted = true;
-      markStepRunning(steps, "rollback_endpoint_custom_post");
-      try {
-        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
-        await freepbxApplyConfigAndWait();
-        responseData.rollbackSuccess = true;
-        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
-        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
-      } catch (rollbackError) {
-        responseData.rollbackSuccess = false;
-        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
-        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+      await rollbackCreatedAccount().catch(() => {});
+      if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
         }, 500);
       }
       responseData.baseline = {
@@ -14176,7 +14169,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         }, 502);
       }
       markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });
-      markStepRollback(steps, "rollback_endpoint_custom_post", { rollbackSuccess: true });
+      markStepRollback(steps, "rollback_verify_removed", { rollbackSuccess: true });
       markStepRunning(steps, "finalize");
       markStepFailed(steps, "finalize", { success: false });
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
@@ -14201,21 +14194,11 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     responseData.baselineNormal = responseData.baselineVerified;
     if (!responseData.baselineVerified) {
       markStepFailed(steps, "verify_baseline_endpoints", { baselineVerified: false });
-      responseData.rollbackExecuted = true;
-      markStepRunning(steps, "rollback_endpoint_custom_post");
-      try {
-        const restorePath = await restoreEndpointCustomPostFromBackup(responseData.backupDir);
-        await freepbxApplyConfigAndWait();
-        responseData.rollbackSuccess = true;
-        responseData.rollbackMessage = `已從備份還原：${restorePath}`;
-        markStepRollback(steps, "rollback_endpoint_custom_post", { restorePath, rollbackSuccess: true });
-      } catch (rollbackError) {
-        responseData.rollbackSuccess = false;
-        responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
-        markStepFailed(steps, "rollback_endpoint_custom_post", { rollbackError: rollbackError?.message || "" });
+      await rollbackCreatedAccount().catch(() => {});
+      if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
         }, 500);
       }
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
@@ -14225,7 +14208,10 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     }
     markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });
 
-    markStepSkipped(steps, "rollback_endpoint_custom_post", "未觸發回滾");
+    markStepSkipped(steps, "rollback_freepbx_extension", "未觸發回滾");
+    markStepSkipped(steps, "rollback_endpoint_custom_overlay", "未觸發回滾");
+    markStepSkipped(steps, "rollback_apply_config", "未觸發回滾");
+    markStepSkipped(steps, "rollback_verify_removed", "未觸發回滾");
     responseData.rollbackExecuted = false;
     responseData.rollbackSuccess = null;
     markStepRunning(steps, "finalize");
@@ -14233,6 +14219,9 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
 
     return finalizeReport(true, "WebRTC 帳號已建立完成", null, 200);
   } catch (error) {
+    if (responseData.createdInFreepbx && !responseData.rollbackExecuted) {
+      await rollbackCreatedAccount().catch(() => {});
+    }
     if (error instanceof FreepbxApiError) {
       console.error("FreePBX WebRTC basic account request failed:", {
         extension,

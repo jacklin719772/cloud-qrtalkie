@@ -1,4 +1,7 @@
 [Scheduler] Starting background tasks...
 [Scheduler] Background tasks started
 QRTalkie Cloud API listening on http://127.0.0.1:3001
+【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
+【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
 [Scheduler] Expiry scan complete
+【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
