@@ -73,7 +73,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setAddMessage({ type: '', text: '' });
     setAddSteps([]);
     try {
-      const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext });
+      const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
       setAddSteps(result.data?.steps || []);
       if (result.success) {
         setAddMessage({ type: 'success', text: result.message || 'WebRTC 帳號建立成功' });
