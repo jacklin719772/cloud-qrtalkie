@@ -12971,6 +12971,216 @@ async function handleWebrtcAccountConfigQuery(request, response) {
   }
 }
 
+function isAsteriskNotFoundError(error) {
+  const text = String(error?.output || error?.message || "");
+  return /unable to find object|endpoint not found|no such endpoint|not found|does not exist/i.test(text);
+}
+
+function buildNotFoundPjsipConfig(extension) {
+  return {
+    endpointExists: false,
+    authExists: false,
+    aorExists: false,
+    status: "not_found",
+    statusText: "帳號不存在",
+    tech: "PJSIP",
+    resource: String(extension),
+    channelCount: 0,
+    transport: "",
+    contactStatus: "",
+    aor: String(extension),
+    auth: `${extension}-auth`,
+    lastSeen: null,
+    rttMs: null,
+    context: "",
+    callerid: "",
+    webrtc: false,
+    use_avpf: false,
+    ice_support: false,
+    rtcp_mux: false,
+    bundle: false,
+    media_encryption: "",
+    media_encryption_optimistic: false,
+    media_use_received_transport: false,
+    direct_media: false,
+    timers: "",
+    media_address: "",
+    allow: "",
+    dtls_auto_generate_cert: "",
+    dtls_setup: "",
+    dtls_verify: "",
+    send_pai: false,
+    allow_unauthenticated_options: false,
+    rtp_timeout: 0,
+    rtp_timeout_hold: 0,
+    asymmetric_rtp_codec: false,
+    rawAvailable: false,
+  };
+}
+
+async function handleWebrtcAccountConsistencyQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 WebRTC 帳號一致性。",
+      error: {
+        code: "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED",
+        message: "只有平台管理員可以查詢 WebRTC 帳號一致性。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || request.query?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  try {
+    const [freepbx, status] = await Promise.all([
+      freepbxFetchExtension(extension),
+      getPjsipEndpointStatus(extension),
+    ]);
+
+    let config;
+    try {
+      config = await getPjsipEndpointConfig(extension);
+    } catch (error) {
+      if (!isAsteriskNotFoundError(error)) throw error;
+      config = buildNotFoundPjsipConfig(extension);
+    }
+
+    const overlay = await readEndpointCustomPostOverlay(extension).catch(() => ({
+      file: ASTERISK_PATHS.endpointCustomPostConf,
+      exists: false,
+      fields: {},
+    }));
+    const runtimeOverlayExpected = getWebrtcRuntimeConfig().endpointCustomPostOverlay || {};
+    const overlayFields = sanitizeOverlayFields(overlay?.fields || {});
+    const overlayMatchesExpected = !Object.keys(runtimeOverlayExpected).length || Object.entries(runtimeOverlayExpected).every(([key, expectedValue]) => {
+      const actualValue = String(overlayFields[key] ?? "");
+      return actualValue.trim().toLowerCase() === String(expectedValue ?? "").trim().toLowerCase();
+    });
+
+    const freepbxExists = Boolean(freepbx);
+    const statusExists = Boolean(status?.exists);
+    const configExists = Boolean(config?.endpointExists || config?.authExists || config?.aorExists);
+    const existsConsistent = freepbxExists === statusExists && freepbxExists === configExists;
+    const runtimeConsistent = configExists
+      ? Boolean(config?.endpointExists && config?.authExists && config?.aorExists)
+      : !statusExists && !freepbxExists;
+    const overlayConsistent = !Object.keys(runtimeOverlayExpected).length || (overlay?.exists && overlayMatchesExpected);
+    const overallConsistent = existsConsistent && runtimeConsistent && overlayConsistent;
+
+    return response.json({
+      success: true,
+      message: "WebRTC 帳號一致性已取得",
+      data: {
+        extension,
+        exists: freepbxExists && statusExists && configExists,
+        overallConsistent,
+        checks: {
+          existsConsistent,
+          runtimeConsistent,
+          overlayConsistent,
+        },
+        freepbx: freepbx
+          ? {
+              exists: true,
+              extension: String(freepbx.extension || freepbx.extensionId || extension),
+              name: String(freepbx.name || ""),
+              tech: String(freepbx.tech || ""),
+              email: String(freepbx.email || ""),
+            }
+          : {
+              exists: false,
+              extension,
+              name: "",
+              tech: "",
+              email: "",
+            },
+        status: {
+          extension: String(status?.extension || extension),
+          exists: Boolean(status?.exists),
+          status: status?.status || "unknown",
+          statusText: status?.statusText || "狀態未知",
+          tech: status?.tech || "PJSIP",
+          resource: status?.resource || extension,
+          channelCount: Number.isFinite(Number(status?.channelCount)) ? Number(status?.channelCount) : 0,
+          transport: status?.transport || "",
+          contactStatus: status?.contactStatus || "",
+          aor: status?.aor || extension,
+          auth: status?.auth || `${extension}-auth`,
+          lastSeen: status?.lastSeen ?? null,
+          rttMs: status?.rttMs ?? null,
+          source: status?.source || "asterisk",
+        },
+        config: {
+          exists: configExists,
+          source: {
+            freepbx: Boolean(freepbxExists),
+            asteriskRuntime: Boolean(config?.rawAvailable),
+            endpointCustomPostOverlay: Boolean(overlay?.exists),
+          },
+          runtime: {
+            endpointExists: Boolean(config?.endpointExists),
+            authExists: Boolean(config?.authExists),
+            aorExists: Boolean(config?.aorExists),
+            transport: config?.transport || "",
+            allow: config?.allow || "",
+            context: config?.context || "",
+            callerid: config?.callerid || "",
+            media_address: config?.media_address || "",
+            direct_media: Boolean(config?.direct_media),
+            webrtc: Boolean(config?.webrtc),
+            use_avpf: Boolean(config?.use_avpf),
+            ice_support: Boolean(config?.ice_support),
+            rtcp_mux: Boolean(config?.rtcp_mux),
+            bundle: Boolean(config?.bundle),
+            media_encryption: config?.media_encryption || "",
+            media_encryption_optimistic: Boolean(config?.media_encryption_optimistic),
+            media_use_received_transport: Boolean(config?.media_use_received_transport),
+            dtls_auto_generate_cert: config?.dtls_auto_generate_cert || "",
+            dtls_setup: config?.dtls_setup || "",
+            dtls_verify: config?.dtls_verify || "",
+            send_pai: Boolean(config?.send_pai),
+            allow_unauthenticated_options: Boolean(config?.allow_unauthenticated_options),
+            rtp_timeout: Number(config?.rtp_timeout ?? 0),
+            rtp_timeout_hold: Number(config?.rtp_timeout_hold ?? 0),
+            asymmetric_rtp_codec: Boolean(config?.asymmetric_rtp_codec),
+          },
+          overlay: {
+            file: overlay?.file || ASTERISK_PATHS.endpointCustomPostConf,
+            exists: Boolean(overlay?.exists),
+            fields: overlayFields,
+          },
+        },
+        warnings: [
+          ...(!overlay?.exists && Object.keys(runtimeOverlayExpected).length ? ["overlay_missing"] : []),
+          ...(overlay?.exists && !overlayMatchesExpected ? ["overlay_fields_mismatch"] : []),
+        ],
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      success: false,
+      message: "WebRTC 帳號一致性查詢失敗",
+      error: {
+        code: error?.code === "ASTERISK_RUNTIME_QUERY_FAILED"
+          ? "ASTERISK_RUNTIME_QUERY_FAILED"
+          : "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED",
+        message: "WebRTC 帳號一致性查詢失敗",
+      },
+    });
+  }
+}
+
 const DELETE_WEBRTC_WORKFLOW_STEP_DEFS = [
   {
     key: "validate_request",
@@ -13527,8 +13737,9 @@ async function handleWebrtcAccountDelete(request, response) {
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
-app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
+app.get("/api/pbx/webrtc-accounts/:extension/consistency", requireAdmin, handleWebrtcAccountConsistencyQuery);
+app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
 app.delete("/api/pbx/webrtc-accounts", requireAdmin, handleWebrtcAccountDelete);
 app.delete("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountDelete);
 app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, async (request, response) => {

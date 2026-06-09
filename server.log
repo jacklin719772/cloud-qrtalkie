@@ -2,8 +2,4 @@
 [Scheduler] Background tasks started
 QRTalkie Cloud API listening on http://127.0.0.1:3001
 【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
-【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
 [Scheduler] Expiry scan complete
-Failed to save WebRTC account to database: (conn:2304, no: 1364, SQLState: HY000) Field 'email' doesn't have a default value
-sql: INSERT INTO web_users (tenant_id, username, sip_domain, display_name, password_hash, role, status, created_by_admin_user_id)
-           VALUES (?, ?, ?, ?, ?, 'user', 'active', ?) - parameters:[null,'9503','pbx.qrtalkie.org','訪客9503','scrypt:8804fe26b98818...
