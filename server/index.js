@@ -13191,10 +13191,10 @@ const DELETE_WEBRTC_WORKFLOW_STEP_DEFS = [
   },
   {
     key: "backup_asterisk_configs",
-    label: "備份 Asterisk PJSIP 配置",
-    running: "正在備份 Asterisk PJSIP 配置",
-    success: "Asterisk PJSIP 配置備份完成",
-    failed: "Asterisk PJSIP 配置備份失敗，已停止刪除流程",
+    label: "備份 PJSIP 配置",
+    running: "正在備份 PJSIP 配置",
+    success: "PJSIP 配置備份完成",
+    failed: "PJSIP 配置備份失敗，已停止刪除流程",
     skipped: "已略過",
   },
   {
@@ -13489,7 +13489,7 @@ async function handleWebrtcAccountDelete(request, response) {
       skipDeleteSteps(steps, "delete_freepbx_extensions", "已略過");
       return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
         code: "ASTERISK_CONFIG_BACKUP_FAILED",
-        message: "Asterisk PJSIP 配置備份失敗，已停止刪除流程",
+        message: "PJSIP 配置備份失敗，已停止刪除流程",
       }, 500);
     }
     responseData.backupDir = backupInfo.backupDir;
@@ -13506,7 +13506,7 @@ async function handleWebrtcAccountDelete(request, response) {
       skipDeleteSteps(steps, "delete_freepbx_extensions", "已略過");
       return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
         code: "WEBRTC_ACCOUNT_DELETE_FAILED",
-        message: "Asterisk 配置自備份後已變更",
+        message: "PJSIP 配置自備份後已變更",
       }, 409);
     }
 
@@ -14061,7 +14061,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       responseData.backupDir = backupDir || "";
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "ASTERISK_CONFIG_BACKUP_FAILED",
-        message: "Asterisk PJSIP 配置備份失敗，已停止建立流程",
+        message: "PJSIP 配置備份失敗，已停止建立流程",
       }, 500);
     }
     responseData.backupDir = backupDir;
@@ -14250,7 +14250,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         skipRemainingSteps(steps, "second_fwconsole_reload", "已略過");
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "WEBRTC_ACCOUNT_CREATE_FAILED",
-          message: "Asterisk 配置自備份後已變更",
+          message: "PJSIP 配置自備份後已變更",
         }, 409);
       }
       currentText = await readFile(targetFile, "utf8");
@@ -14406,7 +14406,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         responseData.rollbackExecuted = true;
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "BASELINE_ENDPOINT_VERIFY_FAILED",
-          message: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
+          message: "既有標準帳號狀態異常，請立即檢查服務端配置",
         }, 502);
       }
       markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });
@@ -14444,7 +14444,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       }
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "BASELINE_ENDPOINT_VERIFY_FAILED",
-        message: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
+        message: "既有標準帳號狀態異常，請立即檢查服務端配置",
       }, 502);
     }
     markStepSuccess(steps, "verify_baseline_endpoints", { baselineVerified: true });

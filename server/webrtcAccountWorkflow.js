@@ -28,10 +28,10 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
   },
   {
     key: "backup_asterisk_configs",
-    label: "備份 Asterisk PJSIP 配置",
-    running: "正在備份 Asterisk PJSIP 配置",
-    success: "Asterisk PJSIP 配置備份完成",
-    failed: "Asterisk PJSIP 配置備份失敗，已停止建立流程",
+    label: "備份 PJSIP 配置",
+    running: "正在備份 PJSIP 配置",
+    success: "PJSIP 配置備份完成",
+    failed: "PJSIP 配置備份失敗，已停止建立流程",
   },
   {
     key: "create_freepbx_extension",
@@ -94,7 +94,7 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
     label: "確認既有標準帳號未受影響",
     running: "正在確認既有標準帳號狀態",
     success: "既有標準帳號狀態正常",
-    failed: "既有標準帳號狀態異常，請立即檢查 Asterisk 配置",
+    failed: "既有標準帳號狀態異常，請立即檢查服務端配置",
   },
   {
     key: "rollback_freepbx_extension",
@@ -227,7 +227,7 @@ export function buildFourFieldEndpointOverlay(extension) {
   const overlay = getWebrtcRuntimeConfig().endpointCustomPostOverlay || {};
   return [
     `; BEGIN SaaS WebRTC 4-field endpoint overlay ${extension}`,
-    `[${extension}](+)`,
+    `[${extension}]`,
     `allow_unauthenticated_options=${overlay.allow_unauthenticated_options || "yes"}`,
     `rtp_timeout=${overlay.rtp_timeout || "0"}`,
     `rtp_timeout_hold=${overlay.rtp_timeout_hold || "0"}`,

@@ -69,7 +69,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const STEP_LABELS = [
     '驗證 WebRTC 帳號格式',
     '檢查 FreePBX 帳號是否已存在',
-    '備份 Asterisk PJSIP 配置',
+    '備份 PJSIP 配置',
     '建立 FreePBX 基礎分機',
     '設定 PJSIP 註冊密碼',
     '補全 FreePBX WebRTC 進階配置',
@@ -1339,7 +1339,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   </div>
                   {consistencyResult.status && (
                     <div style={{ marginBottom: '12px', padding: '12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}>
-                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>Asterisk 狀態</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>Web SIP 服務器狀態</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px', color: '#d1d5db' }}>
                         <span>狀態: <b style={{ color: consistencyResult.status.status === 'online' ? '#22c55e' : '#9ca3af' }}>{consistencyResult.status.statusText || '-'}</b></span>
                         <span>傳輸: {consistencyResult.status.transport || '-'}</span>
