@@ -22,6 +22,7 @@ import {
   applyConfigAndWait as freepbxApplyConfigAndWait,
   fetchExtension as freepbxFetchExtension,
   getExtensionInputSchema as freepbxGetExtensionInputSchema,
+  updateExtensionDisplayName as freepbxUpdateExtensionDisplayName,
   updateExtension as freepbxUpdateExtension,
 } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
@@ -12742,6 +12743,134 @@ async function handleWebrtcAccountQuery(request, response) {
 
 app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
+app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以更新 WebRTC 帳號顯示名稱。",
+      error: {
+        code: "WEBRTC_DISPLAY_NAME_UPDATE_FAILED",
+        message: "只有平台管理員可以更新 WebRTC 帳號顯示名稱。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || "").trim();
+  const displayName = sanitizeString(request.body?.displayName, 80);
+
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  if (!displayName) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號顯示名稱不正確",
+      error: {
+        code: "INVALID_WEBRTC_DISPLAY_NAME",
+        message: "WebRTC 帳號顯示名稱不可為空白",
+      },
+    });
+  }
+
+  if (displayName.length > 80) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號顯示名稱不正確",
+      error: {
+        code: "INVALID_WEBRTC_DISPLAY_NAME",
+        message: "WebRTC 帳號顯示名稱長度不得超過 80 個字元",
+      },
+    });
+  }
+
+  try {
+    const existing = await freepbxFetchExtension(extension);
+    if (!existing) {
+      return response.status(404).json({
+        success: false,
+        message: "WebRTC 帳號不存在",
+        error: {
+          code: "WEBRTC_ACCOUNT_NOT_FOUND",
+          message: "WebRTC 帳號不存在",
+        },
+      });
+    }
+
+    const schema = await freepbxGetExtensionInputSchema();
+    const updateResult = await freepbxUpdateExtensionDisplayName(extension, displayName, schema);
+    if (!updateResult?.status) {
+      return response.status(500).json({
+        success: false,
+        message: "WebRTC 帳號顯示名稱更新失敗",
+        error: {
+          code: "FREEPBX_DISPLAY_NAME_UPDATE_FAILED",
+          message: updateResult?.message || "WebRTC 帳號顯示名稱更新失敗",
+        },
+        data: {
+          extension,
+          displayName,
+          updated: false,
+          needReload: false,
+        },
+      });
+    }
+
+    const refreshed = await freepbxFetchExtension(extension);
+    const updated = Boolean(refreshed && String(refreshed.name || "") === displayName);
+    if (!updated) {
+      return response.status(500).json({
+        success: false,
+        message: "WebRTC 帳號顯示名稱更新失敗",
+        error: {
+          code: "WEBRTC_DISPLAY_NAME_UPDATE_FAILED",
+          message: "WebRTC 帳號顯示名稱更新失敗",
+        },
+        data: {
+          extension,
+          displayName,
+          updated: false,
+          needReload: true,
+        },
+      });
+    }
+
+    return response.json({
+      success: true,
+      message: "WebRTC 帳號顯示名稱已更新",
+      data: {
+        extension,
+        displayName,
+        updated,
+        needReload: true,
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      success: false,
+      message: "WebRTC 帳號顯示名稱更新失敗",
+      error: {
+        code: error?.code === "FREEPBX_DISPLAY_NAME_UPDATE_FAILED"
+          ? "FREEPBX_DISPLAY_NAME_UPDATE_FAILED"
+          : "WEBRTC_DISPLAY_NAME_UPDATE_FAILED",
+        message: error?.message || "WebRTC 帳號顯示名稱更新失敗",
+      },
+      data: {
+        extension,
+        displayName,
+        updated: false,
+        needReload: false,
+      },
+    });
+  }
+});
 app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => {
   // TODO: keep this endpoint restricted to trusted SaaS platform administrators before production use.
   if (request.admin.accountType !== "platform") {

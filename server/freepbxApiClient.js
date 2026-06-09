@@ -239,6 +239,28 @@ export async function updateExtension(extension, payload) {
   return result?.data?.updateExtension || null;
 }
 
+export async function updateExtensionDisplayName(extension, displayName, schema = null) {
+  const resolvedSchema = schema || (await getExtensionInputSchema());
+  const updateSchema = resolvedSchema?.updateExtensionInput || {};
+  const payload = {};
+  const candidates = ["name", "displayName", "callerid", "callerId", "caller_id"];
+  for (const key of candidates) {
+    if (Object.prototype.hasOwnProperty.call(updateSchema, key)) {
+      payload[key] = displayName;
+      break;
+    }
+  }
+
+  if (!Object.keys(payload).length) {
+    const error = new FreepbxApiError("FreePBX display name update field not supported.", {
+      code: "FREEPBX_DISPLAY_NAME_UPDATE_FAILED",
+    });
+    throw error;
+  }
+
+  return updateExtension(extension, payload);
+}
+
 function simplifyGraphqlType(type) {
   if (!type) return "";
   if (type.name) return type.name;
