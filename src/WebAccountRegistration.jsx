@@ -1020,11 +1020,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           overflow-y: auto;
         }
         #web-account-registration .web-table {
-          width: 100%;
-          min-width: 900px;
+          width: max-content;
+          min-width: 100%;
           border-collapse: separate;
           border-spacing: 0;
-          table-layout: fixed;
           font-size: 12px;
         }
         #web-account-registration .web-table thead { background: #1a2332; }
