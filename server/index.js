@@ -89,8 +89,8 @@ const paymentProofsDir = path.join(projectRoot, "assets/payment-proofs");
 const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icons");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
 const callCenterImagesDir = path.join(projectRoot, "assets/call-center-images");
-const ASTERISK_PATHS = getAsteriskPathConfig();
-const WEBRTC_RUNTIME = getWebrtcRuntimeConfig();
+const ASTERISK_PATHS = (() => { try { return getAsteriskPathConfig(); } catch { return {}; } })();
+const WEBRTC_RUNTIME = (() => { try { return getWebrtcRuntimeConfig(); } catch { return {}; } })();
 
 app.use(express.json({ limit: "12mb" }));
 app.use((request, response, next) => {
