@@ -29,6 +29,7 @@ import { verifyPjsipExtension } from "./asteriskCommandService.js";
 import {
   getPjsipEndpointStatus,
   getPjsipEndpointStatusBatch,
+  getPjsipEndpointConfig,
 } from "./asteriskCommandService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
 import {
@@ -45,6 +46,7 @@ import {
   markStepSkipped,
   markStepSuccess,
   parsePjsipSection,
+  readEndpointCustomPostOverlay,
   restoreEndpointCustomPostFromBackup,
   sha256File,
   skipRemainingSteps,
@@ -12844,8 +12846,130 @@ async function handleWebrtcAccountStatusQuery(request, response) {
   }
 }
 
+function sanitizeOverlayFields(fields = {}) {
+  const allowed = ["allow_unauthenticated_options", "rtp_timeout", "rtp_timeout_hold", "asymmetric_rtp_codec"];
+  const result = {};
+  for (const key of allowed) {
+    if (Object.prototype.hasOwnProperty.call(fields, key)) {
+      result[key] = String(fields[key]);
+    }
+  }
+  return result;
+}
+
+async function handleWebrtcAccountConfigQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 WebRTC 帳號配置。",
+      error: {
+        code: "WEBRTC_ACCOUNT_CONFIG_QUERY_FAILED",
+        message: "只有平台管理員可以查詢 WebRTC 帳號配置。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  try {
+    const freepbx = await freepbxFetchExtension(extension);
+    if (!freepbx) {
+      return response.status(404).json({
+        success: false,
+        message: "WebRTC 帳號不存在",
+        error: {
+          code: "WEBRTC_ACCOUNT_NOT_FOUND",
+          message: "WebRTC 帳號不存在",
+        },
+      });
+    }
+
+    const runtime = await getPjsipEndpointConfig(extension);
+    const overlay = await readEndpointCustomPostOverlay(extension).catch(() => ({
+      file: ASTERISK_PATHS.endpointCustomPostConf,
+      exists: false,
+      fields: {},
+    }));
+
+    return response.json({
+      success: true,
+      message: "WebRTC 帳號配置已取得",
+      data: {
+        extension,
+        exists: true,
+        source: {
+          freepbx: true,
+          asteriskRuntime: Boolean(runtime?.rawAvailable),
+          endpointCustomPostOverlay: Boolean(overlay?.exists),
+        },
+        freepbx: {
+          extension: String(freepbx.extension || freepbx.extensionId || extension),
+          name: String(freepbx.name || ""),
+          tech: String(freepbx.tech || ""),
+          email: String(freepbx.email || ""),
+        },
+        runtime: {
+          endpointExists: Boolean(runtime?.endpointExists),
+          authExists: Boolean(runtime?.authExists),
+          aorExists: Boolean(runtime?.aorExists),
+          transport: runtime?.transport || "",
+          allow: runtime?.allow || "",
+          context: runtime?.context || "",
+          callerid: runtime?.callerid || "",
+          media_address: runtime?.media_address || "",
+          direct_media: Boolean(runtime?.direct_media),
+          webrtc: Boolean(runtime?.webrtc),
+          use_avpf: Boolean(runtime?.use_avpf),
+          ice_support: Boolean(runtime?.ice_support),
+          rtcp_mux: Boolean(runtime?.rtcp_mux),
+          bundle: Boolean(runtime?.bundle),
+          media_encryption: runtime?.media_encryption || "",
+          media_encryption_optimistic: Boolean(runtime?.media_encryption_optimistic),
+          media_use_received_transport: Boolean(runtime?.media_use_received_transport),
+          dtls_auto_generate_cert: runtime?.dtls_auto_generate_cert || "",
+          dtls_setup: runtime?.dtls_setup || "",
+          dtls_verify: runtime?.dtls_verify || "",
+          send_pai: Boolean(runtime?.send_pai),
+          allow_unauthenticated_options: Boolean(runtime?.allow_unauthenticated_options),
+          rtp_timeout: Number(runtime?.rtp_timeout ?? 0),
+          rtp_timeout_hold: Number(runtime?.rtp_timeout_hold ?? 0),
+          asymmetric_rtp_codec: Boolean(runtime?.asymmetric_rtp_codec),
+        },
+        overlay: {
+          file: overlay?.file || ASTERISK_PATHS.endpointCustomPostConf,
+          exists: Boolean(overlay?.exists),
+          fields: sanitizeOverlayFields(overlay?.fields || {}),
+        },
+        warnings: [],
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      success: false,
+      message: "WebRTC 帳號配置查詢失敗",
+      error: {
+        code: error?.code === "ASTERISK_RUNTIME_QUERY_FAILED"
+          ? "ASTERISK_RUNTIME_QUERY_FAILED"
+          : "WEBRTC_ACCOUNT_CONFIG_QUERY_FAILED",
+        message: "WebRTC 帳號配置查詢失敗",
+      },
+    });
+  }
+}
+
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
+app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
 app.get("/api/pbx/webrtc-accounts/:extension", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
 app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, async (request, response) => {
