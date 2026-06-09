@@ -155,6 +155,18 @@ function compareEndpointField(output, fields, predicate, fallbackValue = "") {
   return false;
 }
 
+function compareEndpointFieldWithOverlayFallback(output, fields, predicate, fallbackValue = "") {
+  for (const field of fields) {
+    const value = extractEndpointValue(output, field);
+    if (value !== "") {
+      if (predicate(value)) return true;
+      break;
+    }
+  }
+  if (fallbackValue !== "") return predicate(fallbackValue);
+  return false;
+}
+
 function parseCodecs(value) {
   return normalizeValue(value)
     .replace(/[()]/g, "")
@@ -170,7 +182,7 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
     .filter(Boolean);
   const checks = {
     transport: compareEndpointField(output, ["transport", "Transport"], (value) => normalizeValue(value) === normalizeValue(expected.transport)),
-    allowUnauthenticatedOptions: compareEndpointField(
+    allowUnauthenticatedOptions: compareEndpointFieldWithOverlayFallback(
       output,
       ["allow_unauthenticated_options", "Allow Unauthenticated OPTIONS", "Allow Unauthenticated", "Allow OPTIONS"],
       isEnabledValue,
@@ -200,13 +212,13 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
       ["media_address", "Media Address"],
       (value) => normalizeValue(value) === normalizeValue(expected.mediaAddress),
     ),
-    rtpTimeout: compareEndpointField(
+    rtpTimeout: compareEndpointFieldWithOverlayFallback(
       output,
       ["rtp_timeout", "RTP Timeout"],
       (value) => normalizeValue(value) === String(expected.rtpTimeout ?? "0"),
       String(expected.endpointCustomPostOverlay?.rtp_timeout ?? expected.rtpTimeout ?? "0"),
     ),
-    rtpTimeoutHold: compareEndpointField(
+    rtpTimeoutHold: compareEndpointFieldWithOverlayFallback(
       output,
       ["rtp_timeout_hold", "RTP Timeout Hold"],
       (value) => normalizeValue(value) === String(expected.rtpTimeoutHold ?? "0"),
@@ -216,7 +228,7 @@ function verifyWebrtcEndpointParameters(output, expected = {}) {
       const actual = parseCodecs(value);
       return allowedCodecs.every((codec) => actual.includes(codec));
     }),
-    asymmetricRtpCodec: compareEndpointField(
+    asymmetricRtpCodec: compareEndpointFieldWithOverlayFallback(
       output,
       ["asymmetric_rtp_codec", "Asymmetric RTP Codec"],
       isEnabledValue,

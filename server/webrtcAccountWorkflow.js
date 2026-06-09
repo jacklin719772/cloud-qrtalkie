@@ -711,6 +711,7 @@ export function buildWorkflowReport(data) {
   }));
   const failedFields = data.failedFields || [];
   const warningFields = data.warningFields || [];
+  const runtimeDiagnostics = data.runtimeDiagnostics || {};
   const content = `# FreePBX WebRTC 帳號建立流程報告
 
 ## 1. 摘要
@@ -763,6 +764,10 @@ ${compareRows.length ? table(compareRows, [
 
 - failedFields: ${failedFields.length ? failedFields.join(", ") : "none"}
 - warningFields: ${warningFields.length ? warningFields.join(", ") : "none"}
+- runtimeRetryCount: ${runtimeDiagnostics.retryCount ?? 0}
+- runtimeRetryDelayMs: ${runtimeDiagnostics.retryDelayMs ?? 0}
+- runtimeExpectedOverlayPresent: ${runtimeDiagnostics.expectedOverlayPresent ? "yes" : "no"}
+- runtimeFailedChecks: ${(runtimeDiagnostics.failedChecks || []).length ? runtimeDiagnostics.failedChecks.join(", ") : "none"}
 
 ## 6. Baseline
 

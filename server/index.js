@@ -13741,6 +13741,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     reportPath,
     failedFields: [],
     warningFields: [],
+    runtimeDiagnostics: {},
     steps,
   };
 
@@ -13777,6 +13778,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       rollbackExecuted: responseData.rollbackExecuted,
       rollbackSuccess: responseData.rollbackSuccess,
       rollbackMessage: responseData.rollbackMessage || "",
+      runtimeDiagnostics: responseData.runtimeDiagnostics || {},
       baseline: responseData.baseline,
       baselineNormal: Boolean(
         responseData.baseline?.[WEBRTC_RUNTIME.fallbackReferenceExtension]?.verified &&
@@ -14154,8 +14156,23 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     responseData.runtime = asterisk;
     responseData.warningFields = (asterisk.unsupportedOrUnverified || []).map((item) => item.field);
     responseData.failedFields = asterisk.failedChecks || [];
+    responseData.runtimeDiagnostics = {
+      retryCount: responseData.runtimeRetryCount || 0,
+      retryDelayMs: responseData.runtimeRetryDelayMs || 0,
+      expectedOverlayPresent: Boolean(webrtcConfig?.endpointCustomPostOverlay),
+      expectedOverlayFields: Object.keys(webrtcConfig?.endpointCustomPostOverlay || {}),
+      endpointExists: Boolean(asterisk.endpointExists),
+      authExists: Boolean(asterisk.authExists),
+      aorExists: Boolean(asterisk.aorExists),
+      verified: Boolean(asterisk.verified),
+      failedChecks: asterisk.failedChecks || [],
+      unsupportedOrUnverified: (asterisk.unsupportedOrUnverified || []).map((item) => item.field),
+    };
     if (!asterisk.verified) {
-      markStepFailed(steps, "verify_runtime_endpoint", { failedFields: responseData.failedFields });
+      markStepFailed(steps, "verify_runtime_endpoint", {
+        failedFields: responseData.failedFields,
+        runtimeDiagnostics: responseData.runtimeDiagnostics,
+      });
       await rollbackCreatedAccount().catch(() => {});
       if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
