@@ -61,6 +61,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [isAdding, setIsAdding] = useState(false);
   const [simulatedStep, setSimulatedStep] = useState(-1);
 
+  // 一致性检查
+  const [consistencyAccount, setConsistencyAccount] = useState(null);
+  const [consistencyResult, setConsistencyResult] = useState(null);
+  const [isCheckingConsistency, setIsCheckingConsistency] = useState(false);
+
   const STEP_LABELS = [
     '驗證 WebRTC 帳號格式',
     '檢查 FreePBX 帳號是否已存在',
@@ -117,6 +122,21 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setIsAdding(false);
     }
   }
+
+  async function handleCheckConsistency(account) {
+    setConsistencyAccount(account);
+    setConsistencyResult(null);
+    setIsCheckingConsistency(true);
+    try {
+      const result = await apiClient.get(`/pbx/webrtc-accounts/${account.username}/consistency`);
+      setConsistencyResult(result.data || result);
+    } catch (err) {
+      setConsistencyResult({ error: err.message || '查詢失敗' });
+    } finally {
+      setIsCheckingConsistency(false);
+    }
+  }
+
   const [resetConfirmPasswordValue, setResetConfirmPasswordValue] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' });
@@ -1242,6 +1262,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     <td>{account.creatorName || '-'}</td>
                     <td style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', color: '#e5e7eb', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
+                        <button className="ghost-btn" type="button" title="一致性檢查" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleCheckConsistency(account)}>🔍</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', account)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={(event) => {
                           event.stopPropagation();
@@ -1281,6 +1302,65 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
       </div>
       </div>
+
+      {/* 一致性檢查彈窗 */}
+      {consistencyAccount && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(e) => { if (e.target === e.currentTarget) { setConsistencyAccount(null); setConsistencyResult(null); } }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '80vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ flexShrink: 0, padding: '18px 20px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>一致性檢查 — {consistencyAccount.username}</h3>
+              <button onClick={() => { setConsistencyAccount(null); setConsistencyResult(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {isCheckingConsistency ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center', padding: '30px' }}>查詢中...</p>
+              ) : consistencyResult?.error ? (
+                <p style={{ color: '#ef4444', textAlign: 'center' }}>{consistencyResult.error}</p>
+              ) : consistencyResult ? (
+                <>
+                  <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: consistencyResult.overallConsistent ? '#22c55e' : '#f59e0b' }}>
+                      {consistencyResult.overallConsistent ? '✓ 三層一致' : '⚠ 存在不一致'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                    {[
+                      { label: 'FreePBX', ok: consistencyResult.checks?.existsConsistent, detail: consistencyResult.freepbx?.exists ? '存在' : '不存在' },
+                      { label: 'Runtime', ok: consistencyResult.checks?.runtimeConsistent, detail: consistencyResult.status?.statusText || '-' },
+                      { label: 'Overlay', ok: consistencyResult.checks?.overlayConsistent, detail: consistencyResult.config?.overlay?.exists ? '存在' : '無' },
+                    ].map(c => (
+                      <div key={c.label} style={{ padding: '10px', borderRadius: '8px', background: c.ok ? '#065f46' : '#3b1111', border: `1px solid ${c.ok ? '#059669' : '#7f1d1d'}`, textAlign: 'center' }}>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>{c.label}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: c.ok ? '#6ee7b7' : '#fca5a5' }}>{c.detail}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {consistencyResult.status && (
+                    <div style={{ marginBottom: '12px', padding: '12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px' }}>Asterisk 狀態</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '12px', color: '#d1d5db' }}>
+                        <span>狀態: <b style={{ color: consistencyResult.status.status === 'online' ? '#22c55e' : '#9ca3af' }}>{consistencyResult.status.statusText || '-'}</b></span>
+                        <span>傳輸: {consistencyResult.status.transport || '-'}</span>
+                        <span>頻道數: {consistencyResult.status.channelCount ?? '-'}</span>
+                        <span>聯絡狀態: {consistencyResult.status.contactStatus || '-'}</span>
+                      </div>
+                    </div>
+                  )}
+                  {consistencyResult.warnings?.length > 0 && (
+                    <div style={{ padding: '10px', borderRadius: '8px', background: '#1e293b', border: '1px solid #f59e0b' }}>
+                      <div style={{ fontSize: '12px', color: '#fbbf24', marginBottom: '4px' }}>警告</div>
+                      {consistencyResult.warnings.map((w, i) => (
+                        <div key={i} style={{ fontSize: '12px', color: '#fbbf24' }}>• {w}</div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {showAddModal && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !isAdding) { setShowAddModal(false); setAddSteps([]); setSimulatedStep(-1); setAddMessage({ type: '', text: '' }); } }}>
