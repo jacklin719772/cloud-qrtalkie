@@ -57,7 +57,36 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addExtension, setAddExtension] = useState('');
   const [addMessage, setAddMessage] = useState({ type: '', text: '' });
+  const [addSteps, setAddSteps] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
+
+  const stepStatusIcons = { pending: '○', running: '◌', success: '✓', failed: '✗', skipped: '—', rollback: '↺' };
+  const stepStatusColors = { pending: '#4b5563', running: '#60a5fa', success: '#22c55e', failed: '#ef4444', skipped: '#6b7280', rollback: '#f59e0b' };
+
+  async function handleAddWebrtcAccount() {
+    const ext = addExtension.trim();
+    if (!ext) { setAddMessage({ type: 'error', text: '請輸入 WebRTC 分機號。' }); return; }
+    if (!/^\d+$/.test(ext)) { setAddMessage({ type: 'error', text: 'WebRTC 分機號必須為純數字。' }); return; }
+    if (accounts.some(a => a.username === ext)) { setAddMessage({ type: 'error', text: '該分機號已在列表中。' }); return; }
+
+    setIsAdding(true);
+    setAddMessage({ type: '', text: '' });
+    setAddSteps([]);
+    try {
+      const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext });
+      setAddSteps(result.data?.steps || []);
+      if (result.success) {
+        setAddMessage({ type: 'success', text: result.message || 'WebRTC 帳號建立成功' });
+        setTimeout(() => { setShowAddModal(false); setAddSteps([]); loadAccounts(); }, 3000);
+      } else {
+        setAddMessage({ type: 'error', text: result.message || 'WebRTC 帳號建立失敗' });
+      }
+    } catch (err) {
+      setAddMessage({ type: 'error', text: err.message || '建立失敗' });
+    } finally {
+      setIsAdding(false);
+    }
+  }
   const [resetConfirmPasswordValue, setResetConfirmPasswordValue] = useState('');
   const [isResetting, setIsResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState({ type: '', text: '' });
@@ -1224,11 +1253,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       </div>
 
       {showAddModal && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) { setShowAddModal(false); setAddMessage({ type: '', text: '' }); } }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !isAdding) { setShowAddModal(false); setAddSteps([]); setAddMessage({ type: '', text: '' }); } }}>
           <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增 WebRTC 帳號</h3>
-              <button type="button" onClick={() => { setShowAddModal(false); setAddMessage({ type: '', text: '' }); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+              <button type="button" onClick={() => { setShowAddModal(false); setAddSteps([]); setAddMessage({ type: '', text: '' }); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1238,6 +1267,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   inputMode="numeric"
                   placeholder="請輸入純數字分機號，如 9521"
                   value={addExtension}
+                  disabled={isAdding}
                   onChange={(e) => {
                     const v = e.target.value.replace(/\D/g, '');
                     setAddExtension(v);
@@ -1251,12 +1281,38 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 系統將自動以「訪客{addExtension || '分機號'}」作為顯示名稱，密碼與其他參數由預設模板配置。
               </p>
               {addMessage.text && (
-                <p style={{ margin: 0, fontSize: '13px', color: addMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{addMessage.text}</p>
+                <p style={{ margin: 0, fontSize: '13px', color: addMessage.type === 'error' ? '#ef4444' : addMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{addMessage.text}</p>
+              )}
+              {addSteps.length > 0 && (
+                <div style={{ maxHeight: '260px', overflowY: 'auto', background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {addSteps.map((step, i) => (
+                    <div key={step.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: i < addSteps.length - 1 ? '1px solid #1f2937' : 'none' }}>
+                      <span style={{ width: '18px', textAlign: 'center', fontSize: '14px', fontWeight: 700, color: stepStatusColors[step.status] || '#6b7280', flexShrink: 0 }}>
+                        {isAdding && step.status === 'running' ? (
+                          <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</span>
+                        ) : (
+                          stepStatusIcons[step.status] || '○'
+                        )}
+                      </span>
+                      <span style={{ flex: 1, fontSize: '12px', color: step.status === 'pending' ? '#6b7280' : step.status === 'failed' ? '#ef4444' : '#d1d5db' }}>
+                        {step.label}
+                      </span>
+                      <span style={{ fontSize: '11px', color: stepStatusColors[step.status] || '#6b7280', flexShrink: 0 }}>
+                        {step.status === 'pending' ? '等待中' : step.status === 'running' ? '執行中' : step.status === 'success' ? '完成' : step.status === 'failed' ? '失敗' : step.status === 'skipped' ? '已略過' : step.status === 'rollback' ? '已回滾' : step.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isAdding && addSteps.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#60a5fa', fontSize: '13px' }}>
+                  正在建立 WebRTC 帳號，請稍候...
+                </div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" onClick={() => { setShowAddModal(false); setAddMessage({ type: '', text: '' }); }} disabled={isAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button type="button" onClick={() => { setAddMessage({ type: 'info', text: 'WebRTC 帳號創建功能即將推出' }); }} disabled={isAdding || !addExtension} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: addExtension ? '#3b82f6' : '#1e3a5f', color: addExtension ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: addExtension ? 'pointer' : 'not-allowed' }}>{isAdding ? '創建中...' : '確認新增'}</button>
+              <button type="button" onClick={() => { if (!isAdding) { setShowAddModal(false); setAddSteps([]); setAddMessage({ type: '', text: '' }); } }} disabled={isAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isAdding ? 'not-allowed' : 'pointer' }}>取消</button>
+              <button type="button" onClick={handleAddWebrtcAccount} disabled={isAdding || !addExtension} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: addExtension && !isAdding ? '#3b82f6' : '#1e3a5f', color: addExtension && !isAdding ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: addExtension && !isAdding ? 'pointer' : 'not-allowed' }}>{isAdding ? '建立中...' : '確認新增'}</button>
             </div>
           </div>
         </div>,
