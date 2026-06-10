@@ -533,6 +533,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     const results = [];
     let successCount = 0;
     let failCount = 0;
+    let skipCount = 0;
     const existingSet = new Set(accounts.map(a => a.username));
 
     for (let i = 0; i < count; i++) {
@@ -542,7 +543,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       // 本地重複
       if (existingSet.has(ext)) {
         results.push({ ext, status: 'skipped', label: '本地已存在' });
-        failCount++;
+        skipCount++;
         setBatchResults([...results]);
         continue;
       }
@@ -556,10 +557,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         const code = data.error?.code;
         if (code === 'FREEPBX_EXTENSION_ALREADY_EXISTS') {
           results.push({ ext, status: 'skipped', label: '遠端已存在' });
+          skipCount++;
         } else {
           results.push({ ext, status: 'failed', label: data.error?.message || data.message || err.message || '創建失敗' });
+          failCount++;
         }
-        failCount++;
       }
       setBatchResults([...results]);
     }
@@ -567,8 +569,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setIsBatchAdding(false);
     await loadAccounts();
 
-    if (failCount > 0) {
-      setBatchAddMessage({ type: 'error', text: `已完成：${successCount} 個成功，${failCount} 個失敗。` });
+    if (failCount > 0 || skipCount > 0) {
+      const msgs = [];
+      msgs.push(`${successCount} 個成功`);
+      if (skipCount > 0) msgs.push(`${skipCount} 個跳過（已存在）`);
+      if (failCount > 0) msgs.push(`${failCount} 個失敗`);
+      setBatchAddMessage({ type: failCount > 0 ? 'error' : 'info', text: `${msgs.join('，')}。` });
     } else {
       setBatchAddMessage({ type: 'success', text: `全部 ${successCount} 個帳號創建成功。` });
       setTimeout(() => { setBatchAddOpen(false); setBatchResults([]); }, 2000);
