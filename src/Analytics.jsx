@@ -6,16 +6,16 @@ const TABS = [
 ];
 
 const MOCK_WEB_ACCOUNTS = [
-  { id: 1, extension: '9503', displayName: '訪客9503', sipAccount: '9503@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 2, lastSeen: '2026-06-10 14:22' },
-  { id: 2, extension: '9504', displayName: '訪客9504', sipAccount: '9504@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-09 08:15' },
-  { id: 3, extension: '9505', displayName: '大廳接待', sipAccount: '9505@sip.qrtalkie.org', tenantName: '未來社區物業管理有限公司', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 1, lastSeen: '2026-06-10 14:30' },
-  { id: 4, extension: '9506', displayName: '訪客9506', sipAccount: '9506@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-08 19:45' },
-  { id: 5, extension: '9507', displayName: '管理處', sipAccount: '9507@sip.qrtalkie.org', tenantName: '太域科技', status: 'unreachable', statusText: '不可達', transport: '-', channelCount: 0, lastSeen: '-' },
-  { id: 6, extension: '9508', displayName: '訪客9508', sipAccount: '9508@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 3, lastSeen: '2026-06-10 14:28' },
-  { id: 7, extension: '9509', displayName: '訪客9509', sipAccount: '9509@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-07 12:00' },
-  { id: 8, extension: '9510', displayName: '訪客9510', sipAccount: '9510@sip.qrtalkie.org', tenantName: null, status: 'not_found', statusText: '不存在', transport: '-', channelCount: 0, lastSeen: '-' },
-  { id: 9, extension: '9520', displayName: '訪客9520-測試', sipAccount: '9520@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 13:55' },
-  { id: 10, extension: '9521', displayName: '訪客9521-測試', sipAccount: '9521@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 10:30' },
+  { id: 1, extension: '9503', displayName: '訪客9503', sipAccount: '9503@sip.qrtalkie.org', tenantName: '太域科技', assigned: true, status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 2, lastSeen: '2026-06-10 14:22' },
+  { id: 2, extension: '9504', displayName: '訪客9504', sipAccount: '9504@sip.qrtalkie.org', tenantName: null, assigned: false, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-09 08:15' },
+  { id: 3, extension: '9505', displayName: '大廳接待', sipAccount: '9505@sip.qrtalkie.org', tenantName: '未來社區物業管理有限公司', assigned: true, status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 1, lastSeen: '2026-06-10 14:30' },
+  { id: 4, extension: '9506', displayName: '訪客9506', sipAccount: '9506@sip.qrtalkie.org', tenantName: null, assigned: false, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-08 19:45' },
+  { id: 5, extension: '9507', displayName: '管理處', sipAccount: '9507@sip.qrtalkie.org', tenantName: '太域科技', assigned: true, status: 'unknown', statusText: '未知', transport: '-', channelCount: 0, lastSeen: '-' },
+  { id: 6, extension: '9508', displayName: '訪客9508', sipAccount: '9508@sip.qrtalkie.org', tenantName: '太域科技', assigned: true, status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 3, lastSeen: '2026-06-10 14:28' },
+  { id: 7, extension: '9509', displayName: '訪客9509', sipAccount: '9509@sip.qrtalkie.org', tenantName: null, assigned: false, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-07 12:00' },
+  { id: 8, extension: '9510', displayName: '訪客9510', sipAccount: '9510@sip.qrtalkie.org', tenantName: null, assigned: false, status: 'unknown', statusText: '未知', transport: '-', channelCount: 0, lastSeen: '-' },
+  { id: 9, extension: '9520', displayName: '訪客9520-測試', sipAccount: '9520@sip.qrtalkie.org', tenantName: '太域科技', assigned: true, status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 13:55' },
+  { id: 10, extension: '9521', displayName: '訪客9521-測試', sipAccount: '9521@sip.qrtalkie.org', tenantName: null, assigned: false, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 10:30' },
 ];
 
 const MOCK_SIP_ACCOUNTS = [];
@@ -24,10 +24,9 @@ const statusBadge = (s) => {
   const map = {
     online: { bg: '#065f46', color: '#6ee7b7', text: '在線' },
     offline: { bg: '#1e293b', color: '#9ca3af', text: '離線' },
-    unreachable: { bg: '#3b1111', color: '#fca5a5', text: '不可達' },
-    not_found: { bg: '#1f2937', color: '#6b7280', text: '不存在' },
+    unknown: { bg: '#1f2937', color: '#6b7280', text: '未知' },
   };
-  const style = map[s] || map.offline;
+  const style = map[s] || map.unknown;
   return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: style.bg, color: style.color }}>{style.text}</span>;
 };
 
@@ -37,6 +36,7 @@ export default function Analytics() {
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [assignFilter, setAssignFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -51,8 +51,11 @@ export default function Analytics() {
     if (statusFilter !== 'all') {
       list = list.filter(a => a.status === statusFilter);
     }
+    if (assignFilter !== 'all') {
+      list = list.filter(a => assignFilter === 'assigned' ? a.assigned : !a.assigned);
+    }
     return list;
-  }, [data, searchKeyword, statusFilter]);
+  }, [data, searchKeyword, statusFilter, assignFilter]);
 
   const effectivePageSize = pageSize === '全部' ? filtered.length : Number(pageSize);
   const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
@@ -63,9 +66,8 @@ export default function Analytics() {
     const total = data.length;
     const online = data.filter(a => a.status === 'online').length;
     const offline = data.filter(a => a.status === 'offline').length;
-    const unreachable = data.filter(a => a.status === 'unreachable').length;
-    const notFound = data.filter(a => a.status === 'not_found').length;
-    return { total, online, offline, unreachable, notFound };
+    const unknown = data.filter(a => a.status === 'unknown').length;
+    return { total, online, offline, unknown };
   }, [data]);
 
   return (
@@ -73,7 +75,7 @@ export default function Analytics() {
       {/* Tab 栏 */}
       <div style={{ flexShrink: 0, display: 'flex', borderBottom: '1px solid #1f2937', background: '#111827', padding: '0 24px' }}>
         {TABS.map(tab => (
-          <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); setSearchKeyword(''); setStatusFilter('all'); }}
+          <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); setSearchKeyword(''); setStatusFilter('all'); setAssignFilter('all'); }}
             style={{
               padding: '14px 24px', fontSize: '14px', fontWeight: activeTab === tab.key ? 600 : 400,
               color: activeTab === tab.key ? '#60a5fa' : '#9ca3af', border: 'none', background: 'none',
@@ -99,15 +101,20 @@ export default function Analytics() {
               <option value="all">全部狀態</option>
               <option value="online">在線</option>
               <option value="offline">離線</option>
-              <option value="unreachable">不可達</option>
-              <option value="not_found">不存在</option>
+              <option value="unknown">未知</option>
+            </select>
+            <select value={assignFilter} onChange={e => { setAssignFilter(e.target.value); setCurrentPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">全部分配</option>
+              <option value="assigned">已分配</option>
+              <option value="unassigned">未分配</option>
             </select>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{stats.total}</strong></span>
             <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{stats.online}</strong></span>
             <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{stats.offline}</strong></span>
-            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#7f1d1d', border: '1px solid #991b1b', color: '#fca5a5', fontSize: '12px' }}>不可達 <strong>{stats.unreachable}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{stats.unknown}</strong></span>
           </div>
         </div>
 
