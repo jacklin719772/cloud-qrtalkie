@@ -82,6 +82,11 @@ export default function Analytics() {
   const [sipTenantFilter, setSipTenantFilter] = useState('all');
   const [sipPage, setSipPage] = useState(1);
   const [sipPageSize, setSipPageSize] = useState(10);
+  const [sipData, setSipData] = useState([]);
+  const [sipStats, setSipStats] = useState({ total: 0, online: 0, offline: 0, unknown: 0 });
+  const [isSipLoading, setIsSipLoading] = useState(true);
+  const [isSipRefreshing, setIsSipRefreshing] = useState(false);
+  const [sipLastFetchAt, setSipLastFetchAt] = useState(null);
 
   const [accounts, setAccounts] = useState([]);
   const [statusMap, setStatusMap] = useState({});
@@ -140,6 +145,21 @@ export default function Analytics() {
     const timer = setInterval(() => loadData(true), 30000);
     return () => clearInterval(timer);
   }, [loadData]);
+
+  // SIP data
+  const loadSipData = useCallback(async (silent) => {
+    if (!silent) setIsSipLoading(true); else setIsSipRefreshing(true);
+    try {
+      const res = await apiClient.get('/flexisip/accounts/registration-status?limit=100');
+      const items = res.data?.items || [];
+      setSipData(items);
+      setSipStats({ total: res.data?.total || 0, online: res.data?.online || 0, offline: res.data?.offline || 0, unknown: res.data?.unknown || 0 });
+      setSipLastFetchAt(new Date().toISOString());
+    } catch { setSipData([]); }
+    finally { setIsSipLoading(false); setIsSipRefreshing(false); }
+  }, []);
+
+  useEffect(() => { loadSipData(false); }, [loadSipData]);
 
   const data = useMemo(() => {
     return accounts.map(acc => {
@@ -201,10 +221,11 @@ export default function Analytics() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {activeTab === 'web' && lastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(lastFetchAt)}</span>}
-          {activeTab === 'web' && (
-          <button onClick={() => loadData(true)} title="手動刷新"
+          {activeTab === 'sip' && sipLastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(sipLastFetchAt)}</span>}
+          {(activeTab === 'web' || activeTab === 'sip') && (
+          <button onClick={() => activeTab === 'web' ? loadData(true) : loadSipData(true)} title="手動刷新"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', background: '#1f2937', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}>
-            <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
+            <RefreshCw size={14} style={{ animation: activeTab === 'web' ? (isRefreshing ? 'spin 1s linear infinite' : 'none') : (isSipRefreshing ? 'spin 1s linear infinite' : 'none') }} />
             刷新
           </button>
           )}
@@ -306,7 +327,7 @@ export default function Analytics() {
       </div>
       )}
       {/* SIP 帳號狀態 Tab */}
-      {activeTab === 'sip' && <SipAccountTable data={MOCK_SIP_ACCOUNTS} search={sipSearch} statusFilter={sipStatusFilter} tenantFilter={sipTenantFilter}
+      {activeTab === 'sip' && <SipAccountTable data={sipData} stats={sipStats} isLoading={isSipLoading} search={sipSearch} statusFilter={sipStatusFilter} tenantFilter={sipTenantFilter}
         onSearchChange={v => { setSipSearch(v); setSipPage(1); }} onStatusChange={v => { setSipStatusFilter(v); setSipPage(1); }} onTenantChange={v => { setSipTenantFilter(v); setSipPage(1); }}
         page={sipPage} pageSize={sipPageSize} onPageChange={setSipPage} onPageSizeChange={v => { setSipPageSize(v); setSipPage(1); }} />}
       {/* Web 呼叫日誌 Tab */}
@@ -393,25 +414,19 @@ export default function Analytics() {
 }
 
 // SIP Account Status Table
-function SipAccountTable({ data, search, statusFilter, tenantFilter, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
+function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantFilter, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
   const filtered = useMemo(() => {
     let list = data;
     if (search) {
       const kw = search.toLowerCase();
-      list = list.filter(a => a.username.includes(kw) || a.displayName.toLowerCase().includes(kw));
+      list = list.filter(a => (a.username || '').includes(kw) || (a.displayName || '').toLowerCase().includes(kw));
     }
     if (statusFilter !== 'all') list = list.filter(a => a.status === statusFilter);
     if (tenantFilter !== 'all') list = list.filter(a => tenantFilter === 'assigned' ? a.tenantName : !a.tenantName);
     return list;
   }, [data, search, statusFilter, tenantFilter]);
 
-  const stats = useMemo(() => ({
-    total: data.length,
-    online: data.filter(a => a.status === 'online').length,
-    offline: data.filter(a => a.status === 'offline').length,
-    unknown: data.filter(a => a.status === 'unknown').length,
-  }), [data]);
-
+  const statsData = stats;
   const totalPages = Math.max(1, Math.ceil(filtered.length / (pageSize === '全部' ? filtered.length : pageSize)));
   const effectiveSize = pageSize === '全部' ? filtered.length : Number(pageSize);
   const safePage = Math.min(page, totalPages);
@@ -444,10 +459,10 @@ function SipAccountTable({ data, search, statusFilter, tenantFilter, onSearchCha
           </select>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{stats.total}</strong></span>
-          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{stats.online}</strong></span>
-          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{stats.offline}</strong></span>
-          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{stats.unknown}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{statsData.total}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{statsData.online}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{statsData.offline}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{statsData.unknown}</strong></span>
         </div>
       </div>
 
@@ -467,7 +482,9 @@ function SipAccountTable({ data, search, statusFilter, tenantFilter, onSearchCha
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+              ) : paginated.length === 0 ? (
                 <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
               ) : paginated.map(row => (
                 <tr key={row.id} style={{ borderBottom: '1px solid #1f2937' }}>
