@@ -321,7 +321,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setTimeout(() => { setEditAccount(null); loadAccounts(); }, 1000);
     } catch (err) {
       const data = err.response?.data || err.data || {};
-      setEditMessage({ type: 'error', text: data.error?.message || data.message || err.message || '更新失敗' });
+      const changedFields = data.data?.changedFields || data.changedFields;
+      let errText = data.error?.message || data.message || err.message || '更新失敗';
+      if (changedFields && changedFields.length > 0) {
+        errText += '（變更欄位：' + changedFields.map(f => f.field || f).join('、') + '）';
+      }
+      setEditMessage({ type: 'error', text: errText });
     } finally {
       setIsSavingEdit(false);
     }
