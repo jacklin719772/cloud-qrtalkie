@@ -179,12 +179,14 @@ export default function Analytics() {
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {lastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(lastFetchAt)}</span>}
+          {activeTab === 'web' && lastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(lastFetchAt)}</span>}
+          {activeTab === 'web' && (
           <button onClick={() => loadData(true)} title="手動刷新"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', background: '#1f2937', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}>
             <RefreshCw size={14} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }} />
             刷新
           </button>
+          )}
         </div>
       </div>
 
