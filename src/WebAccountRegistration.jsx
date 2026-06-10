@@ -683,7 +683,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setTimeout(() => { setResetPasswordAccount(null); setResetPasswordValue(''); }, 1000);
     } catch (err) {
       const data = err.response?.data || err.data || {};
-      setResetMessage({ type: 'error', text: data.error?.message || data.message || err.message || '密碼更新失敗' });
+      let errText = data.error?.message || data.message || err.message || '密碼更新失敗';
+      if (data.data?.stage) errText += ' [' + data.data.stage + ']';
+      setResetMessage({ type: 'error', text: errText });
     } finally {
       setIsResetting(false);
     }
