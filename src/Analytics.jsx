@@ -56,8 +56,11 @@ export default function Analytics() {
   const [callDateTo, setCallDateTo] = useState('');
   const [callPage, setCallPage] = useState(1);
   const [callPageSize, setCallPageSize] = useState(10);
-  const [directionFilter, setDirectionFilter] = useState('all');
+  const [callExtension, setCallExtension] = useState('');
   const [expandedCall, setExpandedCall] = useState(null);
+  const [callLogs, setCallLogs] = useState([]);
+  const [callLogTotal, setCallLogTotal] = useState(0);
+  const [isCallLogLoading, setIsCallLogLoading] = useState(false);
 
   const [accounts, setAccounts] = useState([]);
   const [statusMap, setStatusMap] = useState({});
@@ -289,6 +292,13 @@ export default function Analytics() {
       {activeTab === 'callLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
+            <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '130px' }}>
+              <option value="">選擇分機號</option>
+              {accounts.filter(a => /^\d+$/.test(a.username)).map(a => (
+                <option key={a.id} value={a.username}>{a.username} {a.displayName ? `(${a.displayName})` : ''}</option>
+              ))}
+            </select>
             <div style={{ position: 'relative', width: '200px' }}>
               <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="search" placeholder="搜尋主叫/被叫號碼" value={callSearch} onChange={e => { setCallSearch(e.target.value); setCallPage(1); }}
@@ -299,17 +309,20 @@ export default function Analytics() {
             <span style={{ color: '#6b7280', fontSize: '13px' }}>至</span>
             <input type="date" value={callDateTo} onChange={e => { setCallDateTo(e.target.value); setCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
-            <select value={directionFilter} onChange={e => { setDirectionFilter(e.target.value); setCallPage(1); }}
-              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
-              <option value="all">全部方向</option>
-              <option value="inbound">來電</option>
-              <option value="outbound">外撥</option>
-              <option value="internal">內線</option>
-            </select>
           </div>
-          <CallLogTable logs={MOCK_CALL_LOGS} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo} direction={directionFilter}
+          <CallLogTable logs={callLogs} total={callLogTotal} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo}
             page={callPage} pageSize={callPageSize} onPageChange={setCallPage} onPageSizeChange={v => { setCallPageSize(v); setCallPage(1); }}
-            expandedCall={expandedCall} onToggleExpand={setExpandedCall} />
+            expandedCall={expandedCall} onToggleExpand={setExpandedCall} isLoading={isCallLogLoading}
+            extension={callExtension} onFetch={async (ext, params) => {
+              setIsCallLogLoading(true);
+              try {
+                const qs = new URLSearchParams(params).toString();
+                const res = await apiClient.get(`/pbx/webrtc-accounts/${ext}/call-logs?${qs}`);
+                setCallLogs(res.data?.calls || []);
+                setCallLogTotal(res.data?.total || 0);
+              } catch { setCallLogs([]); setCallLogTotal(0); }
+              finally { setIsCallLogLoading(false); }
+            }} />
         </div>
       )}
       {/* Spin animation */}
@@ -319,61 +332,55 @@ export default function Analytics() {
 }
 
 // Call Log sub-component
-function CallLogTable({ logs, search, dateFrom, dateTo, direction, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand }) {
-  const filtered = useMemo(() => {
-    let list = logs;
-    if (search) {
-      const kw = search.toLowerCase();
-      list = list.filter(l => l.cidNumber.includes(kw) || l.extension.includes(kw) || l.cidName.toLowerCase().includes(kw));
-    }
-    if (dateFrom) list = list.filter(l => l.eventTime >= `${dateFrom}T00:00:00Z`);
-    if (dateTo) list = list.filter(l => l.eventTime <= `${dateTo}T23:59:59Z`);
-    if (direction !== 'all') list = list.filter(l => l.direction === direction);
-    return list;
-  }, [logs, search, dateFrom, dateTo, direction]);
+function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, extension, onFetch }) {
+  // Auto-fetch when extension is selected
+  useEffect(() => {
+    if (!extension) { onPageChange(1); return; }
+    const params = {};
+    if (search) { params.source = search; params.destination = search; }
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
+    params.limit = pageSize;
+    params.offset = (page - 1) * pageSize;
+    onFetch(extension, params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extension, page, pageSize, search, dateFrom, dateTo]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const directionBadge = (d) => {
-    const map = { inbound: { bg: '#1e3a5f', color: '#93c5fd', text: '來電' }, outbound: { bg: '#065f46', color: '#6ee7b7', text: '外撥' }, internal: { bg: '#1e293b', color: '#9ca3af', text: '內線' } };
-    const s = map[d] || {};
-    return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', background: s.bg, color: s.color }}>{s.text || d}</span>;
-  };
-
-  const formatTime = (iso) => { try { return new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }); } catch { return '-'; } };
-  const formatDuration = (s) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
+  const formatTime = (iso) => { try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+  const formatDuration = (s) => { if (!s && s !== 0) return '-'; const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
-        <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '620px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Date</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Caller</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Dialed</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Duration</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Play</th>
-              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Details</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Date</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Caller</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Dialed</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Duration</th>
+              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Details</th>
             </tr>
           </thead>
           <tbody>
-            {paginated.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
-            ) : paginated.map(row => (
+            {isLoading ? (
+              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+            ) : !extension ? (
+              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>請選擇分機號以查詢通話記錄</td></tr>
+            ) : logs.length === 0 ? (
+              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+            ) : logs.map(row => (
               <React.Fragment key={row.linkedId}>
                 <tr style={{ borderBottom: '1px solid #1f2937' }}>
                   <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px' }}>{formatTime(row.eventTime)}</td>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>
-                    {row.cidName ? <span>{row.cidName}<br/><span style={{ fontSize: '11px', color: '#9ca3af' }}>{row.cidNumber}</span></span> : row.cidNumber || '—'}
+                    {row.cidName ? <span>{row.cidName}<br/><span style={{ fontSize: '11px', color: '#9ca3af' }}>{row.cidNumber}</span></span> : (row.cidNumber || <span style={{ color: '#6b7280' }}>—</span>)}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.extension}</td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                    <button style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '18px', padding: '4px' }} title="播放錄音">▶</button>
-                  </td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.extension || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <button onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}
                       style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px' }}>
@@ -382,14 +389,14 @@ function CallLogTable({ logs, search, dateFrom, dateTo, direction, page, pageSiz
                   </td>
                 </tr>
                 {expandedCall === row.linkedId && (
-                  <tr><td colSpan="6" style={{ padding: 0, background: '#0f172a' }}>
+                  <tr><td colSpan="5" style={{ padding: 0, background: '#0f172a' }}>
                     <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
                       <span>開始：<span style={{ color: '#d1d5db' }}>{formatTime(row.eventTime)}</span></span>
                       <span>結束：<span style={{ color: '#d1d5db' }}>{formatTime(row.endTime)}</span></span>
-                      <span>方向：{directionBadge(row.direction)}</span>
+                      <span>事件數：<span style={{ color: '#d1d5db' }}>{row.eventCount}</span></span>
                       <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.linkedId}</span></span>
                       <span>通道：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.channelName}</span></span>
-                      <span>事件數：<span style={{ color: '#d1d5db' }}>{row.eventCount}</span></span>
+                      <span></span>
                     </div>
                   </td></tr>
                 )}
@@ -399,7 +406,7 @@ function CallLogTable({ logs, search, dateFrom, dateTo, direction, page, pageSiz
         </table>
       </div>
       <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
-        <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {filtered.length} 筆記錄</span>
+        <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 筆記錄</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
             style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
