@@ -1307,32 +1307,68 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127760; Web 帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>Web 帳號用於用戶透過瀏覽器呼叫 SIP 帳號，實現網頁端語音和視訊通話。在分配 SIP 帳號時，系統將自動為每一個 SIP 帳號隨機配置一個 Web 帳號，因此 Web 帳號數量不應少於 SIP 帳號數量。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>Web 帳號（WebRTC / PJSIP 帳號）用於用戶透過瀏覽器或應用程式進行語音和視訊通話。每個 Web 帳號對應一個 SIP 分機號，由服務端自動完成 FreePBX 分機建立、WebRTC 配置、Asterisk 運行時參數設定。管理員在此統一管理 Web 帳號的建立、編輯、刪除等操作。</p>
               </div>
+
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9888; 重要提示</h3>
-                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#fbbf24" }}>數量關係</strong> — 每個 SIP 帳號需要對應一個 Web 帳號，確保 Web 帳號數量 ≥ SIP 帳號數量，避免分配失敗。</li>
-                  <li><strong style={{ color: "#fbbf24" }}>自動配對</strong> — 分配 SIP 帳號時，系統會自動配對未分配的 Web 帳號。如無可用 Web 帳號，SIP 分配將失敗。</li>
-                </ul>
+                <h3 style={{ color: "#ef4444", fontSize: "14px", marginBottom: "8px" }}>&#9888;&#65039; 重要警告（請務必閱讀）</h3>
+                <div style={{ background: "#1e293b", borderRadius: "8px", padding: "16px", border: "1px solid #374151" }}>
+                  <p style={{ color: "#fbbf24", margin: "0 0 12px", fontWeight: 600, fontSize: "14px" }}>以下操作可能影響訪客通話功能，請謹慎執行：</p>
+                  <div style={{ marginBottom: "12px" }}>
+                    <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128308; 刪除帳號</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>刪除帳號將<strong style={{ color: "#ef4444" }}>永久移除</strong>該 WebRTC 分機，包括 FreePBX 分機、Asterisk 配置和所有相關數據。<strong style={{ color: "#ef4444" }}>此操作不可逆</strong>。若該帳號已被訪客或設備使用，刪除後將導致無法通話。</p>
+                  </div>
+                  <div style={{ marginBottom: "12px" }}>
+                    <div style={{ color: "#f59e0b", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128993; 重設密碼</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>修改密碼後，已登入的設備和訪客端將<strong style={{ color: "#f59e0b" }}>立即斷線</strong>，需使用新密碼重新註冊。建議在非使用高峰期進行操作，或提前通知相關使用者。</p>
+                  </div>
+                  <div>
+                    <div style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128172; 顯示名稱</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>顯示名稱將作為<strong style={{ color: "#60a5fa" }}>來電顯示號碼</strong>顯示在被呼叫設備上。修改顯示名稱後，對方設備將看到新的來電名稱。建議使用易於識別的名稱，如「訪客張三」或「大廳接待」。</p>
+                  </div>
+                </div>
               </div>
+
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 Web 帳號，設定用戶名、密碼、角色、狀態等。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 Web 帳號，自動遞增用戶名。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>導入 CSV</strong> — 從 CSV 檔案批量導入 Web 帳號。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、密碼、角色等設定。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的登入密碼。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 輸入純數字分機號，系統自動在服務端完成 13 步建立流程（含備份、分機建立、WebRTC 配置、驗證等）。可查看每步執行進度。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 輸入起始分機號和數量，逐個建立多個帳號。即時顯示每個帳號的建立結果（成功/跳過/失敗），耐心等待每個帳號約 30-60 秒。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯顯示名稱</strong> — 修改帳號的來電顯示名稱，更新將同步至服務端。僅可修改顯示名稱，其他參數不可編輯。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 提供自訂密碼和系統預設密碼兩種方式。修改後可能導致已登入設備斷線，請謹慎操作。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號基礎資訊和服務端配置參數（傳輸、編碼、加密等），全部只讀。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>一致性檢查</strong> — 診斷帳號三層狀態（FreePBX / Runtime / Overlay）是否一致，用於排查異常。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 在更多選單中切換帳號狀態。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號分配/取消分配</strong> — 將帳號分配給租戶或取消分配。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量刪除</strong> — 勾選多個帳號後一次性刪除，即時顯示每個帳號的刪除結果。已分配租戶的帳號將自動跳過。</li>
                 </ul>
               </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — WebRTC 分機號，純數字，建立後不可修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 來電顯示名稱，顯示在被呼叫設備上。可透過編輯功能修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Domain</strong> — SIP 域名，預設為 pbx.qrtalkie.org。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>租戶</strong> — 該帳號所屬的租戶，未分配時顯示「未分配」。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>建立者</strong> — 建立此帳號的管理員名稱。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>建立時間</strong> — 帳號建立日期。</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128268; 密碼修改說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>自訂密碼</strong> — 手動輸入新密碼（至少 6 位字元）。修改後服務端將同步更新 FreePBX 和本地數據庫。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>使用預設密碼</strong> — 使用系統預設密碼（環境變數 VITE_WEB_ACCOUNT_DEFAULT_PASSWORD），一鍵恢復為標準密碼。</li>
+                  <li><strong style={{ color: "#fbbf24" }}>注意</strong> — 密碼修改後已登入的設備將立即斷線，需使用新密碼重新註冊。</li>
+                </ul>
+              </div>
+
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/web-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/web-accounts</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/web-accounts/:id/reset-password</code></p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/web-accounts</code><br/>建立帳號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/pbx/webrtc-accounts</code><br/>更新顯示名稱：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PATCH /api/pbx/webrtc-accounts/:ext/display-name</code><br/>更新密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PATCH /api/pbx/webrtc-accounts/:ext/password</code><br/>刪除帳號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/pbx/webrtc-accounts/:ext</code><br/>一致性檢查：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/pbx/webrtc-accounts/:ext/consistency</code></p>
               </div>
             </div>
           </div>
