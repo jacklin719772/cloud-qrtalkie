@@ -116,14 +116,14 @@ export default function Analytics() {
           <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
-                <tr style={{ background: '#1a2332' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>分機號</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>顯示名稱</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>Domain</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>狀態</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>傳輸</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>頻道數</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#9ca3af', fontWeight: 600, fontSize: '12px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>最後上線</th>
+                <tr style={{ background: '#1e293b' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>分機號</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>顯示名稱</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>Domain</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>狀態</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>傳輸</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>頻道數</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', whiteSpace: 'nowrap' }}>最後上線</th>
                 </tr>
               </thead>
               <tbody>
