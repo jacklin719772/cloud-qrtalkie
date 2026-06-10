@@ -358,11 +358,11 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
         <table style={{ width: '100%', minWidth: '620px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Date</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Caller</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Dialed</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Duration</th>
-              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>Details</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>日期</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>主叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>被叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>通話時長</th>
+              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>詳情</th>
             </tr>
           </thead>
           <tbody>
@@ -396,7 +396,6 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
                       <span>事件數：<span style={{ color: '#d1d5db' }}>{row.eventCount}</span></span>
                       <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.linkedId}</span></span>
                       <span>通道：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.channelName}</span></span>
-                      <span></span>
                     </div>
                   </td></tr>
                 )}
