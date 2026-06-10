@@ -13898,9 +13898,9 @@ async function handleWebrtcAccountDelete(request, response) {
 }
 
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
+app.get("/api/pbx/webrtc-accounts/presence", requireAdmin, handleWebrtcAccountPresenceBatchQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/presence", requireAdmin, handleWebrtcAccountPresenceQuery);
-app.get("/api/pbx/webrtc-accounts/presence", requireAdmin, handleWebrtcAccountPresenceBatchQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/call-logs", requireAdmin, handleWebrtcAccountCallLogsQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
