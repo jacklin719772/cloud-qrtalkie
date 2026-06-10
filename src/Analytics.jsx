@@ -6,16 +6,16 @@ const TABS = [
 ];
 
 const MOCK_WEB_ACCOUNTS = [
-  { id: 1, extension: '9503', displayName: '訪客9503', domain: 'pbx.qrtalkie.org', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 2, lastSeen: '2026-06-10 14:22' },
-  { id: 2, extension: '9504', displayName: '訪客9504', domain: 'pbx.qrtalkie.org', status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-09 08:15' },
-  { id: 3, extension: '9505', displayName: '大廳接待', domain: 'pbx.qrtalkie.org', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 1, lastSeen: '2026-06-10 14:30' },
-  { id: 4, extension: '9506', displayName: '訪客9506', domain: 'pbx.qrtalkie.org', status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-08 19:45' },
-  { id: 5, extension: '9507', displayName: '管理處', domain: 'pbx.qrtalkie.org', status: 'unreachable', statusText: '不可達', transport: '-', channelCount: 0, lastSeen: '-' },
-  { id: 6, extension: '9508', displayName: '訪客9508', domain: 'pbx.qrtalkie.org', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 3, lastSeen: '2026-06-10 14:28' },
-  { id: 7, extension: '9509', displayName: '訪客9509', domain: 'pbx.qrtalkie.org', status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-07 12:00' },
-  { id: 8, extension: '9510', displayName: '訪客9510', domain: 'pbx.qrtalkie.org', status: 'not_found', statusText: '不存在', transport: '-', channelCount: 0, lastSeen: '-' },
-  { id: 9, extension: '9520', displayName: '訪客9520-測試', domain: 'pbx.qrtalkie.org', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 13:55' },
-  { id: 10, extension: '9521', displayName: '訪客9521-測試', domain: 'pbx.qrtalkie.org', status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 10:30' },
+  { id: 1, extension: '9503', displayName: '訪客9503', sipAccount: '9503@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 2, lastSeen: '2026-06-10 14:22' },
+  { id: 2, extension: '9504', displayName: '訪客9504', sipAccount: '9504@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-09 08:15' },
+  { id: 3, extension: '9505', displayName: '大廳接待', sipAccount: '9505@sip.qrtalkie.org', tenantName: '未來社區物業管理有限公司', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 1, lastSeen: '2026-06-10 14:30' },
+  { id: 4, extension: '9506', displayName: '訪客9506', sipAccount: '9506@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-08 19:45' },
+  { id: 5, extension: '9507', displayName: '管理處', sipAccount: '9507@sip.qrtalkie.org', tenantName: '太域科技', status: 'unreachable', statusText: '不可達', transport: '-', channelCount: 0, lastSeen: '-' },
+  { id: 6, extension: '9508', displayName: '訪客9508', sipAccount: '9508@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 3, lastSeen: '2026-06-10 14:28' },
+  { id: 7, extension: '9509', displayName: '訪客9509', sipAccount: '9509@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-07 12:00' },
+  { id: 8, extension: '9510', displayName: '訪客9510', sipAccount: '9510@sip.qrtalkie.org', tenantName: null, status: 'not_found', statusText: '不存在', transport: '-', channelCount: 0, lastSeen: '-' },
+  { id: 9, extension: '9520', displayName: '訪客9520-測試', sipAccount: '9520@sip.qrtalkie.org', tenantName: '太域科技', status: 'online', statusText: '在線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 13:55' },
+  { id: 10, extension: '9521', displayName: '訪客9521-測試', sipAccount: '9521@sip.qrtalkie.org', tenantName: null, status: 'offline', statusText: '離線', transport: '0.0.0.0-wss', channelCount: 0, lastSeen: '2026-06-10 10:30' },
 ];
 
 const MOCK_SIP_ACCOUNTS = [];
@@ -113,16 +113,17 @@ export default function Analytics() {
 
         {/* 列表卡片 */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <table style={{ width: '100%', minWidth: '840px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+          <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent', msOverflowStyle: 'none' }}>
+            <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#1e293b' }}>
                   <th style={{ width: '40px', padding: '12px 0', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>
                     <input type="checkbox" style={{ cursor: 'pointer', accentColor: '#3b82f6' }} />
                   </th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>分機號</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Web 帳號</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>顯示名稱</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Domain</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>SIP 帳號</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>租戶名稱</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>狀態</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>傳輸</th>
                   <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>頻道數</th>
@@ -139,7 +140,10 @@ export default function Analytics() {
                     </td>
                     <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.extension}</td>
                     <td style={{ padding: '12px 16px', color: '#d1d5db' }}>{row.displayName}</td>
-                    <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{row.domain}</td>
+                    <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>{row.sipAccount}</td>
+                    <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tenantName || '未分配'}>
+                      {row.tenantName || '未分配'}
+                    </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>{statusBadge(row.status)}</td>
                     <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>{row.transport}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 500 }}>{row.channelCount}</td>
