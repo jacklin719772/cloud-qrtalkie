@@ -14121,12 +14121,31 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
       });
     }
 
+    // 同步更新 SaaS 数据库中的密码
+    let dbUpdated = false;
+    try {
+      const dbConn = await pool.getConnection();
+      try {
+        const passwordHash = await hashPassword(password);
+        await dbConn.query(
+          `UPDATE web_users SET password_hash = ? WHERE username = ? AND sip_domain = ?`,
+          [passwordHash, extension, webrtcDomain],
+        );
+        dbUpdated = true;
+      } finally {
+        dbConn.release();
+      }
+    } catch (dbErr) {
+      console.error("Failed to sync password to database:", dbErr?.message);
+    }
+
     return response.json({
       success: true,
       message: "WebRTC 帳號密碼已更新",
       data: {
         extension,
-        updated: true,
+        passwordUpdated: true,
+        dbUpdated,
         needReload: false,
         applyConfigSuccess: true,
         applyConfig: {
