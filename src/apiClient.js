@@ -8,6 +8,11 @@ const DEFAULT_TIMEOUT_RULES = [
     timeoutMs: 60000,
   },
   {
+    method: 'patch',
+    path: '/pbx/webrtc-accounts/:extension/password',
+    timeoutMs: 60000,
+  },
+  {
     method: 'post',
     path: '/pbx/webrtc-accounts',
     timeoutMs: 120000,
