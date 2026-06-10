@@ -5,6 +5,22 @@ import apiClient from './apiClient';
 const TABS = [
   { key: 'web', label: 'Web 帳號狀態' },
   { key: 'sip', label: 'SIP 帳號狀態' },
+  { key: 'callLog', label: 'Web 呼叫日誌' },
+];
+
+const MOCK_CALL_LOGS = [
+  { linkedId: '1686900010.1001', eventTime: '2026-06-10T14:22:15.000Z', endTime: '2026-06-10T14:24:32.000Z', durationSeconds: 137, cidName: '訪客9503', cidNumber: '9503', extension: '10001', channelName: 'PJSIP/9503-00000001', eventCount: 8, direction: 'outbound' },
+  { linkedId: '1686900010.1002', eventTime: '2026-06-10T14:18:05.000Z', endTime: '2026-06-10T14:19:48.000Z', durationSeconds: 103, cidName: '管理處', cidNumber: '9507', extension: '9508', channelName: 'PJSIP/9507-00000002', eventCount: 6, direction: 'internal' },
+  { linkedId: '1686900010.1003', eventTime: '2026-06-10T14:10:30.000Z', endTime: '2026-06-10T14:12:10.000Z', durationSeconds: 100, cidName: '', cidNumber: '0223456789', extension: '9505', channelName: 'PJSIP/9505-00000003', eventCount: 10, direction: 'inbound' },
+  { linkedId: '1686900010.1004', eventTime: '2026-06-10T13:55:12.000Z', endTime: '2026-06-10T13:56:45.000Z', durationSeconds: 93, cidName: '訪客9508', cidNumber: '9508', extension: '10002', channelName: 'PJSIP/9508-00000004', eventCount: 5, direction: 'outbound' },
+  { linkedId: '1686900010.1005', eventTime: '2026-06-10T13:42:00.000Z', endTime: '2026-06-10T13:42:15.000Z', durationSeconds: 15, cidName: '大廳接待', cidNumber: '9505', extension: '9505', channelName: 'PJSIP/9505-00000005', eventCount: 4, direction: 'internal' },
+  { linkedId: '1686900010.1006', eventTime: '2026-06-10T12:30:22.000Z', endTime: '2026-06-10T12:35:50.000Z', durationSeconds: 328, cidName: '', cidNumber: '0912345678', extension: '9503', channelName: 'PJSIP/9503-00000006', eventCount: 12, direction: 'inbound' },
+  { linkedId: '1686900010.1007', eventTime: '2026-06-10T11:15:08.000Z', endTime: '2026-06-10T11:16:30.000Z', durationSeconds: 82, cidName: '訪客9520-測試', cidNumber: '9520', extension: '9506', channelName: 'PJSIP/9520-00000007', eventCount: 6, direction: 'outbound' },
+  { linkedId: '1686900010.1008', eventTime: '2026-06-10T10:05:44.000Z', endTime: '2026-06-10T10:06:10.000Z', durationSeconds: 26, cidName: '訪客9503', cidNumber: '9503', extension: '9508', channelName: 'PJSIP/9503-00000008', eventCount: 4, direction: 'internal' },
+  { linkedId: '1686900010.1009', eventTime: '2026-06-09T16:40:18.000Z', endTime: '2026-06-09T16:44:55.000Z', durationSeconds: 277, cidName: '', cidNumber: '0312345678', extension: '9507', channelName: 'PJSIP/9507-00000009', eventCount: 14, direction: 'inbound' },
+  { linkedId: '1686900010.1010', eventTime: '2026-06-09T15:20:05.000Z', endTime: '2026-06-09T15:21:00.000Z', durationSeconds: 55, cidName: '訪客9504', cidNumber: '9504', extension: '10001', channelName: 'PJSIP/9504-00000010', eventCount: 5, direction: 'outbound' },
+  { linkedId: '1686900010.1011', eventTime: '2026-06-09T14:10:30.000Z', endTime: '2026-06-09T14:11:00.000Z', durationSeconds: 30, cidName: '訪客9510', cidNumber: '9510', extension: '9509', channelName: 'PJSIP/9510-00000011', eventCount: 3, direction: 'internal' },
+  { linkedId: '1686900010.1012', eventTime: '2026-06-09T11:55:42.000Z', endTime: '2026-06-09T12:02:18.000Z', durationSeconds: 396, cidName: '', cidNumber: '0412345678', extension: '9503', channelName: 'PJSIP/9503-00000012', eventCount: 18, direction: 'inbound' },
 ];
 
 const statusBadge = (s) => {
@@ -33,6 +49,15 @@ export default function Analytics() {
   const [assignFilter, setAssignFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Call log state
+  const [callSearch, setCallSearch] = useState('');
+  const [callDateFrom, setCallDateFrom] = useState('');
+  const [callDateTo, setCallDateTo] = useState('');
+  const [callPage, setCallPage] = useState(1);
+  const [callPageSize, setCallPageSize] = useState(10);
+  const [directionFilter, setDirectionFilter] = useState('all');
+  const [expandedCall, setExpandedCall] = useState(null);
 
   const [accounts, setAccounts] = useState([]);
   const [statusMap, setStatusMap] = useState({});
@@ -161,6 +186,7 @@ export default function Analytics() {
       </div>
 
       {/* 内容区 */}
+      {activeTab === 'web' && (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
         {/* 工具栏 */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
@@ -252,8 +278,133 @@ export default function Analytics() {
           </div>
         </div>
       </div>
+      )}
+      {/* SIP 帳號狀態 Tab */}
+      {activeTab === 'sip' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+          <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0 }}>SIP 帳號狀態分析即將推出</p>
+        </div>
+      )}
+      {/* Web 呼叫日誌 Tab */}
+      {activeTab === 'callLog' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: '200px' }}>
+              <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" placeholder="搜尋主叫/被叫號碼" value={callSearch} onChange={e => { setCallSearch(e.target.value); setCallPage(1); }}
+                style={{ width: '100%', height: '40px', padding: '0 14px 0 38px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+            </div>
+            <input type="date" value={callDateFrom} onChange={e => { setCallDateFrom(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+            <span style={{ color: '#6b7280', fontSize: '13px' }}>至</span>
+            <input type="date" value={callDateTo} onChange={e => { setCallDateTo(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+            <select value={directionFilter} onChange={e => { setDirectionFilter(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">全部方向</option>
+              <option value="inbound">來電</option>
+              <option value="outbound">外撥</option>
+              <option value="internal">內線</option>
+            </select>
+          </div>
+          <CallLogTable logs={MOCK_CALL_LOGS} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo} direction={directionFilter}
+            page={callPage} pageSize={callPageSize} onPageChange={setCallPage} onPageSizeChange={v => { setCallPageSize(v); setCallPage(1); }}
+            expandedCall={expandedCall} onToggleExpand={setExpandedCall} />
+        </div>
+      )}
       {/* Spin animation */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </section>
+  );
+}
+
+// Call Log sub-component
+function CallLogTable({ logs, search, dateFrom, dateTo, direction, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand }) {
+  const filtered = useMemo(() => {
+    let list = logs;
+    if (search) {
+      const kw = search.toLowerCase();
+      list = list.filter(l => l.cidNumber.includes(kw) || l.extension.includes(kw) || l.cidName.toLowerCase().includes(kw));
+    }
+    if (dateFrom) list = list.filter(l => l.eventTime >= `${dateFrom}T00:00:00Z`);
+    if (dateTo) list = list.filter(l => l.eventTime <= `${dateTo}T23:59:59Z`);
+    if (direction !== 'all') list = list.filter(l => l.direction === direction);
+    return list;
+  }, [logs, search, dateFrom, dateTo, direction]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const directionBadge = (d) => {
+    const map = { inbound: { bg: '#1e3a5f', color: '#93c5fd', text: '來電' }, outbound: { bg: '#065f46', color: '#6ee7b7', text: '外撥' }, internal: { bg: '#1e293b', color: '#9ca3af', text: '內線' } };
+    const s = map[d] || {};
+    return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', background: s.bg, color: s.color }}>{s.text || d}</span>;
+  };
+
+  const formatTime = (iso) => { try { return new Date(iso).toLocaleTimeString('zh-CN', { hour12: false }); } catch { return '-'; } };
+  const formatDuration = (s) => { const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
+        <table style={{ width: '100%', minWidth: '1020px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+          <thead>
+            <tr style={{ background: '#1e293b' }}>
+              <th style={{ width: '30px', padding: '12px 0', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}></th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>開始時間</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>主叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>主叫名稱</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>被叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>方向</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>時長</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>事件數</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.length === 0 ? (
+              <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+            ) : paginated.map(row => (
+              <React.Fragment key={row.linkedId}>
+                <tr style={{ borderBottom: '1px solid #1f2937', cursor: 'pointer' }} onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}>
+                  <td style={{ padding: '12px 0', textAlign: 'center', color: '#e5e7eb' }}>
+                    <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: expandedCall === row.linkedId ? 'rotate(90deg)' : 'none' }}>›</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', fontFamily: 'monospace' }}>{formatTime(row.eventTime)}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.cidNumber || '—'}</td>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db' }}>{row.cidName || <span style={{ color: '#6b7280' }}>—</span>}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.extension}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{directionBadge(row.direction)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#9ca3af' }}>{row.eventCount}</td>
+                </tr>
+                {expandedCall === row.linkedId && (
+                  <tr><td colSpan="8" style={{ padding: 0, background: '#0f172a' }}>
+                    <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
+                      <span>開始：<span style={{ color: '#d1d5db' }}>{formatTime(row.eventTime)}</span></span>
+                      <span>結束：<span style={{ color: '#d1d5db' }}>{formatTime(row.endTime)}</span></span>
+                      <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace' }}>{row.linkedId}</span></span>
+                      <span>通道：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.channelName}</span></span>
+                    </div>
+                  </td></tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
+        <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {filtered.length} 筆記錄</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
+            style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
+            {[10, 20, 50, '全部'].map(o => <option key={o} value={o}>{o === '全部' ? o : `${o} 條/頁`}</option>)}
+          </select>
+          <button disabled={safePage <= 1} onClick={() => onPageChange(p => p - 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage <= 1 ? '#4b5563' : '#9ca3af', cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
+          <button disabled={safePage >= totalPages} onClick={() => onPageChange(p => p + 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage >= totalPages ? '#4b5563' : '#9ca3af', cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+        </div>
+      </div>
+    </div>
   );
 }
