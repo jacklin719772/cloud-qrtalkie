@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw, HelpCircle } from 'lucide-react';
+import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw, HelpCircle, BarChart3 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Dashboard from './Dashboard';
@@ -72,6 +72,7 @@ const viewTitles = {
   'order-detail': '訂單詳情',
   'platform-admin-management': '管理員設置',
   'dashboard-platform': 'QRTalkie Cloud 平台概覽',
+  'analytics': '統計分析',
 };
 
 function getNameFromEmail(email) {
@@ -714,6 +715,17 @@ export default function ConsoleLayout({ onLogout }) {
 
         <div className="main-scroll">
           {currentView === 'dashboard' && <PlatformDashboard />}
+          {currentView === 'analytics' && (
+            <section className="view active" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
+                <BarChart3 size={64} color="#374151" style={{ marginBottom: '24px' }} />
+                <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#e5e7eb', margin: '0 0 12px' }}>統計分析</h2>
+                <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, textAlign: 'center', maxWidth: '400px', lineHeight: 1.8 }}>
+                  平台通話統計、帳號使用分析、租戶活躍度等數據分析功能即將推出，敬請期待。
+                </p>
+              </div>
+            </section>
+          )}
           {currentView === 'users' && <TenantDashboard onNavigate={setCurrentView} />}
           {currentView === 'registrations' && (
           userType === 'sip' ? <MyAccount identity={identity} /> : <Registrations />

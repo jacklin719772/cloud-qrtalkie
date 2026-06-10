@@ -19,10 +19,12 @@ import {
   Headset,
   Key,
   Monitor,
+  BarChart3,
 } from 'lucide-react';
 
 const navItems = [
   { id: 'dashboard', label: '平台概覽', icon: Gauge },
+  { id: 'analytics', label: '統計分析', icon: BarChart3 },
   { id: 'users', label: '租戶概覽', icon: RadioTower },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
