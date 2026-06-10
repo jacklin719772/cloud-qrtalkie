@@ -13844,6 +13844,38 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
       });
     }
 
+    const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
+      attempted: true,
+      success: false,
+      status: false,
+      message: error?.message || "reload failed",
+      transactionId: null,
+      waitStrategy: "error",
+      apiStatus: null,
+    }));
+    if (!applyConfig?.success) {
+      return response.status(500).json({
+        success: false,
+        message: "WebRTC 帳號顯示名稱更新失敗",
+        error: {
+          code: "FWCONSOLE_RELOAD_FAILED",
+          message: "FreePBX 套用配置失敗",
+        },
+        data: {
+          extension,
+          displayName,
+          updated: true,
+          needReload: true,
+          applyConfigSuccess: false,
+          applyConfig: {
+            success: false,
+            transactionId: applyConfig?.transactionId || null,
+            waitStrategy: applyConfig?.waitStrategy || null,
+          },
+        },
+      });
+    }
+
     const afterConfig = await getPjsipEndpointConfig(extension).catch(() => null);
     const compareFields = [
       "transport",
@@ -13893,8 +13925,13 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
         extension,
         displayName,
         updated,
-        needReload: true,
-        applyConfigSuccess: false,
+        needReload: false,
+        applyConfigSuccess: true,
+        applyConfig: {
+          success: true,
+          transactionId: applyConfig?.transactionId || null,
+          waitStrategy: applyConfig?.waitStrategy || null,
+        },
       },
     });
   } catch (error) {
