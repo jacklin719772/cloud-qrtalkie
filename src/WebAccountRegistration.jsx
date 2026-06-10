@@ -53,6 +53,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetPasswordMode, setResetPasswordMode] = useState(null); // null | 'choose' | 'custom' | 'default'
+  const DEFAULT_PASSWORD = import.meta.env.VITE_WEB_ACCOUNT_DEFAULT_PASSWORD || 'Lin1971wn719772';
   // WebRTC 新增弹窗
   const [showAddModal, setShowAddModal] = useState(false);
   const [addExtension, setAddExtension] = useState('');
@@ -632,8 +634,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'reset_password') {
       setResetPasswordAccount(account);
+      setResetPasswordMode('choose');
       setResetPasswordValue('');
-      setResetConfirmPasswordValue('');
       setResetMessage({ type: '', text: '' });
       return;
     }
@@ -669,18 +671,14 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
   }
 
-  async function handleResetPassword() {
+  async function handleResetPassword(password) {
     if (!resetPasswordAccount) return;
-    if (!resetPasswordValue || resetPasswordValue.length < 6) {
-      setResetMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
-      return;
-    }
     setIsResetting(true);
     setResetMessage({ type: '', text: '' });
     try {
-      const result = await apiClient.patch(`/pbx/webrtc-accounts/${resetPasswordAccount.username}/password`, { password: resetPasswordValue });
+      const result = await apiClient.patch(`/pbx/webrtc-accounts/${resetPasswordAccount.username}/password`, { password });
       setResetMessage({ type: 'success', text: result.message || '密碼已更新' });
-      setTimeout(() => { setResetPasswordAccount(null); setResetPasswordValue(''); }, 1000);
+      setTimeout(() => { setResetPasswordAccount(null); setResetPasswordMode(null); setResetPasswordValue(''); }, 1000);
     } catch (err) {
       const data = err.response?.data || err.data || {};
       let errText = data.error?.message || data.message || err.message || '密碼更新失敗';
@@ -1490,37 +1488,102 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       )}
 
       {resetPasswordAccount && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setResetPasswordAccount(null); }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) { setResetPasswordAccount(null); setResetPasswordMode(null); } }}>
           <div style={{ width: 'min(420px, 90vw)', backgroundColor: '#111827', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3></div>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼 — {resetPasswordAccount.username}</h3>
+              <button onClick={() => { setResetPasswordAccount(null); setResetPasswordMode(null); setResetMessage({ type: '', text: '' }); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+            </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {!isResetting ? (<>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <b style={{ color: '#ef4444' }}>*</b></span>
-                  <input type="password" value={resetPasswordValue} onChange={(e) => setResetPasswordValue(e.target.value)} placeholder="至少 6 個字元"
-                    style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
-                    onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-                </label>
-                {resetMessage.text && (
-                  <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : resetMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{resetMessage.text}</p>
-                )}
-              </>) : (
-                <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '14px' }}>
-                  <div style={{ marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>正在更新密碼...</span>
-                  </div>
-                  <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  </div>
-                </div>
+              {resetPasswordMode === 'choose' && (
+                <>
+                  <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: 1.7 }}>
+                    請選擇密碼修改方式：
+                  </p>
+                  <button type="button" onClick={() => { setResetPasswordMode('custom'); setResetMessage({ type: '', text: '' }); }}
+                    style={{ padding: '14px 16px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#1e293b', color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: '#60a5fa' }}>自訂密碼</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>手動輸入新密碼，修改後可能影響訪客功能，請謹慎使用</div>
+                  </button>
+                  <button type="button" onClick={() => { setResetPasswordMode('default'); setResetMessage({ type: '', text: '' }); }}
+                    style={{ padding: '14px 16px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#1e293b', color: '#d1d5db', cursor: 'pointer', textAlign: 'left', fontSize: '14px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: '#22c55e' }}>使用預設密碼</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>使用系統預設的 Web 帳號密碼</div>
+                  </button>
+                </>
               )}
-              {isResetting && resetMessage.text && (
-                <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>
+
+              {resetPasswordMode === 'custom' && (
+                <>
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#3b1111', border: '1px solid #7f1d1d' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#fca5a5', lineHeight: 1.6 }}>
+                      ⚠ 修改密碼後可能影響訪客功能，請謹慎使用。
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <b style={{ color: '#ef4444' }}>*</b></span>
+                    <input type="password" value={resetPasswordValue} onChange={(e) => setResetPasswordValue(e.target.value)} placeholder="至少 6 個字元"
+                      style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  </label>
+                  {!isResetting && resetMessage.text && (
+                    <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : resetMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{resetMessage.text}</p>
+                  )}
+                  {isResetting && (
+                    <>
+                      <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '14px' }}>
+                        <div style={{ marginBottom: '8px' }}><span style={{ fontSize: '12px', color: '#9ca3af' }}>正在更新密碼...</span></div>
+                        <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        </div>
+                      </div>
+                      {resetMessage.text && <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>}
+                    </>
+                  )}
+                </>
+              )}
+
+              {resetPasswordMode === 'default' && (
+                <>
+                  <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px' }}>系統預設 Web 帳號密碼：</p>
+                  <div style={{ padding: '12px', borderRadius: '8px', background: '#0f172a', border: '1px solid #1f2937', textAlign: 'center' }}>
+                    <span style={{ fontSize: '18px', fontWeight: 700, color: '#60a5fa', letterSpacing: '2px', fontFamily: 'monospace' }}>{DEFAULT_PASSWORD}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>點擊確認後將使用上述預設密碼更新此帳號</p>
+                  {!isResetting && resetMessage.text && (
+                    <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>
+                  )}
+                  {isResetting && (
+                    <>
+                      <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '14px' }}>
+                        <div style={{ marginBottom: '8px' }}><span style={{ fontSize: '12px', color: '#9ca3af' }}>正在更新密碼...</span></div>
+                        <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '2px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                        </div>
+                      </div>
+                      {resetMessage.text && <p style={{ margin: 0, fontSize: '13px', color: resetMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetMessage.text}</p>}
+                    </>
+                  )}
+                </>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" onClick={() => { if (!isResetting) { setResetPasswordAccount(null); setResetPasswordValue(''); setResetMessage({ type: '', text: '' }); } }} disabled={isResetting} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isResetting ? 'not-allowed' : 'pointer' }}>取消</button>
-              <button type="button" onClick={handleResetPassword} disabled={isResetting || !resetPasswordValue || resetPasswordValue.length < 6} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: resetPasswordValue && resetPasswordValue.length >= 6 && !isResetting ? '#3b82f6' : '#1e3a5f', color: resetPasswordValue && resetPasswordValue.length >= 6 && !isResetting ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: resetPasswordValue && resetPasswordValue.length >= 6 && !isResetting ? 'pointer' : 'not-allowed' }}>{isResetting ? '更新中...' : '確認重設'}</button>
+              <button type="button" onClick={() => {
+                if (isResetting) return;
+                if (resetPasswordMode === 'choose') { setResetPasswordAccount(null); setResetPasswordMode(null); }
+                else { setResetPasswordMode('choose'); setResetMessage({ type: '', text: '' }); }
+              }} disabled={isResetting} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isResetting ? 'not-allowed' : 'pointer' }}>
+                {resetPasswordMode === 'choose' ? '取消' : '返回'}
+              </button>
+              {resetPasswordMode !== 'choose' && (
+                <button type="button" onClick={() => {
+                  const pwd = resetPasswordMode === 'default' ? DEFAULT_PASSWORD : resetPasswordValue;
+                  setResetPasswordValue(pwd);
+                  handleResetPassword(pwd);
+                }} disabled={isResetting || (resetPasswordMode === 'custom' && (!resetPasswordValue || resetPasswordValue.length < 6))} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: (!isResetting && (resetPasswordMode === 'default' || resetPasswordValue.length >= 6)) ? '#3b82f6' : '#1e3a5f', color: (!isResetting && (resetPasswordMode === 'default' || resetPasswordValue.length >= 6)) ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: (!isResetting && (resetPasswordMode === 'default' || resetPasswordValue.length >= 6)) ? 'pointer' : 'not-allowed' }}>
+                  {isResetting ? '更新中...' : '確認更新'}
+                </button>
+              )}
             </div>
           </div>
         </div>,
