@@ -23,6 +23,7 @@ import {
   fetchExtension as freepbxFetchExtension,
   getExtensionInputSchema as freepbxGetExtensionInputSchema,
   deleteExtension as freepbxDeleteExtension,
+  updateExtensionPassword as freepbxUpdateExtensionPassword,
   updateExtension as freepbxUpdateExtension,
 } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
@@ -13965,6 +13966,188 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
       data: {
         extension,
         displayName,
+        updated: false,
+        needReload: false,
+      },
+    });
+  }
+});
+app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以更新 WebRTC 帳號密碼。",
+      error: {
+        code: "WEBRTC_PASSWORD_UPDATE_FAILED",
+        message: "只有平台管理員可以更新 WebRTC 帳號密碼。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || "").trim();
+  const password = sanitizeString(request.body?.password ?? request.body?.newPassword, 128);
+
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  if (!password) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號密碼不正確",
+      error: {
+        code: "INVALID_WEBRTC_PASSWORD",
+        message: "WebRTC 帳號密碼不可為空白",
+      },
+    });
+  }
+
+  if (password.length > 128) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號密碼不正確",
+      error: {
+        code: "INVALID_WEBRTC_PASSWORD",
+        message: "WebRTC 帳號密碼長度不得超過 128 個字元",
+      },
+    });
+  }
+
+  try {
+    const existing = await freepbxFetchExtension(extension);
+    if (!existing) {
+      return response.status(404).json({
+        success: false,
+        message: "WebRTC 帳號不存在",
+        error: {
+          code: "WEBRTC_ACCOUNT_NOT_FOUND",
+          message: "WebRTC 帳號不存在",
+        },
+      });
+    }
+
+    const beforeConfig = await getPjsipEndpointConfig(extension).catch(() => null);
+    const updateResult = await freepbxUpdateExtensionPassword(extension, password);
+    if (!updateResult?.status) {
+      return response.status(500).json({
+        success: false,
+        message: "WebRTC 帳號密碼更新失敗",
+        error: {
+          code: "FREEPBX_PASSWORD_UPDATE_FAILED",
+          message: "WebRTC 帳號密碼更新失敗",
+        },
+        data: {
+          extension,
+          updated: false,
+          needReload: false,
+        },
+      });
+    }
+
+    const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
+      attempted: true,
+      success: false,
+      status: false,
+      message: error?.message || "reload failed",
+      transactionId: null,
+      waitStrategy: "error",
+      apiStatus: null,
+    }));
+    if (!applyConfig?.success) {
+      return response.status(500).json({
+        success: false,
+        message: "WebRTC 帳號密碼更新失敗",
+        error: {
+          code: "FWCONSOLE_RELOAD_FAILED",
+          message: "FreePBX 套用配置失敗",
+        },
+        data: {
+          extension,
+          updated: true,
+          needReload: true,
+          applyConfigSuccess: false,
+          applyConfig: {
+            success: false,
+            transactionId: applyConfig?.transactionId || null,
+            waitStrategy: applyConfig?.waitStrategy || null,
+          },
+        },
+      });
+    }
+
+    const afterConfig = await getPjsipEndpointConfig(extension).catch(() => null);
+    const compareFields = [
+      "transport",
+      "allow",
+      "media_address",
+      "direct_media",
+      "webrtc",
+      "use_avpf",
+      "ice_support",
+      "rtcp_mux",
+      "bundle",
+      "media_encryption",
+      "media_use_received_transport",
+      "dtls_auto_generate_cert",
+      "dtls_setup",
+      "dtls_verify",
+      "allow_unauthenticated_options",
+      "rtp_timeout",
+      "rtp_timeout_hold",
+      "asymmetric_rtp_codec",
+    ];
+    const changedWebrtcFields = compareEndpointFields(beforeConfig || {}, afterConfig || {}, compareFields).filter((item) => !item.passed);
+    if (changedWebrtcFields.length) {
+      return response.status(500).json({
+        success: false,
+        message: "密碼更新導致 WebRTC 配置改變，已停止操作",
+        error: {
+          code: "WEBRTC_PASSWORD_UPDATE_CHANGED_WEBRTC_CONFIG",
+          message: "密碼更新導致 WebRTC 配置改變，已停止操作",
+        },
+        data: {
+          extension,
+          updated: false,
+          needReload: true,
+          changedFields: changedWebrtcFields,
+        },
+      });
+    }
+
+    return response.json({
+      success: true,
+      message: "WebRTC 帳號密碼已更新",
+      data: {
+        extension,
+        updated: true,
+        needReload: false,
+        applyConfigSuccess: true,
+        applyConfig: {
+          success: true,
+          transactionId: applyConfig?.transactionId || null,
+          waitStrategy: applyConfig?.waitStrategy || null,
+        },
+      },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      success: false,
+      message: "WebRTC 帳號密碼更新失敗",
+      error: {
+        code: error?.code === "FREEPBX_PASSWORD_UPDATE_FAILED"
+          ? "FREEPBX_PASSWORD_UPDATE_FAILED"
+          : "WEBRTC_PASSWORD_UPDATE_FAILED",
+        message: error?.message || "WebRTC 帳號密碼更新失敗",
+      },
+      data: {
+        extension,
         updated: false,
         needReload: false,
       },
