@@ -323,7 +323,6 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setIsSavingEdit(false);
     }
   }
-  }
 
   function startBatchAdd() {
     setBatchAddForm({ start: getNextNumericUsername(), count: '100' });
