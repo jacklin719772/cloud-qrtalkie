@@ -31,8 +31,9 @@ function escapeRegExp(value) {
 function compilePathPattern(pathPattern) {
   const raw = String(pathPattern || '').trim();
   if (!raw) return null;
-  const regex = '^' + escapeRegExp(raw)
-    .replace(/\\:([A-Za-z0-9_]+)/g, '[^/]+')
+  const escaped = escapeRegExp(raw);
+  const regex = '^' + escaped
+    .replace(/(^|[^\\]):([A-Za-z0-9_]+)/g, '$1[^/]+')
     .replace(/\\\*/g, '.*') + '$';
   return new RegExp(regex);
 }
