@@ -4,12 +4,12 @@ const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_API_DEFAULT_TIMEOUT_MS ||
 const DEFAULT_TIMEOUT_RULES = [
   {
     method: 'patch',
-    path: '/pbx/webrtc-accounts/:extension/display-name',
+    path: '/api/pbx/webrtc-accounts/:extension/display-name',
     timeoutMs: 60000,
   },
   {
     method: 'post',
-    path: '/pbx/webrtc-accounts',
+    path: '/api/pbx/webrtc-accounts',
     timeoutMs: 120000,
   },
 ];
