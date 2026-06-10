@@ -1202,9 +1202,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left }}>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('edit', account)}>編輯</button>
-                            <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', account)}>重設密碼</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
-                            <button type="button" className="dropdown-item" onClick={() => handleAction(account.tenantName ? 'unassign' : 'assign', account)}>{account.tenantName ? '取消分配' : '帳號分配'}</button>
+                            <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', account)}>重設密碼</button>
                             <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', account)}>刪除</button>
                           </div>,
                           document.body
