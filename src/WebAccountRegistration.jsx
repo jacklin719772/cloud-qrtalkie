@@ -313,7 +313,10 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setIsSavingEdit(true);
     setEditMessage({ type: '', text: '' });
     try {
-      const result = await apiClient.patch(`/pbx/webrtc-accounts/${editAccount.username}/display-name`, { displayName: editDisplayName.trim() });
+      const result = await apiClient.patch(
+        `/pbx/webrtc-accounts/${editAccount.username}/display-name`,
+        { displayName: editDisplayName.trim() },
+      );
       setEditMessage({ type: 'success', text: result.message || '顯示名稱已更新' });
       setTimeout(() => { setEditAccount(null); loadAccounts(); }, 1000);
     } catch (err) {
