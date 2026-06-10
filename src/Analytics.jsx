@@ -179,7 +179,7 @@ export default function Analytics() {
             </select>
             <select value={assignFilter} onChange={e => { setAssignFilter(e.target.value); setCurrentPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
-              <option value="all">全部分配</option>
+              <option value="all">全部</option>
               <option value="assigned">已分配</option>
               <option value="unassigned">未分配</option>
             </select>
