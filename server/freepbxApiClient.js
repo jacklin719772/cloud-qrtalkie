@@ -261,6 +261,28 @@ export async function updateExtensionDisplayName(extension, displayName, schema 
   return updateExtension(extension, payload);
 }
 
+export async function updateExtensionPassword(extension, password, schema = null) {
+  const resolvedSchema = schema || (await getExtensionInputSchema());
+  const updateSchema = resolvedSchema?.updateExtensionInput || {};
+  const payload = {};
+  const candidates = ["extPassword", "password", "secret"];
+  for (const key of candidates) {
+    if (Object.prototype.hasOwnProperty.call(updateSchema, key)) {
+      payload[key] = password;
+      break;
+    }
+  }
+
+  if (!Object.keys(payload).length) {
+    const error = new FreepbxApiError("FreePBX password update field not supported.", {
+      code: "FREEPBX_PASSWORD_UPDATE_FAILED",
+    });
+    throw error;
+  }
+
+  return updateExtension(extension, payload);
+}
+
 function simplifyGraphqlType(type) {
   if (!type) return "";
   if (type.name) return type.name;
