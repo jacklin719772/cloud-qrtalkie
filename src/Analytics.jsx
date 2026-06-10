@@ -6,6 +6,7 @@ const TABS = [
   { key: 'web', label: 'Web 帳號狀態' },
   { key: 'sip', label: 'SIP 帳號狀態' },
   { key: 'callLog', label: 'Web 呼叫日誌' },
+  { key: 'sipCallLog', label: 'SIP 呼叫日誌' },
 ];
 
 const MOCK_CALL_LOGS = [
@@ -292,6 +293,43 @@ export default function Analytics() {
       )}
       {/* Web 呼叫日誌 Tab */}
       {activeTab === 'callLog' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
+            <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '130px' }}>
+              <option value="">選擇分機號</option>
+              {accounts.filter(a => /^\d+$/.test(a.username)).map(a => (
+                <option key={a.id} value={a.username}>{a.username} {a.displayName ? `(${a.displayName})` : ''}</option>
+              ))}
+            </select>
+            <div style={{ position: 'relative', width: '200px' }}>
+              <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" placeholder="搜尋主叫/被叫號碼" value={callSearch} onChange={e => { setCallSearch(e.target.value); setCallPage(1); }}
+                style={{ width: '100%', height: '40px', padding: '0 14px 0 38px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+            </div>
+            <input type="date" value={callDateFrom} onChange={e => { setCallDateFrom(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+            <span style={{ color: '#6b7280', fontSize: '13px' }}>至</span>
+            <input type="date" value={callDateTo} onChange={e => { setCallDateTo(e.target.value); setCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+          </div>
+          <CallLogTable logs={callLogs} total={callLogTotal} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo}
+            page={callPage} pageSize={callPageSize} onPageChange={setCallPage} onPageSizeChange={v => { setCallPageSize(v); setCallPage(1); }}
+            expandedCall={expandedCall} onToggleExpand={setExpandedCall} isLoading={isCallLogLoading}
+            extension={callExtension} onFetch={async (ext, params) => {
+              setIsCallLogLoading(true);
+              try {
+                const qs = new URLSearchParams(params).toString();
+                const res = await apiClient.get(`/pbx/webrtc-accounts/${ext}/call-logs?${qs}`);
+                setCallLogs(res.data?.calls || []);
+                setCallLogTotal(res.data?.total || 0);
+              } catch { setCallLogs([]); setCallLogTotal(0); }
+              finally { setIsCallLogLoading(false); }
+            }} />
+        </div>
+      )}
+      {/* SIP 呼叫日誌 Tab */}
+      {activeTab === 'sipCallLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
             <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
