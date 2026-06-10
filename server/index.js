@@ -13918,6 +13918,23 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
       });
     }
 
+    // 同步更新 SaaS 数据库中的显示名称
+    let dbUpdated = false;
+    try {
+      const dbConn = await pool.getConnection();
+      try {
+        await dbConn.query(
+          `UPDATE web_users SET display_name = ? WHERE username = ? AND sip_domain = ?`,
+          [displayName, extension, webrtcDomain],
+        );
+        dbUpdated = true;
+      } finally {
+        dbConn.release();
+      }
+    } catch (dbErr) {
+      console.error("Failed to sync display name to database:", dbErr?.message);
+    }
+
     return response.json({
       success: true,
       message: "WebRTC 帳號顯示名稱已更新",
@@ -13927,6 +13944,7 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
         updated,
         needReload: false,
         applyConfigSuccess: true,
+        dbUpdated,
         applyConfig: {
           success: true,
           transactionId: applyConfig?.transactionId || null,
