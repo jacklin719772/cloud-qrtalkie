@@ -348,43 +348,48 @@ function CallLogTable({ logs, search, dateFrom, dateTo, direction, page, pageSiz
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
-        <table style={{ width: '100%', minWidth: '1020px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              <th style={{ width: '30px', padding: '12px 0', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}></th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>開始時間</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>主叫號碼</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>主叫名稱</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>被叫號碼</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>方向</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>時長</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>事件數</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Date</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Caller</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Dialed</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Duration</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Play</th>
+              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Details</th>
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
-              <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+              <tr><td colSpan="6" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
             ) : paginated.map(row => (
               <React.Fragment key={row.linkedId}>
-                <tr style={{ borderBottom: '1px solid #1f2937', cursor: 'pointer' }} onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}>
-                  <td style={{ padding: '12px 0', textAlign: 'center', color: '#e5e7eb' }}>
-                    <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: expandedCall === row.linkedId ? 'rotate(90deg)' : 'none' }}>›</span>
+                <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px' }}>{formatTime(row.eventTime)}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>
+                    {row.cidName ? <span>{row.cidName}<br/><span style={{ fontSize: '11px', color: '#9ca3af' }}>{row.cidNumber}</span></span> : row.cidNumber || '—'}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', fontFamily: 'monospace' }}>{formatTime(row.eventTime)}</td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.cidNumber || '—'}</td>
-                  <td style={{ padding: '12px 16px', color: '#d1d5db' }}>{row.cidName || <span style={{ color: '#6b7280' }}>—</span>}</td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.extension}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{directionBadge(row.direction)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#9ca3af' }}>{row.eventCount}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.extension}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <button style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '18px', padding: '4px' }} title="播放錄音">▶</button>
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <button onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}
+                      style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px' }}>
+                      {expandedCall === row.linkedId ? '收起' : '詳情'}
+                    </button>
+                  </td>
                 </tr>
                 {expandedCall === row.linkedId && (
-                  <tr><td colSpan="8" style={{ padding: 0, background: '#0f172a' }}>
-                    <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
+                  <tr><td colSpan="6" style={{ padding: 0, background: '#0f172a' }}>
+                    <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
                       <span>開始：<span style={{ color: '#d1d5db' }}>{formatTime(row.eventTime)}</span></span>
                       <span>結束：<span style={{ color: '#d1d5db' }}>{formatTime(row.endTime)}</span></span>
-                      <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace' }}>{row.linkedId}</span></span>
+                      <span>方向：{directionBadge(row.direction)}</span>
+                      <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.linkedId}</span></span>
                       <span>通道：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.channelName}</span></span>
+                      <span>事件數：<span style={{ color: '#d1d5db' }}>{row.eventCount}</span></span>
                     </div>
                   </td></tr>
                 )}
