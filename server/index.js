@@ -13476,7 +13476,7 @@ async function handleWebrtcAccountDelete(request, response) {
         }, 502);
       }
       // 同步刪除 SaaS 數據庫記錄
-      const deletedExts = responseData.items.filter(i => i.status === 'deleted').map(i => i.extension);
+      const deletedExts = responseData.items.filter(i => i.status === 'deleted' || i.status === 'not_found').map(i => i.extension);
       if (deletedExts.length > 0) {
         try {
           const dbConn = await pool.getConnection();
