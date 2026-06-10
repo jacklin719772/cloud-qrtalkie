@@ -89,3 +89,15 @@ bash restart.sh
 tmux attach -t 0
 
 codex resume --last
+
+提交代码
+cd /opt/saas && git add server/index.js server/webrtcAccountWorkflow.js && git commit -m "fix: add retry logic for runtime verification with configurable delay" && git push origin master
+
+拉取代码：
+cd /opt/saas && git pull && bash restart.sh
+
+codex登录
+本地 cmd
+ssh -i C:\Users\dalia\.ssh\google_compute_engine -L 1455:127.0.0.1:1455 dalia@35.221.190.216
+ssh连接成功后到服务器
+codex login
