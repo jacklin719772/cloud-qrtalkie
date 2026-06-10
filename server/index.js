@@ -34,6 +34,10 @@ import {
 } from "./asteriskCommandService.js";
 import { CelCallLogError, queryCelCallLogs } from "./celCallLogService.js";
 import { getWebrtcPresence, getWebrtcPresenceBatch, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
+import {
+  FlexisipRegistrationStatusError,
+  getRegistrationStatusForAccounts,
+} from "./flexisipRegistrationStatusService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
 import {
   buildExpectedGeneratedEndpointSection,
@@ -365,6 +369,11 @@ function normalizeEmail(email) {
 
 function sanitizeString(value, maxLength = 255) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+function parseNonNegativeInteger(value, fallback = 0) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
 async function removePaymentProofFile(proofUrl) {
@@ -14857,6 +14866,173 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       code: error?.code || "WEBRTC_ACCOUNT_CREATE_FAILED",
       message: error?.message || "WebRTC 帳號建立失敗",
     }, 500);
+  }
+});
+
+// GET /api/flexisip/accounts/registration-status - read-only Flexisip Registrar status for active SIP accounts.
+app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查看註冊狀態",
+      error: {
+        code: "FLEXISIP_REGISTRATION_STATUS_FORBIDDEN",
+        message: "只有平台管理員可以查看註冊狀態",
+      },
+    });
+  }
+
+  const domain = sanitizeString(request.query.domain || "", 255).toLowerCase();
+  const tenantIdRaw = sanitizeString(request.query.tenantId || "", 40);
+  const communityIdRaw = sanitizeString(request.query.communityId || "", 40);
+  const includeContacts = String(request.query.includeContacts || "false").toLowerCase() === "true";
+  const offset = parseNonNegativeInteger(request.query.offset, 0);
+  const requestedLimit = parseNonNegativeInteger(request.query.limit, 50);
+  const limit = Math.min(Math.max(requestedLimit || 50, 1), 100);
+
+  if (
+    (domain && !/^[a-z0-9.-]+$/i.test(domain)) ||
+    (tenantIdRaw && !/^\d+$/.test(tenantIdRaw)) ||
+    (communityIdRaw && !/^\d+$/.test(communityIdRaw))
+  ) {
+    return response.status(400).json({
+      success: false,
+      message: "查詢參數格式不正確",
+      error: {
+        code: "INVALID_REGISTRATION_STATUS_QUERY",
+        message: "查詢參數格式不正確",
+      },
+    });
+  }
+
+  const where = ["u.status = 'active'", "u.deleted_in_flexisip_at IS NULL"];
+  const params = [];
+  if (domain) {
+    where.push("u.sip_domain = ?");
+    params.push(domain);
+  }
+  if (tenantIdRaw) {
+    where.push("u.tenant_id = ?");
+    params.push(Number(tenantIdRaw));
+  }
+  if (communityIdRaw) {
+    where.push("ac.id = ?");
+    params.push(Number(communityIdRaw));
+  }
+
+  const whereSql = where.join(" AND ");
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const countRows = await connection.query(
+      `SELECT COUNT(*) AS total
+       FROM sip_users u
+       LEFT JOIN access_rooms ar ON ar.sip_user_id = u.id
+       LEFT JOIN access_buildings ab ON ab.id = ar.building_id
+       LEFT JOIN access_communities ac ON ac.id = ab.community_id
+       WHERE ${whereSql}`,
+      params,
+    );
+    const total = Number(countRows?.[0]?.total || 0);
+    const rows = await connection.query(
+      `SELECT
+         u.id,
+         u.username,
+         u.sip_domain AS domain,
+         u.display_name AS displayName,
+         u.status,
+         u.tenant_id AS tenantId,
+         u.flexisip_account_id AS flexisipAccountId,
+         u.sip_uri AS sipUri,
+         u.sync_status AS syncStatus,
+         t.name AS tenantName,
+         ac.id AS communityId,
+         ac.name AS communityName,
+         ab.id AS buildingId,
+         ab.name AS buildingName,
+         ar.id AS roomId,
+         ar.room_number AS roomNumber
+       FROM sip_users u
+       LEFT JOIN tenants t ON t.id = u.tenant_id
+       LEFT JOIN access_rooms ar ON ar.sip_user_id = u.id
+       LEFT JOIN access_buildings ab ON ab.id = ar.building_id
+       LEFT JOIN access_communities ac ON ac.id = ab.community_id
+       WHERE ${whereSql}
+       ORDER BY u.created_at DESC, u.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+
+    const accounts = rows.map((row) => ({
+      id: Number(row.id),
+      username: row.username,
+      domain: row.domain || domain || sipDomain,
+      displayName: row.displayName || "",
+      tenantId: row.tenantId == null ? null : Number(row.tenantId),
+      tenantName: row.tenantName || "",
+      communityId: row.communityId == null ? null : Number(row.communityId),
+      communityName: row.communityName || "",
+      buildingId: row.buildingId == null ? null : Number(row.buildingId),
+      buildingName: row.buildingName || "",
+      roomId: row.roomId == null ? null : Number(row.roomId),
+      roomNumber: row.roomNumber || "",
+      accountStatus: row.status || "",
+      flexisipAccountId: row.flexisipAccountId || null,
+      sipUri: row.sipUri || null,
+      syncStatus: row.syncStatus || "",
+    }));
+
+    const statusResult = await getRegistrationStatusForAccounts(accounts, {
+      includeContacts,
+      domain: domain || sipDomain,
+    });
+    const items = statusResult.items;
+    const online = items.filter((item) => item.status === "online").length;
+    const offline = items.filter((item) => item.status === "offline").length;
+    const unknown = items.filter((item) => item.status === "unknown").length;
+
+    return response.json({
+      success: true,
+      message: "帳號註冊狀態已取得",
+      data: {
+        total,
+        online,
+        offline,
+        unknown,
+        limit,
+        offset,
+        checkedAt: statusResult.checkedAt,
+        items,
+      },
+    });
+  } catch (error) {
+    if (error instanceof FlexisipRegistrationStatusError && error.code === "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE") {
+      console.error("Flexisip Registrar Redis unavailable:", {
+        message: error.message,
+      });
+      return response.status(503).json({
+        success: false,
+        message: "註冊狀態服務暫時不可用",
+        error: {
+          code: "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE",
+          message: "註冊狀態服務暫時不可用",
+        },
+      });
+    }
+
+    console.error("Failed to query Flexisip registration status:", {
+      message: error?.message || String(error),
+    });
+    return response.status(500).json({
+      success: false,
+      message: "帳號註冊狀態查詢失敗",
+      error: {
+        code: "FLEXISIP_REGISTRATION_STATUS_QUERY_FAILED",
+        message: "帳號註冊狀態查詢失敗",
+      },
+    });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
