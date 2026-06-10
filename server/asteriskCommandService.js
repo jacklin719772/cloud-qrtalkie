@@ -23,7 +23,8 @@ function assertValidExtension(extension) {
 function extractLineValue(output, field) {
   const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const matches = Array.from(String(output || "").matchAll(new RegExp(`^\\s*${escaped}\\s*:\\s*(.*?)\\s*$`, "gim")));
-  const match = matches[matches.length - 1];
+  // 跳过参数表格标题行（含 <>），取实际值
+  const match = matches.find(m => !/<.*>/.test(m[1]));
   return match ? match[1].trim() : "";
 }
 
