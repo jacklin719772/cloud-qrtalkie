@@ -509,51 +509,70 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
   }
 
+  const [batchResults, setBatchResults] = useState([]);
+  const [batchCurrentExt, setBatchCurrentExt] = useState('');
+
   async function handleBatchAddSubmit(event) {
     event.preventDefault();
     const start = Number(batchAddForm.start);
     const count = Number(batchAddForm.count);
     if (!Number.isInteger(start) || start <= 0) {
-      setBatchAddMessage({ type: 'error', text: '請輸入有效的起始帳號数值。' });
+      setBatchAddMessage({ type: 'error', text: '請輸入有效的起始帳號。' });
       return;
     }
-    if (!Number.isInteger(count) || count <= 0 || count > 1000) {
-      setBatchAddMessage({ type: 'error', text: '增加數量必须在 1 到 1000 之间。' });
-      return;
-    }
-    const existingUsernames = new Set(accounts.map((account) => `${String(account.username || '').trim()}@${account.domain || defaultSipDomain}`));
-    const duplicateUsername = Array.from({ length: count }, (_, index) => String(start + index)).find((username) => existingUsernames.has(`${username}@${defaultSipDomain}`));
-    if (duplicateUsername) {
-      setBatchAddMessage({ type: 'error', text: `帳號 ${duplicateUsername} 已存在，请调整起始帳號或數量。` });
+    if (!Number.isInteger(count) || count <= 0 || count > 100) {
+      setBatchAddMessage({ type: 'error', text: '數量必須在 1 到 100 之間。' });
       return;
     }
 
     setIsBatchAdding(true);
     setBatchAddMessage({ type: '', text: '' });
+    setBatchResults([]);
+    setBatchCurrentExt(String(start));
+
+    const results = [];
     let successCount = 0;
-    const errors = [];
-    for (let index = 0; index < count; index += 1) {
-      const username = String(start + index);
-      try {
-        await apiClient.post('/admin/web-accounts', {
-          ...emptyWebAccountForm,
-          username,
-          displayName: username,
-          domain: defaultSipDomain,
-        });
-        successCount += 1;
-      } catch (error) {
-        errors.push(`${username}: ${error.message || '儲存失敗'}`);
+    let failCount = 0;
+    const existingSet = new Set(accounts.map(a => a.username));
+
+    for (let i = 0; i < count; i++) {
+      const ext = String(start + i);
+      setBatchCurrentExt(ext);
+
+      // 本地重複
+      if (existingSet.has(ext)) {
+        results.push({ ext, status: 'skipped', label: '本地已存在' });
+        failCount++;
+        setBatchResults([...results]);
+        continue;
       }
+
+      try {
+        const res = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
+        results.push({ ext, status: 'success', label: '創建成功', steps: res.data?.steps || [] });
+        successCount++;
+      } catch (err) {
+        const data = err.response?.data || err.data || {};
+        const code = data.error?.code;
+        if (code === 'FREEPBX_EXTENSION_ALREADY_EXISTS') {
+          results.push({ ext, status: 'skipped', label: '遠端已存在' });
+        } else {
+          results.push({ ext, status: 'failed', label: data.error?.message || data.message || err.message || '創建失敗' });
+        }
+        failCount++;
+      }
+      setBatchResults([...results]);
     }
-    await loadAccounts();
+
     setIsBatchAdding(false);
-    if (errors.length > 0) {
-      setBatchAddMessage({ type: 'error', text: `已成功增加 ${successCount} 個，失敗 ${errors.length} 個。${errors.slice(0, 3).join('；')}` });
-      return;
+    await loadAccounts();
+
+    if (failCount > 0) {
+      setBatchAddMessage({ type: 'error', text: `已完成：${successCount} 個成功，${failCount} 個失敗。` });
+    } else {
+      setBatchAddMessage({ type: 'success', text: `全部 ${successCount} 個帳號創建成功。` });
+      setTimeout(() => { setBatchAddOpen(false); setBatchResults([]); }, 2000);
     }
-    setBatchAddMessage({ type: 'success', text: `已成功批量新增 ${successCount} 個帳號。` });
-    window.setTimeout(() => setBatchAddOpen(false), 800);
   }
 
   async function handleBatchDelete() {
@@ -1469,17 +1488,71 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       )}
 
       {batchAddOpen && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setBatchAddOpen(false); }}>
-          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量新增 Web 帳號</h3></div>
-            <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>起始帳號</span><input value={batchAddForm.start} onChange={(event) => setBatchAddForm((form) => ({ ...form, start: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}><span style={{ color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>新增數量</span><input value={batchAddForm.count} onChange={(event) => setBatchAddForm((form) => ({ ...form, count: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb' }} /></label>
-              {batchAddMessage.text && <p style={{ margin: 0, fontSize: '14px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{batchAddMessage.text}</p>}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !isBatchAdding) { setBatchAddOpen(false); setBatchResults([]); } }}>
+          <form onSubmit={handleBatchAddSubmit} style={{ width: 'min(520px, 90vw)', backgroundColor: '#111827', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
+            <div style={{ flexShrink: 0, padding: '18px 20px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量新增 Web 帳號</h3>
+              <button type="button" onClick={() => { if (!isBatchAdding) { setBatchAddOpen(false); setBatchResults([]); } }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500, cursor: 'pointer' }}>取消</button>
-              <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
+            <div style={{ flexShrink: 0, padding: '18px', display: 'flex', gap: '12px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 500 }}>起始帳號</span>
+                <input type="number" value={batchAddForm.start} onChange={(e) => setBatchAddForm(f => ({ ...f, start: e.target.value }))} disabled={isBatchAdding}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100px' }}>
+                <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 500 }}>數量</span>
+                <input type="number" min="1" max="100" value={batchAddForm.count} onChange={(e) => setBatchAddForm(f => ({ ...f, count: e.target.value }))} disabled={isBatchAdding}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+              </label>
+            </div>
+
+            {isBatchAdding && (
+              <div style={{ flexShrink: 0, padding: '0 18px 12px' }}>
+                <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                      正在創建 {batchCurrentExt}（{batchResults.length + 1}/{batchAddForm.count}）
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#6b7280' }}>每個帳號約需 30-60 秒，請耐心等待</span>
+                  </div>
+                  <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.round((batchResults.length / Number(batchAddForm.count || 1)) * 100)}%`, background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '2px', transition: 'width 0.3s ease' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {batchResults.length > 0 && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px 12px', scrollbarWidth: 'none', msOverflowStyle: 'none', minHeight: 0 }}>
+                <div style={{ maxHeight: '280px', overflowY: 'auto', background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {batchResults.map((r, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', borderBottom: i < batchResults.length - 1 ? '1px solid #1f2937' : 'none' }}>
+                      <span style={{ fontSize: '13px', color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#f59e0b' : '#ef4444', width: '16px', textAlign: 'center', flexShrink: 0 }}>
+                        {r.status === 'success' ? '✓' : r.status === 'skipped' ? '—' : '✗'}
+                      </span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#e5e7eb', flexShrink: 0 }}>{r.ext}</span>
+                      <span style={{ fontSize: '12px', color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#f59e0b' : '#ef4444', flex: 1, textAlign: 'right' }}>{r.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {batchAddMessage.text && !isBatchAdding && (
+              <div style={{ flexShrink: 0, padding: '0 18px 12px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{batchAddMessage.text}</p>
+                {batchAddMessage.type === 'error' && (
+                  <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#6b7280' }}>
+                    失敗帳號需手動檢查或更換分機號後重試。
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" disabled={isBatchAdding} onClick={() => { setBatchAddOpen(false); setBatchResults([]); }} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button type="submit" disabled={isBatchAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: isBatchAdding ? '#1e3a5f' : '#3b82f6', color: isBatchAdding ? '#6b7280' : '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: isBatchAdding ? 'not-allowed' : 'pointer' }}>{isBatchAdding ? '創建中...' : '開始批量新增'}</button>
             </div>
           </form>
         </div>,
