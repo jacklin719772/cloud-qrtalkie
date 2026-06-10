@@ -221,3 +221,40 @@ export async function getWebrtcPresence(extension) {
     if (connection) connection.release();
   }
 }
+
+export async function getWebrtcPresenceBatch(extensions) {
+  const list = Array.isArray(extensions) ? extensions.filter(e => /^\d+$/.test(String(e))) : [];
+  if (!list.length) return { items: [] };
+
+  const connection = await pool.getConnection();
+  try {
+    const placeholders = list.map(() => '?').join(',');
+    const rows = await connection.query(
+      `SELECT extension, status, status_text, previous_status, online_at, offline_at,
+              last_seen_at, last_changed_at, last_checked_at, source
+       FROM webrtc_account_presence_state
+       WHERE extension IN (${placeholders})
+       ORDER BY extension`,
+      list,
+    );
+
+    const items = list.map(ext => {
+      const row = rows.find(r => String(r.extension) === String(ext));
+      return {
+        extension: ext,
+        initialized: Boolean(row),
+        status: row?.status || "unknown",
+        statusText: row?.status_text || "狀態未知",
+        previousStatus: row?.previous_status || null,
+        onlineAt: row?.online_at ? new Date(row.online_at).toISOString() : null,
+        offlineAt: row?.offline_at ? new Date(row.offline_at).toISOString() : null,
+        lastSeenAt: row?.last_seen_at ? new Date(row.last_seen_at).toISOString() : null,
+        lastCheckedAt: row?.last_checked_at ? new Date(row.last_checked_at).toISOString() : null,
+        source: row?.source || "saas_presence",
+      };
+    });
+    return { items };
+  } finally {
+    connection.release();
+  }
+}

@@ -33,7 +33,7 @@ import {
   getPjsipEndpointConfig,
 } from "./asteriskCommandService.js";
 import { CelCallLogError, queryCelCallLogs } from "./celCallLogService.js";
-import { getWebrtcPresence, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
+import { getWebrtcPresence, getWebrtcPresenceBatch, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
 import {
   buildExpectedGeneratedEndpointSection,
@@ -12897,6 +12897,23 @@ async function handleWebrtcAccountPresenceQuery(request, response) {
   }
 }
 
+async function handleWebrtcAccountPresenceBatchQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ success: false, message: "只有平台管理員可以查詢在線狀態。" });
+  }
+  const raw = String(request.query?.extensions || "").trim();
+  const extensions = raw ? raw.split(",").map(e => e.trim()).filter(Boolean) : [];
+  if (!extensions.length || extensions.length > 100) {
+    return response.status(400).json({ success: false, message: "請提供 1-100 個分機號。" });
+  }
+  try {
+    const result = await getWebrtcPresenceBatch(extensions);
+    return response.json({ success: true, data: result });
+  } catch (error) {
+    return response.status(500).json({ success: false, message: "批量在線狀態查詢失敗" });
+  }
+}
+
 function isValidDateOnly(value) {
   if (!value) return true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return false;
@@ -13883,6 +13900,8 @@ async function handleWebrtcAccountDelete(request, response) {
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/presence", requireAdmin, handleWebrtcAccountPresenceQuery);
+app.get("/api/pbx/webrtc-accounts/presence", requireAdmin, handleWebrtcAccountPresenceBatchQuery);
+app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/call-logs", requireAdmin, handleWebrtcAccountCallLogsQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
