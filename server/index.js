@@ -14033,7 +14033,6 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
       });
     }
 
-    const beforeConfig = await getPjsipEndpointConfig(extension).catch(() => null);
     const updateResult = await freepbxUpdateExtensionPassword(extension, password);
     if (!updateResult?.status) {
       return response.status(500).json({
@@ -14056,112 +14055,13 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
       });
     }
 
-    const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
-      attempted: true,
-      success: false,
-      status: false,
-      message: error?.message || "reload failed",
-      transactionId: null,
-      waitStrategy: "error",
-      apiStatus: null,
-    }));
-    if (!applyConfig?.success) {
-      return response.status(500).json({
-        success: false,
-        message: "WebRTC 帳號密碼更新失敗",
-        error: {
-          code: "FWCONSOLE_RELOAD_FAILED",
-          message: "FreePBX 套用配置失敗",
-        },
-        data: {
-          extension,
-          updated: true,
-          needReload: true,
-          applyConfigSuccess: false,
-          stage: "apply_freepbx_config",
-          applyConfig: {
-            success: false,
-            transactionId: applyConfig?.transactionId || null,
-            waitStrategy: applyConfig?.waitStrategy || null,
-            message: applyConfig?.message || null,
-          },
-        },
-      });
-    }
-
-    const afterConfig = await getPjsipEndpointConfig(extension).catch(() => null);
-    const compareFields = [
-      "transport",
-      "allow",
-      "media_address",
-      "direct_media",
-      "webrtc",
-      "use_avpf",
-      "ice_support",
-      "rtcp_mux",
-      "bundle",
-      "media_encryption",
-      "media_use_received_transport",
-      "dtls_auto_generate_cert",
-      "dtls_setup",
-      "dtls_verify",
-      "allow_unauthenticated_options",
-      "rtp_timeout",
-      "rtp_timeout_hold",
-      "asymmetric_rtp_codec",
-    ];
-    const changedWebrtcFields = compareEndpointFields(beforeConfig || {}, afterConfig || {}, compareFields).filter((item) => !item.passed);
-    if (changedWebrtcFields.length) {
-      return response.status(500).json({
-        success: false,
-        message: "密碼更新導致 WebRTC 配置改變，已停止操作",
-        error: {
-          code: "WEBRTC_PASSWORD_UPDATE_CHANGED_WEBRTC_CONFIG",
-          message: "密碼更新導致 WebRTC 配置改變，已停止操作",
-        },
-        data: {
-          extension,
-          updated: false,
-          needReload: true,
-          stage: "verify_runtime_endpoint",
-          changedFields: changedWebrtcFields,
-        },
-      });
-    }
-
-    // 同步更新 SaaS 数据库中的密码
-    let dbUpdated = false;
-    try {
-      const dbConn = await pool.getConnection();
-      try {
-        const passwordHash = await hashPassword(password);
-        await dbConn.query(
-          `UPDATE web_users SET password_hash = ? WHERE username = ? AND sip_domain = ?`,
-          [passwordHash, extension, webrtcDomain],
-        );
-        dbUpdated = true;
-      } finally {
-        dbConn.release();
-      }
-    } catch (dbErr) {
-      console.error("Failed to sync password to database:", dbErr?.message);
-    }
-
     return response.json({
       success: true,
       message: "WebRTC 帳號密碼已更新",
       data: {
         extension,
-        passwordUpdated: true,
-        dbUpdated,
+        updated: true,
         needReload: false,
-        applyConfigSuccess: true,
-        stage: "finalize",
-        applyConfig: {
-          success: true,
-          transactionId: applyConfig?.transactionId || null,
-          waitStrategy: applyConfig?.waitStrategy || null,
-        },
       },
     });
   } catch (error) {
@@ -14178,9 +14078,10 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
         extension,
         updated: false,
         needReload: false,
-        stage: "unknown",
+        stage: "update_extension_password",
         errorName: error?.name || null,
         errorMessage: error?.message || null,
+        graphQLErrors: error?.responseBody?.errors || null,
       },
     });
   }
