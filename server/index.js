@@ -14041,12 +14041,17 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
         message: "WebRTC 帳號密碼更新失敗",
         error: {
           code: "FREEPBX_PASSWORD_UPDATE_FAILED",
-          message: "WebRTC 帳號密碼更新失敗",
+          message: "FreePBX 密碼更新失敗",
         },
         data: {
           extension,
           updated: false,
           needReload: false,
+          stage: "update_extension_password",
+          updateResult: {
+            status: Boolean(updateResult?.status),
+            message: updateResult?.message || null,
+          },
         },
       });
     }
@@ -14073,10 +14078,12 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
           updated: true,
           needReload: true,
           applyConfigSuccess: false,
+          stage: "apply_freepbx_config",
           applyConfig: {
             success: false,
             transactionId: applyConfig?.transactionId || null,
             waitStrategy: applyConfig?.waitStrategy || null,
+            message: applyConfig?.message || null,
           },
         },
       });
@@ -14116,6 +14123,7 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
           extension,
           updated: false,
           needReload: true,
+          stage: "verify_runtime_endpoint",
           changedFields: changedWebrtcFields,
         },
       });
@@ -14148,6 +14156,7 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
         dbUpdated,
         needReload: false,
         applyConfigSuccess: true,
+        stage: "finalize",
         applyConfig: {
           success: true,
           transactionId: applyConfig?.transactionId || null,
@@ -14169,6 +14178,9 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
         extension,
         updated: false,
         needReload: false,
+        stage: "unknown",
+        errorName: error?.name || null,
+        errorMessage: error?.message || null,
       },
     });
   }
