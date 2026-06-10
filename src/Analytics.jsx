@@ -43,6 +43,19 @@ function formatTime(iso) {
   catch { return '-'; }
 }
 
+const MOCK_SIP_ACCOUNTS = [
+  { id: 1, username: '100005', displayName: 'scott', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 2, lastRegisterAt: '2026-06-11T10:30:00Z', expiresAt: '2026-06-11T10:35:00Z', ttlSeconds: 240, accountStatus: 'active', syncStatus: 'active' },
+  { id: 2, username: '100006', displayName: 'pad', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: '2026-06-10T08:15:00Z', expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
+  { id: 3, username: '100003', displayName: 'Jacklin03', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 1, lastRegisterAt: '2026-06-11T11:00:00Z', expiresAt: '2026-06-11T11:05:00Z', ttlSeconds: 280, accountStatus: 'active', syncStatus: 'active' },
+  { id: 4, username: '1000001', displayName: 'jack01', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '翡翠灣社區', buildingName: 'A棟', roomNumber: '101', status: 'online', registered: true, contactsCount: 3, lastRegisterAt: '2026-06-11T10:45:00Z', expiresAt: '2026-06-11T10:50:00Z', ttlSeconds: 200, accountStatus: 'active', syncStatus: 'active' },
+  { id: 5, username: '1000002', displayName: 'jack02', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '翡翠灣社區', buildingName: 'B棟', roomNumber: '202', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
+  { id: 6, username: '100010', displayName: '訪客A', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'unknown', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'inactive', syncStatus: 'local_only' },
+  { id: 7, username: '100011', displayName: '大廳', domain: 'sip.qrtalkie.org', tenantName: '未來社區物業管理有限公司', communityName: '陽光花園', buildingName: 'C棟', roomNumber: '301', status: 'online', registered: true, contactsCount: 5, lastRegisterAt: '2026-06-11T11:15:00Z', expiresAt: '2026-06-11T11:20:00Z', ttlSeconds: 310, accountStatus: 'active', syncStatus: 'active' },
+  { id: 8, username: '100012', displayName: '訪客B', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
+  { id: 9, username: '100013', displayName: '接待處', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 1, lastRegisterAt: '2026-06-11T10:50:00Z', expiresAt: '2026-06-11T10:55:00Z', ttlSeconds: 150, accountStatus: 'active', syncStatus: 'active' },
+  { id: 10, username: '123456', displayName: 'test', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'unknown', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'local_only' },
+];
+
 export default function Analytics() {
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -62,6 +75,13 @@ export default function Analytics() {
   const [callLogs, setCallLogs] = useState([]);
   const [callLogTotal, setCallLogTotal] = useState(0);
   const [isCallLogLoading, setIsCallLogLoading] = useState(false);
+
+  // SIP state
+  const [sipSearch, setSipSearch] = useState('');
+  const [sipStatusFilter, setSipStatusFilter] = useState('all');
+  const [sipTenantFilter, setSipTenantFilter] = useState('all');
+  const [sipPage, setSipPage] = useState(1);
+  const [sipPageSize, setSipPageSize] = useState(10);
 
   const [accounts, setAccounts] = useState([]);
   const [statusMap, setStatusMap] = useState({});
@@ -286,11 +306,9 @@ export default function Analytics() {
       </div>
       )}
       {/* SIP 帳號狀態 Tab */}
-      {activeTab === 'sip' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px' }}>
-          <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0 }}>SIP 帳號狀態分析即將推出</p>
-        </div>
-      )}
+      {activeTab === 'sip' && <SipAccountTable data={MOCK_SIP_ACCOUNTS} search={sipSearch} statusFilter={sipStatusFilter} tenantFilter={sipTenantFilter}
+        onSearchChange={v => { setSipSearch(v); setSipPage(1); }} onStatusChange={v => { setSipStatusFilter(v); setSipPage(1); }} onTenantChange={v => { setSipTenantFilter(v); setSipPage(1); }}
+        page={sipPage} pageSize={sipPageSize} onPageChange={setSipPage} onPageSizeChange={v => { setSipPageSize(v); setSipPage(1); }} />}
       {/* Web 呼叫日誌 Tab */}
       {activeTab === 'callLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
@@ -371,6 +389,116 @@ export default function Analytics() {
         input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
       `}</style>
     </section>
+  );
+}
+
+// SIP Account Status Table
+function SipAccountTable({ data, search, statusFilter, tenantFilter, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
+  const filtered = useMemo(() => {
+    let list = data;
+    if (search) {
+      const kw = search.toLowerCase();
+      list = list.filter(a => a.username.includes(kw) || a.displayName.toLowerCase().includes(kw));
+    }
+    if (statusFilter !== 'all') list = list.filter(a => a.status === statusFilter);
+    if (tenantFilter !== 'all') list = list.filter(a => tenantFilter === 'assigned' ? a.tenantName : !a.tenantName);
+    return list;
+  }, [data, search, statusFilter, tenantFilter]);
+
+  const stats = useMemo(() => ({
+    total: data.length,
+    online: data.filter(a => a.status === 'online').length,
+    offline: data.filter(a => a.status === 'offline').length,
+    unknown: data.filter(a => a.status === 'unknown').length,
+  }), [data]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / (pageSize === '全部' ? filtered.length : pageSize)));
+  const effectiveSize = pageSize === '全部' ? filtered.length : Number(pageSize);
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * effectiveSize, safePage * effectiveSize);
+
+  const formatShort = (iso) => { if (!iso) return '-'; try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
+      {/* 工具栏 */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ position: 'relative', width: '200px' }}>
+            <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" placeholder="搜尋帳號或顯示名稱" value={search} onChange={e => onSearchChange(e.target.value)}
+              style={{ width: '100%', height: '40px', padding: '0 14px 0 38px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
+          </div>
+          <select value={statusFilter} onChange={e => onStatusChange(e.target.value)}
+            style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+            <option value="all">全部狀態</option>
+            <option value="online">在線</option>
+            <option value="offline">離線</option>
+            <option value="unknown">未知</option>
+          </select>
+          <select value={tenantFilter} onChange={e => onTenantChange(e.target.value)}
+            style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+            <option value="all">全部</option>
+            <option value="assigned">已分配</option>
+            <option value="unassigned">未分配</option>
+          </select>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{stats.total}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{stats.online}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{stats.offline}</strong></span>
+          <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{stats.unknown}</strong></span>
+        </div>
+      </div>
+
+      {/* 列表 */}
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
+          <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+            <thead>
+              <tr style={{ background: '#1e293b' }}>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>帳號</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>顯示名稱</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Domain</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>租戶</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>註冊狀態</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>連線數</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>最後註冊</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.length === 0 ? (
+                <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+              ) : paginated.map(row => (
+                <tr key={row.id} style={{ borderBottom: '1px solid #1f2937' }}>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.username}</td>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db' }}>{row.displayName}</td>
+                  <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{row.domain}</td>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tenantName || '未分配'}>{row.tenantName || '未分配'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{statusBadge(row.status)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 500 }}>{row.contactsCount}</td>
+                  <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatShort(row.lastRegisterAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 分页 */}
+        <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
+          <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {filtered.length} 筆記錄</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
+              style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
+              {[10, 20, 50, '全部'].map(o => <option key={o} value={o}>{o === '全部' ? o : `${o} 條/頁`}</option>)}
+            </select>
+            <button disabled={safePage <= 1} onClick={() => onPageChange(p => p - 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage <= 1 ? '#4b5563' : '#9ca3af', cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
+            <button disabled={safePage >= totalPages} onClick={() => onPageChange(p => p + 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage >= totalPages ? '#4b5563' : '#9ca3af', cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
