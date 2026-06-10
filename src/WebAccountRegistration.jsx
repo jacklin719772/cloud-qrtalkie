@@ -71,6 +71,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [detailConfig, setDetailConfig] = useState(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
 
+  // 编辑弹窗（仅显示名称）
+  const [editAccount, setEditAccount] = useState(null);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editMessage, setEditMessage] = useState({ type: '', text: '' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   const STEP_LABELS = [
     '驗證 WebRTC 帳號格式',
     '檢查 FreePBX 帳號是否已存在',
@@ -290,23 +296,33 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   function startEdit(account) {
     if (account.tenantName) {
-      window.alert('已經分配给租戶的帳號不允許編輯。');
+      window.alert('已經分配給租戶的帳號不允許編輯。');
       return;
     }
-    setFormData({
-      id: account.id,
-      username: account.username || '',
-      domain: account.domain || defaultSipDomain,
-      displayName: account.displayName || '',
-      password: '',
-      confirmPassword: '',
-      role: account.role || 'user',
-      status: account.status || 'active',
-      phone: account.phone || '',
-      email: account.email || '',
-    });
-    setFormMessage({ type: '', text: '' });
-    setViewMode('edit');
+    setEditAccount(account);
+    setEditDisplayName(account.displayName || '');
+    setEditMessage({ type: '', text: '' });
+  }
+
+  async function handleSaveEdit() {
+    if (!editDisplayName.trim()) { setEditMessage({ type: 'error', text: '顯示名稱不可為空白。' }); return; }
+    if (editDisplayName.trim() === (editAccount?.displayName || '')) {
+      setEditMessage({ type: 'info', text: '沒有可儲存的修改。' });
+      return;
+    }
+    setIsSavingEdit(true);
+    setEditMessage({ type: '', text: '' });
+    try {
+      const result = await apiClient.patch(`/pbx/webrtc-accounts/${editAccount.username}/display-name`, { displayName: editDisplayName.trim() });
+      setEditMessage({ type: 'success', text: result.message || '顯示名稱已更新' });
+      setTimeout(() => { setEditAccount(null); loadAccounts(); }, 1000);
+    } catch (err) {
+      const data = err.response?.data || err.data || {};
+      setEditMessage({ type: 'error', text: data.error?.message || data.message || err.message || '更新失敗' });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }
   }
 
   function startBatchAdd() {
@@ -694,75 +710,6 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     const pageIds = new Set(paginatedAccounts.map((account) => account.id));
     setSelectedIds((ids) => ids.filter((id) => !pageIds.has(id)));
-  }
-
-  if (viewMode === 'edit') {
-    return (
-      <section className="view active settings-form-page" id="web-account-registration-form" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
-          <form className="panel" onSubmit={handleSaveAccount} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯 Web 帳號' : '新增 Web 帳號'}</h3>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#d1d5db', marginBottom: '16px', marginTop: 0 }}>基礎帳號信息</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>用戶名 <RequiredMark /></span>
-                  <input value={formData.username} readOnly={viewMode === 'edit'} onChange={(event) => {
-                    const value = event.target.value;
-                    setFormData((current) => ({ ...current, username: value, displayName: current.displayName === current.username ? value : current.displayName }));
-                  }} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', ...(viewMode === 'edit' ? { backgroundColor: '#0f172a', color: '#6b7280', cursor: 'not-allowed' } : {}) }} required />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>SIP Domain <RequiredMark /></span>
-                  <input value={formData.domain} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' }} required />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={(event) => setFormData({ ...formData, displayName: event.target.value })} placeholder={formData.username || '默認與用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.password} onChange={(event) => setFormData({ ...formData, password: event.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required={viewMode === 'add'} minLength={6} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 {viewMode === 'add' && <RequiredMark />}</span>
-                  <input type="password" value={formData.confirmPassword} onChange={(event) => setFormData({ ...formData, confirmPassword: event.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} required={viewMode === 'add'} minLength={6} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色 <RequiredMark /></span>
-                  <select value={formData.role} onChange={(event) => setFormData({ ...formData, role: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <RequiredMark /></span>
-                  <select value={formData.status} onChange={(event) => setFormData({ ...formData, status: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機号</span>
-                  <input value={formData.phone} onChange={(event) => setFormData({ ...formData, phone: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
-                  <input type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} />
-                </label>
-              </div>
-            </div>
-            <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-              {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); resetForm(); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', fontSize: '11px', fontWeight: 500 }}>取消</button>
-              <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交新增')}</button>
-            </div>
-          </form>
-        </div>
-      </section>
-    );
   }
 
   if (viewMode === 'import') {
@@ -1281,6 +1228,34 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
       </div>
       </div>
+
+      {/* 編輯顯示名稱彈窗 */}
+      {editAccount && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(e) => { if (e.target === e.currentTarget && !isSavingEdit) { setEditAccount(null); setEditMessage({ type: '', text: '' }); } }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '420px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '18px 20px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯顯示名稱 — {editAccount.username}</h3>
+              <button onClick={() => { if (!isSavingEdit) { setEditAccount(null); setEditMessage({ type: '', text: '' }); } }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
+            </div>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱 <b style={{ color: '#ef4444' }}>*</b></span>
+                <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} placeholder="請輸入顯示名稱"
+                  style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
+                  onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+              </label>
+              {editMessage.text && (
+                <p style={{ margin: 0, fontSize: '13px', color: editMessage.type === 'error' ? '#ef4444' : editMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{editMessage.text}</p>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button onClick={() => { if (!isSavingEdit) { setEditAccount(null); setEditMessage({ type: '', text: '' }); } }} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isSavingEdit ? 'not-allowed' : 'pointer' }}>取消</button>
+              <button onClick={handleSaveEdit} disabled={isSavingEdit || !editDisplayName.trim()} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: editDisplayName.trim() && !isSavingEdit ? '#3b82f6' : '#1e3a5f', color: editDisplayName.trim() && !isSavingEdit ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: editDisplayName.trim() && !isSavingEdit ? 'pointer' : 'not-allowed' }}>{isSavingEdit ? '儲存中...' : '確認修改'}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* 帳號詳情彈窗 */}
       {detailAccount && createPortal(
