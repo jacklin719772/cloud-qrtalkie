@@ -1240,19 +1240,39 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button onClick={() => { if (!isSavingEdit) { setEditAccount(null); setEditMessage({ type: '', text: '' }); } }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>&#10005;</button>
             </div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱 <b style={{ color: '#ef4444' }}>*</b></span>
-                <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} placeholder="請輸入顯示名稱"
-                  style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
-                  onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
-              {editMessage.text && (
-                <p style={{ margin: 0, fontSize: '13px', color: editMessage.type === 'error' ? '#ef4444' : editMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{editMessage.text}</p>
+              {!isSavingEdit ? (<>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱 <b style={{ color: '#ef4444' }}>*</b></span>
+                  <input value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} placeholder="請輸入顯示名稱"
+                    style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', outline: 'none' }}
+                    onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                </label>
+                {editMessage.text && (
+                  <p style={{ margin: 0, fontSize: '13px', color: editMessage.type === 'error' ? '#ef4444' : editMessage.type === 'info' ? '#60a5fa' : '#22c55e' }}>{editMessage.text}</p>
+                )}
+              </>) : (
+                <div style={{ background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', padding: '14px' }}>
+                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>正在更新顯示名稱...</span>
+                  </div>
+                  <div style={{ height: '4px', background: '#1f2937', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', width: '100%',
+                      background: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
+                      borderRadius: '2px',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }} />
+                  </div>
+                  <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+                </div>
+              )}
+              {isSavingEdit && editMessage.text && (
+                <p style={{ margin: 0, fontSize: '13px', color: editMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{editMessage.text}</p>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button onClick={() => { if (!isSavingEdit) { setEditAccount(null); setEditMessage({ type: '', text: '' }); } }} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isSavingEdit ? 'not-allowed' : 'pointer' }}>取消</button>
-              <button onClick={handleSaveEdit} disabled={isSavingEdit || !editDisplayName.trim()} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: editDisplayName.trim() && !isSavingEdit ? '#3b82f6' : '#1e3a5f', color: editDisplayName.trim() && !isSavingEdit ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: editDisplayName.trim() && !isSavingEdit ? 'pointer' : 'not-allowed' }}>{isSavingEdit ? '儲存中...' : '確認修改'}</button>
+              <button onClick={handleSaveEdit} disabled={isSavingEdit || !editDisplayName.trim()} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: editDisplayName.trim() && !isSavingEdit ? '#3b82f6' : '#1e3a5f', color: editDisplayName.trim() && !isSavingEdit ? '#fff' : '#6b7280', border: 'none', fontSize: '13px', fontWeight: 500, cursor: editDisplayName.trim() && !isSavingEdit ? 'pointer' : 'not-allowed' }}>{isSavingEdit ? '更新中...' : '確認修改'}</button>
             </div>
           </div>
         </div>,
