@@ -1293,7 +1293,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {/* 基础信息 */}
               <div style={{ marginBottom: '16px' }}>
-                <h4 style={{ margin: '0 0 '10px', fontSize: '13px', fontWeight: 600, color: '#60a5fa' }}>基础資訊</h4>
+                <h4 style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#60a5fa' }}>基礎資訊</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '6px 12px', fontSize: '13px' }}>
                   {[
                     ['用戶名', detailAccount.username],
