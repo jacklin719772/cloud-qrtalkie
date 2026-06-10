@@ -1489,7 +1489,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
       {resetPasswordAccount && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget) setResetPasswordAccount(null); }}>
-          <form onSubmit={handleResetPassword} style={{ width: 'min(480px, 100%)', backgroundColor: '#1a2332', color: '#e5e7eb', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(420px, 90vw)', backgroundColor: '#111827', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}><h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3></div>
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {!isResetting ? (<>
