@@ -4,12 +4,12 @@ const DEFAULT_TIMEOUT_MS = Number(import.meta.env.VITE_API_DEFAULT_TIMEOUT_MS ||
 const DEFAULT_TIMEOUT_RULES = [
   {
     method: 'patch',
-    path: '/api/pbx/webrtc-accounts/:extension/display-name',
+    path: '/pbx/webrtc-accounts/:extension/display-name',
     timeoutMs: 60000,
   },
   {
     method: 'post',
-    path: '/api/pbx/webrtc-accounts',
+    path: '/pbx/webrtc-accounts',
     timeoutMs: 120000,
   },
 ];
@@ -49,15 +49,13 @@ function normalizeRequestPath(url) {
 }
 
 function resolveTimeoutMs(config) {
+  // 只有调用方显式传递的 timeoutMs 才优先使用
   if (config.timeoutMs !== undefined && config.timeoutMs !== null) {
     const timeoutMs = Number(config.timeoutMs);
     if (Number.isFinite(timeoutMs) && timeoutMs > 0) return timeoutMs;
   }
-  if (config.timeout !== undefined && config.timeout !== null) {
-    const timeoutMs = Number(config.timeout);
-    if (Number.isFinite(timeoutMs) && timeoutMs > 0) return timeoutMs;
-  }
 
+  // 按路径规则匹配
   const requestPath = normalizeRequestPath(config.url);
   const requestMethod = String(config.method || 'get').toLowerCase();
   for (const rule of parseTimeoutRules()) {
