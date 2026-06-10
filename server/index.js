@@ -38,6 +38,11 @@ import {
   FlexisipRegistrationStatusError,
   getRegistrationStatusForAccounts,
 } from "./flexisipRegistrationStatusService.js";
+import {
+  FlexisipCallLogQueryError,
+  isValidIsoDateTime as isValidFlexisipCallLogIsoDateTime,
+  queryFlexisipCallLogs,
+} from "./flexisipCallLogQueryService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
 import {
   buildExpectedGeneratedEndpointSection,
@@ -15033,6 +15038,103 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
     });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// GET /api/flexisip/call-logs - read-only Flexisip call log summary query.
+app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 Flexisip 通話記錄",
+      error: {
+        code: "FLEXISIP_CALL_LOG_QUERY_FORBIDDEN",
+        message: "只有平台管理員可以查詢 Flexisip 通話記錄",
+      },
+    });
+  }
+
+  const account = sanitizeString(request.query.account || "", 120);
+  const accounts = sanitizeString(request.query.accounts || "", 600);
+  const domain = sanitizeString(request.query.domain || "", 255).toLowerCase();
+  const direction = sanitizeString(request.query.direction || "all", 16).toLowerCase();
+  const result = sanitizeString(request.query.result || "all", 16).toLowerCase();
+  const includeDevices = String(request.query.includeDevices || "false").toLowerCase() === "true";
+  const limit = parseNonNegativeInteger(request.query.limit, 50);
+  const offset = parseNonNegativeInteger(request.query.offset, 0);
+  const from = sanitizeString(request.query.from || "", 64);
+  const to = sanitizeString(request.query.to || "", 64);
+
+  const accountTokens = [account, accounts]
+    .filter(Boolean)
+    .flatMap((value) => String(value).split(",").map((item) => item.trim()).filter(Boolean));
+  if (accountTokens.some((token) => !/^\d+$/.test(token))) {
+    return response.status(400).json({
+      success: false,
+      message: "查詢參數格式不正確",
+      error: {
+        code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
+        message: "查詢參數格式不正確",
+      },
+    });
+  }
+
+  if (domain && !/^[a-z0-9.-]+$/i.test(domain)) {
+    return response.status(400).json({
+      success: false,
+      message: "查詢參數格式不正確",
+      error: {
+        code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
+        message: "查詢參數格式不正確",
+      },
+    });
+  }
+
+  if (!["inbound", "outbound", "internal", "all"].includes(direction) ||
+      !["answered", "missed", "cancelled", "busy", "declined", "timeout", "failed", "unknown", "all"].includes(result) ||
+      !isValidFlexisipCallLogIsoDateTime(from) ||
+      !isValidFlexisipCallLogIsoDateTime(to)) {
+    return response.status(400).json({
+      success: false,
+      message: "查詢參數格式不正確",
+      error: {
+        code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
+        message: "查詢參數格式不正確",
+      },
+    });
+  }
+
+  try {
+    const data = await queryFlexisipCallLogs({
+      account,
+      accounts,
+      domain,
+      direction,
+      result,
+      includeDevices,
+      limit,
+      offset,
+      from,
+      to,
+    });
+
+    return response.json({
+      success: true,
+      message: "Flexisip 通話記錄已取得",
+      data,
+    });
+  } catch (error) {
+    console.error("Failed to query Flexisip call logs:", {
+      message: error?.message || String(error),
+    });
+    return response.status(500).json({
+      success: false,
+      message: "Flexisip 通話記錄查詢失敗",
+      error: {
+        code: error instanceof FlexisipCallLogQueryError ? error.code : "FLEXISIP_CALL_LOG_QUERY_FAILED",
+        message: "Flexisip 通話記錄查詢失敗",
+      },
+    });
   }
 });
 

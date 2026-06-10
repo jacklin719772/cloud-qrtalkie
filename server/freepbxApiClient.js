@@ -1,3 +1,5 @@
+import { buildFreepbxPasswordUpdatePayload } from "./freepbxWebrtcExtensionPayload.js";
+
 const DEFAULT_BASE_URL = "http://127.0.0.1";
 const DEFAULT_TOKEN_PATH = "/admin/api/api/token";
 const DEFAULT_GQL_PATH = "/admin/api/api/gql";
@@ -61,6 +63,20 @@ function safeGraphqlErrors(errors) {
   return errors.map((error) => ({
     message: typeof error?.message === "string" ? error.message : "GraphQL request failed",
     status: error?.status === false ? false : undefined,
+  }));
+}
+
+function logPasswordUpdateDiagnostic(event, details = {}) {
+  console.info("[freepbx:update_extension_password]", JSON.stringify({
+    event,
+    extension: details.extension ? String(details.extension) : "",
+    operationName: details.operationName || "",
+    mutationName: details.mutationName || "",
+    variableKeys: Array.isArray(details.variableKeys) ? details.variableKeys : [],
+    inputKeys: Array.isArray(details.inputKeys) ? details.inputKeys : [],
+    hasExtPassword: Boolean(details.hasExtPassword),
+    status: details.status === undefined ? null : Boolean(details.status),
+    graphqlErrors: safeGraphqlErrors(details.graphqlErrors),
   }));
 }
 
@@ -263,15 +279,19 @@ export async function updateExtensionDisplayName(extension, displayName, schema 
 
 export async function updateExtensionPassword(extension, password, schema = null) {
   const resolvedSchema = schema || (await getExtensionInputSchema());
-  const updateSchema = resolvedSchema?.updateExtensionInput || {};
-  const payload = {};
-  const candidates = ["extPassword", "password", "secret"];
-  for (const key of candidates) {
-    if (Object.prototype.hasOwnProperty.call(updateSchema, key)) {
-      payload[key] = password;
-      break;
-    }
+  let existing;
+  try {
+    existing = await fetchExtension(extension);
+  } catch (error) {
+    logPasswordUpdateDiagnostic("fetch_extension_failed", {
+      extension,
+      operationName: "FetchAllExtensions",
+      variableKeys: ["first"],
+      graphqlErrors: error?.responseBody?.errors,
+    });
+    throw error;
   }
+  const payload = buildFreepbxPasswordUpdatePayload(extension, password, existing || {}, resolvedSchema);
 
   if (!Object.keys(payload).length) {
     const error = new FreepbxApiError("FreePBX password update field not supported.", {
@@ -280,7 +300,40 @@ export async function updateExtensionPassword(extension, password, schema = null
     throw error;
   }
 
-  return updateExtension(extension, payload);
+  const inputKeys = ["extensionId", ...Object.keys(payload)];
+  logPasswordUpdateDiagnostic("update_extension_request", {
+    extension,
+    operationName: "UpdateExtension",
+    mutationName: "updateExtension",
+    variableKeys: ["input"],
+    inputKeys,
+    hasExtPassword: Object.prototype.hasOwnProperty.call(payload, "extPassword"),
+  });
+
+  try {
+    const result = await updateExtension(extension, payload);
+    logPasswordUpdateDiagnostic("update_extension_response", {
+      extension,
+      operationName: "UpdateExtension",
+      mutationName: "updateExtension",
+      variableKeys: ["input"],
+      inputKeys,
+      hasExtPassword: Object.prototype.hasOwnProperty.call(payload, "extPassword"),
+      status: result?.status,
+    });
+    return result;
+  } catch (error) {
+    logPasswordUpdateDiagnostic("update_extension_failed", {
+      extension,
+      operationName: "UpdateExtension",
+      mutationName: "updateExtension",
+      variableKeys: ["input"],
+      inputKeys,
+      hasExtPassword: Object.prototype.hasOwnProperty.call(payload, "extPassword"),
+      graphqlErrors: error?.responseBody?.errors,
+    });
+    throw error;
+  }
 }
 
 function simplifyGraphqlType(type) {
@@ -470,7 +523,6 @@ export async function fetchExtension(extension) {
       extension: matched.user?.extension || matched.extensionId || target,
       name: matched.user?.name || "",
       tech: matched.tech || "",
-      email: matched.user?.email || "",
       status: true,
     };
   } catch (error) {

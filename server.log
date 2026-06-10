@@ -1,5 +1,9 @@
-[Scheduler] Starting background tasks...
-[Scheduler] Background tasks started
-QRTalkie Cloud API listening on http://127.0.0.1:3001
-【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 4
-[Scheduler] Expiry scan complete
+file:///opt/saas/node_modules/mariadb/promise.js:15
+import packageJson from './package.json' with { type: 'json' };
+                                         ^^^^
+
+SyntaxError: Unexpected token 'with'
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:152:18)
+    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:298:14)
+
+Node.js v18.19.1

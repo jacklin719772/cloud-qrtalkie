@@ -173,3 +173,28 @@ export function buildFreepbxWebrtcExtensionPayloads(extension, email, schema) {
     appliedFieldMappings,
   };
 }
+
+export function buildFreepbxPasswordUpdatePayload(extension, password, existing = {}, schema) {
+  assertValidExtension(extension);
+  const defaults = getFreepbxWebrtcDefaults();
+  const updateSchema = schema?.updateExtensionInput || {};
+  const displayName = existing?.name || `${defaults.displayNamePrefix}${extension}`;
+  const email = existing?.email || `${extension}@${defaults.emailDomain || "example.com"}`;
+  const updateBase = {
+    name: displayName,
+    tech: existing?.tech || "pjsip",
+    email,
+    vmEnable: false,
+    maxContacts: defaults.maxContacts,
+    extPassword: password,
+  };
+  const updatePayload = {};
+
+  for (const [key, value] of Object.entries(updateBase)) {
+    if (Object.prototype.hasOwnProperty.call(updateSchema, key)) {
+      updatePayload[key] = coerceValue(value, updateSchema[key]);
+    }
+  }
+
+  return updatePayload;
+}
