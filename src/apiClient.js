@@ -17,6 +17,11 @@ const DEFAULT_TIMEOUT_RULES = [
     path: '/pbx/webrtc-accounts',
     timeoutMs: 120000,
   },
+  {
+    method: 'delete',
+    path: '/pbx/webrtc-accounts/:extension',
+    timeoutMs: 120000,
+  },
 ];
 
 function parseTimeoutRules() {

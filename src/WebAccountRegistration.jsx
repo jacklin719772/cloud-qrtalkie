@@ -581,25 +581,61 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
   }
 
+  const [batchDeleteResults, setBatchDeleteResults] = useState([]);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+
   async function handleBatchDelete() {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
     if (selectedAccounts.length === 0) {
-      window.alert('请選擇要刪除的帳號。');
+      window.alert('請選擇要刪除的帳號。');
       return;
     }
     const assignedAccounts = selectedAccounts.filter((account) => account.tenantName);
-    if (assignedAccounts.length > 0) {
-      window.alert(`所选帳號中有 ${assignedAccounts.length} 個已分配给租戶，请先取消分配。`);
-      return;
+    const toDeleteAccount = selectedAccounts.filter((account) => !account.tenantName);
+
+    if (!window.confirm(
+      `確定要刪除 ${selectedAccounts.length} 個帳號嗎？` +
+      (assignedAccounts.length > 0 ? `\n\n其中 ${assignedAccounts.length} 個已分配租戶，將跳過不刪除。` : '')
+    )) return;
+
+    setIsBatchDeleting(true);
+    setBatchDeleteResults([]);
+
+    const results = [];
+    let delCount = 0, skipCount = 0, failCount = 0;
+
+    // 已分配租戶的跳過
+    for (const acc of assignedAccounts) {
+      results.push({ ext: acc.username, status: 'skipped', label: '已分配租戶' });
+      skipCount++;
     }
-    if (!window.confirm(`確定要刪除选中的 ${selectedAccounts.length} 個 Web 帳號嗎？`)) return;
-    try {
-      await Promise.all(selectedAccounts.map((account) => apiClient.delete(`/admin/web-accounts/${account.id}`)));
-      setSelectedIds([]);
-      await loadAccounts();
-    } catch (error) {
-      window.alert(error.message || '批量刪除失敗。');
+
+    // 逐個刪除
+    for (const acc of toDeleteAccount) {
+      try {
+        await apiClient.delete(`/pbx/webrtc-accounts/${acc.username}`, {}, { timeout: 120000 });
+        results.push({ ext: acc.username, status: 'success', label: '已刪除' });
+        delCount++;
+      } catch (err) {
+        if (err.status === 404) {
+          results.push({ ext: acc.username, status: 'success', label: '遠端已不存在' });
+          delCount++;
+        } else {
+          results.push({ ext: acc.username, status: 'failed', label: err.message || '刪除失敗' });
+          failCount++;
+        }
+      }
+      setBatchDeleteResults([...results]);
     }
+
+    setIsBatchDeleting(false);
+    setSelectedIds([]);
+    await loadAccounts();
+
+    const msgs = [`${delCount} 個成功`];
+    if (skipCount > 0) msgs.push(`${skipCount} 個跳過`);
+    if (failCount > 0) msgs.push(`${failCount} 個失敗`);
+    setBatchAddMessage({ type: failCount > 0 ? 'error' : 'info', text: `刪除完成：${msgs.join('，')}。` });
   }
 
   async function handleBatchUnassign() {
@@ -1561,6 +1597,36 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button type="submit" disabled={isBatchAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: isBatchAdding ? '#1e3a5f' : '#3b82f6', color: isBatchAdding ? '#6b7280' : '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: isBatchAdding ? 'not-allowed' : 'pointer' }}>{isBatchAdding ? '創建中...' : '開始批量新增'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {/* 批量刪除進度彈窗 */}
+      {isBatchDeleting && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '80vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flexShrink: 0, padding: '18px 20px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量刪除帳號</h3>
+            </div>
+            <div style={{ flexShrink: 0, padding: '12px 18px' }}>
+              <div style={{ background: '#3b1111', borderRadius: '8px', border: '1px solid #7f1d1d', padding: '10px 14px' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: '#fca5a5' }}>⚠ 此操作將從服務端永久刪除帳號，請確認後執行。</p>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px 12px', scrollbarWidth: 'none', msOverflowStyle: 'none', minHeight: 0 }}>
+              <div style={{ maxHeight: '300px', overflowY: 'auto', background: '#0f172a', borderRadius: '8px', border: '1px solid #1f2937', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {batchDeleteResults.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 12px', borderBottom: i < batchDeleteResults.length - 1 ? '1px solid #1f2937' : 'none' }}>
+                    <span style={{ fontSize: '13px', color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#f59e0b' : '#ef4444', width: '16px', textAlign: 'center', flexShrink: 0 }}>
+                      {r.status === 'success' ? '✓' : r.status === 'skipped' ? '—' : '✗'}
+                    </span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#e5e7eb', flexShrink: 0 }}>{r.ext}</span>
+                    <span style={{ fontSize: '12px', color: r.status === 'success' ? '#22c55e' : r.status === 'skipped' ? '#f59e0b' : '#ef4444', flex: 1, textAlign: 'right' }}>{r.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>,
         document.body
       )}

@@ -13475,6 +13475,24 @@ async function handleWebrtcAccountDelete(request, response) {
           message: "WebRTC 帳號刪除過程中有項目失敗",
         }, 502);
       }
+      // 同步刪除 SaaS 數據庫記錄
+      const deletedExts = responseData.items.filter(i => i.status === 'deleted').map(i => i.extension);
+      if (deletedExts.length > 0) {
+        try {
+          const dbConn = await pool.getConnection();
+          try {
+            await dbConn.query(
+              `DELETE FROM web_users WHERE username IN (${deletedExts.map(() => '?').join(',')}) AND sip_domain = ?`,
+              [...deletedExts, webrtcDomain],
+            );
+            responseData.dbCleanedUp = deletedExts.length;
+          } finally {
+            dbConn.release();
+          }
+        } catch (dbErr) {
+          console.error("Failed to cleanup web_users after delete:", dbErr?.message);
+        }
+      }
       return finalizeDeleteResponse(true, "WebRTC 帳號刪除完成");
     }
 
