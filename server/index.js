@@ -32,6 +32,8 @@ import {
   getPjsipEndpointStatusBatch,
   getPjsipEndpointConfig,
 } from "./asteriskCommandService.js";
+import { CelCallLogError, queryCelCallLogs } from "./celCallLogService.js";
+import { getWebrtcPresence, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
 import { buildFreepbxWebrtcExtensionPayloads } from "./freepbxWebrtcExtensionPayload.js";
 import {
   buildExpectedGeneratedEndpointSection,
@@ -12851,6 +12853,131 @@ async function handleWebrtcAccountStatusQuery(request, response) {
   }
 }
 
+async function handleWebrtcAccountPresenceQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 WebRTC 在線狀態。",
+      error: {
+        code: "WEBRTC_PRESENCE_QUERY_FAILED",
+        message: "只有平台管理員可以查詢 WebRTC 在線狀態。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || request.query?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  try {
+    const presence = await getWebrtcPresence(extension);
+    return response.json({
+      success: true,
+      message: "WebRTC 在線狀態已取得",
+      data: presence,
+    });
+  } catch (error) {
+    const missingTable = /webrtc_account_presence_/i.test(String(error?.message || error?.sqlMessage || ""));
+    return response.status(missingTable ? 503 : 500).json({
+      success: false,
+      message: "WebRTC 在線狀態查詢失敗",
+      error: {
+        code: missingTable ? "WEBRTC_PRESENCE_TABLE_MISSING" : "WEBRTC_PRESENCE_QUERY_FAILED",
+        message: "WebRTC 在線狀態查詢失敗",
+      },
+    });
+  }
+}
+
+function isValidDateOnly(value) {
+  if (!value) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime());
+}
+
+async function handleWebrtcAccountCallLogsQuery(request, response) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 WebRTC 呼叫日誌。",
+      error: {
+        code: "WEBRTC_CALL_LOG_QUERY_FAILED",
+        message: "只有平台管理員可以查詢 WebRTC 呼叫日誌。",
+      },
+    });
+  }
+
+  const extension = String(request.params?.extension || request.query?.extension || "").trim();
+  if (!/^\d+$/.test(extension)) {
+    return response.status(400).json({
+      success: false,
+      message: "WebRTC 帳號格式不正確",
+      error: {
+        code: "INVALID_WEBRTC_EXTENSION",
+        message: "WebRTC 帳號必須為純數字",
+      },
+    });
+  }
+
+  const dateFrom = String(request.query?.dateFrom || request.query?.from || "").trim();
+  const dateTo = String(request.query?.dateTo || request.query?.to || "").trim();
+  if (!isValidDateOnly(dateFrom) || !isValidDateOnly(dateTo)) {
+    return response.status(400).json({
+      success: false,
+      message: "日期格式不正確",
+      error: {
+        code: "INVALID_CALL_LOG_DATE",
+        message: "日期格式必須為 YYYY-MM-DD",
+      },
+    });
+  }
+
+  try {
+    const result = await queryCelCallLogs({
+      extension,
+      dateFrom,
+      dateTo,
+      source: request.query?.source,
+      destination: request.query?.destination,
+      eventType: request.query?.eventType,
+      application: request.query?.application,
+      linkedId: request.query?.linkedId,
+      limit: request.query?.limit,
+      offset: request.query?.offset,
+      order: request.query?.order,
+    });
+
+    return response.json({
+      success: true,
+      message: "WebRTC 呼叫日誌已取得",
+      data: {
+        extension,
+        source: "freepbx_cel",
+        ...result,
+      },
+    });
+  } catch (error) {
+    const isConfigError = error instanceof CelCallLogError && error.code === "CEL_DB_CONFIG_MISSING";
+    return response.status(isConfigError ? 503 : 500).json({
+      success: false,
+      message: "WebRTC 呼叫日誌查詢失敗",
+      error: {
+        code: error instanceof CelCallLogError ? error.code : "WEBRTC_CALL_LOG_QUERY_FAILED",
+        message: "WebRTC 呼叫日誌查詢失敗",
+      },
+    });
+  }
+}
+
 function sanitizeOverlayFields(fields = {}) {
   const allowed = ["allow_unauthenticated_options", "rtp_timeout", "rtp_timeout_hold", "asymmetric_rtp_codec"];
   const result = {};
@@ -13755,6 +13882,8 @@ async function handleWebrtcAccountDelete(request, response) {
 
 app.get("/api/pbx/webrtc-accounts/status", requireAdmin, handleWebrtcAccountStatusQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/status", requireAdmin, handleWebrtcAccountStatusQuery);
+app.get("/api/pbx/webrtc-accounts/:extension/presence", requireAdmin, handleWebrtcAccountPresenceQuery);
+app.get("/api/pbx/webrtc-accounts/:extension/call-logs", requireAdmin, handleWebrtcAccountCallLogsQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/config", requireAdmin, handleWebrtcAccountConfigQuery);
 app.get("/api/pbx/webrtc-accounts/check", requireAdmin, handleWebrtcAccountQuery);
 app.get("/api/pbx/webrtc-accounts/:extension/consistency", requireAdmin, handleWebrtcAccountConsistencyQuery);
@@ -15230,3 +15359,4 @@ app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
 });
   startScheduler();
+  startWebrtcPresencePolling({ domain: webrtcDomain });
