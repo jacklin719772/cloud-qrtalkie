@@ -582,8 +582,9 @@ export default function PlanManagement({ onNavigate }) {
         }
         #plan-management .plan-table {
           width: 100% !important;
-          min-width: 1880px;
-          border-collapse: collapse !important;
+          min-width: 1400px;
+          border-collapse: separate;
+          border-spacing: 0;
           table-layout: fixed;
           font-size: 12px;
         }
@@ -786,8 +787,10 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management .plan-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #plan-management .plan-page-jump { color: #9ca3af; }
         #plan-management .plan-table { min-width: 0 !important; }
-        #plan-management .plan-table-wrapper { scrollbar-width: none; }
-        #plan-management .plan-table-wrapper::-webkit-scrollbar { display: none; }
+        #plan-management .plan-table-wrapper { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        #plan-management .plan-table-wrapper::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+        #plan-management .plan-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        #plan-management .plan-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         #plan-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #plan-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #plan-management .form-message { color: #d1d5db; }
@@ -941,7 +944,7 @@ export default function PlanManagement({ onNavigate }) {
                     <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{paymentLabel.text}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
-                    <td className="plan-action-cell" style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '120px', minWidth: '120px', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-4px 0 8px rgba(0,0,0,0.3)', width: '100px', padding: '12px 6px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openDetailModal(order)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(e) => {
