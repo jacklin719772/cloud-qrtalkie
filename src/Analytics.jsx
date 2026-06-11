@@ -162,10 +162,23 @@ export default function Analytics() {
   const loadSipData = useCallback(async (silent) => {
     if (!silent) setIsSipLoading(true); else setIsSipRefreshing(true);
     try {
-      const res = await apiClient.get('/flexisip/accounts/registration-status?limit=100');
-      const items = res.data?.items || [];
-      setSipData(items);
-      setSipStats({ total: res.data?.total || 0, online: res.data?.online || 0, offline: res.data?.offline || 0, unknown: res.data?.unknown || 0 });
+      let allItems = [];
+      let total = 0;
+      let offset = 0;
+      const limit = 100;
+      // 分页加载全部数据
+      while (true) {
+        const res = await apiClient.get(`/flexisip/accounts/registration-status?limit=${limit}&offset=${offset}`);
+        const items = res.data?.items || [];
+        total = res.data?.total || 0;
+        allItems = allItems.concat(items);
+        offset += limit;
+        if (offset >= total) break;
+      }
+      setSipData(allItems);
+      const online = allItems.filter(i => i.status === 'online').length;
+      const offline = allItems.filter(i => i.status === 'offline').length;
+      setSipStats({ total: allItems.length, online, offline, unknown: allItems.length - online - offline });
       setSipLastFetchAt(new Date().toISOString());
     } catch { setSipData([]); }
     finally { setIsSipLoading(false); setIsSipRefreshing(false); }
