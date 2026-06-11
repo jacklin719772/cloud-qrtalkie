@@ -612,7 +612,7 @@ const TenantAccountManagement = forwardRef(({
       border: '1px solid #1f2937',
       outline: 'none',
       backgroundColor: '#1a2332',
-      color: '#64748b',
+      color: '#9ca3af',
     };
     const labelStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
     const labelTextStyle = { fontSize: '14px', fontWeight: 500, color: '#9ca3af' };
@@ -1174,19 +1174,19 @@ const TenantAccountManagement = forwardRef(({
           <div style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號詳情</h3>
-              <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
+              <button type="button" onClick={() => setDetailAccount(null)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ overflow: 'auto', flex: 1, padding: '18px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px 14px', fontSize: '14px', color: '#d1d5db' }}>
-              <span style={{ color: '#64748b' }}>帳號</span><strong style={{ color: '#f3f4f6', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
-              <span style={{ color: '#64748b' }}>顯示名稱</span><span>{detailAccount.displayName || '-'}</span>
-              <span style={{ color: '#64748b' }}>狀態</span><span>{getStatusBadge(detailAccount.status)}</span>
-              <span style={{ color: '#64748b' }}>訂單編號</span><span>{detailAccount.orderNo || '-'}</span>
-              <span style={{ color: '#64748b' }}>域名</span><span>{detailAccount.domain || '-'}</span>
-              <span style={{ color: '#64748b' }}>郵箱</span><span>{detailAccount.email || '-'}</span>
-              <span style={{ color: '#64748b' }}>電話</span><span>{detailAccount.phone || '-'}</span>
-              <span style={{ color: '#64748b' }}>開始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
-              <span style={{ color: '#64748b' }}>結束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
+              <span style={{ color: '#9ca3af' }}>帳號</span><strong style={{ color: '#f3f4f6', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
+              <span style={{ color: '#9ca3af' }}>顯示名稱</span><span>{detailAccount.displayName || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>狀態</span><span>{getStatusBadge(detailAccount.status)}</span>
+              <span style={{ color: '#9ca3af' }}>訂單編號</span><span>{detailAccount.orderNo || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>域名</span><span>{detailAccount.domain || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>郵箱</span><span>{detailAccount.email || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>電話</span><span>{detailAccount.phone || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>開始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
+              <span style={{ color: '#9ca3af' }}>結束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
             </div>
             <div style={{ borderTop: '1px solid #1f2937', marginTop: '14px', paddingTop: '14px' }}>
               <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '12px' }}>配置情況</div>
@@ -1235,33 +1235,33 @@ const TenantAccountManagement = forwardRef(({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯帳號</h3>
-              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
+              <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>顯示名稱</span>
-                <input value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                <input value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>电子郵箱</span>
-                <input type="email" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
+                <input type="email" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>移动電話</span>
-                <input value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
+                <input value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼</span>
-                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
+                <input type="password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼確認</span>
-                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
+                <input type="password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               {editMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>}
-              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
             </div>
           </form>
@@ -1290,33 +1290,33 @@ const TenantAccountManagement = forwardRef(({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3>
-              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
+              <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼</span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
                 <input
                   type="password"
                   value={resetPasswordForm.password}
                   onChange={(event) => setResetPasswordForm((form) => ({ ...form, password: event.target.value }))}
                   autoComplete="new-password"
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>密碼確認</span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
                 <input
                   type="password"
                   value={resetPasswordForm.confirmPassword}
                   onChange={(event) => setResetPasswordForm((form) => ({ ...form, confirmPassword: event.target.value }))}
                   autoComplete="new-password"
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                 />
               </label>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               {resetPasswordMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: resetPasswordMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetPasswordMessage.text}</p>}
-              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
             </div>
           </form>
@@ -1342,20 +1342,20 @@ const TenantAccountManagement = forwardRef(({
           <form onSubmit={saveContactBookConfig} style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄配置</h3>
-              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
+              <button type="button" onClick={closeContactBookConfig} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>帳號</span>
-                <input value={contactBookTargets.length > 1 ? `已選擇 ${contactBookTargets.length} 個帳號` : `${contactBookAccount.username || '-'}${contactBookAccount.domain ? ` | ${contactBookAccount.domain}` : ''}`} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#64748b' }} />
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>帳號</span>
+                <input value={contactBookTargets.length > 1 ? `已選擇 ${contactBookTargets.length} 個帳號` : `${contactBookAccount.username || '-'}${contactBookAccount.domain ? ` | ${contactBookAccount.domain}` : ''}`} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>通訊錄</span>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄</span>
                 <select
                   value={selectedContactBookId}
                   onChange={(event) => setSelectedContactBookId(event.target.value)}
                   disabled={isLoadingContactBooks || isSavingContactBook}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#111827', color: '#d1d5db' }}
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', backgroundColor: '#111827', color: '#d1d5db' }}
                 >
                   <option value="">未配置</option>
                   {contactBooks.map((book) => (
@@ -1363,12 +1363,12 @@ const TenantAccountManagement = forwardRef(({
                   ))}
                 </select>
               </label>
-              {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>正在載入通訊錄...</p>}
-              {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>暫無已創建的通訊錄。</p>}
+              {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>正在載入通訊錄...</p>}
+              {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>暫無已創建的通訊錄。</p>}
               {contactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: contactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{contactBookMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
+              <button type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isLoadingContactBooks || isSavingContactBook}>{isSavingContactBook ? '儲存中...' : '儲存'}</button>
             </div>
           </form>
@@ -1382,7 +1382,7 @@ const TenantAccountManagement = forwardRef(({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>二維碼管理 — {qrDialogAccount.username}</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => setQrRefreshKey(k => k + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '16px', padding: '2px' }} title="刷新">🔄</button>
+                <button onClick={() => setQrRefreshKey(k => k + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '16px', padding: '2px' }} title="刷新">🔄</button>
                 <button onClick={() => setQrDialogAccount(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px' }}>✕</button>
               </div>
             </div>
