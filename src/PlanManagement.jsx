@@ -1491,9 +1491,73 @@ export default function PlanManagement({ onNavigate }) {
               
               <div className="detail-section">
 	                <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '600', color: '#e5e7eb', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>已分配帳號</h4>
-                <div style={{ padding: '32px 20px', textAlign: 'center', color: '#64748b', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#1a2332' }}>
-                  功能开发中，将在此处展示已分配至该訂單的 SIP 帳號列表...
-                </div>
+                {(() => {
+                  const sipAccts = detailOrder.sipAccounts || detailOrder.sip_accounts || [];
+                  const webAccts = detailOrder.webAccounts || detailOrder.web_accounts || [];
+                  if (sipAccts.length === 0 && webAccts.length === 0) {
+                    return <div style={{ padding: '32px 20px', textAlign: 'center', color: '#6b7280', fontSize: '13px', border: '1px dashed #374151', borderRadius: '8px', backgroundColor: '#1a2332' }}>暫無已分配帳號</div>;
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {sipAccts.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>SIP 帳號（{sipAccts.length} 個）</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                            <thead>
+                              <tr style={{ background: '#1a2332' }}>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>帳號</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>顯示名稱</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>域名</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>狀態</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>生效日期</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>過期日期</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sipAccts.map((a, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #1f2937' }}>
+                                  <td style={{ padding: '8px 10px', color: '#e5e7eb', fontFamily: 'monospace' }}>{a.username || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#d1d5db' }}>{a.displayName || a.display_name || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.sipDomain || a.sip_domain || '-'}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', color: a.status === 'active' ? '#4ade80' : '#9ca3af' }}>{a.status === 'active' ? '啟用' : a.status || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.serviceStartsAt || a.service_starts_at || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.serviceExpiresAt || a.service_expires_at || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                      {webAccts.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>Web 帳號（{webAccts.length} 個）</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                            <thead>
+                              <tr style={{ background: '#1a2332' }}>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>帳號</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>顯示名稱</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>域名</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>生效日期</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'left', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #1f2937', background: '#1a2332', whiteSpace: 'nowrap' }}>過期日期</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {webAccts.map((a, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #1f2937' }}>
+                                  <td style={{ padding: '8px 10px', color: '#e5e7eb', fontFamily: 'monospace' }}>{a.username || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#d1d5db' }}>{a.displayName || a.display_name || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.domain || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.serviceStartsAt || a.service_starts_at || '-'}</td>
+                                  <td style={{ padding: '8px 10px', color: '#9ca3af', fontSize: '11px' }}>{a.serviceExpiresAt || a.service_expires_at || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

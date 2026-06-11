@@ -8976,6 +8976,28 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
       [orderId],
     );
 
+    // Query assigned SIP accounts
+    const sipAccountRows = await connection.query(
+      `SELECT username, sip_domain, display_name, email, account_status,
+              DATE_FORMAT(service_starts_at, '%Y-%m-%d') AS service_starts_at,
+              DATE_FORMAT(service_expires_at, '%Y-%m-%d') AS service_expires_at
+       FROM billing_order_sip_accounts
+       WHERE order_id = ?
+       ORDER BY username ASC`,
+      [orderId],
+    );
+
+    // Query assigned Web accounts
+    const webAccountRows = await connection.query(
+      `SELECT web_username, web_display_name, web_domain,
+              DATE_FORMAT(service_starts_at, '%Y-%m-%d') AS service_starts_at,
+              DATE_FORMAT(service_expires_at, '%Y-%m-%d') AS service_expires_at
+       FROM billing_order_web_accounts
+       WHERE order_id = ?
+       ORDER BY web_username ASC`,
+      [orderId],
+    );
+
     return response.json({
       order: {
         id: Number(order.id),
@@ -9009,6 +9031,22 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
           sipDomain: account.sip_domain || "",
           displayName: account.display_name || "",
           sourceServiceExpiresAt: account.source_service_expires_at || "",
+        })),
+        sipAccounts: (sipAccountRows || []).map(a => ({
+          username: a.username || '',
+          sipDomain: a.sip_domain || '',
+          displayName: a.display_name || '',
+          email: a.email || '',
+          status: a.account_status || '',
+          serviceStartsAt: a.service_starts_at || '',
+          serviceExpiresAt: a.service_expires_at || '',
+        })),
+        webAccounts: (webAccountRows || []).map(a => ({
+          username: a.web_username || '',
+          displayName: a.web_display_name || '',
+          domain: a.web_domain || '',
+          serviceStartsAt: a.service_starts_at || '',
+          serviceExpiresAt: a.service_expires_at || '',
         })),
         items: itemRows.map((item) => ({
           itemType: item.item_type || "",
