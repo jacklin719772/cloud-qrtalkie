@@ -1232,7 +1232,7 @@ export default function PlanManagement({ onNavigate }) {
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
                               <tr>
-                                <th style={{ width: '36px', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                                <th style={{ width: '36px', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'center', background: '#1a2332' }}>
                                   <input
                                     type="checkbox"
                                     checked={requiredCount > 0 && selectedCount === requiredCount}
@@ -1243,11 +1243,11 @@ export default function PlanManagement({ onNavigate }) {
                                     style={{ cursor: 'pointer' }}
                                   />
                                 </th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>帳號</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>狀態</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>添加人</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>添加时间</th>
-	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>域名</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>帳號</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>狀態</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>添加人</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>添加时间</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>域名</th>
                               </tr>
                             </thead>
                             <tbody>
