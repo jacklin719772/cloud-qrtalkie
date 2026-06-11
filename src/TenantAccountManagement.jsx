@@ -623,7 +623,7 @@ const TenantAccountManagement = forwardRef(({
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>帳號詳情</h3>
-              <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
+              <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>
                 返回列表
               </button>
             </div>
@@ -1174,7 +1174,7 @@ const TenantAccountManagement = forwardRef(({
           <div style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號詳情</h3>
-              <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ padding: '4px 10px' }}>關閉</button>
+              <button className="ghost-btn" type="button" onClick={() => setDetailAccount(null)} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
             </div>
             <div style={{ overflow: 'auto', flex: 1, padding: '18px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px 14px', fontSize: '14px', color: '#d1d5db' }}>
