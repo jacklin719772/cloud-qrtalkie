@@ -485,10 +485,10 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
     setDetailLoading(true);
     try {
       const res = await apiClient.get(`/flexisip/accounts/registration-detail?username=${encodeURIComponent(row.username)}&domain=${encodeURIComponent(row.domain)}`);
-      if (res.data?.data) {
-        setDetailData(res.data.data);
+      if (res?.data) {
+        setDetailData(res.data);
       } else {
-        setDetailError(res.data?.message || '數據為空');
+        setDetailError(res?.message || '數據為空');
       }
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.statusText || err?.message || '請求失敗';
