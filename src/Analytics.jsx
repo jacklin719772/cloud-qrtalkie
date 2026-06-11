@@ -265,9 +265,10 @@ export default function Analytics() {
           {activeTab === 'web' && lastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(lastFetchAt)}</span>}
           {activeTab === 'sip' && sipLastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(sipLastFetchAt)}</span>}
           {activeTab === 'sipCallLog' && sipCallDateRange && (sipCallDateRange.earliest || sipCallDateRange.latest) && (
-            <span style={{ fontSize: '11px', color: '#6b7280' }}>
-              {(sipCallDateRange.earliest || '—').replace(/-/g, '/')} ～ {(sipCallDateRange.latest || '—').replace(/-/g, '/')}
-            </span>
+            (() => {
+              const fmt = (s) => { const p = (s || '').split('-'); return p.length === 3 ? `${parseInt(p[1], 10)}月${parseInt(p[2], 10)}日` : '—'; };
+              return <span style={{ fontSize: '11px', color: '#6b7280' }}>{fmt(sipCallDateRange.earliest)} ～ {fmt(sipCallDateRange.latest)}</span>;
+            })()
           )}
           {(activeTab === 'web' || activeTab === 'sip') && (
           <button onClick={() => activeTab === 'web' ? loadData(true) : loadSipData(true)} title="手動刷新"
