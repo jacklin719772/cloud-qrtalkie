@@ -204,11 +204,16 @@ export default function Analytics() {
     const toDate = sipCallDateTo ? new Date(sipCallDateTo) : null;
     const earliest = range.earliest ? new Date(range.earliest) : null;
     const latest = range.latest ? new Date(range.latest) : null;
-    const fromBefore = fromDate && earliest && fromDate < earliest;
-    const toAfter = toDate && latest && toDate > latest;
-    if (!fromBefore && !toAfter) return null;
-    if (fromBefore && toAfter) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
-    if (fromBefore) return `起始日期超出保存範圍（最早 ${earliest.toLocaleDateString('zh-CN')}），將僅返回範圍內的記錄`;
+    const fromBeforeEarliest = fromDate && earliest && fromDate < earliest;
+    const fromAfterLatest = fromDate && latest && fromDate > latest;
+    const toBeforeEarliest = toDate && earliest && toDate < earliest;
+    const toAfterLatest = toDate && latest && toDate > latest;
+    if (!fromBeforeEarliest && !fromAfterLatest && !toBeforeEarliest && !toAfterLatest) return null;
+    if (fromAfterLatest && toBeforeEarliest) return '選擇的日期範圍完全超出資料庫保存範圍，將無返回記錄';
+    if (fromAfterLatest) return `起始日期超出保存範圍（記錄最晚至 ${latest.toLocaleDateString('zh-CN')}），可能無返回記錄`;
+    if (toBeforeEarliest) return `結束日期超出保存範圍（記錄最早自 ${earliest.toLocaleDateString('zh-CN')}），可能無返回記錄`;
+    if (fromBeforeEarliest && toAfterLatest) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
+    if (fromBeforeEarliest) return `起始日期超出保存範圍（最早 ${earliest.toLocaleDateString('zh-CN')}），將僅返回範圍內的記錄`;
     return `結束日期超出保存範圍（最晚 ${latest.toLocaleDateString('zh-CN')}），將僅返回範圍內的記錄`;
   }, [sipCallDateFrom, sipCallDateTo, sipCallDateRange]);
 
