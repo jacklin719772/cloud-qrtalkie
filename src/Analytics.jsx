@@ -76,6 +76,18 @@ export default function Analytics() {
   const [callLogTotal, setCallLogTotal] = useState(0);
   const [isCallLogLoading, setIsCallLogLoading] = useState(false);
 
+  // SIP call log state
+  const [sipCallLogs, setSipCallLogs] = useState([]);
+  const [sipCallLogTotal, setSipCallLogTotal] = useState(0);
+  const [isSipCallLogLoading, setIsSipCallLogLoading] = useState(false);
+  const [sipCallAccount, setSipCallAccount] = useState('');
+  const [sipCallDirection, setSipCallDirection] = useState('all');
+  const [sipCallResult, setSipCallResult] = useState('all');
+  const [sipCallDateFrom, setSipCallDateFrom] = useState('');
+  const [sipCallDateTo, setSipCallDateTo] = useState('');
+  const [sipCallPage, setSipCallPage] = useState(1);
+  const [sipCallPageSize, setSipCallPageSize] = useState(10);
+  const [sipCallExpanded, setSipCallExpanded] = useState(null);
   // SIP state
   const [sipSearch, setSipSearch] = useState('');
   const [sipStatusFilter, setSipStatusFilter] = useState('all');
@@ -371,36 +383,50 @@ export default function Analytics() {
       {activeTab === 'sipCallLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
-            <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
+            <select value={sipCallAccount} onChange={e => { setSipCallAccount(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '130px' }}>
-              <option value="">選擇分機號</option>
+              <option value="">全部帳號</option>
               {accounts.filter(a => /^\d+$/.test(a.username)).map(a => (
-                <option key={a.id} value={a.username}>{a.username} {a.displayName ? `(${a.displayName})` : ''}</option>
+                <option key={a.id} value={a.username}>{a.username}</option>
               ))}
             </select>
-            <div style={{ position: 'relative', width: '200px' }}>
-              <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="search" placeholder="搜尋主叫/被叫號碼" value={callSearch} onChange={e => { setCallSearch(e.target.value); setCallPage(1); }}
-                style={{ width: '100%', height: '40px', padding: '0 14px 0 38px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
-            </div>
-            <input type="date" value={callDateFrom} onChange={e => { setCallDateFrom(e.target.value); setCallPage(1); }}
+            <select value={sipCallDirection} onChange={e => { setSipCallDirection(e.target.value); setSipCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">全部方向</option>
+              <option value="inbound">呼入</option>
+              <option value="outbound">呼出</option>
+              <option value="internal">內部</option>
+            </select>
+            <select value={sipCallResult} onChange={e => { setSipCallResult(e.target.value); setSipCallPage(1); }}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">全部結果</option>
+              <option value="answered">已接聽</option>
+              <option value="missed">未接</option>
+              <option value="cancelled">已取消</option>
+              <option value="busy">忙線</option>
+              <option value="declined">拒絕</option>
+              <option value="timeout">超時</option>
+              <option value="failed">失敗</option>
+            </select>
+            <input type="date" value={sipCallDateFrom} onChange={e => { setSipCallDateFrom(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
             <span style={{ color: '#6b7280', fontSize: '13px' }}>至</span>
-            <input type="date" value={callDateTo} onChange={e => { setCallDateTo(e.target.value); setCallPage(1); }}
+            <input type="date" value={sipCallDateTo} onChange={e => { setSipCallDateTo(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
-          <CallLogTable logs={callLogs} total={callLogTotal} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo}
-            page={callPage} pageSize={callPageSize} onPageChange={setCallPage} onPageSizeChange={v => { setCallPageSize(v); setCallPage(1); }}
-            expandedCall={expandedCall} onToggleExpand={setExpandedCall} isLoading={isCallLogLoading}
-            extension={callExtension} onFetch={async (ext, params) => {
-              setIsCallLogLoading(true);
+          <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} account={sipCallAccount} direction={sipCallDirection}
+            result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo}
+            page={sipCallPage} pageSize={sipCallPageSize} onPageChange={setSipCallPage} onPageSizeChange={v => { setSipCallPageSize(v); setSipCallPage(1); }}
+            expandedCall={sipCallExpanded} onToggleExpand={setSipCallExpanded} isLoading={isSipCallLogLoading}
+            onFetch={async (params) => {
+              setIsSipCallLogLoading(true);
               try {
                 const qs = new URLSearchParams(params).toString();
-                const res = await apiClient.get(`/pbx/webrtc-accounts/${ext}/call-logs?${qs}`);
-                setCallLogs(res.data?.calls || []);
-                setCallLogTotal(res.data?.total || 0);
-              } catch { setCallLogs([]); setCallLogTotal(0); }
-              finally { setIsCallLogLoading(false); }
+                const res = await apiClient.get(`/flexisip/call-logs?${qs}`);
+                setSipCallLogs(res.data?.items || []);
+                setSipCallLogTotal(res.data?.total || 0);
+              } catch { setSipCallLogs([]); setSipCallLogTotal(0); }
+              finally { setIsSipCallLogLoading(false); }
             }} />
         </div>
       )}
@@ -513,6 +539,114 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
             <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
             <button disabled={safePage >= totalPages} onClick={() => onPageChange(p => p + 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage >= totalPages ? '#4b5563' : '#9ca3af', cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Flexisip SIP Call Log sub-component
+function FlexisipCallLogTable({ logs, total, account, direction, result, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, onFetch }) {
+  useEffect(() => {
+    const params = { includeDevices: 'true', limit: String(pageSize), offset: String((page - 1) * pageSize) };
+    if (account) params.accounts = account;
+    if (direction !== 'all') params.direction = direction;
+    if (result !== 'all') params.result = result;
+    if (dateFrom) params.from = dateFrom;
+    if (dateTo) params.to = dateTo;
+    onFetch(params);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, direction, result, dateFrom, dateTo, page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+
+  const resultBadge = (r) => {
+    const map = {
+      answered: { bg: '#065f46', color: '#6ee7b7', text: '已接聽' },
+      missed: { bg: '#7f1d1d', color: '#fca5a5', text: '未接' },
+      cancelled: { bg: '#1e293b', color: '#9ca3af', text: '已取消' },
+      busy: { bg: '#3b1111', color: '#fca5a5', text: '忙線' },
+      declined: { bg: '#7f1d1d', color: '#fca5a5', text: '拒絕' },
+      timeout: { bg: '#1f2937', color: '#6b7280', text: '超時' },
+      failed: { bg: '#7f1d1d', color: '#fca5a5', text: '失敗' },
+      unknown: { bg: '#1f2937', color: '#6b7280', text: '未知' },
+    };
+    const s = map[r] || {};
+    return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: s.bg, color: s.color }}>{s.text || r}</span>;
+  };
+
+  const directionBadge = (d) => {
+    const map = { inbound: '呼入', outbound: '呼出', internal: '內部', unknown: '未知' };
+    return map[d] || d;
+  };
+
+  const formatTime = (iso) => { try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+  const formatDuration = (s) => { if (!s && s !== 0) return '-'; const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
+        <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+          <thead>
+            <tr style={{ background: '#1e293b' }}>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>日期</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>主叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>被叫號碼</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>方向</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>結果</th>
+              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>通話時長</th>
+              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>詳情</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+            ) : logs.length === 0 ? (
+              <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+            ) : logs.map(row => (
+              <React.Fragment key={row.id}>
+                <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px' }}>{formatTime(row.initiatedAt)}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.fromUser || '—'}</td>
+                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.toUser || '—'}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#d1d5db', fontSize: '12px' }}>{directionBadge(row.direction)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{resultBadge(row.result)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.estimatedDurationSeconds)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <button onClick={() => onToggleExpand(expandedCall === row.id ? null : row.id)}
+                      style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px' }}>
+                      {expandedCall === row.id ? '收起' : '詳情'}
+                    </button>
+                  </td>
+                </tr>
+                {expandedCall === row.id && (
+                  <tr><td colSpan="7" style={{ padding: 0, background: '#0f172a' }}>
+                    <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
+                      <span>主叫域：<span style={{ color: '#d1d5db' }}>{row.fromDomain || '—'}</span></span>
+                      <span>被叫域：<span style={{ color: '#d1d5db' }}>{row.toDomain || '—'}</span></span>
+                      <span>信令碼：<span style={{ color: row.finalCode ? '#fca5a5' : '#d1d5db' }}>{row.finalCode || '—'}</span></span>
+                      <span>原因：<span style={{ color: '#d1d5db' }}>{row.finalReason || '—'}</span></span>
+                      <span>結束時間：<span style={{ color: '#d1d5db' }}>{formatTime(row.endedAt)}</span></span>
+                      <span>設備數：<span style={{ color: '#d1d5db' }}>{row.devicesCount}</span></span>
+                    </div>
+                  </td></tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
+        <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 筆記錄</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
+            style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
+            {[10, 20, 50, '全部'].map(o => <option key={o} value={o}>{o === '全部' ? o : `${o} 條/頁`}</option>)}
+          </select>
+          <button disabled={safePage <= 1} onClick={() => onPageChange(p => p - 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage <= 1 ? '#4b5563' : '#9ca3af', cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+          <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
+          <button disabled={safePage >= totalPages} onClick={() => onPageChange(p => p + 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage >= totalPages ? '#4b5563' : '#9ca3af', cursor: safePage >= totalPages ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
         </div>
       </div>
     </div>
