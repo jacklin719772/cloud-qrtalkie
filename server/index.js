@@ -1745,6 +1745,64 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       sipUserId = assignedAccount.sip_user_id;
     }
 
+    // Query sip_users for Flexisip sync fields
+    const [sipUser] = await connection.query(
+      `SELECT id, username, sip_domain, display_name, email, phone_number, status,
+              flexisip_account_id, sip_uri, sync_status
+       FROM sip_users WHERE id = ? AND tenant_id = ? LIMIT 1 FOR UPDATE`,
+      [Number(sipUserId), request.admin.tenantId],
+    );
+    if (!sipUser) {
+      await connection.rollback();
+      return response.status(404).json({ message: "找不到帳號。" });
+    }
+
+    // ── Flexisip sync ──
+    const needsFlexisipSync = sipUser.sync_status !== 'local_only';
+    if (needsFlexisipSync) {
+      const flexisipChangedFields = [];
+      if (sipUser.display_name !== displayName) flexisipChangedFields.push('display_name');
+      if (sipUser.email !== email) flexisipChangedFields.push('email');
+      if (sipUser.phone_number !== phone) flexisipChangedFields.push('phone');
+      if (password) flexisipChangedFields.push('password');
+
+      if (flexisipChangedFields.length > 0) {
+        let flexisipAccountId = sipUser.flexisip_account_id || null;
+
+        if (!flexisipAccountId && sipUser.sip_uri) {
+          try {
+            const sr = await searchAccountBySip(sipUser.sip_uri);
+            flexisipAccountId = sr?.id;
+          } catch {}
+        }
+
+        if (flexisipAccountId) {
+          const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
+          if (flexisipChangedFields.includes('display_name')) flexisipPayload.display_name = displayName;
+          if (flexisipChangedFields.includes('email') && email) flexisipPayload.email = email;
+          if (flexisipChangedFields.includes('phone') && phone) flexisipPayload.phone = phone;
+          if (flexisipChangedFields.includes('password')) {
+            flexisipPayload.password = password;
+            flexisipPayload.algorithm = "SHA-256";
+          }
+
+          try {
+            await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+            if (sipUser.flexisip_account_id !== flexisipAccountId) {
+              await connection.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, sipUser.id]);
+            }
+          } catch (flexisipErr) {
+            await connection.rollback();
+            const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+            if (flexisipErr?.status === 404) {
+              return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+            }
+            return response.status(502).json({ message: `Flexisip 更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
+          }
+        }
+      }
+    }
+
     let userUpdateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?`;
     const userUpdateParams = [displayName || null, email, phone || null];
 
