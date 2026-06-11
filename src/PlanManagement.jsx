@@ -1547,7 +1547,7 @@ export default function PlanManagement({ onNavigate }) {
                   {accountShortageDialog.webShort > 0 && <span>缺口：<strong style={{ color: '#fca5a5' }}>{accountShortageDialog.webShort}</strong></span>}
                 </div>
                 {accountShortageDialog.webShort > 0 && (
-                  <button onClick={() => { setAccountShortageDialog(null); onNavigate?.('web-account-registration'); }}
+                  <button onClick={() => { setAccountShortageDialog(null); onNavigate?.('sip-account-allocation'); }}
                     style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}>
                     前往 Web 帳號管理
                   </button>
