@@ -458,6 +458,8 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+  const [sortField, setSortField] = useState('username');
+  const [sortDir, setSortDir] = useState('asc');
 
   const filtered = useMemo(() => {
     let list = data;
@@ -470,13 +472,41 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
     return list;
   }, [data, search, statusFilter, tenantFilter]);
 
+  const sorted = useMemo(() => {
+    if (!sortField) return filtered;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const va = a[sortField];
+      const vb = b[sortField];
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      const type = typeof va;
+      if (type === 'number') return (va - (vb || 0)) * dir;
+      return String(va).localeCompare(String(vb || ''), undefined, { numeric: true }) * dir;
+    });
+  }, [filtered, sortField, sortDir]);
+
+  const handleSort = (field) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
   const statsData = stats;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / (pageSize === '全部' ? filtered.length : pageSize)));
-  const effectiveSize = pageSize === '全部' ? filtered.length : Number(pageSize);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / (pageSize === '全部' ? sorted.length : pageSize)));
+  const effectiveSize = pageSize === '全部' ? sorted.length : Number(pageSize);
   const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * effectiveSize, safePage * effectiveSize);
+  const paginated = sorted.slice((safePage - 1) * effectiveSize, safePage * effectiveSize);
 
   const formatShort = (iso) => { if (!iso) return '-'; try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+
+  const sortArrow = (field) => sortField === field ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  const thSortable = (field, label, align, extraStyle = {}) => (
+    <th onClick={() => handleSort(field)}
+      style={{ padding: '12px 16px', textAlign: align, color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', ...extraStyle }}>
+      {label}<span style={{ color: sortField === field ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === field ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+    </th>
+  );
 
   const handleDetailClick = async (row) => {
     setDetailModalOpen(true);
@@ -535,14 +565,14 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
           <table style={{ width: '100%', minWidth: '960px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#1e293b' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>帳號</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>顯示名稱</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Domain</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>租戶</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>註冊狀態</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>連線數</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>最後註冊</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>過期日期</th>
+                {thSortable('username', '帳號', 'left')}
+                {thSortable('displayName', '顯示名稱', 'left')}
+                {thSortable('domain', 'Domain', 'left')}
+                {thSortable('tenantName', '租戶', 'left')}
+                {thSortable('status', '註冊狀態', 'center')}
+                {thSortable('contactsCount', '連線數', 'center')}
+                {thSortable('lastRegisterAt', '最後註冊', 'left')}
+                {thSortable('expiresAt', '過期日期', 'left')}
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, right: 0, zIndex: 3, whiteSpace: 'nowrap', boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>操作</th>
               </tr>
             </thead>
