@@ -538,7 +538,7 @@ export default function PlanManagement({ onNavigate }) {
           border-radius: 9px !important;
           border: 1px solid #d8e2ef !important;
           background: #fff !important;
-          color: #334155 !important;
+          color: #d1d5db !important;
           font-size: 12px !important;
           outline: none !important;
           box-sizing: border-box !important;
@@ -589,15 +589,14 @@ export default function PlanManagement({ onNavigate }) {
           font-size: 12px;
         }
         #plan-management .plan-table thead {
-          background: #f8fafc !important;
+          background: #1e293b !important;
         }
         #plan-management .plan-table th {
-          height: 56px !important;
-          padding: 0 22px !important;
-          color: #475569 !important;
+          padding: 12px 8px !important;
+          color: #e5e7eb !important;
           font-size: 12px !important;
           font-weight: 600 !important;
-          border-bottom: 1px solid #e2e8f0 !important;
+          border-bottom: 2px solid #2d3a4a !important;
           white-space: nowrap !important;
         }
         #plan-management .plan-table td {
@@ -626,7 +625,7 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management .plan-table td:nth-child(5),
         #plan-management .plan-table th:nth-child(6),
         #plan-management .plan-table td:nth-child(6) {
-          width: 140px;
+          width: 100px;
         }
         #plan-management .plan-table th:nth-child(7),
         #plan-management .plan-table td:nth-child(7),
@@ -651,6 +650,8 @@ export default function PlanManagement({ onNavigate }) {
           text-overflow: ellipsis;
           vertical-align: middle;
         }
+        #plan-management .plan-table .plan-action-cell { overflow: visible !important; }
+        #plan-management .plan-table .plan-action-cell span { overflow: visible !important; max-width: none !important; }
         #plan-management .plan-table .plan-select-cell {
           width: 50px !important;
           padding: 0 !important;
@@ -658,8 +659,8 @@ export default function PlanManagement({ onNavigate }) {
         }
         #plan-management .plan-table .plan-action-head,
         #plan-management .plan-table .plan-action-cell {
-          width: 100px !important;
-          min-width: 100px !important;
+          width: 150px !important;
+          min-width: 150px !important;
           text-align: center !important;
           padding: 12px 6px !important;
           position: sticky !important;
@@ -908,7 +909,7 @@ export default function PlanManagement({ onNavigate }) {
 	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>支付方式</th>
 	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>生效日期</th>
 	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>結束日期</th>
-	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, right: 0, zIndex: 3, background: '#1e293b', whiteSpace: 'nowrap', borderLeft: '1px solid #374151' }}>操作</th>
+	                <th style={{ width: '150px', padding: '12px 8px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, right: 0, zIndex: 3, background: '#1e293b', whiteSpace: 'nowrap', borderLeft: '1px solid #374151' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -944,7 +945,7 @@ export default function PlanManagement({ onNavigate }) {
                     <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{paymentLabel.text}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 2, borderLeft: '1px solid #374151', width: '100px', padding: '12px 6px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 2, borderLeft: '1px solid #374151', width: '150px', padding: '12px 8px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openDetailModal(order)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(e) => {
