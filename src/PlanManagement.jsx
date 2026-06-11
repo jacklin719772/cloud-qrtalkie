@@ -908,7 +908,7 @@ export default function PlanManagement({ onNavigate }) {
 	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>支付方式</th>
 	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>生效日期</th>
 	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>結束日期</th>
-	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, right: 0, zIndex: 3, background: '#1e293b', whiteSpace: 'nowrap', boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>操作</th>
+	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, right: 0, zIndex: 3, background: '#1e293b', whiteSpace: 'nowrap', borderLeft: '1px solid #374151' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -944,7 +944,7 @@ export default function PlanManagement({ onNavigate }) {
                     <td title={paymentLabel.title} style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{paymentLabel.text}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.effective_at || order.effectiveAt)}</td>
                     <td style={{ fontSize: '14px', color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937' }}>{formatDate(order.expires_at || order.expiresAt)}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-4px 0 8px rgba(0,0,0,0.3)', width: '100px', padding: '12px 6px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 2, borderLeft: '1px solid #374151', width: '100px', padding: '12px 6px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
                       <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openDetailModal(order)}>詳情</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(e) => {
