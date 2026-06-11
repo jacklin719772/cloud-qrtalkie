@@ -439,11 +439,11 @@ export default function Analytics() {
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
           {sipCallDateRange && (sipCallDateRange.earliest || sipCallDateRange.latest) && (
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', marginBottom: '12px', background: '#1a2332', border: '1px solid #1e3a5f', borderRadius: '8px', fontSize: '12px', color: '#60a5fa' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', marginBottom: '12px', background: '#111827', border: '1px solid #374151', borderRadius: '8px', fontSize: '12px', color: '#9ca3af' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
               <span>目前保存的呼叫記錄範圍：</span>
               {sipCallDateRange.earliest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.earliest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
-              <span style={{ color: '#4b5563' }}>至</span>
+              <span style={{ color: '#6b7280' }}>至</span>
               {sipCallDateRange.latest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.latest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
             </div>
           )}
