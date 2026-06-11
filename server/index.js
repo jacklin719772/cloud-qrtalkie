@@ -15043,6 +15043,37 @@ app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, resp
   }
 });
 
+// GET /api/flexisip/call-logs/accounts - get distinct phone numbers from call logs.
+app.get("/api/flexisip/call-logs/accounts", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 Flexisip 通話記錄帳號",
+      error: { code: "FLEXISIP_CALL_LOG_ACCOUNTS_FORBIDDEN", message: "只有平台管理員可以查詢 Flexisip 通話記錄帳號" },
+    });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        "SELECT DISTINCT u.user FROM (SELECT from_user AS user FROM flexisip_call_logs WHERE from_user != '' UNION SELECT to_user AS user FROM flexisip_call_logs WHERE to_user != '') u ORDER BY u.user ASC",
+      );
+      const accounts = (rows || []).map((r) => String(r.user || "")).filter(Boolean);
+      return response.json({ success: true, data: accounts });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Failed to query Flexisip call log accounts:", error.message);
+    return response.status(500).json({
+      success: false,
+      message: "Flexisip 通話記錄帳號查詢失敗",
+      error: { code: "FLEXISIP_CALL_LOG_ACCOUNTS_FAILED", message: "Flexisip 通話記錄帳號查詢失敗" },
+    });
+  }
+});
+
 // GET /api/flexisip/call-logs - read-only Flexisip call log summary query.
 app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {

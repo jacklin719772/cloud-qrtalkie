@@ -80,7 +80,9 @@ export default function Analytics() {
   const [sipCallLogs, setSipCallLogs] = useState([]);
   const [sipCallLogTotal, setSipCallLogTotal] = useState(0);
   const [isSipCallLogLoading, setIsSipCallLogLoading] = useState(false);
-  const [sipCallAccount, setSipCallAccount] = useState('');
+  const [sipCallAccounts, setSipCallAccounts] = useState([]);
+  const [sipCallAccountList, setSipCallAccountList] = useState([]);
+  const [sipCallAccountDropdownOpen, setSipCallAccountDropdownOpen] = useState(false);
   const [sipCallDirection, setSipCallDirection] = useState('all');
   const [sipCallResult, setSipCallResult] = useState('all');
   const [sipCallDateFrom, setSipCallDateFrom] = useState('');
@@ -192,6 +194,10 @@ export default function Analytics() {
         const res = await apiClient.get('/flexisip/call-logs/date-range');
         setSipCallDateRange(res?.data || null);
       } catch { setSipCallDateRange(null); }
+      try {
+        const accRes = await apiClient.get('/flexisip/call-logs/accounts');
+        setSipCallAccountList(Array.isArray(accRes?.data) ? accRes.data : []);
+      } catch { setSipCallAccountList([]); }
     })();
   }, [activeTab]);
 
@@ -412,13 +418,42 @@ export default function Analytics() {
       {activeTab === 'sipCallLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
-            <select value={sipCallAccount} onChange={e => { setSipCallAccount(e.target.value); setSipCallPage(1); }}
-              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '130px' }}>
-              <option value="">全部帳號</option>
-              {accounts.filter(a => /^\d+$/.test(a.username)).map(a => (
-                <option key={a.id} value={a.username}>{a.username}</option>
-              ))}
-            </select>
+            {/* 账号多选下拉 */}
+            <div style={{ position: 'relative' }}>
+              <button onClick={() => setSipCallAccountDropdownOpen(o => !o)}
+                style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', cursor: 'pointer', minWidth: '130px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                {sipCallAccounts.length === 0 ? '選擇帳號' : `已選 ${sipCallAccounts.length} 個`}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6,9 12,15 18,9"/></svg>
+              </button>
+              {sipCallAccountDropdownOpen && (
+                <>
+                  <div onClick={() => setSipCallAccountDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                  <div style={{ position: 'absolute', top: '44px', left: 0, zIndex: 50, background: '#1a2332', border: '1px solid #374151', borderRadius: '8px', minWidth: '200px', maxHeight: '260px', overflow: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                    <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderBottom: '1px solid #1f2937' }}>
+                      <button onClick={() => { setSipCallAccounts([...sipCallAccountList]); setSipCallPage(1); }}
+                        style={{ flex: 1, padding: '4px 0', borderRadius: '4px', border: '1px solid #374151', background: '#111827', color: '#60a5fa', fontSize: '11px', cursor: 'pointer' }}>全選</button>
+                      <button onClick={() => { setSipCallAccounts([]); setSipCallPage(1); }}
+                        style={{ flex: 1, padding: '4px 0', borderRadius: '4px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '11px', cursor: 'pointer' }}>清除</button>
+                    </div>
+                    {sipCallAccountList.length === 0 ? (
+                      <div style={{ padding: '16px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>無可用帳號</div>
+                    ) : sipCallAccountList.map(acc => (
+                      <label key={acc} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: '#e5e7eb', borderBottom: '1px solid #1f2937' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <input type="checkbox" checked={sipCallAccounts.includes(acc)}
+                          onChange={() => {
+                            setSipCallAccounts(prev => prev.includes(acc) ? prev.filter(a => a !== acc) : [...prev, acc]);
+                            setSipCallPage(1);
+                          }}
+                          style={{ accentColor: '#3b82f6' }} />
+                        {acc}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <select value={sipCallDirection} onChange={e => { setSipCallDirection(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
               <option value="all">全部方向</option>
@@ -443,7 +478,7 @@ export default function Analytics() {
             <input type="date" value={sipCallDateTo} onChange={e => { setSipCallDateTo(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
-          <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} account={sipCallAccount} direction={sipCallDirection}
+          <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} accounts={sipCallAccounts} direction={sipCallDirection}
             result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo}
             page={sipCallPage} pageSize={sipCallPageSize} onPageChange={setSipCallPage} onPageSizeChange={v => { setSipCallPageSize(v); setSipCallPage(1); }}
             expandedCall={sipCallExpanded} onToggleExpand={setSipCallExpanded} isLoading={isSipCallLogLoading}
@@ -751,17 +786,16 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
 }
 
 // Flexisip SIP Call Log sub-component
-function FlexisipCallLogTable({ logs, total, account, direction, result, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, onFetch }) {
+function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, onFetch }) {
   useEffect(() => {
     const params = { includeDevices: 'true', limit: String(pageSize), offset: String((page - 1) * pageSize) };
-    if (account) params.accounts = account;
+    if (accounts.length) params.accounts = accounts.join(',');
     if (direction !== 'all') params.direction = direction;
     if (result !== 'all') params.result = result;
     if (dateFrom) params.from = dateFrom;
     if (dateTo) params.to = dateTo;
     onFetch(params);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account, direction, result, dateFrom, dateTo, page, pageSize]);
+  }, [accounts, direction, result, dateFrom, dateTo, page, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
