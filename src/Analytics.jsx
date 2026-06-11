@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
 
@@ -89,6 +89,7 @@ export default function Analytics() {
   const [sipCallPageSize, setSipCallPageSize] = useState(10);
   const [sipCallExpanded, setSipCallExpanded] = useState(null);
   const [sipCallDateRange, setSipCallDateRange] = useState(null);
+  const sipCallDateRangeRef = useRef(null);
   // SIP state
   const [sipSearch, setSipSearch] = useState('');
   const [sipStatusFilter, setSipStatusFilter] = useState('all');
@@ -190,16 +191,19 @@ export default function Analytics() {
     (async () => {
       try {
         const res = await apiClient.get('/flexisip/call-logs/date-range');
-        setSipCallDateRange(res?.data || null);
-      } catch { setSipCallDateRange(null); }
+        const data = res?.data || null;
+        setSipCallDateRange(data);
+        sipCallDateRangeRef.current = data;
+      } catch { setSipCallDateRange(null); sipCallDateRangeRef.current = null; }
     })();
   }, [activeTab]);
   const sipCallDateWarning = useMemo(() => {
-    if (!sipCallDateRange) return null;
+    const range = sipCallDateRangeRef.current;
+    if (!range) return null;
     const fromDate = sipCallDateFrom ? new Date(sipCallDateFrom) : null;
     const toDate = sipCallDateTo ? new Date(sipCallDateTo) : null;
-    const earliest = sipCallDateRange.earliest ? new Date(sipCallDateRange.earliest) : null;
-    const latest = sipCallDateRange.latest ? new Date(sipCallDateRange.latest) : null;
+    const earliest = range.earliest ? new Date(range.earliest) : null;
+    const latest = range.latest ? new Date(range.latest) : null;
     const fromBefore = fromDate && earliest && fromDate < earliest;
     const toAfter = toDate && latest && toDate > latest;
     if (!fromBefore && !toAfter) return null;
@@ -271,9 +275,9 @@ export default function Analytics() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {activeTab === 'web' && lastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(lastFetchAt)}</span>}
           {activeTab === 'sip' && sipLastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(sipLastFetchAt)}</span>}
-          {activeTab === 'sipCallLog' && sipCallDateRange && (sipCallDateRange.earliest || sipCallDateRange.latest) && (
+          {activeTab === 'sipCallLog' && sipCallDateRangeRef.current && (sipCallDateRangeRef.current.earliest || sipCallDateRangeRef.current.latest) && (
             <span style={{ fontSize: '11px', color: '#6b7280' }}>
-              {sipCallDateRange.earliest ? new Date(sipCallDateRange.earliest).toLocaleDateString('zh-CN') : '—'} ～ {sipCallDateRange.latest ? new Date(sipCallDateRange.latest).toLocaleDateString('zh-CN') : '—'}
+              {sipCallDateRangeRef.current.earliest ? new Date(sipCallDateRangeRef.current.earliest).toLocaleDateString('zh-CN') : '—'} ～ {sipCallDateRangeRef.current.latest ? new Date(sipCallDateRangeRef.current.latest).toLocaleDateString('zh-CN') : '—'}
             </span>
           )}
           {(activeTab === 'web' || activeTab === 'sip') && (
