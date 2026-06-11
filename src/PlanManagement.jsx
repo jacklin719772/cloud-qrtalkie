@@ -44,6 +44,8 @@ export default function PlanManagement({ onNavigate }) {
   const [unassignedWebAccounts, setUnassignedWebAccounts] = useState([]);
   const [isLoadingWebAccounts, setIsLoadingWebAccounts] = useState(false);
 
+  const [accountShortageDialog, setAccountShortageDialog] = useState(null); // { sipNeeded, sipAvailable, webNeeded, webAvailable }
+
   const isRenewalOrder = (order) => (order?.order_type || order?.orderType) === 'renewal';
   const orderRequiresWebAccounts = (order) => {
     const items = Array.isArray(order?.items) ? order.items : [];
@@ -65,41 +67,114 @@ export default function PlanManagement({ onNavigate }) {
     }
   };
 
-  const openReviewModal = async (order) => {
+  const handleReviewClick = async (order) => {
+    const requiredCount = Number(order.accountQuantity || order.account_quantity || 0);
+    const isRenewal = isRenewalOrder(order);
+    const needsWeb = orderRequiresWebAccounts(order);
+
+    // Fetch account availability
+    try {
+      const [sipData, webData] = await Promise.all([
+        apiClient.get('/admin/sip-accounts'),
+        apiClient.get('/admin/web-accounts'),
+      ]);
+      const sipAccounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
+      const unassignedSip = sipAccounts.filter(a => !a.tenantName);
+      const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
+      const unassignedWeb = webAccounts.filter(a => !a.tenantName && a.status === 'active');
+
+      // Calculate SIP account needs
+      let sipNeeded = 0;
+      if (!isRenewal) {
+        sipNeeded = Math.max(0, requiredCount);
+      }
+
+      // Calculate Web account needs
+      let webNeeded = 0;
+      if (needsWeb) {
+        if (isRenewal) {
+          // For renewal: check retained accounts
+          let retainedWithoutWeb = 0;
+          try {
+            const res = await apiClient.get('/admin/billing-orders/' + order.id);
+            const detail = res?.order || {};
+            const retained = Array.isArray(detail.retainedAccounts) ? detail.retainedAccounts : [];
+            retainedWithoutWeb = retained.filter(acc => !(acc.webAccountId || acc.hasWebAccount || acc.webAccountUsername)).length;
+            const replacementCount = Math.max(0, requiredCount - retained.length);
+            webNeeded = replacementCount + retainedWithoutWeb;
+          } catch {
+            webNeeded = requiredCount;
+          }
+        } else {
+          webNeeded = requiredCount;
+        }
+      }
+
+      const sipShort = unassignedSip.length < sipNeeded;
+      const webShort = unassignedWeb.length < webNeeded;
+
+      if (sipShort || webShort) {
+        setAccountShortageDialog({
+          order,
+          sipNeeded,
+          sipAvailable: unassignedSip.length,
+          sipShort: sipNeeded - unassignedSip.length,
+          webNeeded,
+          webAvailable: unassignedWeb.length,
+          webShort: webNeeded - unassignedWeb.length,
+        });
+        return;
+      }
+
+      // All sufficient, open review modal with pre-fetched data
+      setUnassignedSipAccounts(unassignedSip);
+      setUnassignedWebAccounts(unassignedWeb);
+      openReviewModalWithData(order, unassignedSip, unassignedWeb);
+    } catch (err) {
+      console.error('Failed to check account availability:', err);
+      // Fallback: open review modal (will validate again during submission)
+      openReviewModal(order);
+    }
+  };
+  const openReviewModalWithData = async (order, sipAccounts, webAccounts) => {
     const initialStatus = (order.order_status || order.orderStatus) === 'review_rejected' ? 'review_rejected' : 'review_approved';
     const initialComments = order.review_note || order.reviewNote || '';
     setReviewOrder(order);
     setReviewStep(1);
     setReviewData({ status: initialStatus, comments: initialComments });
     setSelectedSipAccountIds([]);
-    setUnassignedSipAccounts([]);
-    setUnassignedWebAccounts([]);
+    setUnassignedSipAccounts(sipAccounts);
+    setUnassignedWebAccounts(webAccounts);
     setIsLoadingReview(true);
-    setIsLoadingSipAccounts(true);
-    setIsLoadingWebAccounts(true);
     try {
-      const [res, sipData, webData] = await Promise.all([
-        apiClient.get(`/admin/billing-orders/${order.id}`),
-        apiClient.get('/admin/sip-accounts'),
-        apiClient.get('/admin/web-accounts')
-      ]);
+      const res = await apiClient.get('/admin/billing-orders/' + order.id);
       if (res && res.order) {
         const nextOrder = { ...order, ...res.order };
         const nextStatus = (nextOrder.order_status || nextOrder.orderStatus) === 'review_rejected' ? 'review_rejected' : 'review_approved';
         setReviewOrder(prev => ({ ...prev, ...res.order }));
-        setReviewData({
-          status: nextStatus,
-          comments: nextOrder.review_note || nextOrder.reviewNote || ''
-        });
+        setReviewData({ status: nextStatus, comments: nextOrder.review_note || nextOrder.reviewNote || '' });
       }
-      const accounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
-      setUnassignedSipAccounts(accounts.filter(account => !account.tenantName));
-      const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
-      setUnassignedWebAccounts(webAccounts.filter(account => !account.tenantName && account.status === 'active'));
     } catch (err) {
       console.error('Failed to fetch detailed order:', err);
     } finally {
       setIsLoadingReview(false);
+    }
+  };
+
+  const openReviewModal = async (order) => {
+    setIsLoadingSipAccounts(true);
+    setIsLoadingWebAccounts(true);
+    try {
+      const [sipData, webData] = await Promise.all([
+        apiClient.get('/admin/sip-accounts'),
+        apiClient.get('/admin/web-accounts'),
+      ]);
+      const sipAccounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
+      const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
+      await openReviewModalWithData(order, sipAccounts.filter(a => !a.tenantName), webAccounts.filter(a => !a.tenantName && a.status === 'active'));
+    } catch (err) {
+      console.error('Failed to fetch accounts:', err);
+    } finally {
       setIsLoadingSipAccounts(false);
       setIsLoadingWebAccounts(false);
     }
@@ -962,7 +1037,7 @@ export default function PlanManagement({ onNavigate }) {
                         {openDropdownId === order.id && createPortal(
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
                             <button type="button" className="dropdown-item" onClick={() => { openDetailModal(order); setOpenDropdownId(null); }}>詳情</button>
-                            <button type="button" className="dropdown-item" disabled={(order.order_status || order.orderStatus) === 'review_approved' || getBusinessOrderStatus(order.order_status || order.orderStatus).label === '未提交'} onClick={() => { openReviewModal(order); setOpenDropdownId(null); }}>審核</button>
+                            <button type="button" className="dropdown-item" disabled={(order.order_status || order.orderStatus) === 'review_approved' || getBusinessOrderStatus(order.order_status || order.orderStatus).label === '未提交'} onClick={() => { handleReviewClick(order); setOpenDropdownId(null); }}>審核</button>
                           </div>, document.body
                         )}
                       </div>
@@ -1420,6 +1495,68 @@ export default function PlanManagement({ onNavigate }) {
                   功能开发中，将在此处展示已分配至该訂單的 SIP 帳號列表...
                 </div>
               </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {accountShortageDialog && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={() => setAccountShortageDialog(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'relative', background: '#111827', border: '1px solid #1f2937', borderRadius: '14px', padding: '28px 32px', maxWidth: '500px', width: '90vw', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#e5e7eb', fontWeight: 700 }}>帳號不足，無法審核</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#9ca3af', lineHeight: 1.6 }}>
+              訂單需要分配帳號才能完成審核，目前未分配帳號數量不足：
+            </p>
+            {accountShortageDialog.sipNeeded > 0 && (
+              <div style={{ marginBottom: '14px', padding: '14px 16px', background: '#1a2332', border: `1px solid ${accountShortageDialog.sipShort > 0 ? '#7f1d1d' : '#065f46'}`, borderRadius: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#e5e7eb', fontWeight: 600 }}>SIP 帳號</span>
+                  {accountShortageDialog.sipShort > 0 ? (
+                    <span style={{ fontSize: '11px', color: '#fca5a5', background: '#3b1111', padding: '2px 8px', borderRadius: '999px' }}>不足 {accountShortageDialog.sipShort} 個</span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#6ee7b7', background: '#065f46', padding: '2px 8px', borderRadius: '999px' }}>充足</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#9ca3af', marginBottom: accountShortageDialog.sipShort > 0 ? '10px' : '0' }}>
+                  <span>需要：<strong style={{ color: '#e5e7eb' }}>{accountShortageDialog.sipNeeded}</strong></span>
+                  <span>可用：<strong style={{ color: accountShortageDialog.sipShort > 0 ? '#fca5a5' : '#4ade80' }}>{accountShortageDialog.sipAvailable}</strong></span>
+                  {accountShortageDialog.sipShort > 0 && <span>缺口：<strong style={{ color: '#fca5a5' }}>{accountShortageDialog.sipShort}</strong></span>}
+                </div>
+                {accountShortageDialog.sipShort > 0 && (
+                  <button onClick={() => { setAccountShortageDialog(null); onNavigate?.('sip-account-registration'); }}
+                    style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}>
+                    前往 SIP 帳號管理
+                  </button>
+                )}
+              </div>
+            )}
+            {accountShortageDialog.webNeeded > 0 && (
+              <div style={{ marginBottom: '14px', padding: '14px 16px', background: '#1a2332', border: `1px solid ${accountShortageDialog.webShort > 0 ? '#7f1d1d' : '#065f46'}`, borderRadius: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#e5e7eb', fontWeight: 600 }}>Web 帳號</span>
+                  {accountShortageDialog.webShort > 0 ? (
+                    <span style={{ fontSize: '11px', color: '#fca5a5', background: '#3b1111', padding: '2px 8px', borderRadius: '999px' }}>不足 {accountShortageDialog.webShort} 個</span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#6ee7b7', background: '#065f46', padding: '2px 8px', borderRadius: '999px' }}>充足</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '24px', fontSize: '12px', color: '#9ca3af', marginBottom: accountShortageDialog.webShort > 0 ? '10px' : '0' }}>
+                  <span>需要：<strong style={{ color: '#e5e7eb' }}>{accountShortageDialog.webNeeded}</strong></span>
+                  <span>可用：<strong style={{ color: accountShortageDialog.webShort > 0 ? '#fca5a5' : '#4ade80' }}>{accountShortageDialog.webAvailable}</strong></span>
+                  {accountShortageDialog.webShort > 0 && <span>缺口：<strong style={{ color: '#fca5a5' }}>{accountShortageDialog.webShort}</strong></span>}
+                </div>
+                {accountShortageDialog.webShort > 0 && (
+                  <button onClick={() => { setAccountShortageDialog(null); onNavigate?.('web-account-registration'); }}
+                    style={{ padding: '6px 16px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}>
+                    前往 Web 帳號管理
+                  </button>
+                )}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+              <button onClick={() => setAccountShortageDialog(null)}
+                style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
         </div>,
