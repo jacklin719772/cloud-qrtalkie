@@ -314,3 +314,103 @@ export async function discoverAccountsFromRedis(options = {}) {
     items: allItems,
   };
 }
+
+export async function getAccountRegistrationDetail(username, domain, options = {}) {
+  const normalizedUsername = String(username || "").trim();
+  const normalizedDomain = String(domain || options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  if (!normalizedUsername || !DOMAIN_PATTERN.test(normalizedDomain)) {
+    throw new FlexisipRegistrationStatusError("Invalid account detail input.", {
+      code: "INVALID_ACCOUNT_DETAIL_INPUT",
+    });
+  }
+
+  const key = buildRegistrarKey(normalizedUsername, normalizedDomain);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  let redisResults;
+  try {
+    redisResults = await readRegistrarKeys([key]);
+  } catch (error) {
+    const unavailable = error instanceof RedisReadOnlyError || error?.name === "RedisReadOnlyError";
+    throw new FlexisipRegistrationStatusError("Flexisip Registrar Redis unavailable.", {
+      code: unavailable ? "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE" : "FLEXISIP_REGISTRATION_STATUS_FAILED",
+      cause: error,
+    });
+  }
+
+  const registrarResult = redisResults.get(key);
+  const account = { id: key, username: normalizedUsername, domain: normalizedDomain };
+
+  if (!registrarResult || registrarResult.type === "none" || registrarResult.ttl === -2) {
+    return {
+      ...account,
+      aor: `sip:${normalizedUsername}@${normalizedDomain}`,
+      keyType: "none",
+      ttl: -2,
+      registered: false,
+      status: "offline",
+      lastRegisterAt: null,
+      expiresAt: null,
+      parsedContacts: [],
+      rawEntries: [],
+    };
+  }
+
+  if (registrarResult.type !== "hash") {
+    return {
+      ...account,
+      aor: `sip:${normalizedUsername}@${normalizedDomain}`,
+      keyType: registrarResult.type,
+      ttl: registrarResult.ttl,
+      registered: false,
+      status: "unknown",
+      lastRegisterAt: null,
+      expiresAt: null,
+      parsedContacts: [],
+      rawEntries: registrarResult.entries,
+    };
+  }
+
+  const parsedContacts = [];
+  const warnings = [];
+  for (const entry of registrarResult.entries) {
+    try {
+      const contact = parseFlexisipContact(entry.value, entry.field, nowSeconds);
+      parsedContacts.push({
+        ...sanitizeContact(contact, options),
+        // include non-masked info for detail view
+        updatedAt: contact.updatedAt,
+        expires: contact.expires,
+        expiresAt: contact.expiresAt,
+        valid: contact.valid,
+        contactUri: contact.contactUri,
+      });
+    } catch {
+      warnings.push({
+        code: "CONTACT_PARSE_FAILED",
+        message: `無法解析 contact: ${String(entry.field || "").slice(0, 40)}`,
+      });
+    }
+  }
+
+  const validContacts = parsedContacts.filter((c) => c.valid);
+  const allUpdatedAt = parsedContacts.reduce((max, c) => Math.max(max, c.updatedAt || 0), 0);
+  const maxExpiresAt = validContacts.reduce((max, c) => Math.max(max, c.expiresAt || 0), 0);
+  const registered = validContacts.length > 0;
+
+  return {
+    username: normalizedUsername,
+    domain: normalizedDomain,
+    aor: `sip:${normalizedUsername}@${normalizedDomain}`,
+    keyType: registrarResult.type,
+    ttl: registrarResult.ttl,
+    registered,
+    status: registered ? "online" : "offline",
+    totalContacts: parsedContacts.length,
+    validContacts: validContacts.length,
+    lastRegisterAt: toIso(allUpdatedAt),
+    expiresAt: toIso(maxExpiresAt),
+    parsedContacts,
+    warnings,
+  };
+}

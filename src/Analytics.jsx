@@ -454,6 +454,10 @@ export default function Analytics() {
 
 // SIP Account Status Table
 function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantFilter, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const filtered = useMemo(() => {
     let list = data;
     if (search) {
@@ -472,6 +476,17 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
   const paginated = filtered.slice((safePage - 1) * effectiveSize, safePage * effectiveSize);
 
   const formatShort = (iso) => { if (!iso) return '-'; try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+
+  const handleDetailClick = async (row) => {
+    setDetailModalOpen(true);
+    setDetailData(null);
+    setDetailLoading(true);
+    try {
+      const res = await apiClient.get(`/flexisip/accounts/registration-detail?username=${encodeURIComponent(row.username)}&domain=${encodeURIComponent(row.domain)}`);
+      setDetailData(res.data?.data || null);
+    } catch { setDetailData(null); }
+    finally { setDetailLoading(false); }
+  };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
@@ -518,13 +533,14 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>註冊狀態</th>
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>連線數</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>最後註冊</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, right: 0, zIndex: 3, whiteSpace: 'nowrap', boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+                <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan="7" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+                <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
               ) : paginated.map(row => (
                 <tr key={row.id} style={{ borderBottom: '1px solid #1f2937' }}>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.username}</td>
@@ -534,6 +550,12 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>{statusBadge(row.status)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 500 }}>{row.contactsCount}</td>
                   <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatShort(row.lastRegisterAt)}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center', background: 'inherit', position: 'sticky', right: 0, zIndex: 1, boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>
+                    <button onClick={() => handleDetailClick(row)}
+                      style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid #374151', background: '#1e293b', color: '#60a5fa', fontSize: '12px', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      詳情
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -554,6 +576,109 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
           </div>
         </div>
       </div>
+
+      {/* 註冊詳情彈窗 */}
+      {detailModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={() => { setDetailModalOpen(false); setDetailData(null); }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'relative', width: '90vw', maxWidth: '720px', maxHeight: '85vh', background: '#111827', border: '1px solid #1f2937', borderRadius: '14px', boxShadow: '0 25px 60px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #1f2937' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', color: '#e5e7eb', fontWeight: 700 }}>SIP 帳號註冊詳情</h2>
+              <button onClick={() => { setDetailModalOpen(false); setDetailData(null); }}
+                style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', cursor: 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '24px', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
+              {detailLoading ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>載入中...</p>
+              ) : !detailData ? (
+                <p style={{ color: '#ef4444', textAlign: 'center', padding: '40px' }}>數據載入失敗</p>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '24px' }}>
+                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>基本資訊</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                      {[
+                        { label: '帳號', value: detailData.username },
+                        { label: 'Domain', value: detailData.domain },
+                        { label: 'AOR', value: detailData.aor },
+                        { label: '註冊狀態', value: detailData.status === 'online' ? '🟢 在線' : detailData.status === 'offline' ? '🔴 離線' : '⚪ 未知' },
+                        { label: 'Key 類型', value: detailData.keyType },
+                        { label: 'TTL (秒)', value: String(detailData.ttl) },
+                        { label: '總 Contact 數', value: String(detailData.totalContacts) },
+                        { label: '有效 Contact 數', value: String(detailData.validContacts) },
+                        { label: '最後註冊時間', value: detailData.lastRegisterAt ? new Date(detailData.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
+                        { label: '註冊過期時間', value: detailData.expiresAt ? new Date(detailData.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
+                      ].map((item, i) => (
+                        <div key={i} style={{ background: '#1a2332', borderRadius: '8px', padding: '10px 14px', border: '1px solid #1f2937' }}>
+                          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>{item.label}</div>
+                          <div style={{ color: '#e5e7eb', fontSize: '13px', fontWeight: 500, wordBreak: 'break-all' }}>{item.value || '-'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {detailData.warnings && detailData.warnings.length > 0 && (
+                    <div style={{ marginBottom: '24px', padding: '12px 16px', background: '#1a1a0a', border: '1px solid #fbbf24', borderRadius: '8px' }}>
+                      <div style={{ color: '#fbbf24', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>解析警告</div>
+                      {detailData.warnings.map((w, i) => (
+                        <div key={i} style={{ color: '#fcd34d', fontSize: '12px' }}>{w.code}: {w.message}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>設備 Contact 列表 ({detailData.parsedContacts?.length || 0})</h3>
+                    {!detailData.parsedContacts || detailData.parsedContacts.length === 0 ? (
+                      <p style={{ color: '#6b7280', fontSize: '13px', padding: '20px', textAlign: 'center' }}>暫無 Contact 數據</p>
+                    ) : (
+                      detailData.parsedContacts.map((contact, i) => (
+                        <div key={i} style={{ marginBottom: '16px', padding: '16px', background: '#1a2332', border: `1px solid ${contact.valid ? '#065f46' : '#374151'}`, borderRadius: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: contact.valid ? '#065f46' : '#374151', color: contact.valid ? '#6ee7b7' : '#9ca3af', fontSize: '11px', fontWeight: 600 }}>設備 #{i + 1}</span>
+                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1f2937', color: '#9ca3af', fontSize: '11px' }}>{contact.valid ? '有效' : '已過期'}</span>
+                            {contact.alias && <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1e3a5f', color: '#60a5fa', fontSize: '11px' }}>別名</span>}
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                            {[
+                              { label: '設備 ID (脫敏)', value: contact.uniqueId },
+                              { label: 'Contact URI', value: contact.contactUri, full: true },
+                              { label: '傳輸協議', value: contact.transport },
+                              { label: 'User-Agent', value: contact.userAgent },
+                              { label: '最後註冊時間', value: contact.lastRegisterAt ? new Date(contact.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
+                              { label: '過期時間', value: contact.expiresAt ? new Date(contact.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
+                              { label: '剩餘 TTL (秒)', value: String(contact.ttlSeconds) },
+                              { label: 'Accept', value: (contact.accept || []).join(', ') || '-' },
+                            ].map((item, j) => (
+                              <div key={j} style={{ ...(item.full ? { gridColumn: '1 / -1' } : {}), background: '#111827', borderRadius: '6px', padding: '8px 12px' }}>
+                                <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
+                                <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value || '-'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {detailData.keyType !== 'hash' && detailData.rawEntries && detailData.rawEntries.length > 0 && (
+                    <div style={{ marginTop: '24px' }}>
+                      <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>原始 Field/Value</h3>
+                      {detailData.rawEntries.map((entry, i) => (
+                        <div key={i} style={{ marginBottom: '8px', padding: '10px 14px', background: '#1a2332', borderRadius: '6px', border: '1px solid #1f2937' }}>
+                          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>Field</div>
+                          <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all', marginBottom: '6px' }}>{entry.field}</div>
+                          <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>Value</div>
+                          <div style={{ color: '#9ca3af', fontSize: '11px', wordBreak: 'break-all' }}>{entry.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

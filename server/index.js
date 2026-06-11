@@ -37,6 +37,7 @@ import { getWebrtcPresence, getWebrtcPresenceBatch, startWebrtcPresencePolling }
 import {
   FlexisipRegistrationStatusError,
   discoverAccountsFromRedis,
+  getAccountRegistrationDetail,
 } from "./flexisipRegistrationStatusService.js";
 import {
   FlexisipCallLogQueryError,
@@ -14960,6 +14961,47 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
         code: "FLEXISIP_REGISTRATION_STATUS_QUERY_FAILED",
         message: "帳號註冊狀態查詢失敗",
       },
+    });
+  }
+});
+
+// GET /api/flexisip/accounts/registration-detail - full detail for a single account from Redis.
+app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查看註冊詳情",
+      error: { code: "FLEXISIP_REGISTRATION_DETAIL_FORBIDDEN", message: "只有平台管理員可以查看註冊詳情" },
+    });
+  }
+
+  const username = sanitizeString(request.query.username || "", 120);
+  const domain = sanitizeString(request.query.domain || sipDomain, 255).toLowerCase();
+
+  if (!username || (domain && !/^[a-z0-9.-]+$/i.test(domain))) {
+    return response.status(400).json({
+      success: false,
+      message: "查詢參數格式不正確",
+      error: { code: "INVALID_REGISTRATION_DETAIL_QUERY", message: "查詢參數格式不正確" },
+    });
+  }
+
+  try {
+    const detail = await getAccountRegistrationDetail(username, domain, { domain: domain || sipDomain });
+    return response.json({ success: true, message: "帳號註冊詳情已取得", data: detail });
+  } catch (error) {
+    if (error instanceof FlexisipRegistrationStatusError && error.code === "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE") {
+      return response.status(503).json({
+        success: false,
+        message: "註冊狀態服務暫時不可用",
+        error: { code: "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE", message: "註冊狀態服務暫時不可用" },
+      });
+    }
+    console.error("Failed to get Flexisip registration detail:", { message: error?.message || String(error) });
+    return response.status(500).json({
+      success: false,
+      message: "帳號註冊詳情查詢失敗",
+      error: { code: "FLEXISIP_REGISTRATION_DETAIL_QUERY_FAILED", message: "帳號註冊詳情查詢失敗" },
     });
   }
 });
