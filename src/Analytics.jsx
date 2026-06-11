@@ -194,9 +194,9 @@ export default function Analytics() {
       } catch { setSipCallDateRange(null); }
     })();
   }, [activeTab]);
-  const sipCallDateWarning = useMemo(() => {
+  // 直接用函数计算，不用 useMemo，确保每次渲染都重新求值
+  const sipCallDateWarning = (() => {
     if (!sipCallDateRange) return null;
-    // 统一用 UTC 零点时间戳比较，避免时区偏差
     const toUtcMs = (dateStr) => dateStr ? Date.UTC(...dateStr.split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))) : null;
     const toDateStr = (iso) => iso ? iso.slice(0, 10) : null;
     const fromMs = toUtcMs(sipCallDateFrom);
@@ -216,7 +216,7 @@ export default function Analytics() {
     if (fromBeforeEarliest && toAfterLatest) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
     if (fromBeforeEarliest) return `起始日期超出保存範圍（最早 ${earliestLabel}），將僅返回範圍內的記錄`;
     return `結束日期超出保存範圍（最晚 ${latestLabel}），將僅返回範圍內的記錄`;
-  }, [sipCallDateFrom, sipCallDateTo, sipCallDateRange]);
+  })();
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
