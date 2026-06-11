@@ -60,13 +60,13 @@ function canUseAccountActions(account) {
 
 function getStatusBadge(status) {
   const map = {
-    active: { label: '啟用中', bg: '#dcfce7', color: '#15803d' },
-    inactive: { label: '未啟用', bg: '#f1f5f9', color: '#475569' },
-    disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
-    expired: { label: '已過期', bg: '#fef3c7', color: '#b45309' },
-    pending: { label: '待啟用', bg: '#e0f2fe', color: '#0369a1' },
+    active: { label: '啟用中', bg: '#0d2818', color: '#4ade80' },
+    inactive: { label: '未啟用', bg: '#1f2937', color: '#9ca3af' },
+    disabled: { label: '已停用', bg: '#3b1111', color: '#fca5a5' },
+    expired: { label: '已過期', bg: '#3b1111', color: '#fbbf24' },
+    pending: { label: '待啟用', bg: '#1e3a5f', color: '#93c5fd' },
   };
-  const item = map[status] || { label: status || '未知', bg: '#f1f5f9', color: '#475569' };
+  const item = map[status] || { label: status || '未知', bg: '#1f2937', color: '#9ca3af' };
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', lineHeight: 1.4, backgroundColor: item.bg, color: item.color }}>
       {item.label}
@@ -1096,7 +1096,7 @@ const TenantAccountManagement = forwardRef(({
                     <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.webAccount || '—'}</td>
                     <td style={{ fontSize: '12px' }}>{account.contactBookName || '—'}</td>
                     <td>{account.orderNo || '-'}</td>
-                    <td style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>{getStatusBadge(account.status)}</td>
+                    <td style={{ padding: '12px 16px' }}>{getStatusBadge(account.status)}</td>
                     <td>{formatDate(account.serviceStartsAt)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
                     {showDomain && <td>{account.domain || '-'}</td>}
