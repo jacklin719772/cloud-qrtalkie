@@ -532,7 +532,7 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
       {/* 列表 */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
-          <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+          <table style={{ width: '100%', minWidth: '960px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#1e293b' }}>
                 <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>帳號</th>
@@ -542,14 +542,15 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>註冊狀態</th>
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>連線數</th>
                 <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>最後註冊</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>過期日期</th>
                 <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, right: 0, zIndex: 3, whiteSpace: 'nowrap', boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+                <tr><td colSpan="9" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan="8" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+                <tr><td colSpan="9" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
               ) : paginated.map(row => (
                 <tr key={row.id} style={{ borderBottom: '1px solid #1f2937' }}>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.username}</td>
@@ -559,6 +560,7 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>{statusBadge(row.status)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 500 }}>{row.contactsCount}</td>
                   <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatShort(row.lastRegisterAt)}</td>
+                  <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatShort(row.expiresAt)}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'center', background: 'inherit', position: 'sticky', right: 0, zIndex: 1, boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>
                     <button onClick={() => handleDetailClick(row)}
                       style={{ padding: '5px 14px', borderRadius: '6px', border: '1px solid #374151', background: '#1e293b', color: '#60a5fa', fontSize: '12px', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>
