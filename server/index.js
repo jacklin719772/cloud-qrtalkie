@@ -36,7 +36,7 @@ import { CelCallLogError, queryCelCallLogs } from "./celCallLogService.js";
 import { getWebrtcPresence, getWebrtcPresenceBatch, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
 import {
   FlexisipRegistrationStatusError,
-  getRegistrationStatusForAccounts,
+  discoverAccountsFromRedis,
 } from "./flexisipRegistrationStatusService.js";
 import {
   FlexisipCallLogQueryError,
@@ -14874,7 +14874,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
   }
 });
 
-// GET /api/flexisip/accounts/registration-status - read-only Flexisip Registrar status for active SIP accounts.
+// GET /api/flexisip/accounts/registration-status - Discover accounts from Redis, return registration status.
 app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
@@ -14888,18 +14888,12 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
   }
 
   const domain = sanitizeString(request.query.domain || "", 255).toLowerCase();
-  const tenantIdRaw = sanitizeString(request.query.tenantId || "", 40);
-  const communityIdRaw = sanitizeString(request.query.communityId || "", 40);
   const includeContacts = String(request.query.includeContacts || "false").toLowerCase() === "true";
   const offset = parseNonNegativeInteger(request.query.offset, 0);
   const requestedLimit = parseNonNegativeInteger(request.query.limit, 50);
   const limit = Math.min(Math.max(requestedLimit || 50, 1), 100);
 
-  if (
-    (domain && !/^[a-z0-9.-]+$/i.test(domain)) ||
-    (tenantIdRaw && !/^\d+$/.test(tenantIdRaw)) ||
-    (communityIdRaw && !/^\d+$/.test(communityIdRaw))
-  ) {
+  if (domain && !/^[a-z0-9.-]+$/i.test(domain)) {
     return response.status(400).json({
       success: false,
       message: "查詢參數格式不正確",
@@ -14910,91 +14904,22 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
     });
   }
 
-  const where = ["u.status = 'active'", "u.deleted_in_flexisip_at IS NULL"];
-  const params = [];
-  if (domain) {
-    where.push("u.sip_domain = ?");
-    params.push(domain);
-  }
-  if (tenantIdRaw) {
-    where.push("u.tenant_id = ?");
-    params.push(Number(tenantIdRaw));
-  }
-  if (communityIdRaw) {
-    where.push("ac.id = ?");
-    params.push(Number(communityIdRaw));
-  }
-
-  const whereSql = where.join(" AND ");
-  let connection;
   try {
-    connection = await pool.getConnection();
-    const countRows = await connection.query(
-      `SELECT COUNT(*) AS total
-       FROM sip_users u
-       LEFT JOIN access_rooms ar ON ar.sip_user_id = u.id
-       LEFT JOIN access_buildings ab ON ab.id = ar.building_id
-       LEFT JOIN access_communities ac ON ac.id = ab.community_id
-       WHERE ${whereSql}`,
-      params,
-    );
-    const total = Number(countRows?.[0]?.total || 0);
-    const rows = await connection.query(
-      `SELECT
-         u.id,
-         u.username,
-         u.sip_domain AS domain,
-         u.display_name AS displayName,
-         u.status,
-         u.tenant_id AS tenantId,
-         u.flexisip_account_id AS flexisipAccountId,
-         u.sip_uri AS sipUri,
-         u.sync_status AS syncStatus,
-         t.name AS tenantName,
-         ac.id AS communityId,
-         ac.name AS communityName,
-         ab.id AS buildingId,
-         ab.name AS buildingName,
-         ar.id AS roomId,
-         ar.room_number AS roomNumber
-       FROM sip_users u
-       LEFT JOIN tenants t ON t.id = u.tenant_id
-       LEFT JOIN access_rooms ar ON ar.sip_user_id = u.id
-       LEFT JOIN access_buildings ab ON ab.id = ar.building_id
-       LEFT JOIN access_communities ac ON ac.id = ab.community_id
-       WHERE ${whereSql}
-       ORDER BY u.created_at DESC, u.id DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset],
-    );
-
-    const accounts = rows.map((row) => ({
-      id: Number(row.id),
-      username: row.username,
-      domain: row.domain || domain || sipDomain,
-      displayName: row.displayName || "",
-      tenantId: row.tenantId == null ? null : Number(row.tenantId),
-      tenantName: row.tenantName || "",
-      communityId: row.communityId == null ? null : Number(row.communityId),
-      communityName: row.communityName || "",
-      buildingId: row.buildingId == null ? null : Number(row.buildingId),
-      buildingName: row.buildingName || "",
-      roomId: row.roomId == null ? null : Number(row.roomId),
-      roomNumber: row.roomNumber || "",
-      accountStatus: row.status || "",
-      flexisipAccountId: row.flexisipAccountId || null,
-      sipUri: row.sipUri || null,
-      syncStatus: row.syncStatus || "",
-    }));
-
-    const statusResult = await getRegistrationStatusForAccounts(accounts, {
+    const statusResult = await discoverAccountsFromRedis({
       includeContacts,
       domain: domain || sipDomain,
     });
-    const items = statusResult.items;
-    const online = items.filter((item) => item.status === "online").length;
-    const offline = items.filter((item) => item.status === "offline").length;
-    const unknown = items.filter((item) => item.status === "unknown").length;
+
+    let items = statusResult.items;
+    if (domain) {
+      items = items.filter((item) => item.domain === domain);
+    }
+
+    const total = items.length;
+    const paginatedItems = items.slice(offset, offset + limit);
+    const online = paginatedItems.filter((item) => item.status === "online").length;
+    const offline = paginatedItems.filter((item) => item.status === "offline").length;
+    const unknown = paginatedItems.filter((item) => item.status === "unknown").length;
 
     return response.json({
       success: true,
@@ -15007,7 +14932,7 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
         limit,
         offset,
         checkedAt: statusResult.checkedAt,
-        items,
+        items: paginatedItems,
       },
     });
   } catch (error) {
@@ -15036,8 +14961,6 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
         message: "帳號註冊狀態查詢失敗",
       },
     });
-  } finally {
-    if (connection) connection.release();
   }
 });
 

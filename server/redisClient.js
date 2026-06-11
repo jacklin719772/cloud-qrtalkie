@@ -181,3 +181,30 @@ export async function readRegistrarKeys(keys) {
   }
   return results;
 }
+
+export async function scanRegistrarKeys(pattern = "fs:*", { count = 500 } = {}) {
+  const keys = [];
+  let cursor = "0";
+  const maxIterations = 2000;
+
+  for (let i = 0; i < maxIterations; i += 1) {
+    let replies;
+    try {
+      replies = await runPipeline([["SCAN", cursor, "MATCH", pattern, "COUNT", String(count)]]);
+    } catch (error) {
+      throw new RedisReadOnlyError("Redis SCAN pipeline failed.", { command: "SCAN", cause: error });
+    }
+
+    const scanResult = replies[0];
+    if (!Array.isArray(scanResult) || scanResult.length < 2) {
+      throw new RedisReadOnlyError("Unexpected SCAN response format.", { command: "SCAN" });
+    }
+
+    cursor = String(scanResult[0]);
+    const batchKeys = Array.isArray(scanResult[1]) ? scanResult[1] : [];
+    keys.push(...batchKeys);
+    if (cursor === "0") break;
+  }
+
+  return keys;
+}

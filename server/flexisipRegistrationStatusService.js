@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
+import { readRegistrarKeys, scanRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
 
 const SOURCE = "flexisip-registrar-redis";
 const DOMAIN_PATTERN = /^[a-z0-9.-]+$/i;
@@ -245,5 +245,71 @@ export async function getRegistrationStatusForAccounts(accounts, options = {}) {
   return {
     checkedAt: new Date(nowSeconds * 1000).toISOString(),
     items,
+  };
+}
+
+function parseAccountFromRedisKey(key, defaultDomain) {
+  const accountPart = String(key).replace(/^fs:/, "");
+  const atIndex = accountPart.lastIndexOf("@");
+  const username = atIndex === -1 ? accountPart : accountPart.slice(0, atIndex);
+  const domain = (atIndex === -1 ? defaultDomain : accountPart.slice(atIndex + 1)).toLowerCase();
+  return { username, domain };
+}
+
+export async function discoverAccountsFromRedis(options = {}) {
+  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const includeContacts = Boolean(options.includeContacts);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const keys = await scanRegistrarKeys("fs:*");
+  const sortedKeys = keys.sort();
+
+  const batchSize = 200;
+  const redisResults = new Map();
+  for (let i = 0; i < sortedKeys.length; i += batchSize) {
+    const batch = sortedKeys.slice(i, i + batchSize);
+    let batchResults;
+    try {
+      batchResults = await readRegistrarKeys(batch);
+    } catch (error) {
+      const unavailable = error instanceof RedisReadOnlyError || error?.name === "RedisReadOnlyError";
+      throw new FlexisipRegistrationStatusError("Flexisip Registrar Redis unavailable.", {
+        code: unavailable ? "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE" : "FLEXISIP_REGISTRATION_STATUS_FAILED",
+        cause: error,
+      });
+    }
+    for (const [key, value] of batchResults) {
+      redisResults.set(key, value);
+    }
+  }
+
+  const allItems = [];
+  for (const key of sortedKeys) {
+    const { username, domain } = parseAccountFromRedisKey(key, defaultDomain);
+    const account = { id: key, username, domain };
+    const registrarResult = redisResults.get(key);
+    const statusItem = accountToStatus(account, registrarResult || null, { ...options, includeContacts, domain: defaultDomain }, nowSeconds);
+    allItems.push({
+      ...statusItem,
+      displayName: "",
+      tenantId: null,
+      tenantName: "",
+      communityId: null,
+      communityName: "",
+      buildingId: null,
+      buildingName: "",
+      roomId: null,
+      roomNumber: "",
+      accountStatus: "active",
+      flexisipAccountId: null,
+      sipUri: `sip:${username}@${domain}`,
+      syncStatus: "redis_only",
+    });
+  }
+
+  return {
+    checkedAt: new Date(nowSeconds * 1000).toISOString(),
+    total: allItems.length,
+    items: allItems,
   };
 }
