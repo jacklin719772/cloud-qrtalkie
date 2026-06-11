@@ -457,6 +457,7 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
 
   const filtered = useMemo(() => {
     let list = data;
@@ -480,11 +481,19 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
   const handleDetailClick = async (row) => {
     setDetailModalOpen(true);
     setDetailData(null);
+    setDetailError('');
     setDetailLoading(true);
     try {
       const res = await apiClient.get(`/flexisip/accounts/registration-detail?username=${encodeURIComponent(row.username)}&domain=${encodeURIComponent(row.domain)}`);
-      setDetailData(res.data?.data || null);
-    } catch { setDetailData(null); }
+      if (res.data?.data) {
+        setDetailData(res.data.data);
+      } else {
+        setDetailError(res.data?.message || '數據為空');
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.response?.statusText || err?.message || '請求失敗';
+      setDetailError(String(msg));
+    }
     finally { setDetailLoading(false); }
   };
 
@@ -590,6 +599,11 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
             <div style={{ flex: 1, overflow: 'auto', padding: '24px', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
               {detailLoading ? (
                 <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px' }}>載入中...</p>
+              ) : detailError ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <p style={{ color: '#ef4444', marginBottom: '8px' }}>數據載入失敗</p>
+                  <p style={{ color: '#9ca3af', fontSize: '12px' }}>{detailError}</p>
+                </div>
               ) : !detailData ? (
                 <p style={{ color: '#ef4444', textAlign: 'center', padding: '40px' }}>數據載入失敗</p>
               ) : (
