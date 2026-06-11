@@ -294,9 +294,9 @@ export default function PlanManagement({ onNavigate }) {
   }, [openDropdownId]);
 
   const STATUS_STYLES = {
-    active: { background: '#0d2818', color: '#4ade80' },
-    inactive: { background: '#1f2937', color: '#9ca3af' },
-    pending: { background: '#1e3a5f', color: '#93c5fd' },
+    active: { color: '#4ade80' },
+    inactive: { color: '#9ca3af' },
+    pending: { color: '#93c5fd' },
   };
 
   const getReviewStatus = (orderStatus) => {
@@ -314,7 +314,7 @@ export default function PlanManagement({ onNavigate }) {
   };
 
   const getStatusBadge = (statusInfo) => {
-    return <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500, whiteSpace: 'nowrap', ...statusInfo.style }}>{statusInfo.label}</span>;
+    return <span style={{ fontSize: '14px', fontWeight: 400, whiteSpace: 'nowrap', ...statusInfo.style }}>{statusInfo.label}</span>;
   };
 
   const getSipStatusBadge = (status) => {
