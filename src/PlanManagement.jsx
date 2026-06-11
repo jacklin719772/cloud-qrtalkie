@@ -866,11 +866,11 @@ export default function PlanManagement({ onNavigate }) {
             ) : orders.length === 0 ? (
               <div className="plan-empty" style={{ flex: 1, width: '100%' }}><p className="plan-empty-title" style={{ color: '#d1d5db' }}>暫無套餐訂單資料</p></div>
             ) : (
-          <div className="plan-table-wrapper">
-          <table className="plan-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
-              <tr>
-                <th className="plan-select-cell" style={{ width: '40px', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+          <div className="plan-table-wrapper" style={{ overflowX: "auto" }}>
+<table className="plan-table" style={{ width: '100%', minWidth: '1400px', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr style={{ background: '#1e293b' }}>
+                <th style={{ width: '40px', padding: '12px 8px', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b' }}>
                   <input
                     type="checkbox"
                     checked={orders.length > 0 && orders.every(order => selectedIds.includes(order.id))}
@@ -888,18 +888,18 @@ export default function PlanManagement({ onNavigate }) {
                     style={{ cursor: 'pointer' }}
                   />
                 </th>
-	                <th style={{ whiteSpace: 'nowrap', minWidth: '180px', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>租戶名稱</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>訂單編號</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>套餐名稱</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>訂單狀態</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>審核狀態</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>帳號數量</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>租期（月）</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>金額</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>支付方式</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>生效日期</th>
-	                <th style={{ whiteSpace: 'nowrap', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', textAlign: 'left' }}>結束日期</th>
-	                <th className="plan-action-head" style={{ whiteSpace: 'nowrap', position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', fontSize: '14px', fontWeight: 500, color: '#e5e7eb', padding: '12px 16px', borderBottom: '1px solid #1f2937', width: '120px', minWidth: '120px', textAlign: 'center' }}>操作</th>
+	                <th style={{ padding: '12px 8px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>租戶名稱</th>
+	                <th style={{ padding: '12px 8px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>訂單編號</th>
+	                <th style={{ padding: '12px 8px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>套餐名稱</th>
+	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>訂單狀態</th>
+	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>審核狀態</th>
+	                <th style={{ width: '70px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>帳號數量</th>
+	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>租期（月）</th>
+	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'right', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>金額</th>
+	                <th style={{ width: '80px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>支付方式</th>
+	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>生效日期</th>
+	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'left', position: 'sticky', top: 0, zIndex: 2, background: '#1e293b', whiteSpace: 'nowrap' }}>結束日期</th>
+	                <th style={{ width: '100px', padding: '12px 6px', fontSize: '12px', fontWeight: 600, color: '#e5e7eb', borderBottom: '2px solid #2d3a4a', textAlign: 'center', position: 'sticky', top: 0, right: 0, zIndex: 3, background: '#1e293b', whiteSpace: 'nowrap', boxShadow: '-4px 0 8px rgba(0,0,0,0.3)' }}>操作</th>
               </tr>
             </thead>
             <tbody>
