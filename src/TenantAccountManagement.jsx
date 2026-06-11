@@ -1007,6 +1007,8 @@ const TenantAccountManagement = forwardRef(({
           #tenant-account-management .account-table-footer { padding: 14px 20px; flex-wrap: wrap; }
           #tenant-account-management .account-pagination { flex-wrap: wrap; }
         }
+        #tenant-account-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #tenant-account-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
         <div className="account-toolbar">
@@ -1094,7 +1096,7 @@ const TenantAccountManagement = forwardRef(({
                     <td>{formatDate(account.serviceStartsAt)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
                     {showDomain && <td>{account.domain || '-'}</td>}
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #e2e8f0', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions tenant-account-more-menu" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => handleAction('details', account)}>詳情</button>
                         <button
