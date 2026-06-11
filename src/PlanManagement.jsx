@@ -1168,7 +1168,7 @@ export default function PlanManagement({ onNavigate }) {
                                 comments: prev.status === nextStatus ? prev.comments : ''
                               }));
                             }}
-                            style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', outline: 'none' }}
+                            style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '15px', outline: 'none' }}
                           >
                             <option value="review_approved">審核通過</option>
                             <option value="review_rejected">審核不通過</option>
@@ -1181,7 +1181,7 @@ export default function PlanManagement({ onNavigate }) {
                             value={reviewData.comments}
                             onChange={(e) => setReviewData(prev => ({ ...prev, comments: e.target.value }))}
                             placeholder={reviewData.status === 'review_rejected' ? "請輸入審核不通過的意見原因（必填）..." : "請輸入審核意見..."}
-                            style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '15px', resize: 'vertical', outline: 'none' }}
+                            style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '15px', resize: 'vertical', outline: 'none' }}
                           />
                         </label>
                       </div>
