@@ -88,6 +88,7 @@ export default function Analytics() {
   const [sipCallPage, setSipCallPage] = useState(1);
   const [sipCallPageSize, setSipCallPageSize] = useState(10);
   const [sipCallExpanded, setSipCallExpanded] = useState(null);
+  const [sipCallDateRange, setSipCallDateRange] = useState(null);
   // SIP state
   const [sipSearch, setSipSearch] = useState('');
   const [sipStatusFilter, setSipStatusFilter] = useState('all');
@@ -183,6 +184,16 @@ export default function Analytics() {
     } catch { setSipData([]); }
     finally { setIsSipLoading(false); setIsSipRefreshing(false); }
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'sipCallLog') return;
+    (async () => {
+      try {
+        const res = await apiClient.get('/flexisip/call-logs/date-range');
+        setSipCallDateRange(res?.data || null);
+      } catch { setSipCallDateRange(null); }
+    })();
+  }, [activeTab]);
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
@@ -427,6 +438,15 @@ export default function Analytics() {
             <input type="date" value={sipCallDateTo} onChange={e => { setSipCallDateTo(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
+          {sipCallDateRange && (sipCallDateRange.earliest || sipCallDateRange.latest) && (
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', marginBottom: '12px', background: '#1a2332', border: '1px solid #1e3a5f', borderRadius: '8px', fontSize: '12px', color: '#60a5fa' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+              <span>目前保存的呼叫記錄範圍：</span>
+              {sipCallDateRange.earliest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.earliest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
+              <span style={{ color: '#4b5563' }}>至</span>
+              {sipCallDateRange.latest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.latest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
+            </div>
+          )}
           <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} account={sipCallAccount} direction={sipCallDirection}
             result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo}
             page={sipCallPage} pageSize={sipCallPageSize} onPageChange={setSipCallPage} onPageSizeChange={v => { setSipCallPageSize(v); setSipCallPage(1); }}

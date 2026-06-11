@@ -15007,6 +15007,43 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
   }
 });
 
+// GET /api/flexisip/call-logs/date-range - get the earliest and latest call record dates.
+app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({
+      success: false,
+      message: "只有平台管理員可以查詢 Flexisip 通話記錄範圍",
+      error: { code: "FLEXISIP_CALL_LOG_RANGE_FORBIDDEN", message: "只有平台管理員可以查詢 Flexisip 通話記錄範圍" },
+    });
+  }
+
+  try {
+    const pool = dbPool;
+    const connection = await pool.getConnection();
+    try {
+      const [row] = await connection.query(
+        "SELECT MIN(initiated_at) AS earliest, MAX(initiated_at) AS latest FROM flexisip_call_logs WHERE initiated_at IS NOT NULL",
+      );
+      return response.json({
+        success: true,
+        data: {
+          earliest: row?.earliest ? new Date(row.earliest).toISOString() : null,
+          latest: row?.latest ? new Date(row.latest).toISOString() : null,
+        },
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Failed to query Flexisip call log date range:", error.message);
+    return response.status(500).json({
+      success: false,
+      message: "Flexisip 通話記錄範圍查詢失敗",
+      error: { code: "FLEXISIP_CALL_LOG_RANGE_FAILED", message: "Flexisip 通話記錄範圍查詢失敗" },
+    });
+  }
+});
+
 // GET /api/flexisip/call-logs - read-only Flexisip call log summary query.
 app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {
