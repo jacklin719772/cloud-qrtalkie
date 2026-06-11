@@ -2,6 +2,7 @@
 // Background Scheduler - Periodic scans & notifications
 // ==========================================
 import { pool } from "./db.js";
+import { cleanupFlexisipCallLogs } from "./flexisipCallLogCleanupService.js";
 
 let timers = [];
 
@@ -10,8 +11,10 @@ export function startScheduler() {
 
   // Run expiry scans every 30 minutes
   timers.push(setInterval(scanExpiringResources, 30 * 60 * 1000));
-  // Run initial scan after 30 seconds (give server time to start)
-  timers.push(setTimeout(scanExpiringResources, 30 * 1000));
+  // Run call log cleanup every 24 hours
+  timers.push(setInterval(cleanupFlexisipCallLogs, 24 * 60 * 60 * 1000));
+  // Run initial cleanup after 60 seconds
+  timers.push(setTimeout(cleanupFlexisipCallLogs, 60 * 1000));
 
   console.log("[Scheduler] Background tasks started");
 }
