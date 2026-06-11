@@ -663,8 +663,13 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                               { label: '最後註冊時間', value: contact.lastRegisterAt ? new Date(contact.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                               { label: '過期時間', value: contact.expiresAt ? new Date(contact.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                               { label: '剩餘 TTL (秒)', value: String(contact.ttlSeconds) },
+                              { label: '註冊 IP', value: contact.ip || '-', skip: !contact.ip },
+                              { label: '國家/地區', value: contact.geo ? [contact.geo.country, contact.geo.subdivision].filter(Boolean).join(', ') || '-' : null, skip: !contact.geo },
+                              { label: '城市', value: contact.geo?.city || null, skip: !contact.geo?.city },
+                              { label: '經緯度', value: contact.geo?.latitude != null && contact.geo?.longitude != null ? `${contact.geo.latitude.toFixed(4)}, ${contact.geo.longitude.toFixed(4)}` : null, skip: !contact.geo?.latitude },
+                              { label: '時區', value: contact.geo?.timezone || null, skip: !contact.geo?.timezone },
                               { label: 'Accept', value: (contact.accept || []).join(', ') || '-' },
-                            ].map((item, j) => (
+                            ].filter(item => !item.skip).map((item, j) => (
                               <div key={j} style={{ ...(item.full ? { gridColumn: '1 / -1' } : {}), background: '#111827', borderRadius: '6px', padding: '8px 12px' }}>
                                 <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
                                 <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value || '-'}</div>

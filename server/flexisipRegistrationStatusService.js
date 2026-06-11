@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readRegistrarKeys, scanRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
+import { lookupGeo, extractIpFromContactUri } from "./geoLookupService.js";
 
 const SOURCE = "flexisip-registrar-redis";
 const DOMAIN_PATTERN = /^[a-z0-9.-]+$/i;
@@ -378,12 +379,13 @@ export async function getAccountRegistrationDetail(username, domain, options = {
       const contact = parseFlexisipContact(entry.value, entry.field, nowSeconds);
       parsedContacts.push({
         ...sanitizeContact(contact, options),
-        // include non-masked info for detail view
         updatedAt: contact.updatedAt,
         expires: contact.expires,
         expiresAt: contact.expiresAt,
         valid: contact.valid,
         contactUri: contact.contactUri,
+        ip: extractIpFromContactUri(contact.contactUri),
+        geo: lookupGeo(extractIpFromContactUri(contact.contactUri)),
       });
     } catch {
       warnings.push({

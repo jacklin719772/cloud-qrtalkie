@@ -34,6 +34,7 @@ import {
 } from "./asteriskCommandService.js";
 import { CelCallLogError, queryCelCallLogs } from "./celCallLogService.js";
 import { getWebrtcPresence, getWebrtcPresenceBatch, startWebrtcPresencePolling } from "./webrtcPresenceService.js";
+import { initGeoLookup } from "./geoLookupService.js";
 import {
   FlexisipRegistrationStatusError,
   discoverAccountsFromRedis,
@@ -15622,3 +15623,4 @@ app.listen(port, () => {
 });
   startScheduler();
   startWebrtcPresencePolling({ domain: webrtcDomain });
+  initGeoLookup().catch((err) => console.error("GeoIP init failed:", err.message));
