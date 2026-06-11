@@ -792,16 +792,16 @@ function FlexisipCallLogTable({ logs, total, account, direction, result, dateFro
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
-        <table style={{ width: '100%', minWidth: '720px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '800px', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>日期</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>主叫號碼</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>被叫號碼</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>方向</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>結果</th>
-              <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>通話時長</th>
-              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>詳情</th>
+              <th style={{ width: '140px', padding: '12px 10px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>日期</th>
+              <th style={{ padding: '12px 10px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>主叫號碼</th>
+              <th style={{ padding: '12px 10px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>被叫號碼</th>
+              <th style={{ width: '60px', padding: '12px 6px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>方向</th>
+              <th style={{ width: '70px', padding: '12px 6px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>結果</th>
+              <th style={{ width: '80px', padding: '12px 6px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>通話時長</th>
+              <th style={{ width: '70px', padding: '12px 6px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>詳情</th>
             </tr>
           </thead>
           <tbody>
@@ -812,13 +812,13 @@ function FlexisipCallLogTable({ logs, total, account, direction, result, dateFro
             ) : logs.map(row => (
               <React.Fragment key={row.id}>
                 <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px' }}>{formatTime(row.initiatedAt)}</td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.fromUser || '—'}</td>
-                  <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.toUser || '—'}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#d1d5db', fontSize: '12px' }}>{directionBadge(row.direction)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>{resultBadge(row.result)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.estimatedDurationSeconds)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  <td style={{ padding: '12px 10px', color: '#d1d5db', fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatTime(row.initiatedAt)}</td>
+                  <td style={{ padding: '12px 10px', color: '#e5e7eb', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.fromUser || '—'}</td>
+                  <td style={{ padding: '12px 10px', color: '#e5e7eb', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.toUser || '—'}</td>
+                  <td style={{ padding: '12px 6px', textAlign: 'center', color: '#d1d5db', fontSize: '12px', whiteSpace: 'nowrap' }}>{directionBadge(row.direction)}</td>
+                  <td style={{ padding: '12px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>{resultBadge(row.result)}</td>
+                  <td style={{ padding: '12px 6px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{formatDuration(row.estimatedDurationSeconds)}</td>
+                  <td style={{ padding: '12px 6px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                     <button onClick={() => onToggleExpand(expandedCall === row.id ? null : row.id)}
                       style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px' }}>
                       {expandedCall === row.id ? '收起' : '詳情'}
