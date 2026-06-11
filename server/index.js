@@ -8989,12 +8989,12 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
 
     // Query assigned Web accounts
     const webAccountRows = await connection.query(
-      `SELECT web_username, web_display_name, web_domain,
+      `SELECT username, display_name, sip_domain,
               DATE_FORMAT(service_starts_at, '%Y-%m-%d') AS service_starts_at,
               DATE_FORMAT(service_expires_at, '%Y-%m-%d') AS service_expires_at
        FROM billing_order_web_accounts
        WHERE order_id = ?
-       ORDER BY web_username ASC`,
+       ORDER BY username ASC`,
       [orderId],
     );
 
@@ -9042,9 +9042,9 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
           serviceExpiresAt: a.service_expires_at || '',
         })),
         webAccounts: (webAccountRows || []).map(a => ({
-          username: a.web_username || '',
-          displayName: a.web_display_name || '',
-          domain: a.web_domain || '',
+          username: a.username || '',
+          displayName: a.display_name || '',
+          domain: a.sip_domain || '',
           serviceStartsAt: a.service_starts_at || '',
           serviceExpiresAt: a.service_expires_at || '',
         })),
