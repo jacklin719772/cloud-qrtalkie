@@ -15026,8 +15026,8 @@ app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, resp
       return response.json({
         success: true,
         data: {
-          earliest: row?.earliest ? new Date(row.earliest).toISOString() : null,
-          latest: row?.latest ? new Date(row.latest).toISOString() : null,
+          earliest: row?.earliest ? String(row.earliest).slice(0, 10) : null,
+          latest: row?.latest ? String(row.latest).slice(0, 10) : null,
         },
       });
     } finally {

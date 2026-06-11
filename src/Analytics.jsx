@@ -197,25 +197,23 @@ export default function Analytics() {
   // 直接用函数计算，不用 useMemo，确保每次渲染都重新求值
   const sipCallDateWarning = (() => {
     if (!sipCallDateRange) return null;
-    const toUtcMs = (dateStr) => dateStr ? Date.UTC(...dateStr.split('-').map((v, i) => i === 1 ? Number(v) - 1 : Number(v))) : null;
-    const toDateStr = (iso) => iso ? iso.slice(0, 10) : null;
-    const fromMs = toUtcMs(sipCallDateFrom);
-    const toMs = toUtcMs(sipCallDateTo);
-    const earliestMs = toUtcMs(toDateStr(sipCallDateRange.earliest));
-    const latestMs = toUtcMs(toDateStr(sipCallDateRange.latest));
-    const fromBeforeEarliest = fromMs != null && earliestMs != null && fromMs < earliestMs;
-    const fromAfterLatest = fromMs != null && latestMs != null && fromMs > latestMs;
-    const toBeforeEarliest = toMs != null && earliestMs != null && toMs < earliestMs;
-    const toAfterLatest = toMs != null && latestMs != null && toMs > latestMs;
+    const from = sipCallDateFrom || null;
+    const to = sipCallDateTo || null;
+    const earliest = sipCallDateRange.earliest || null;
+    const latest = sipCallDateRange.latest || null;
+    // 日期格式均为 YYYY-MM-DD，直接字符串比较
+    const fromBeforeEarliest = from && earliest && from < earliest;
+    const fromAfterLatest = from && latest && from > latest;
+    const toBeforeEarliest = to && earliest && to < earliest;
+    const toAfterLatest = to && latest && to > latest;
     if (!fromBeforeEarliest && !fromAfterLatest && !toBeforeEarliest && !toAfterLatest) return null;
-    const earliestLabel = earliestMs != null ? new Date(earliestMs).toLocaleDateString('zh-CN') : '';
-    const latestLabel = latestMs != null ? new Date(latestMs).toLocaleDateString('zh-CN') : '';
+    const fmt = (s) => s ? s.replace(/-/g, '/') : '';
     if (fromAfterLatest && toBeforeEarliest) return '選擇的日期範圍完全超出資料庫保存範圍，將無返回記錄';
-    if (fromAfterLatest) return `起始日期超出保存範圍（記錄最晚至 ${latestLabel}），可能無返回記錄`;
-    if (toBeforeEarliest) return `結束日期超出保存範圍（記錄最早自 ${earliestLabel}），可能無返回記錄`;
+    if (fromAfterLatest) return `起始日期超出保存範圍（記錄最晚至 ${fmt(latest)}），可能無返回記錄`;
+    if (toBeforeEarliest) return `結束日期超出保存範圍（記錄最早自 ${fmt(earliest)}），可能無返回記錄`;
     if (fromBeforeEarliest && toAfterLatest) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
-    if (fromBeforeEarliest) return `起始日期超出保存範圍（最早 ${earliestLabel}），將僅返回範圍內的記錄`;
-    return `結束日期超出保存範圍（最晚 ${latestLabel}），將僅返回範圍內的記錄`;
+    if (fromBeforeEarliest) return `起始日期超出保存範圍（最早 ${fmt(earliest)}），將僅返回範圍內的記錄`;
+    return `結束日期超出保存範圍（最晚 ${fmt(latest)}），將僅返回範圍內的記錄`;
   })();
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
@@ -283,7 +281,7 @@ export default function Analytics() {
           {activeTab === 'sip' && sipLastFetchAt && <span style={{ fontSize: '11px', color: '#6b7280' }}>更新於 {formatTime(sipLastFetchAt)}</span>}
           {activeTab === 'sipCallLog' && sipCallDateRange && (sipCallDateRange.earliest || sipCallDateRange.latest) && (
             <span style={{ fontSize: '11px', color: '#6b7280' }}>
-              {sipCallDateRange.earliest ? new Date(sipCallDateRange.earliest).toLocaleDateString('zh-CN') : '—'} ～ {sipCallDateRange.latest ? new Date(sipCallDateRange.latest).toLocaleDateString('zh-CN') : '—'}
+              {(sipCallDateRange.earliest || '—').replace(/-/g, '/')} ～ {(sipCallDateRange.latest || '—').replace(/-/g, '/')}
             </span>
           )}
           {(activeTab === 'web' || activeTab === 'sip') && (
