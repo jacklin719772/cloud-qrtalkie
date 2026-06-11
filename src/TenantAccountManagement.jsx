@@ -887,7 +887,8 @@ const TenantAccountManagement = forwardRef(({
         #tenant-account-management .account-table {
           width: 100%;
           min-width: 1180px;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           table-layout: fixed;
           font-size: 12px;
         }
@@ -907,6 +908,7 @@ const TenantAccountManagement = forwardRef(({
           padding: 0 22px;
           color: #d1d5db;
           border-bottom: 1px solid #1f2937;
+          background: #111827;
           white-space: nowrap;
         }
         #tenant-account-management .account-empty {
