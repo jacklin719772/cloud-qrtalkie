@@ -1010,9 +1010,9 @@ const TenantAccountManagement = forwardRef(({
           #tenant-account-management .account-pagination { flex-wrap: wrap; }
         }
         #tenant-account-management .ghost-btn,
-        #tenant-account-management-detail .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #tenant-account-management-detail .ghost-btn { background: #374151 !important; color: #d1d5db !important; border: 1px solid #4b5563 !important; border-radius: 8px; }
         #tenant-account-management .ghost-btn:hover,
-        #tenant-account-management-detail .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #tenant-account-management-detail .ghost-btn:hover { background: #4b5563 !important; color: #f3f4f6 !important; }
       `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
         <div className="account-toolbar">
