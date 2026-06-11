@@ -712,7 +712,7 @@ const TenantAccountManagement = forwardRef(({
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{done ? item.doneMsg : item.msg}</span>
                     </div>
-                    <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button></div>);})}</div>
+                    <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button></div>);})}</div>
             </div>
           </div>
         </div>
@@ -1203,7 +1203,7 @@ const TenantAccountManagement = forwardRef(({
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{done ? item.doneMsg : item.msg}</span>
                     </div>
-                    <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button>
+                    <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => onNavigate && onNavigate(navMap[item.key])}>去配置</button>
                   </div>
                 ))}
               </div>
