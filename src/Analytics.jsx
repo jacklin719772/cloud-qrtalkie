@@ -194,6 +194,19 @@ export default function Analytics() {
       } catch { setSipCallDateRange(null); }
     })();
   }, [activeTab]);
+  const sipCallDateWarning = useMemo(() => {
+    if (!sipCallDateRange) return null;
+    const fromDate = sipCallDateFrom ? new Date(sipCallDateFrom) : null;
+    const toDate = sipCallDateTo ? new Date(sipCallDateTo) : null;
+    const earliest = sipCallDateRange.earliest ? new Date(sipCallDateRange.earliest) : null;
+    const latest = sipCallDateRange.latest ? new Date(sipCallDateRange.latest) : null;
+    const fromBefore = fromDate && earliest && fromDate < earliest;
+    const toAfter = toDate && latest && toDate > latest;
+    if (!fromBefore && !toAfter) return null;
+    if (fromBefore && toAfter) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
+    if (fromBefore) return `起始日期超出保存範圍（最早 ${earliest.toLocaleDateString('zh-CN')}），將僅返回範圍內的記錄`;
+    return `結束日期超出保存範圍（最晚 ${latest.toLocaleDateString('zh-CN')}），將僅返回範圍內的記錄`;
+  }, [sipCallDateFrom, sipCallDateTo, sipCallDateRange]);
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
@@ -445,6 +458,12 @@ export default function Analytics() {
               {sipCallDateRange.earliest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.earliest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
               <span style={{ color: '#6b7280' }}>至</span>
               {sipCallDateRange.latest ? <span style={{ color: '#e5e7eb', fontWeight: 500 }}>{new Date(sipCallDateRange.latest).toLocaleDateString('zh-CN')}</span> : <span style={{ color: '#6b7280' }}>無數據</span>}
+            </div>
+          )}
+          {sipCallDateWarning && (
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', marginBottom: '12px', background: '#1a1a0a', border: '1px solid #fbbf24', borderRadius: '8px', fontSize: '12px', color: '#fbbf24' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>{sipCallDateWarning}</span>
             </div>
           )}
           <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} account={sipCallAccount} direction={sipCallDirection}
