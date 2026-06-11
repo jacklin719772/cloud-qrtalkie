@@ -615,7 +615,7 @@ const TenantAccountManagement = forwardRef(({
       color: '#64748b',
     };
     const labelStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
-    const labelTextStyle = { fontSize: '14px', fontWeight: 500, color: '#475569' };
+    const labelTextStyle = { fontSize: '14px', fontWeight: 500, color: '#9ca3af' };
 
     return (
       <section className="view active settings-form-page" id="tenant-account-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -628,8 +628,9 @@ const TenantAccountManagement = forwardRef(({
               </button>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>基础帳號資訊</h4>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <style>{'#tenant-account-management-detail .panel > div::-webkit-scrollbar { display: none; }'}</style>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>基础帳號資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>用户名</span>
@@ -701,14 +702,14 @@ const TenantAccountManagement = forwardRef(({
                 </label>
               </div>
 
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '12px', marginTop: '24px' }}>配置情況</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '12px', marginTop: '24px' }}>配置情況</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
                   { label: '電子名片', key: 'ecard', msg: '尚未配置電子名片', doneMsg: '已配置電子名片' },
                   { label: '客服坐席', key: 'agent', msg: '尚未配置為客服坐席', doneMsg: '已配置為客服坐席' },
                   { label: '門禁入口', key: 'entrance', msg: '尚未配置為門禁入口', doneMsg: '已配置為門禁入口' },
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
-                ].map(item => { const done = configStatus[item.key] || false; return (<div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #1f2937' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
+                ].map(item => { const done = configStatus[item.key] || false; return (<div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{done ? item.doneMsg : item.msg}</span>
                     </div>
@@ -1193,7 +1194,7 @@ const TenantAccountManagement = forwardRef(({
                   { label: '門禁入口', key: 'entrance', msg: '尚未配置為門禁入口', doneMsg: '已配置為門禁入口' },
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
                 ].map(item => (
-                  <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #1f2937' }}>
+                  <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: item.done ? '#16a34a' : '#94a3b8' }}></span>
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
