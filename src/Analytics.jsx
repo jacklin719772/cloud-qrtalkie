@@ -89,7 +89,6 @@ export default function Analytics() {
   const [sipCallPageSize, setSipCallPageSize] = useState(10);
   const [sipCallExpanded, setSipCallExpanded] = useState(null);
   const [sipCallDateRange, setSipCallDateRange] = useState(null);
-  const [sipCallDateWarning, setSipCallDateWarning] = useState(null);
   // SIP state
   const [sipSearch, setSipSearch] = useState('');
   const [sipStatusFilter, setSipStatusFilter] = useState('all');
@@ -195,29 +194,6 @@ export default function Analytics() {
       } catch { setSipCallDateRange(null); }
     })();
   }, [activeTab]);
-
-  useEffect(() => {
-    const warn = (() => {
-      if (!sipCallDateRange) return null;
-      const from = sipCallDateFrom || null;
-      const to = sipCallDateTo || null;
-      const earliest = sipCallDateRange.earliest || null;
-      const latest = sipCallDateRange.latest || null;
-      const fromBeforeEarliest = from && earliest && from < earliest;
-      const fromAfterLatest = from && latest && from > latest;
-      const toBeforeEarliest = to && earliest && to < earliest;
-      const toAfterLatest = to && latest && to > latest;
-      if (!fromBeforeEarliest && !fromAfterLatest && !toBeforeEarliest && !toAfterLatest) return null;
-      const fmt = (s) => s ? s.replace(/-/g, '/') : '';
-      if (fromAfterLatest && toBeforeEarliest) return '選擇的日期範圍完全超出資料庫保存範圍，將無返回記錄';
-      if (fromAfterLatest) return `起始日期超出保存範圍（記錄最晚至 ${fmt(latest)}），可能無返回記錄`;
-      if (toBeforeEarliest) return `結束日期超出保存範圍（記錄最早自 ${fmt(earliest)}），可能無返回記錄`;
-      if (fromBeforeEarliest && toAfterLatest) return '選擇的日期範圍超出資料庫保存範圍，將僅返回範圍內的記錄';
-      if (fromBeforeEarliest) return `起始日期超出保存範圍（最早 ${fmt(earliest)}），將僅返回範圍內的記錄`;
-      return `結束日期超出保存範圍（最晚 ${fmt(latest)}），將僅返回範圍內的記錄`;
-    })();
-    setSipCallDateWarning(warn);
-  }, [sipCallDateFrom, sipCallDateTo, sipCallDateRange]);
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
@@ -467,12 +443,6 @@ export default function Analytics() {
             <input type="date" value={sipCallDateTo} onChange={e => { setSipCallDateTo(e.target.value); setSipCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
-          {sipCallDateWarning && (
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', marginBottom: '12px', background: '#1a1a0a', border: '1px solid #fbbf24', borderRadius: '8px', fontSize: '12px', color: '#fbbf24' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              <span>{sipCallDateWarning}</span>
-            </div>
-          )}
           <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} account={sipCallAccount} direction={sipCallDirection}
             result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo}
             page={sipCallPage} pageSize={sipCallPageSize} onPageChange={setSipCallPage} onPageSizeChange={v => { setSipCallPageSize(v); setSipCallPage(1); }}
