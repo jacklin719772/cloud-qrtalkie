@@ -629,7 +629,6 @@ const TenantAccountManagement = forwardRef(({
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <style>{'#tenant-account-management-detail .panel > div::-webkit-scrollbar { display: none; }'}</style>
               <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>基础帳號資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={labelStyle}>
