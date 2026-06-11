@@ -15018,7 +15018,6 @@ app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, resp
   }
 
   try {
-    const pool = dbPool;
     const connection = await pool.getConnection();
     try {
       const [row] = await connection.query(
