@@ -46,9 +46,7 @@ function parseResp(buffer, offset = 0) {
   if (prefix === "+") return { value: line, offset: next };
   if (prefix === ":") return { value: Number.parseInt(line, 10), offset: next };
   if (prefix === "-") {
-    const error = new RedisReadOnlyError("Redis returned an error.", { command: "RESP" });
-    error.redisMessage = line;
-    throw error;
+    return { value: { __redisError: true, message: line }, offset: next };
   }
   if (prefix === "$") {
     const length = Number.parseInt(line, 10);
@@ -77,7 +75,12 @@ function parseResp(buffer, offset = 0) {
   throw new RedisReadOnlyError("Unsupported Redis response.", { command: "RESP" });
 }
 
+function isRedisError(value) {
+  return value != null && typeof value === "object" && value.__redisError === true;
+}
+
 function hgetallArrayToEntries(value) {
+  if (isRedisError(value)) return [];
   const entries = [];
   const list = Array.isArray(value) ? value : [];
   for (let index = 0; index < list.length; index += 2) {
@@ -172,11 +175,14 @@ export async function readRegistrarKeys(keys) {
   const results = new Map();
   for (let index = 0; index < safeKeys.length; index += 1) {
     const replyOffset = index * 3;
+    const typeReply = replies[replyOffset];
+    const ttlReply = replies[replyOffset + 1];
+    const hgetallReply = replies[replyOffset + 2];
     results.set(safeKeys[index], {
       key: safeKeys[index],
-      type: String(replies[replyOffset] || ""),
-      ttl: Number(replies[replyOffset + 1]),
-      entries: hgetallArrayToEntries(replies[replyOffset + 2]),
+      type: isRedisError(typeReply) ? "unknown" : String(typeReply || ""),
+      ttl: isRedisError(ttlReply) ? -2 : Number(ttlReply),
+      entries: hgetallArrayToEntries(hgetallReply),
     });
   }
   return results;

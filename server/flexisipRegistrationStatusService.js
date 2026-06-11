@@ -286,6 +286,7 @@ export async function discoverAccountsFromRedis(options = {}) {
   const allItems = [];
   for (const key of sortedKeys) {
     const { username, domain } = parseAccountFromRedisKey(key, defaultDomain);
+    if (/^(chatroom|conference|videoconference)-/i.test(username)) continue;
     const account = { id: key, username, domain };
     const registrarResult = redisResults.get(key);
     const statusItem = accountToStatus(account, registrarResult || null, { ...options, includeContacts, domain: defaultDomain }, nowSeconds);
