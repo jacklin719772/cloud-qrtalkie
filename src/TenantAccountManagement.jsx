@@ -1102,11 +1102,11 @@ const TenantAccountManagement = forwardRef(({
                     {showDomain && <td>{account.domain || '-'}</td>}
                     <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions tenant-account-more-menu" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px' }} onClick={() => handleAction('details', account)}>詳情</button>
+                        <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleAction('details', account)}>詳情</button>
                         <button
                           className="ghost-btn"
                           type="button"
-                          style={{ fontSize: '12px', padding: '6px 10px' }}
+                          style={{ fontSize: '12px', padding: '6px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
                           onClick={(event) => {
                             event.stopPropagation();
                             dropdownAnchorRef.current = event.currentTarget;
@@ -1235,7 +1235,7 @@ const TenantAccountManagement = forwardRef(({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯帳號</h3>
-              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px' }}>關閉</button>
+              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
@@ -1261,7 +1261,7 @@ const TenantAccountManagement = forwardRef(({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               {editMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>}
-              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit}>取消</button>
+              <button className="ghost-btn" type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
             </div>
           </form>
@@ -1290,7 +1290,7 @@ const TenantAccountManagement = forwardRef(({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3>
-              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px' }}>關閉</button>
+              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1316,7 +1316,7 @@ const TenantAccountManagement = forwardRef(({
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               {resetPasswordMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: resetPasswordMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetPasswordMessage.text}</p>}
-              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword}>取消</button>
+              <button className="ghost-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
             </div>
           </form>
@@ -1342,7 +1342,7 @@ const TenantAccountManagement = forwardRef(({
           <form onSubmit={saveContactBookConfig} style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄配置</h3>
-              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} style={{ padding: '4px 10px' }}>關閉</button>
+              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>關閉</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1368,7 +1368,7 @@ const TenantAccountManagement = forwardRef(({
               {contactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: contactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{contactBookMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook}>取消</button>
+              <button className="ghost-btn" type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook} style={{ padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isLoadingContactBooks || isSavingContactBook}>{isSavingContactBook ? '儲存中...' : '儲存'}</button>
             </div>
           </form>
