@@ -1,4 +1,4 @@
-import { Reader } from "maxmind";
+import { open } from "maxmind";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -15,7 +15,7 @@ export async function initGeoLookup() {
     return false;
   }
   try {
-    reader = await Reader.open(dbPath);
+    reader = await open(dbPath);
     const meta = reader.metadata;
     console.log(`GeoIP database loaded (${meta.databaseType}, build ${meta.buildEpoch})`);
     return true;
