@@ -658,21 +658,21 @@ export default function PlanManagement({ onNavigate }) {
         }
         #plan-management .plan-table .plan-action-head,
         #plan-management .plan-table .plan-action-cell {
-          width: 140px !important;
-          min-width: 140px !important;
+          width: 100px !important;
+          min-width: 100px !important;
           text-align: center !important;
-          padding: 0 12px !important;
+          padding: 12px 6px !important;
           position: sticky !important;
           right: 0 !important;
-          box-shadow: -1px 0 0 #e2e8f0 !important;
+          border-left: 1px solid #374151 !important;
         }
         #plan-management .plan-table .plan-action-head {
-          background: #f8fafc !important;
+          background: #1e293b !important;
           z-index: 3 !important;
         }
         #plan-management .plan-table .plan-action-cell {
-          background: #fff !important;
-          z-index: 1 !important;
+          background: #111827 !important;
+          z-index: 2 !important;
         }
         #plan-management .plan-empty {
           height: 380px;
