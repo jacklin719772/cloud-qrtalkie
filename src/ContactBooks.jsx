@@ -839,12 +839,12 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={editBookForm.name} onChange={(event) => setEditBookForm(form => ({ ...form, name: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', color: '#334155', fontSize: '14px' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
+                  <input required value={editBookForm.name} onChange={(event) => setEditBookForm(form => ({ ...form, name: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '14px' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>描述</span>
-                  <input value={editBookForm.description} onChange={(event) => setEditBookForm(form => ({ ...form, description: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', color: '#334155', fontSize: '14px' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
+                  <input value={editBookForm.description} onChange={(event) => setEditBookForm(form => ({ ...form, description: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '14px' }} />
                 </label>
               </div>
 
@@ -854,17 +854,17 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                   placeholder="搜尋帳號、名稱、郵件或電話"
                   value={accountSearchKeyword}
                   onChange={(e) => setAccountSearchKeyword(e.target.value)}
-                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '13px', width: '220px' }}
+                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '13px', width: '220px' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({editBookForm.accountIds.length})</span>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({editBookForm.accountIds.length})</span>
+                  <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
                         tenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         editBookForm.accountIds,
@@ -875,11 +875,11 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({editBookForm.assignedAccountIds.length})</span>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({editBookForm.assignedAccountIds.length})</span>
+                  <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
                         tenantAccounts.filter(acc => acc.status === 'active'),
                         editBookForm.assignedAccountIds,
