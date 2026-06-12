@@ -2638,6 +2638,70 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
   }
 });
 
+app.get("/api/contact-books/validate", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === "platform") {
+    return response.status(403).json({ message: "只有租户管理员可以执行数据校验。" });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    let localBooks;
+    try {
+      localBooks = await connection.query(
+        `SELECT id, name, flexisip_contact_list_id,
+                (SELECT COUNT(*) FROM tenant_contact_book_entries WHERE contact_book_id = cb.id) AS entryCount,
+                (SELECT COUNT(*) FROM tenant_contact_book_assignments WHERE contact_book_id = cb.id AND status = "active") AS assignedCount
+         FROM tenant_contact_books cb
+         WHERE tenant_id = ?
+         ORDER BY id ASC`,
+        [request.admin.tenantId]
+      );
+    } finally {
+      connection.release();
+    }
+
+    let flexisipLists = [];
+    let flexisipError = null;
+    try {
+      flexisipLists = await listContactLists();
+      if (!Array.isArray(flexisipLists)) flexisipLists = [];
+    } catch (err) {
+      flexisipError = err.message || "Flexisip service unavailable";
+    }
+
+    const flexisipMap = new Map();
+    for (const l of flexisipLists) flexisipMap.set(String(l.id), l);
+
+    const results = [];
+
+    for (const b of localBooks) {
+      if (b.flexisip_contact_list_id && flexisipMap.has(b.flexisip_contact_list_id)) {
+        const f = flexisipMap.get(b.flexisip_contact_list_id);
+        results.push({
+          name: b.name, status: "matched", localId: b.id, flexisipId: b.flexisip_contact_list_id,
+          localEntryCount: b.entryCount, localAssignedCount: b.assignedCount,
+          flexisipTitle: f.title || f.name || "",
+        });
+        flexisipMap.delete(b.flexisip_contact_list_id);
+      } else if (!b.flexisip_contact_list_id) {
+        results.push({ name: b.name, status: "local_only", localId: b.id, note: "本地通讯录未关联 Flexisip" });
+      } else {
+        results.push({ name: b.name, status: "missing_on_flexisip", localId: b.id, flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通讯录" });
+      }
+    }
+
+    for (const l of flexisipMap.values()) {
+      results.push({ name: l.title || l.name || "(无名称)", status: "missing_locally", flexisipId: l.id, note: "本地数据库中无对应记录" });
+    }
+
+    const allOk = results.every(r => r.status === "matched");
+
+    return response.json({ success: true, allOk, flexisipError, total: results.length, results });
+  } catch (error) {
+    console.error("Failed to validate contact books:", error);
+    return response.status(500).json({ message: "数据校验失败。" });
+  }
+});
 app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "只有租戶管理員可以查看通讯录详情。" });
@@ -2945,70 +3009,6 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
 });
 
 // GET /api/contact-books/validate
-app.get("/api/contact-books/validate", requireAdmin, async (request, response) => {
-  if (request.admin.accountType === "platform") {
-    return response.status(403).json({ message: "只有租户管理员可以执行数据校验。" });
-  }
-
-  try {
-    const connection = await pool.getConnection();
-    let localBooks;
-    try {
-      localBooks = await connection.query(
-        `SELECT id, name, flexisip_contact_list_id,
-                (SELECT COUNT(*) FROM tenant_contact_book_entries WHERE contact_book_id = cb.id) AS entryCount,
-                (SELECT COUNT(*) FROM tenant_contact_book_assignments WHERE contact_book_id = cb.id AND status = "active") AS assignedCount
-         FROM tenant_contact_books cb
-         WHERE tenant_id = ?
-         ORDER BY id ASC`,
-        [request.admin.tenantId]
-      );
-    } finally {
-      connection.release();
-    }
-
-    let flexisipLists = [];
-    let flexisipError = null;
-    try {
-      flexisipLists = await listContactLists();
-      if (!Array.isArray(flexisipLists)) flexisipLists = [];
-    } catch (err) {
-      flexisipError = err.message || "Flexisip service unavailable";
-    }
-
-    const flexisipMap = new Map();
-    for (const l of flexisipLists) flexisipMap.set(String(l.id), l);
-
-    const results = [];
-
-    for (const b of localBooks) {
-      if (b.flexisip_contact_list_id && flexisipMap.has(b.flexisip_contact_list_id)) {
-        const f = flexisipMap.get(b.flexisip_contact_list_id);
-        results.push({
-          name: b.name, status: "matched", localId: b.id, flexisipId: b.flexisip_contact_list_id,
-          localEntryCount: b.entryCount, localAssignedCount: b.assignedCount,
-          flexisipTitle: f.title || f.name || "",
-        });
-        flexisipMap.delete(b.flexisip_contact_list_id);
-      } else if (!b.flexisip_contact_list_id) {
-        results.push({ name: b.name, status: "local_only", localId: b.id, note: "本地通讯录未关联 Flexisip" });
-      } else {
-        results.push({ name: b.name, status: "missing_on_flexisip", localId: b.id, flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通讯录" });
-      }
-    }
-
-    for (const l of flexisipMap.values()) {
-      results.push({ name: l.title || l.name || "(无名称)", status: "missing_locally", flexisipId: l.id, note: "本地数据库中无对应记录" });
-    }
-
-    const allOk = results.every(r => r.status === "matched");
-
-    return response.json({ success: true, allOk, flexisipError, total: results.length, results });
-  } catch (error) {
-    console.error("Failed to validate contact books:", error);
-    return response.status(500).json({ message: "数据校验失败。" });
-  }
-});
 
 
 // GET /api/admin/tenants - 鐛插彇棣栭爜绉熸埗鍒楄〃鑸囩当瑷堣硣鏂?
