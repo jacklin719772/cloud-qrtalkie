@@ -82,6 +82,7 @@ import {
 import {
   createContactList,
   assignContactListToAccount,
+  listContactLists,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 
@@ -2431,7 +2432,24 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
 
   let connection;
   try {
-    // ── Step 1: 在 Flexisip Account Manager 创建通讯录 ──
+    // ── Step 1: 检查 Flexisip 端是否已存在同名通讯录 ──
+    try {
+      const existingLists = await listContactLists();
+      const duplicate = Array.isArray(existingLists)
+        ? existingLists.find(item => (item.title || item.name || '') === name)
+        : null;
+      if (duplicate) {
+        return response.status(409).json({
+          message: `通訊錄名稱「${name}」已存在，請更換名稱。`,
+          code: "DUPLICATE_CONTACT_LIST",
+        });
+      }
+    } catch (flexisipErr) {
+      console.error("Failed to list Flexisip contact lists:", flexisipErr.message);
+      return response.status(502).json({ message: "Flexisip 通訊錄服務不可用，請稍後重試。" });
+    }
+
+    // ── Step 2: 在 Flexisip Account Manager 创建通讯录 ──
     let flexisipContactListId;
     try {
       const flexisipResult = await createContactList({ title: name, description: description || undefined });
@@ -2447,7 +2465,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       return response.status(502).json({ message: "Flexisip 通訊錄服務不可用，請稍後重試。" });
     }
 
-    // ── Step 2: 查询待分配账号的 Flexisip account_id ──
+    // ── Step 3: 查询待分配账号的 Flexisip account_id ──
     connection = await pool.getConnection();
     const assignTargets = [];
     if (assignedAccountIds.length > 0) {
@@ -2463,7 +2481,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       }
     }
 
-    // ── Step 3: 在 Flexisip 分配通讯录给账号 ──
+    // ── Step 4: 在 Flexisip 分配通讯录给账号 ──
     const failedAssignments = [];
     for (const target of assignTargets) {
       try {
@@ -2482,7 +2500,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       });
     }
 
-    // ── Step 4: 写入本地数据库 ──
+    // ── Step 5: 写入本地数据库 ──
     await connection.beginTransaction();
 
     const result = await connection.query(
