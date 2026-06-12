@@ -138,6 +138,9 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9ca3af', lineHeight: 1.4, whiteSpace: 'nowrap' }}>
                 使用支持二维码登录的客户端扫描二维码完成登录
               </p>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                更新后将生成新的 URL 与二维码
+              </p>
             </div>
           </div>
 
@@ -160,9 +163,6 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
             }}>
               <RefreshCw size={13} /> Renew
             </button>
-            <span style={{ fontSize: '10px', color: '#6b7280', textAlign: 'right', maxWidth: '120px', lineHeight: 1.3 }}>
-              更新后将生成新的 URL 与二维码
-            </span>
           </div>
         </div>
 
