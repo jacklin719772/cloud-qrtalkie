@@ -2391,7 +2391,8 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
          a.nickname AS creatorName,
          a.display_name AS adminName,
          a.email AS creatorEmail,
-         (SELECT COUNT(*) FROM tenant_contact_book_entries WHERE contact_book_id = cb.id) AS entryCount
+         (SELECT COUNT(*) FROM tenant_contact_book_entries WHERE contact_book_id = cb.id) AS entryCount,
+         (SELECT COUNT(*) FROM tenant_contact_book_assignments WHERE contact_book_id = cb.id AND status = 'active') AS assignedCount
        FROM tenant_contact_books cb
        LEFT JOIN admin_users a ON cb.created_by_admin_id = a.id
        WHERE cb.tenant_id = ?
@@ -2404,7 +2405,8 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
       id: row.id ? row.id.toString() : null,
       creatorName: row.creatorName || row.creatorEmail || row.adminName || "",
       createdBy: row.creatorName || row.creatorEmail || row.adminName || "",
-      entryCount: Number(row.entryCount) || 0
+      entryCount: Number(row.entryCount) || 0,
+      assignedCount: Number(row.assignedCount) || 0
     }));
 
     return response.json({ contactBooks: formattedRows });

@@ -645,21 +645,22 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
 
         <div className="contact-book-table-card">
           <div className="contact-book-table-wrapper">
-            <table className="contact-book-table" style={{ minWidth: '900px' }}>
+            <table className="contact-book-table" style={{ minWidth: '1000px' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '20%' }}>通訊錄名稱</th>
-                  <th style={{ width: '25%' }}>描述</th>
-                  <th style={{ width: '10%' }}>成員數</th>
-                  <th style={{ width: '15%' }}>創建人</th>
-                  <th style={{ width: '15%' }}>創建時間</th>
+                  <th style={{ width: '18%' }}>通訊錄名稱</th>
+                  <th style={{ width: '20%' }}>描述</th>
+                  <th style={{ width: '10%' }}>包含帳號</th>
+                  <th style={{ width: '10%' }}>已分配</th>
+                  <th style={{ width: '12%' }}>創建人</th>
+                  <th style={{ width: '12%' }}>創建時間</th>
                   <th style={{ width: '160px', minWidth: '160px', textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedBooks.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan="7" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
                       {loading ? '載入中...' : '暫無通訊錄數據'}
                     </td>
                   </tr>
@@ -671,6 +672,11 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                       <td style={{ textAlign: 'center' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.entryCount > 0) ? '#0d2818' : '#1f2937', color: (book.entryCount > 0) ? '#4ade80' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
                           {book.entryCount || 0}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.assignedCount > 0) ? '#1e3a5f' : '#1f2937', color: (book.assignedCount > 0) ? '#93c5fd' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
+                          {book.assignedCount || 0}
                         </span>
                       </td>
                       <td>{book.creatorName || book.createdBy || book.creatorNickname || book.adminNickname || book.adminName || '系統'}</td>
