@@ -83,6 +83,8 @@ import {
   createContactList,
   assignContactListToAccount,
   listContactLists,
+  listAccountContacts,
+  addContactToContactList,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 
@@ -2465,8 +2467,38 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       return response.status(502).json({ message: "Flexisip 通訊錄服務不可用，請稍後重試。" });
     }
 
-    // ── Step 3: 查询待分配账号的 Flexisip account_id ──
+    // ── Step 2: 获取数据库连接 ──
     connection = await pool.getConnection();
+
+    // ── Step 3: 将 accountIds 中的账号添加为通讯录成员 ──
+    const memberResults = { added: [], failed: [] };
+    if (accountIds.length > 0) {
+      const placeholders = accountIds.map(() => '?').join(',');
+      const memberRows = await connection.query(
+        `SELECT id, flexisip_account_id, username FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ?`,
+        [...accountIds, request.admin.tenantId],
+      );
+      for (const row of memberRows) {
+        if (!row.flexisip_account_id) continue;
+        try {
+          const contacts = await listAccountContacts(row.flexisip_account_id);
+          if (Array.isArray(contacts) && contacts.length > 0) {
+            for (const contact of contacts) {
+              const contactId = contact.id || contact.contact_id;
+              if (contactId) {
+                await addContactToContactList(flexisipContactListId, contactId);
+              }
+            }
+            memberResults.added.push(row.username);
+          }
+        } catch (err) {
+          console.error(`Failed to add contacts for account ${row.username}:`, err.message);
+          memberResults.failed.push(row.username);
+        }
+      }
+    }
+
+    // ── Step 4: 查询待分配账号的 Flexisip account_id ──
     const assignTargets = [];
     if (assignedAccountIds.length > 0) {
       const placeholders = assignedAccountIds.map(() => '?').join(',');
