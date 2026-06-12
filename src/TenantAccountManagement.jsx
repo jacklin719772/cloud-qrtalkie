@@ -896,6 +896,7 @@ const TenantAccountManagement = forwardRef(({
           border-radius: 14px;
           box-shadow: none;
           overflow: hidden;
+          padding: 0 24px;
         }
         #tenant-account-management .account-table-wrapper {
           width: 100%;
@@ -903,9 +904,12 @@ const TenantAccountManagement = forwardRef(({
           min-height: 0;
           overflow-x: auto;
           overflow-y: auto;
-          scrollbar-width: none;
+          scrollbar-width: thin;
+          scrollbar-color: #374151 transparent;
         }
-        #tenant-account-management .account-table-wrapper::-webkit-scrollbar { display: none; }
+        #tenant-account-management .account-table-wrapper::-webkit-scrollbar { display: block; width: 6px; height: 6px; }
+        #tenant-account-management .account-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        #tenant-account-management .account-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         #tenant-account-management .account-table {
           width: 100%;
           min-width: 1180px;
@@ -1089,7 +1093,7 @@ const TenantAccountManagement = forwardRef(({
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>開始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>結束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
                 {showDomain && <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('domain')}><span>域名</span><span>{getSortIndicator('domain')}</span></button></th>}
-                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
+                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
