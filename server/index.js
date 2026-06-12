@@ -2690,10 +2690,6 @@ app.get("/api/contact-books/validate", requireAdmin, async (request, response) =
       }
     }
 
-    for (const l of flexisipMap.values()) {
-      results.push({ name: l.title || l.name || "(无名称)", status: "missing_locally", flexisipId: l.id, note: "本地数据库中无对应记录" });
-    }
-
     const allOk = results.every(r => r.status === "matched");
 
     return response.json({ success: true, allOk, flexisipError, total: results.length, results });
