@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, forwardRef, useImperativeH
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient.js';
 
-const ContactBooks = forwardRef((props, ref) => {
+const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const [contactBooks, setContactBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -17,7 +17,7 @@ const ContactBooks = forwardRef((props, ref) => {
   const dropdownMenuRef = useRef(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newBookForm, setNewBookForm] = useState({ name: '', description: '', accountIds: [], assignedAccountIds: [] });
+  const [newBookForm, setNewBookForm] = useState({ name: '', description: tenantName || '', accountIds: [], assignedAccountIds: [] });
   const [tenantAccounts, setTenantAccounts] = useState([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -257,7 +257,7 @@ const ContactBooks = forwardRef((props, ref) => {
   };
 
   const handleCreate = () => {
-    setNewBookForm({ name: '', description: '', accountIds: [], assignedAccountIds: [] });
+    setNewBookForm({ name: '', description: tenantName || '', accountIds: [], assignedAccountIds: [] });
     setAccountSearchKeyword('');
     setIsCreateModalOpen(true);
     fetchTenantAccounts();
@@ -328,7 +328,7 @@ const ContactBooks = forwardRef((props, ref) => {
         assignedAccountIds: newBookForm.assignedAccountIds
       });
       setIsCreateModalOpen(false);
-      setNewBookForm({ name: '', description: '', accountIds: [], assignedAccountIds: [] });
+      setNewBookForm({ name: '', description: tenantName || '', accountIds: [], assignedAccountIds: [] });
       fetchContactBooks();
     } catch (err) {
       window.alert(err.message || '新增通訊錄失敗');

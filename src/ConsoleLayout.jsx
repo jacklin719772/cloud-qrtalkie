@@ -739,7 +739,7 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'tenant-account-management' && (
             <TenantAccountManagement ref={tenantAccountManagementRef} onNavigate={(view) => setCurrentView(view)} onModeChange={setTenantAccountMode} />
           )}
-          {currentView === 'contact-books' && <ContactBooks ref={contactBooksRef} />}
+          {currentView === 'contact-books' && <ContactBooks ref={contactBooksRef} tenantName={workspaceName} />}
           {currentView === 'e-business-card' && (
             <EcardStyles />
           )}
