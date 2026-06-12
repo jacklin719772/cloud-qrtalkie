@@ -2678,15 +2678,15 @@ app.get("/api/contact-books/validate", requireAdmin, async (request, response) =
       if (b.flexisip_contact_list_id && flexisipMap.has(b.flexisip_contact_list_id)) {
         const f = flexisipMap.get(b.flexisip_contact_list_id);
         results.push({
-          name: b.name, status: "matched", localId: b.id, flexisipId: b.flexisip_contact_list_id,
-          localEntryCount: b.entryCount, localAssignedCount: b.assignedCount,
+          name: b.name, status: "matched", localId: Number(b.id), flexisipId: b.flexisip_contact_list_id,
+          localEntryCount: Number(b.entryCount), localAssignedCount: Number(b.assignedCount),
           flexisipTitle: f.title || f.name || "",
         });
         flexisipMap.delete(b.flexisip_contact_list_id);
       } else if (!b.flexisip_contact_list_id) {
-        results.push({ name: b.name, status: "local_only", localId: b.id, note: "本地通讯录未关联 Flexisip" });
+        results.push({ name: b.name, status: "local_only", localId: Number(b.id), note: "本地通讯录未关联 Flexisip" });
       } else {
-        results.push({ name: b.name, status: "missing_on_flexisip", localId: b.id, flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通讯录" });
+        results.push({ name: b.name, status: "missing_on_flexisip", localId: Number(b.id), flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通讯录" });
       }
     }
 
