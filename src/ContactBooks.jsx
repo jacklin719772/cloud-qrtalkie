@@ -740,37 +740,37 @@ const ContactBooks = forwardRef((props, ref) => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={newBookForm.name} onChange={(e) => setNewBookForm(p => ({ ...p, name: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="例如：开发部通訊錄" />
+                  <input required value={newBookForm.name} onChange={(e) => setNewBookForm(p => ({ ...p, name: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="例如：開發部通訊錄" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
-                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="請输入通訊錄描述..." />
+                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="請輸入通訊錄描述..." />
                 </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通讯录中包含的账号 ({newBookForm.accountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄中包含的帳號 ({newBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         newBookForm.accountIds,
                         (id) => toggleNewBookAccount('accountIds', id),
-                        accountSearchKeyword ? '没有符合条件的帳號' : '暫無可選擇帳號'
+                        accountSearchKeyword ? '沒有符合條件的帳號' : '暫無可選擇帳號'
                       )}
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>允许使用该通讯录的帳號 ({newBookForm.assignedAccountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>允許使用該通訊錄的帳號 ({newBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active'),
                         newBookForm.assignedAccountIds,
                         (id) => toggleNewBookAccount('assignedAccountIds', id),
-                        accountSearchKeyword ? '没有符合条件的帳號' : '暫無啟用帳號可分配'
+                        accountSearchKeyword ? '沒有符合條件的帳號' : '暫無啟用帳號可分配'
                       )}
                     </div>
                   </div>
@@ -790,7 +790,7 @@ const ContactBooks = forwardRef((props, ref) => {
           <div style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>通訊錄詳情</h3>
-              <button type="button" className="ghost-btn" onClick={() => setIsDetailModalOpen(false)} style={{ padding: '4px 8px' }}>关闭</button>
+              <button type="button" className="ghost-btn" onClick={() => setIsDetailModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -810,8 +810,8 @@ const ContactBooks = forwardRef((props, ref) => {
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
-                    ) : renderReadonlyAccountList(detailBook.includedAccounts, '该通訊錄暫無包含帳號')}
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                    ) : renderReadonlyAccountList(detailBook.includedAccounts, '該通訊錄暫無包含帳號')}
                   </div>
                 </div>
               </div>
@@ -820,8 +820,8 @@ const ContactBooks = forwardRef((props, ref) => {
                 <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
-                    ) : renderReadonlyAccountList(detailBook.assignedAccounts, '该通訊錄暫無分配帳號')}
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                    ) : renderReadonlyAccountList(detailBook.assignedAccounts, '該通訊錄暫無分配帳號')}
                   </div>
                 </div>
               </div>
@@ -836,7 +836,7 @@ const ContactBooks = forwardRef((props, ref) => {
           <form onSubmit={submitEditContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>編輯通訊錄</h3>
-              <button type="button" className="ghost-btn" onClick={() => setIsEditModalOpen(false)} style={{ padding: '4px 8px' }}>关闭</button>
+              <button type="button" className="ghost-btn" onClick={() => setIsEditModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -853,7 +853,7 @@ const ContactBooks = forwardRef((props, ref) => {
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <input
                   type="search"
-                  placeholder="搜尋帳號、名稱、邮件或電話"
+                  placeholder="搜尋帳號、名稱、郵件或電話"
                   value={accountSearchKeyword}
                   onChange={(e) => setAccountSearchKeyword(e.target.value)}
                   style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '13px', width: '220px' }}
@@ -866,7 +866,7 @@ const ContactBooks = forwardRef((props, ref) => {
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
                         tenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         editBookForm.accountIds,
@@ -881,7 +881,7 @@ const ContactBooks = forwardRef((props, ref) => {
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>加载詳情中...</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
                         tenantAccounts.filter(acc => acc.status === 'active'),
                         editBookForm.assignedAccountIds,
