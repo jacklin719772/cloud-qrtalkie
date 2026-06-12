@@ -151,6 +151,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const handleValidateRef = useRef(null);
   const [validateResult, setValidateResult] = useState(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortDir, setSortDir] = useState('desc');
 
   const openAssignDrawer = async (book) => {
     setOpenDropdownId(null);
@@ -200,9 +202,27 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
     });
   }, [contactBooks, searchKeyword, assignmentFilter, assignedBookIds]);
 
-  const effectivePageSize = pageSize > 0 ? pageSize : filteredBooks.length;
-  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / effectivePageSize));
-  const paginatedBooks = pageSize > 0 ? filteredBooks.slice((currentPage - 1) * pageSize, currentPage * pageSize) : filteredBooks;
+  const handleSort = (field) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const sortedBooks = useMemo(() => {
+    if (!sortField) return filteredBooks;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...filteredBooks].sort((a, b) => {
+      const va = a[sortField], vb = b[sortField];
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number') return (va - (vb || 0)) * dir;
+      return String(va).localeCompare(String(vb || ''), undefined, { numeric: true }) * dir;
+    });
+  }, [filteredBooks, sortField, sortDir]);
+
+  const effectivePageSize = pageSize > 0 ? pageSize : sortedBooks.length;
+  const totalPages = Math.max(1, Math.ceil(sortedBooks.length / effectivePageSize));
+  const paginatedBooks = pageSize > 0 ? sortedBooks.slice((currentPage - 1) * pageSize, currentPage * pageSize) : sortedBooks;
 
   const fetchContactBookDetails = async (id) => {
     setIsLoadingDetail(true);
@@ -669,13 +689,22 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             <table className="contact-book-table" style={{ minWidth: '1000px' }}>
               <thead>
                 <tr>
-                  <th style={{ width: '18%' }}>通訊錄名稱</th>
+                  <th onClick={() => handleSort('name')} style={{ width: '16%', cursor: 'pointer', userSelect: 'none' }}>
+                    通訊錄名稱<span style={{ color: sortField === 'name' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+                  </th>
                   <th style={{ width: '20%' }}>描述</th>
-                  <th style={{ width: '10%' }}>包含帳號</th>
-                  <th style={{ width: '10%' }}>已分配</th>
-                  <th style={{ width: '12%' }}>創建人</th>
-                  <th style={{ width: '12%' }}>創建時間</th>
-                  <th style={{ width: '160px', minWidth: '160px', textAlign: 'center' }}>操作</th>
+                  <th onClick={() => handleSort('entryCount')} style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'center' }}>
+                    包含帳號<span style={{ color: sortField === 'entryCount' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'entryCount' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+                  </th>
+                  <th onClick={() => handleSort('assignedCount')} style={{ width: '10%', cursor: 'pointer', userSelect: 'none', textAlign: 'center' }}>
+                    已分配<span style={{ color: sortField === 'assignedCount' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'assignedCount' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+                  </th>
+                  <th onClick={() => handleSort('creatorName')} style={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}>
+                    創建人<span style={{ color: sortField === 'creatorName' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'creatorName' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+                  </th>
+                  <th onClick={() => handleSort('createdAt')} style={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}>
+                    創建時間<span style={{ color: sortField === 'createdAt' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
