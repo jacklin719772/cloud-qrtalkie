@@ -614,6 +614,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
         #contact-books-management .contact-book-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
         #contact-books-management .contact-book-table tbody tr { background: #111827; }
         #contact-books-management .contact-book-table tbody tr:hover { background: #1e293b; }
+        #contact-books-management .ghost-btn { background: #374151 !important; color: #d1d5db !important; border: 1px solid #4b5563 !important; border-radius: 8px; cursor: pointer; }
+        #contact-books-management .ghost-btn:hover { background: #4b5563 !important; color: #f3f4f6 !important; }
 `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
         <div className="contact-book-toolbar">
@@ -669,15 +671,11 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                     <tr key={book.id}>
                       <td style={{ fontWeight: 500 }}>{book.name}</td>
                       <td style={{ maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{book.description || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.entryCount > 0) ? '#0d2818' : '#1f2937', color: (book.entryCount > 0) ? '#4ade80' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
-                          {book.entryCount || 0}
-                        </span>
+                      <td style={{ textAlign: 'center', color: (book.entryCount > 0) ? '#4ade80' : '#9ca3af', fontSize: '13px', fontWeight: 500 }}>
+                        {book.entryCount || 0}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.assignedCount > 0) ? '#1e3a5f' : '#1f2937', color: (book.assignedCount > 0) ? '#93c5fd' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
-                          {book.assignedCount || 0}
-                        </span>
+                      <td style={{ textAlign: 'center', color: (book.assignedCount > 0) ? '#93c5fd' : '#9ca3af', fontSize: '13px', fontWeight: 500 }}>
+                        {book.assignedCount || 0}
                       </td>
                       <td>{book.creatorName || book.createdBy || book.creatorNickname || book.adminNickname || book.adminName || '系統'}</td>
                       <td>{formatDate(book.createdAt)}</td>
