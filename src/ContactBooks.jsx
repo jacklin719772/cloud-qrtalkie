@@ -528,6 +528,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           border-radius: 14px;
           box-shadow: none;
           overflow: hidden;
+          padding: 0 24px;
         }
         #contact-books-management .contact-book-table-wrapper {
           width: 100%;
