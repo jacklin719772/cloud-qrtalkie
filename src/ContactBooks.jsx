@@ -731,7 +731,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       </div>
       {isCreateModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }}>
-          <form onSubmit={submitCreateContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+          <form onSubmit={submitCreateContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #4b5563', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.5)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增通訊錄</h3>
               <button type="button" onClick={() => setIsCreateModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
@@ -787,7 +787,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       )}
       {isDetailModalOpen && detailBook && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }} onClick={() => setIsDetailModalOpen(false)}>
-          <div style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+          <div style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #4b5563', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.5)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>通訊錄詳情</h3>
               <button type="button" className="ghost-btn" onClick={() => setIsDetailModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
@@ -833,7 +833,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       )}
       {isEditModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }} onClick={() => setIsEditModalOpen(false)}>
-          <form onSubmit={submitEditContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+          <form onSubmit={submitEditContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #4b5563', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.5)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>編輯通訊錄</h3>
               <button type="button" className="ghost-btn" onClick={() => setIsEditModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
