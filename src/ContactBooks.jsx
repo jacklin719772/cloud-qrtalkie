@@ -650,7 +650,6 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <tr>
                   <th style={{ width: '20%' }}>通訊錄名稱</th>
                   <th style={{ width: '25%' }}>描述</th>
-                  <th style={{ width: '10%' }}>帳號</th>
                   <th style={{ width: '10%' }}>成員數</th>
                   <th style={{ width: '15%' }}>創建人</th>
                   <th style={{ width: '15%' }}>創建時間</th>
@@ -660,7 +659,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               <tbody>
                 {paginatedBooks.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan="6" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
                       {loading ? '載入中...' : '暫無通訊錄數據'}
                     </td>
                   </tr>
@@ -669,11 +668,6 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                     <tr key={book.id}>
                       <td style={{ fontWeight: 500 }}>{book.name}</td>
                       <td style={{ maxWidth: '400px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{book.description || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#eff6ff', color: '#0369a1', fontSize: '12px', fontWeight: 500 }}>
-                          {book.entryCount}
-                        </span>
-                      </td>
                       <td style={{ textAlign: 'center' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.entryCount > 0) ? '#0d2818' : '#1f2937', color: (book.entryCount > 0) ? '#4ade80' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
                           {book.entryCount || 0}
