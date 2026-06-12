@@ -705,6 +705,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                   <th onClick={() => handleSort('createdAt')} style={{ width: '12%', cursor: 'pointer', userSelect: 'none' }}>
                     創建時間<span style={{ color: sortField === 'createdAt' ? '#60a5fa' : '#4b5563', marginLeft: '4px' }}>{sortField === 'createdAt' ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}</span>
                   </th>
+                  <th style={{ width: '160px', minWidth: '160px', textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
