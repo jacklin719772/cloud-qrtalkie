@@ -105,6 +105,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
   const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
   const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
+  const [showContactBookHelp, setShowContactBookHelp] = useState(false);
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -662,6 +663,7 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleCreate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增通訊錄</button>
           <button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleValidate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>數據校驗</button>
+          <button type="button" onClick={() => setShowContactBookHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1377,6 +1379,66 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/web-accounts</code><br/>建立帳號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/pbx/webrtc-accounts</code><br/>更新顯示名稱：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PATCH /api/pbx/webrtc-accounts/:ext/display-name</code><br/>更新密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PATCH /api/pbx/webrtc-accounts/:ext/password</code><br/>刪除帳號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>DELETE /api/pbx/webrtc-accounts/:ext</code><br/>一致性檢查：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/pbx/webrtc-accounts/:ext/consistency</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showContactBookHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowContactBookHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>通訊錄管理 操作說明</h2>
+              <button onClick={() => setShowContactBookHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 通訊錄管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>通訊錄用於管理 SIP 帳號的聯絡人群組。每個通訊錄可包含多個 SIP 帳號，並可分配給特定帳號使用。通訊錄數據會同步至 Flexisip Account Manager，確保雲端與本地數據一致。</p>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增通訊錄</strong> — 創建新通訊錄，設定名稱和描述，選擇包含的帳號和允許使用的帳號。創建後自動同步至 Flexisip。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯通訊錄</strong> — 修改通訊錄名稱、描述，調整包含的帳號和已分配的帳號。變更會自動同步至 Flexisip。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除通訊錄</strong> — 刪除通訊錄及其所有關聯數據（包含帳號和分配關係），同時從 Flexisip 移除。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>分配</strong> — 打開側邊抽屜，批量選擇帳號分配給通訊錄使用。可搜尋、篩選、全選。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>數據校驗</strong> — 檢查本地通訊錄與 Flexisip 雲端的數據一致性，顯示差異報告。</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>通訊錄名稱</strong> — 通訊錄的顯示名稱，建立後可修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>描述</strong> — 通訊錄的說明文字，用於備註用途。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>包含帳號</strong> — 該通訊錄內包含的 SIP 帳號數量。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已分配</strong> — 被授權可使用該通訊錄的 SIP 帳號數量。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>創建人</strong> — 建立該通訊錄的管理員。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>創建時間</strong> — 通訊錄的建立日期。</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128268; 同步機制</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>創建同步</strong> — 新增通訊錄時，先在 Flexisip 創建後再寫入本地數據庫，確保兩端一致。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯同步</strong> — 修改通訊錄時，先更新 Flexisip，成功後再更新本地數據。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>刪除同步</strong> — 刪除通訊錄時，先從 Flexisip 刪除（如存在），再清理本地數據。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>數據校驗</strong> — 可隨時點擊「數據校驗」按鈕，檢查本地與 Flexisip 的數據一致性。</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128161; 使用建議</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>通訊錄名稱建議使用易於識別的名稱，如「開發部通訊錄」、「客服團隊」等。</li>
+                  <li>創建通訊錄時，描述欄位會預設填入公司/租戶名稱。</li>
+                  <li>僅狀態為「啟用中」或「待啟用」的帳號可被加入通訊錄。</li>
+                  <li>僅狀態為「啟用中」的帳號可被分配使用通訊錄。</li>
+                </ul>
               </div>
             </div>
           </div>
