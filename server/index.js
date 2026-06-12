@@ -1670,6 +1670,7 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         webAccount: row.web_username || "",
         contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
         contactBookName: row.contact_book_name || "",
+        syncStatus: row.sync_status || "local_only",
       })),
     });
   } catch (error) {

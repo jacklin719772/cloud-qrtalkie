@@ -55,7 +55,12 @@ function isPackageActive(value) {
 }
 
 function canUseAccountActions(account) {
+  if (account?.syncStatus === 'local_only') return false;
   return !isPackageExpired(account?.serviceExpiresAt);
+}
+
+function isLocalOnly(account) {
+  return account?.syncStatus === 'local_only';
 }
 
 function getStatusBadge(status) {
@@ -314,7 +319,7 @@ const TenantAccountManagement = forwardRef(({
 
   function openEditAccount(account) {
     if (!canUseAccountActions(account)) {
-      window.alert('已過期帳號不能編輯。');
+      window.alert(isLocalOnly(account) ? '該帳號僅在本地數據庫中存在，無法使用，請聯繫平台管理員！' : '已過期帳號不能編輯。');
       return;
     }
     setEditAccount(account);
@@ -374,6 +379,11 @@ const TenantAccountManagement = forwardRef(({
 
   function openResetPassword(account) {
     const targets = Array.isArray(account) ? account : [account];
+    const localOnlyTargets = targets.filter(isLocalOnly);
+    if (localOnlyTargets.length > 0) {
+      window.alert(`所選帳號（${localOnlyTargets.map(a => a.username).join('、')}）僅在本地數據庫中存在，無法重設密碼，請聯繫平台管理員！`);
+      return;
+    }
     const usableTargets = targets.filter(canUseAccountActions);
     if (usableTargets.length === 0) {
       window.alert('已過期帳號不能重設密碼。');
@@ -437,6 +447,11 @@ const TenantAccountManagement = forwardRef(({
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
     if (selectedAccounts.length === 0) {
       window.alert('請先選擇帳號。');
+      return [];
+    }
+    const localOnlyAccounts = selectedAccounts.filter(isLocalOnly);
+    if (localOnlyAccounts.length > 0) {
+      window.alert(`所選帳號中包含僅在本地數據庫中存在的帳號（${localOnlyAccounts.map(a => a.username).join('、')}），無法${actionLabel}，請聯繫平台管理員！`);
       return [];
     }
     const usableAccounts = selectedAccounts.filter(canUseAccountActions);
@@ -590,6 +605,10 @@ const TenantAccountManagement = forwardRef(({
       return;
     }
     if (action === 'toggle_status') {
+      if (isLocalOnly(account)) {
+        window.alert('該帳號僅在本地數據庫中存在，無法使用，請聯繫平台管理員！');
+        return;
+      }
       if (!canUseAccountActions(account)) {
         window.alert('已過期帳號不能啟用或停用。');
         return;
