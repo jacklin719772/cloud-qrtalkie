@@ -116,7 +116,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
       {/* Dialog */}
       <div style={{
         position: 'relative',
-        width: '480px', maxWidth: '92vw',
+        width: '560px', maxWidth: '94vw',
         background: 'linear-gradient(160deg, #1a1f2e 0%, #111827 100%)',
         border: '1px solid rgba(75, 85, 99, 0.4)',
         borderRadius: '16px',
@@ -131,20 +131,11 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
           borderBottom: '1px solid rgba(75, 85, 99, 0.2)',
         }}>
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-            <div style={{
-              width: '44px', height: '44px', borderRadius: '10px',
-              background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.2), rgba(234, 88, 12, 0.1))',
-              border: '1px solid rgba(249, 115, 22, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <Shield size={22} color="#f97316" />
-            </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f3f4f6', lineHeight: 1.3 }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f3f4f6', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
                 登录二维码
               </h2>
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9ca3af', lineHeight: 1.4 }}>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9ca3af', lineHeight: 1.4, whiteSpace: 'nowrap' }}>
                 使用支持二维码登录的客户端扫描二维码完成登录
               </p>
             </div>
