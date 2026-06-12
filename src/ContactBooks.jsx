@@ -750,9 +750,9 @@ const ContactBooks = forwardRef((props, ref) => {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({newBookForm.accountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通讯录中包含的账号 ({newBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         newBookForm.accountIds,
@@ -763,9 +763,9 @@ const ContactBooks = forwardRef((props, ref) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({newBookForm.assignedAccountIds.length})</span>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>允许使用该通讯录的帳號 ({newBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active'),
                         newBookForm.assignedAccountIds,
