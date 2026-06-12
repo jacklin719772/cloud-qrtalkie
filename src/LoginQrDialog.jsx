@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, Copy, Download, RefreshCw } from 'lucide-react';
+import { Copy, Download, RefreshCw } from 'lucide-react';
 
 const mockLoginQrData = {
   provisionUrl: 'https://account.qrtalkie.org/provisioning/I22B5kUt',
