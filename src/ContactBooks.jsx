@@ -381,13 +381,13 @@ const ContactBooks = forwardRef((props, ref) => {
     }
 
     return accounts.map(acc => (
-      <div key={acc.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
+      <div key={acc.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
           {(acc.displayName || acc.username || 'U').charAt(0).toUpperCase()}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontSize: '14px', color: '#0f172a', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
-          <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
+          <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
+          <span style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
       </div>
     ));
@@ -410,13 +410,13 @@ const ContactBooks = forwardRef((props, ref) => {
     });
 
     return sortedAccounts.map(acc => (
-      <label key={acc.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}>
+      <label key={acc.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937', cursor: 'pointer' }}>
         <input type="checkbox" checked={selectedSet.has(acc.sipUserId)} onChange={() => onToggle(acc.sipUserId)} style={{ cursor: 'pointer' }} />
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
+        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
           {(acc.displayName || acc.username || 'U').charAt(0).toUpperCase()}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontSize: '14px', color: '#0f172a', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
+          <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
           <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
       </label>
@@ -731,27 +731,27 @@ const ContactBooks = forwardRef((props, ref) => {
       </div>
       {isCreateModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }}>
-          <form onSubmit={submitCreateContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>新增通訊錄</h3>
-              <button type="button" className="ghost-btn" onClick={() => setIsCreateModalOpen(false)} style={{ padding: '4px 8px' }}>关闭</button>
+          <form onSubmit={submitCreateContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增通訊錄</h3>
+              <button type="button" onClick={() => setIsCreateModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={newBookForm.name} onChange={(e) => setNewBookForm(p => ({ ...p, name: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="例如：开发部通訊錄" />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
+                  <input required value={newBookForm.name} onChange={(e) => setNewBookForm(p => ({ ...p, name: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="例如：开发部通訊錄" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>描述</span>
-                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="請输入通訊錄描述..." />
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
+                  <input type="text" value={newBookForm.description} onChange={(e) => setNewBookForm(p => ({ ...p, description: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} placeholder="請输入通訊錄描述..." />
                 </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({newBookForm.accountIds.length})</span>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({newBookForm.accountIds.length})</span>
+                  <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
@@ -763,8 +763,8 @@ const ContactBooks = forwardRef((props, ref) => {
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({newBookForm.assignedAccountIds.length})</span>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({newBookForm.assignedAccountIds.length})</span>
+                  <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active'),
@@ -777,8 +777,8 @@ const ContactBooks = forwardRef((props, ref) => {
                 </div>
               </div>
             </div>
-            <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
-              <button type="button" className="ghost-btn" onClick={() => setIsCreateModalOpen(false)} disabled={isSaving}>取消</button>
+            <div style={{ padding: '16px 20px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
+              <button type="button" onClick={() => setIsCreateModalOpen(false)} disabled={isSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button type="submit" className="primary-btn" disabled={isSaving || !newBookForm.name.trim()}>{isSaving ? '保存中...' : '保存通訊錄'}</button>
             </div>
           </form>
