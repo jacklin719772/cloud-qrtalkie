@@ -86,6 +86,7 @@ import {
   addContactToContactList,
   removeContactFromContactList,
   updateContactList,
+  deleteContactList,
   unassignContactListFromAccount,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
@@ -2893,19 +2894,43 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
   let connection;
   try {
     connection = await pool.getConnection();
-    await connection.beginTransaction();
 
     const [book] = await connection.query(
-      `SELECT id FROM tenant_contact_books WHERE id = ? AND tenant_id = ?`,
+      `SELECT id, flexisip_contact_list_id FROM tenant_contact_books WHERE id = ? AND tenant_id = ?`,
       [contactBookId, request.admin.tenantId]
     );
 
     if (!book) {
-      await connection.rollback();
+      connection.release();
       return response.status(404).json({ message: "找不到指定的通讯录。" });
     }
 
+    // ── Flexisip sync: 删除远端通讯录 ──
+    if (book.flexisip_contact_list_id) {
+      try {
+        await deleteContactList(book.flexisip_contact_list_id);
+      } catch (flexisipErr) {
+        // 404 表示远端已删除，可继续清理本地
+        if (flexisipErr.status !== 404) {
+          connection.release();
+          if (flexisipErr instanceof FlexisipContactBookError) {
+            return response.status(502).json({
+              message: `Flexisip 通讯录删除失败：${flexisipErr.message}`,
+              code: "FLEXISIP_DELETE_FAILED",
+            });
+          }
+          return response.status(502).json({ message: "Flexisip 通讯录服务不可用。" });
+        }
+      }
+    }
+
+    await connection.beginTransaction();
+
     await connection.query(`DELETE FROM tenant_contact_book_entries WHERE contact_book_id = ?`, [contactBookId]);
+    await connection.query(
+      `DELETE FROM tenant_contact_book_assignments WHERE contact_book_id = ? AND tenant_id = ?`,
+      [contactBookId, request.admin.tenantId]
+    );
     await connection.query(`DELETE FROM tenant_contact_books WHERE id = ?`, [contactBookId]);
 
     await connection.commit();
