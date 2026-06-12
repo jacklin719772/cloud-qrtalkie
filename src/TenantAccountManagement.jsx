@@ -1149,7 +1149,7 @@ const TenantAccountManagement = forwardRef(({
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('email', account)}>發送邮件</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
-                            <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>二維碼管理</button>
+                            <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
                           </div>,
                           document.body
                         )}

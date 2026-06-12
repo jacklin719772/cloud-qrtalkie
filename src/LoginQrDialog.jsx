@@ -4,7 +4,7 @@ import { Copy, Download, RefreshCw } from 'lucide-react';
 
 const mockLoginQrData = {
   provisionUrl: 'https://account.qrtalkie.org/provisioning/I22B5kUt',
-  expireText: '该链接仅可访问一次',
+  expireText: '該鏈接僅可訪問一次',
   qrStatus: 'active',
   updatedAt: '2026-06-12 19:30:00',
 };
@@ -28,7 +28,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
       : generateMockUrl();
     setData({
       provisionUrl: newUrl,
-      expireText: '该链接仅可访问一次',
+      expireText: '該鏈接僅可訪問一次',
       qrStatus: 'active',
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),
     });
@@ -133,13 +133,13 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
           <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f3f4f6', lineHeight: 1.3, whiteSpace: 'nowrap' }}>
-                登录二维码
+                登錄二維碼
               </h2>
               <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#9ca3af', lineHeight: 1.4, whiteSpace: 'nowrap' }}>
-                使用支持二维码登录的客户端扫描二维码完成登录
+                使用支援二維碼登錄的用戶端掃描二維碼完成登錄
               </p>
               <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                更新后将生成新的 URL 与二维码
+                更新後將生成新的 URL 與二維碼
               </p>
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
             background: 'rgba(55, 65, 81, 0.4)',
             color: '#d1d5db', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
           }}>
-            <Copy size={14} /> 复制二维码
+            <Copy size={14} /> 複製二維碼
           </button>
           <button onClick={handleDownloadQr} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -209,7 +209,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
             background: 'rgba(55, 65, 81, 0.4)',
             color: '#d1d5db', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
           }}>
-            <Download size={14} /> 下载二维码
+            <Download size={14} /> 下載二維碼
           </button>
         </div>
 
@@ -220,7 +220,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
         }}>
           <div style={{ marginBottom: '8px' }}>
             <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>
-              登录链接（仅可访问一次）
+              登錄鏈接（仅可访问一次）
             </span>
           </div>
           <div style={{
@@ -244,7 +244,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
               cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
             }}>
               <Copy size={14} />
-              {copied ? '已复制' : '复制链接'}
+              {copied ? '已複製' : '複製鏈接'}
             </button>
           </div>
           <div style={{ marginTop: '8px' }}>
