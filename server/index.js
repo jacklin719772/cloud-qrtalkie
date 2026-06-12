@@ -207,7 +207,9 @@ app.get("/access/visitor", async (request, response) => {
         `SELECT r.id, r.building_id, r.room_number, r.floor,
                 COALESCE(s.display_name, s.username, '') AS resident_name,
                 s.username AS sip_username,
-                wu.username AS web_username
+                wu.username AS web_username,
+           COALESCE(su.sync_status, 'local_only') AS sync_status,
+           COALESCE(su.sync_status, 'local_only') AS sync_status
          FROM access_rooms r
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
          LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
@@ -1652,6 +1654,21 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         [request.admin.tenantId],
       );
 
+    // Fetch sync_status from sip_users for all accounts
+    const syncStatusMap = new Map();
+    if (rows.length > 0) {
+      const sipUserIds = [...new Set(rows.map(r => Number(r.sip_user_id)).filter(Boolean))];
+      if (sipUserIds.length > 0) {
+        const syncRows = await connection.query(
+          `SELECT id, sync_status FROM sip_users WHERE id IN (${sipUserIds.map(() => '?').join(',')})`,
+          sipUserIds,
+        );
+        for (const sr of syncRows) {
+          syncStatusMap.set(Number(sr.id), sr.sync_status || 'local_only');
+        }
+      }
+    }
+
     return response.json({
       accounts: rows.map((row) => ({
         id: Number(row.id),
@@ -1670,7 +1687,7 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         webAccount: row.web_username || "",
         contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
         contactBookName: row.contact_book_name || "",
-        syncStatus: row.sync_status || "local_only",
+        syncStatus: syncStatusMap.get(Number(row.sip_user_id)) || "local_only",
       })),
     });
   } catch (error) {
