@@ -638,8 +638,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           </div>
           <div className="contact-book-stats">
             <span className="contact-book-stat-pill">全部<strong>{bookStats.total}</strong></span>
-            <span className="contact-book-stat-pill">已分配<strong>{bookStats.assigned}</strong></span>
-            <span className="contact-book-stat-pill">未分配<strong>{bookStats.unassigned}</strong></span>
+            <span className="contact-book-stat-pill">有成員<strong>{bookStats.assigned}</strong></span>
+            <span className="contact-book-stat-pill">無成員<strong>{bookStats.unassigned}</strong></span>
           </div>
         </div>
 
@@ -651,7 +651,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                   <th style={{ width: '20%' }}>通訊錄名稱</th>
                   <th style={{ width: '25%' }}>描述</th>
                   <th style={{ width: '10%' }}>帳號</th>
-                  <th style={{ width: '10%' }}>已分配</th>
+                  <th style={{ width: '10%' }}>成員數</th>
                   <th style={{ width: '15%' }}>創建人</th>
                   <th style={{ width: '15%' }}>創建時間</th>
                   <th style={{ width: '160px', minWidth: '160px', textAlign: 'center' }}>操作</th>
@@ -675,7 +675,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.entryCount > 0) ? '#f0fdf4' : '#f8fafc', color: (book.entryCount > 0) ? '#15803d' : '#94a3b8', fontSize: '12px', fontWeight: 500 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: '12px', backgroundColor: (book.entryCount > 0) ? '#0d2818' : '#1f2937', color: (book.entryCount > 0) ? '#4ade80' : '#9ca3af', fontSize: '12px', fontWeight: 500 }}>
                           {book.entryCount || 0}
                         </span>
                       </td>
