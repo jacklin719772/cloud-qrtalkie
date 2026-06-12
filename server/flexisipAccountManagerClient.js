@@ -143,6 +143,10 @@ export function sendProvisioningEmail(accountId) {
   return request("POST", `/accounts/${encodeURIComponent(accountId)}/send_provisioning_email`);
 }
 
+export function getAccountProvisionLink(accountId) {
+  return request("GET", `/accounts/${encodeURIComponent(accountId)}/provision`);
+}
+
 export function sendResetPasswordEmail(accountId) {
   return request("POST", `/accounts/${encodeURIComponent(accountId)}/send_reset_password_email`);
 }

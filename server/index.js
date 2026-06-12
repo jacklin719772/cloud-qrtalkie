@@ -79,6 +79,7 @@ import {
   deactivateAccount as flexisipDeactivateAccount,
   updateAccount as flexisipUpdateAccount,
   sendProvisioningEmail as flexisipSendProvisioningEmail,
+  getAccountProvisionLink as flexisipGetProvisionLink,
   sendResetPasswordEmail as flexisipSendResetPasswordEmail,
 } from "./flexisipAccountManagerClient.js";
 import {
@@ -2073,6 +2074,75 @@ app.post("/api/tenant/sip-accounts/:id/send-provisioning-email", requireAdmin, a
     action: "provisioning",
     sendEmail: flexisipSendProvisioningEmail,
   });
+});
+
+// GET /api/tenant/sip-accounts/:id/provisioning-url - 获取 provisioning 下载链接
+app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ success: false, message: "只有租戶管理員可以操作。" });
+  }
+
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ success: false, message: "帳號編號無效。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const account = await loadTenantSipAccountForFlexisipEmail(connection, request.admin.tenantId, accountId);
+    if (!account) {
+      return response.status(404).json({ success: false, message: "找不到帳號。" });
+    }
+    if (!account.flexisipAccountId) {
+      return response.status(400).json({ success: false, message: "該帳號尚未同步到 Flexisip，無法生成二維碼。" });
+    }
+
+    try {
+      const result = await flexisipGetProvisionLink(account.flexisipAccountId);
+      const host = (process.env.FLEXISIP_ACCOUNT_MANAGER_BASE_URL || "http://account.qrtalkie.org/api")
+        .replace(/\/api\/?$/, "").replace(/^https?:\/\//, "");
+
+      // 按优先级取 provisioning URL
+      let provisionUrl = result?.provisioning_url
+        || result?.provisioningUrl
+        || result?.provision_url
+        || result?.provisionUrl
+        || result?.url
+        || null;
+
+      // 回退：用 token 拼接
+      if (!provisionUrl && result?.provisioning_token) {
+        provisionUrl = `https://${host}/provisioning/${result.provisioning_token}`;
+      }
+
+      if (!provisionUrl) {
+        return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 鏈接。" });
+      }
+
+      return response.json({
+        success: true,
+        data: {
+          provisionUrl,
+          expireAt: result?.provisioning_token_expire_at || result?.expire_at || result?.expireAt || null,
+        },
+      });
+    } catch (error) {
+      const isFlexisipError = error instanceof FlexisipAccountManagerError;
+      console.error(`[flexisip-provisioning] tenant=${request.admin.tenantId} accountId=${accountId} flexisipAccountId=${account.flexisipAccountId} failed:`, error?.message || error);
+      return response.status(isFlexisipError && error.status === 404 ? 404 : 502).json({
+        success: false,
+        message: isFlexisipError && error.status === 404
+          ? "Flexisip 帳號不存在"
+          : "獲取 provisioning 鏈接失敗，請稍後重試",
+      });
+    }
+  } catch (error) {
+    console.error(`[flexisip-provisioning] unexpected error:`, error);
+    return response.status(500).json({ success: false, message: "獲取失敗，請稍後重試" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, response) => {
