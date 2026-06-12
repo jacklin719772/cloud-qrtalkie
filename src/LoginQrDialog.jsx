@@ -14,13 +14,20 @@ function generateMockUrl() {
   return `https://account.qrtalkie.org/provisioning/${rand}`;
 }
 
-export default function LoginQrDialog({ isOpen, onClose }) {
-  const [data, setData] = useState(mockLoginQrData);
+export default function LoginQrDialog({ isOpen, onClose, account }) {
+  const initialUrl = account
+    ? `https://account.qrtalkie.org/provisioning/${account.username || 'default'}`
+    : mockLoginQrData.provisionUrl;
+
+  const [data, setData] = useState({ ...mockLoginQrData, provisionUrl: initialUrl });
   const [copied, setCopied] = useState(false);
 
   const handleRenew = useCallback(() => {
+    const newUrl = account
+      ? `https://account.qrtalkie.org/provisioning/${account.username || 'default'}/${generateMockUrl().split('/').pop()}`
+      : generateMockUrl();
     setData({
-      provisionUrl: generateMockUrl(),
+      provisionUrl: newUrl,
       expireText: '该链接仅可访问一次',
       qrStatus: 'active',
       updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }),

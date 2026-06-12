@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
+import LoginQrDialog from './LoginQrDialog';
 
 const navMap = { ecard: 'e-business-card', agent: 'call-center', entrance: 'access-control', room: 'access-control' };
 
@@ -128,7 +129,6 @@ const TenantAccountManagement = forwardRef(({
   const [isSavingContactBook, setIsSavingContactBook] = useState(false);
   const [contactBookMessage, setContactBookMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
-  const [qrRefreshKey, setQrRefreshKey] = useState(0);
   const [configStatus, setConfigStatus] = useState({});
   const dropdownAnchorRef = useRef(null);
   const dropdownMenuRef = useRef(null);
@@ -1402,26 +1402,11 @@ const TenantAccountManagement = forwardRef(({
         document.body
       )}
       {/* 二維碼管理對話框 */}
-      {qrDialogAccount && createPortal((
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setQrDialogAccount(null)}>
-          <div style={{ background: '#111827', borderRadius: '16px', padding: '28px 24px 20px', maxWidth: '480px', width: '90%', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>二維碼管理 — {qrDialogAccount.username}</h3>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => setQrRefreshKey(k => k + 1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '16px', padding: '2px' }} title="刷新">🔄</button>
-                <button onClick={() => setQrDialogAccount(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px' }}>✕</button>
-              </div>
-            </div>
-            <img src={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username) + '&t=' + qrRefreshKey} alt="QR" style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #1f2937' }} />
-            <div style={{ display: 'flex', gap: '6px', marginTop: '16px', justifyContent: 'center', flexWrap: 'nowrap' }}>
-              <button onClick={async () => { try { const r = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username)); const b = await r.blob(); const img = await createImageBitmap(b); const canvas = document.createElement('canvas'); const label = '二維碼管理 ' + (qrDialogAccount.username || ''); const ctx = canvas.getContext('2d'); ctx.font = 'bold 14px system-ui'; const tw = ctx.measureText(label).width; const maxW = Math.max(200, tw + 20); canvas.width = maxW; canvas.height = 240; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, (maxW - 200) / 2, 10); ctx.fillStyle = '#0f172a'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, maxW / 2, 230); const blob2 = await new Promise(r2 => canvas.toBlob(r2, 'image/png')); const a = document.createElement('a'); a.href = URL.createObjectURL(blob2); a.download = (qrDialogAccount.username || 'qrcode') + '-' + (qrDialogAccount.displayName || 'unknown') + '-qrcode.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>⬇ 下載</button>
-              <button onClick={async () => { try { const r = await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent('mock://login/' + qrDialogAccount.username)); const b = await r.blob(); const img = await createImageBitmap(b); const canvas = document.createElement('canvas'); const label = '二維碼管理 ' + (qrDialogAccount.username || ''); const ctx = canvas.getContext('2d'); ctx.font = 'bold 14px system-ui'; const tw = ctx.measureText(label).width; const maxW = Math.max(200, tw + 20); canvas.width = maxW; canvas.height = 240; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, (maxW - 200) / 2, 10); ctx.fillStyle = '#0f172a'; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText(label, maxW / 2, 230); const blob2 = await new Promise(r2 => canvas.toBlob(r2, 'image/png')); await navigator.clipboard.write([new ClipboardItem({[blob2.type]: blob2})]); window.alert('已複製'); } catch(e) { try { await navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製</button>
-              <button onClick={() => { navigator.clipboard.writeText('mock://login/' + qrDialogAccount.username).then(() => window.alert('鏈接已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>📋 複製鏈接</button>
-              <button onClick={() => { if (qrDialogAccount.email) { window.alert('郵件已發送至 ' + qrDialogAccount.email); } else { window.alert('該帳號未設定郵箱'); } }} style={{ height: '32px', padding: '0 8px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>✉ 郵件</button>
-            </div>
-          </div>
-        </div>
-      ), document.body)}
+      <LoginQrDialog
+        isOpen={!!qrDialogAccount}
+        onClose={() => setQrDialogAccount(null)}
+        account={qrDialogAccount}
+      />
     </section>
   );
 });
