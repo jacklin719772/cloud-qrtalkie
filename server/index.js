@@ -2434,7 +2434,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     // ── Step 1: 在 Flexisip Account Manager 创建通讯录 ──
     let flexisipContactListId;
     try {
-      const flexisipResult = await createContactList({ name, description: description || undefined });
+      const flexisipResult = await createContactList({ title: name, description: description || undefined });
       flexisipContactListId = flexisipResult?.id;
     } catch (flexisipErr) {
       console.error("Failed to create Flexisip contact list:", flexisipErr.message);
