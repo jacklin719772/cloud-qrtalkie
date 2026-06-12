@@ -121,6 +121,7 @@ const TenantAccountManagement = forwardRef(({
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [sendingEmailKey, setSendingEmailKey] = useState('');
   const [contactBookAccount, setContactBookAccount] = useState(null);
   const [contactBookTargets, setContactBookTargets] = useState([]);
   const [contactBooks, setContactBooks] = useState([]);
@@ -205,7 +206,7 @@ const TenantAccountManagement = forwardRef(({
     if (!openDropdownId || !dropdownAnchorRef.current) return undefined;
     const updatePosition = () => {
       const rect = dropdownAnchorRef.current.getBoundingClientRect();
-      const menuWidth = 150;
+      const menuWidth = 220;
       const viewportPadding = 12;
       let left = rect.right - menuWidth;
       if (left < viewportPadding) left = viewportPadding;
@@ -401,6 +402,40 @@ const TenantAccountManagement = forwardRef(({
     setResetPasswordMessage({ type: '', text: '' });
   }
 
+  function getEmailActionKey(account, action) {
+    return `${action}:${account?.id || ''}`;
+  }
+
+  async function sendFlexisipManagedEmail(account, action) {
+    if (!canUseAccountActions(account)) {
+      window.alert('已過期帳號不能發送郵件。');
+      return;
+    }
+
+    const actionKey = getEmailActionKey(account, action);
+    if (sendingEmailKey === actionKey) return;
+
+    const confirmMessage = action === 'reset_password'
+      ? '確定要向該帳號綁定郵箱發送重置密碼郵件嗎？'
+      : '確定要向該帳號綁定郵箱發送 Provisioning 資訊郵件嗎？';
+    if (!window.confirm(confirmMessage)) return;
+
+    const endpoint = action === 'reset_password'
+      ? `${apiBasePath}/${account.id}/send-reset-password-email`
+      : `${apiBasePath}/${account.id}/send-provisioning-email`;
+
+    setSendingEmailKey(actionKey);
+    try {
+      const result = await apiClient.post(endpoint);
+      window.alert(result?.message || '郵件發送請求已提交');
+    } catch (error) {
+      window.alert(error.message || '郵件發送失敗，請稍後重試');
+    } finally {
+      setSendingEmailKey('');
+      setOpenDropdownId(null);
+    }
+  }
+
   async function submitResetPassword(event) {
     event.preventDefault();
     const targets = Array.isArray(resetPasswordAccount) ? resetPasswordAccount : [resetPasswordAccount].filter(Boolean);
@@ -493,28 +528,6 @@ const TenantAccountManagement = forwardRef(({
     if (contactBooks.length === 0) loadContactBooks();
   }
 
-  function handleBatchNotify() {
-    const targets = getSelectedActionableAccounts('發送通知');
-    if (targets.length === 0) return;
-    const recipients = targets.map((account) => account.email).filter(Boolean);
-    if (recipients.length === 0) {
-      window.alert('所选帳號沒有登记郵箱。');
-      return;
-    }
-    const subject = `${accountLabel}帳號通知`;
-    const body = [
-      '您好，',
-      '',
-      `請及时查看并维护您的 ${accountLabel} 帳號資訊。`,
-      '首次获得帳號后請务必修改帳號初始密碼。',
-      '',
-      '--',
-      'QRTalkie Cloud',
-      '重設密碼：請登入控制台，在帳號管理中修改初始密碼。如无法登入，請聯繫管理員协助重設。',
-    ].join('\n');
-    window.location.href = `mailto:${recipients.join(',')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  }
-
   async function saveContactBookConfig(event) {
     event.preventDefault();
     const targets = contactBookTargets.length > 0 ? contactBookTargets : (contactBookAccount ? [contactBookAccount] : []);
@@ -560,31 +573,12 @@ const TenantAccountManagement = forwardRef(({
       }).catch(() => {});
       return;
     }
-    if (action === 'email') {
-      if (!canUseAccountActions(account)) {
-        window.alert('已過期帳號不能發送邮件。');
-        return;
-      }
-      if (!account.email) {
-        window.alert('该帳號沒有登记郵箱。');
-        return;
-      }
-    const subject = `${accountLabel}帳號通知`;
-    const body = [
-      '您好，',
-      '',
-      `您的 ${accountLabel} 帳號資訊如下：`,
-      `帳號：${account.username || '-'}`,
-      ...(showDomain ? [`域名：${account.domain || '-'}`] : []),
-      `顯示名稱：${account.displayName || '-'}`,
-        '',
-        '首次获得帳號后請务必修改帳號初始密碼。',
-        '',
-        '--',
-        'QRTalkie Cloud',
-        '重設密碼：請登入控制台，在帳號管理中修改初始密碼。如无法登入，請聯繫管理員协助重設。',
-      ].join('\n');
-      window.location.href = `mailto:${account.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (action === 'send_reset_password_email') {
+      sendFlexisipManagedEmail(account, 'reset_password');
+      return;
+    }
+    if (action === 'send_provisioning_email') {
+      sendFlexisipManagedEmail(account, 'provisioning');
       return;
     }
     if (action === 'reset_password') {
@@ -747,7 +741,7 @@ const TenantAccountManagement = forwardRef(({
       <style jsx>{`
         .dropdown-menu-portal {
           position: fixed;
-          width: 150px;
+          width: 220px;
           background: #1a2332;
           border: 1px solid #1f2937;
           border-radius: 6px;
@@ -1147,7 +1141,8 @@ const TenantAccountManagement = forwardRef(({
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>編輯</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('email', account)}>發送邮件</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重設密碼郵件</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'provisioning')} onClick={() => handleAction('send_provisioning_email', account)}>發送 Provisioning 郵件</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
                             <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
                           </div>,
