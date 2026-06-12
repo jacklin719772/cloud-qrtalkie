@@ -903,10 +903,10 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       {assignDrawerOpen && assignBook && (
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 2147483645, background: 'rgba(15,23,42,0.36)' }} onClick={() => setAssignDrawerOpen(false)} />
-          <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(520px, 90vw)', background: '#fff', zIndex: 2147483646, boxShadow: '-8px 0 32px rgba(15,23,42,0.12)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>分配帳號 — {assignBook.name}</h3>
-              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px' }} onClick={() => setAssignDrawerOpen(false)}>✕</button>
+          <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(520px, 90vw)', background: '#111827', zIndex: 2147483646, boxShadow: '-8px 0 32px rgba(15,23,42,0.5)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>分配帳號 — {assignBook.name}</h3>
+              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }} onClick={() => setAssignDrawerOpen(false)}>✕</button>
             </div>
             <div style={{ padding: '12px 24px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -917,30 +917,30 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {['all','assigned','unassigned'].map(f => (
                     <button key={f} type="button" onClick={() => setAssignFilter(f)}
-                      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #d8e2ef', background: assignFilter === f ? '#2563eb' : '#fff', color: assignFilter === f ? '#fff' : '#475569', fontSize: '11px', cursor: 'pointer' }}>
+                      style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid #374151', background: assignFilter === f ? '#3b82f6' : '#1f2937', color: assignFilter === f ? '#fff' : '#9ca3af', fontSize: '11px', cursor: 'pointer' }}>
                       {f === 'all' ? '全部' : f === 'assigned' ? '已分配' : '未分配'}
                     </button>
                   ))}
-                  <button type="button" onClick={() => setAssignAccounts(prev => prev.map(a => ({ ...a, _sel: true })))} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', cursor: 'pointer' }}>全選</button>
-                  <button type="button" onClick={() => setAssignAccounts(prev => prev.map(a => ({ ...a, _sel: false })))} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '11px', cursor: 'pointer' }}>全不選</button>
+                  <button type="button" onClick={() => setAssignAccounts(prev => prev.map(a => ({ ...a, _sel: true })))} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '11px', cursor: 'pointer' }}>全選</button>
+                  <button type="button" onClick={() => setAssignAccounts(prev => prev.map(a => ({ ...a, _sel: false })))} style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '11px', cursor: 'pointer' }}>全不選</button>
                 </div>
               </div>
-              <input type="search" placeholder="搜尋帳號..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)} style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', marginBottom: '12px' }} />
+              <input type="search" placeholder="搜尋帳號..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)} style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', background: '#1a2332', color: '#e5e7eb', outline: 'none', marginBottom: '12px' }} />
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '0 24px 16px' }}>
-              {assignLoading ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>載入中...</div> : (() => {
+              {assignLoading ? <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>載入中...</div> : (() => {
                 const filtered = assignAccounts.filter(a => {
                   if (assignFilter === 'assigned' && !a._sel) return false;
                   if (assignFilter === 'unassigned' && a._sel) return false;
                   if (assignSearch && !((a.username || '').toLowerCase().includes(assignSearch.toLowerCase()) || (a.displayName || '').toLowerCase().includes(assignSearch.toLowerCase()))) return false;
                   return true;
                 });
-                return filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>無匹配帳號</div> : filtered.map(a => (
-                  <label key={a.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', background: a._sel ? '#f0fdf4' : '#fff', border: `1px solid ${a._sel ? '#86efac' : '#e2e8f0'}`, marginBottom: '6px' }}>
-                    <input type="checkbox" checked={a._sel} onChange={() => setAssignAccounts(prev => prev.map(x => x.sipUserId === a.sipUserId ? { ...x, _sel: !x._sel } : x))} style={{ accentColor: '#2563eb' }} />
+                return filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>無匹配帳號</div> : filtered.map(a => (
+                  <label key={a.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', background: a._sel ? '#0d2818' : '#1a2332', border: `1px solid ${a._sel ? '#065f46' : '#1f2937'}`, marginBottom: '6px' }}>
+                    <input type="checkbox" checked={a._sel} onChange={() => setAssignAccounts(prev => prev.map(x => x.sipUserId === a.sipUserId ? { ...x, _sel: !x._sel } : x))} style={{ accentColor: '#3b82f6' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 500 }}>{a.username}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{a.displayName || a.email || '—'}</div>
+                      <div style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>{a.username}</div>
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>{a.displayName || a.email || '—'}</div>
                     </div>
                   </label>
                 ));
