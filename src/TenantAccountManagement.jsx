@@ -412,12 +412,17 @@ const TenantAccountManagement = forwardRef(({
       return;
     }
 
+    // 检查邮箱
+    if (!account.email) {
+      window.alert('該帳號尚未設置郵箱，請先在編輯功能中為帳號設置郵箱後再發送郵件。');
+      return;
+    }
+
     const actionKey = getEmailActionKey(account, action);
     if (sendingEmailKey === actionKey) return;
 
-    const confirmMessage = action === 'reset_password'
-      ? '確定要向該帳號綁定郵箱發送重置密碼郵件嗎？'
-      : '確定要向該帳號綁定郵箱發送 Provisioning 資訊郵件嗎？';
+    const actionLabel = action === 'reset_password' ? '重置密碼' : 'Provisioning 資訊';
+    const confirmMessage = `確定要向 ${account.username}（${account.email}）發送${actionLabel}郵件嗎？`;
     if (!window.confirm(confirmMessage)) return;
 
     const endpoint = action === 'reset_password'
@@ -427,9 +432,9 @@ const TenantAccountManagement = forwardRef(({
     setSendingEmailKey(actionKey);
     try {
       const result = await apiClient.post(endpoint);
-      window.alert(result?.message || '郵件發送請求已提交');
+      window.alert(`郵件已成功發送至 ${account.email}：${result?.message || '郵件發送請求已提交'}`);
     } catch (error) {
-      window.alert(error.message || '郵件發送失敗，請稍後重試');
+      window.alert(`發送至 ${account.email} 失敗：${error.message || '郵件發送失敗，請稍後重試'}`);
     } finally {
       setSendingEmailKey('');
       setOpenDropdownId(null);
@@ -1141,10 +1146,10 @@ const TenantAccountManagement = forwardRef(({
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>編輯</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重設密碼郵件</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'provisioning')} onClick={() => handleAction('send_provisioning_email', account)}>發送 Provisioning 郵件</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
                             <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重設密碼郵件</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'provisioning')} onClick={() => handleAction('send_provisioning_email', account)}>發送 Provisioning 郵件</button>
                           </div>,
                           document.body
                         )}
