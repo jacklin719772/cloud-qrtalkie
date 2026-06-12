@@ -127,6 +127,7 @@ const TenantAccountManagement = forwardRef(({
   const [configStatus, setConfigStatus] = useState({});
   const dropdownAnchorRef = useRef(null);
   const dropdownMenuRef = useRef(null);
+  const handleBatchResetPasswordRef = useRef(null);
 
   const accountStats = useMemo(() => ({
     total: accounts.length,
@@ -452,8 +453,10 @@ const TenantAccountManagement = forwardRef(({
     openResetPassword(targets);
   }
 
+  handleBatchResetPasswordRef.current = handleBatchResetPassword;
+
   useImperativeHandle(ref, () => ({
-    handleBatchResetPassword,
+    handleBatchResetPassword: (...args) => handleBatchResetPasswordRef.current(...args),
   }), []);
 
   useEffect(() => {
