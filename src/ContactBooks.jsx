@@ -148,6 +148,9 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   }, [contactBooks]);
 
   const handleCreateRef = useRef(null);
+  const handleValidateRef = useRef(null);
+  const [validateResult, setValidateResult] = useState(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   const openAssignDrawer = async (book) => {
     setOpenDropdownId(null);
@@ -177,7 +180,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   };
 
   useImperativeHandle(ref, () => ({
-    handleCreate: () => { if (handleCreateRef.current) handleCreateRef.current(); }
+    handleCreate: () => { if (handleCreateRef.current) handleCreateRef.current(); },
+    handleValidate: () => { if (handleValidateRef.current) handleValidateRef.current(); },
   }), []);
 
   const filteredBooks = useMemo(() => {
@@ -263,6 +267,20 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
     fetchTenantAccounts();
   };
   handleCreateRef.current = handleCreate;
+
+  const handleValidate = async () => {
+    setIsValidating(true);
+    setValidateResult(null);
+    try {
+      const res = await apiClient.get('/contact-books/validate');
+      setValidateResult(res);
+    } catch (err) {
+      setValidateResult({ success: false, flexisipError: err.message || '校验失败' });
+    } finally {
+      setIsValidating(false);
+    }
+  };
+  handleValidateRef.current = handleValidate;
 
   const fetchTenantAccounts = async () => {
     setIsLoadingAccounts(true);
@@ -952,6 +970,50 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             </div>
           </div>
         </>
+      )}
+
+      {/* 数据校验结果弹窗 */}
+      {validateResult && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={() => setValidateResult(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)' }} />
+          <div style={{ position: 'relative', background: '#111827', border: '1px solid #4b5563', borderRadius: '14px', padding: '28px 32px', maxWidth: '640px', width: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 700 }}>數據校驗結果</h3>
+              <button onClick={() => setValidateResult(null)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            {validateResult.flexisipError && (
+              <div style={{ padding: '10px 14px', marginBottom: '16px', background: '#1a1a0a', border: '1px solid #fbbf24', borderRadius: '8px', color: '#fbbf24', fontSize: '13px' }}>
+                Flexisip 连接异常：{validateResult.flexisipError}
+              </div>
+            )}
+            {validateResult.allOk ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#4ade80', fontSize: '15px', fontWeight: 500 }}>
+                全部 {validateResult.total} 筆記錄校驗通過，數據一致。
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: '12px', color: '#9ca3af', fontSize: '13px' }}>共 {validateResult.total} 筆記錄，發現以下差異：</div>
+                <div style={{ flex: 1, overflow: 'auto', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                  {validateResult.results?.map((r, i) => (
+                    <div key={i} style={{ padding: '10px 14px', marginBottom: '8px', borderRadius: '8px', border: '1px solid', background: r.status === 'matched' ? '#0d2818' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#3b1111' : '#1e293b', borderColor: r.status === 'matched' ? '#065f46' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#7f1d1d' : '#374151', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 600, color: '#e5e7eb' }}>{r.name}</span>
+                        <span style={{ padding: '1px 8px', borderRadius: '999px', fontSize: '11px', background: r.status === 'matched' ? '#065f46' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#7f1d1d' : '#374151', color: r.status === 'matched' ? '#6ee7b7' : r.status === 'local_only' ? '#93c5fd' : r.status === 'missing_on_flexisip' ? '#fca5a5' : '#9ca3af' }}>
+                          {r.status === 'matched' ? '一致' : r.status === 'local_only' ? '仅本地' : r.status === 'missing_on_flexisip' ? 'Flexisip缺失' : r.status === 'missing_locally' ? '本地缺失' : r.status}
+                        </span>
+                      </div>
+                      {r.note && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{r.note}</div>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px', flexShrink: 0 }}>
+              <button onClick={() => setValidateResult(null)} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </section>
   );

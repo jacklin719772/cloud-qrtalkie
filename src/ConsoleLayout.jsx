@@ -658,7 +658,10 @@ export default function ConsoleLayout({ onLogout }) {
     }
     if (currentView === 'contact-books') {
       const cbStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
-      return (<button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleCreate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增通訊錄</button>);
+      return (<>
+        <button className="primary-btn" type="button" onClick={() => contactBooksRef.current?.handleCreate()} style={{ ...cbStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增通訊錄</button>
+        <button type="button" onClick={() => contactBooksRef.current?.handleValidate()} style={{ ...cbStyle, background: '#1f2937', color: '#9ca3af', border: '1px solid #374151' }}>數據校驗</button>
+      </>);
     }
     if (currentView === 'offline-account') {
       return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowOfflineAccountHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="帮助"><HelpCircle size={18} /></button></div>);
