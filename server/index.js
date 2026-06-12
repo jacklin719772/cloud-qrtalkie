@@ -79,6 +79,11 @@ import {
   deactivateAccount as flexisipDeactivateAccount,
   updateAccount as flexisipUpdateAccount,
 } from "./flexisipAccountManagerClient.js";
+import {
+  createContactList,
+  assignContactListToAccount,
+  FlexisipContactBookError,
+} from "./flexisipContactBookClient.js";
 
 const app = express();
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -2426,13 +2431,64 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
 
   let connection;
   try {
+    // ── Step 1: 在 Flexisip Account Manager 创建通讯录 ──
+    let flexisipContactListId;
+    try {
+      const flexisipResult = await createContactList({ name, description: description || undefined });
+      flexisipContactListId = flexisipResult?.id;
+    } catch (flexisipErr) {
+      console.error("Failed to create Flexisip contact list:", flexisipErr.message);
+      if (flexisipErr instanceof FlexisipContactBookError) {
+        return response.status(502).json({
+          message: `Flexisip 通訊錄創建失敗：${flexisipErr.message}`,
+          code: "FLEXISIP_CREATE_FAILED",
+        });
+      }
+      return response.status(502).json({ message: "Flexisip 通訊錄服務不可用，請稍後重試。" });
+    }
+
+    // ── Step 2: 查询待分配账号的 Flexisip account_id ──
     connection = await pool.getConnection();
+    const assignTargets = [];
+    if (assignedAccountIds.length > 0) {
+      const placeholders = assignedAccountIds.map(() => '?').join(',');
+      const sipRows = await connection.query(
+        `SELECT id, flexisip_account_id, username FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ? AND status = 'active'`,
+        [...assignedAccountIds, request.admin.tenantId],
+      );
+      for (const row of sipRows) {
+        if (row.flexisip_account_id) {
+          assignTargets.push({ sipUserId: Number(row.id), flexisipAccountId: row.flexisip_account_id, username: row.username });
+        }
+      }
+    }
+
+    // ── Step 3: 在 Flexisip 分配通讯录给账号 ──
+    const failedAssignments = [];
+    for (const target of assignTargets) {
+      try {
+        await assignContactListToAccount(target.flexisipAccountId, flexisipContactListId);
+      } catch (err) {
+        console.error(`Failed to assign contact list ${flexisipContactListId} to account ${target.flexisipAccountId}:`, err.message);
+        failedAssignments.push(target.username);
+      }
+    }
+    if (failedAssignments.length > 0) {
+      connection.release();
+      return response.status(502).json({
+        message: `Flexisip 通訊錄分配失敗（${failedAssignments.join('、')}），通訊錄已創建但部分分配失敗，請在編輯頁面重新分配。`,
+        code: "FLEXISIP_ASSIGN_PARTIAL",
+        flexisipContactListId,
+      });
+    }
+
+    // ── Step 4: 写入本地数据库 ──
     await connection.beginTransaction();
 
     const result = await connection.query(
-      `INSERT INTO tenant_contact_books (tenant_id, name, description, created_by_admin_id)
-       VALUES (?, ?, ?, ?)`,
-      [request.admin.tenantId, name, description || null, request.admin.id]
+      `INSERT INTO tenant_contact_books (tenant_id, name, description, created_by_admin_id, flexisip_contact_list_id)
+       VALUES (?, ?, ?, ?, ?)`,
+      [request.admin.tenantId, name, description || null, request.admin.id, flexisipContactListId || null]
     );
 
     const contactBookId = Number(result.insertId);
@@ -2443,9 +2499,9 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
         `SELECT id FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ? AND status IN ('active', 'pending')`,
         [...accountIds, request.admin.tenantId]
       );
-      
+
       const validAccountIds = validAccounts.map(a => Number(a.id));
-      
+
       for (const id of validAccountIds) {
         await connection.query(
           `INSERT INTO tenant_contact_book_entries (contact_book_id, sip_user_id) VALUES (?, ?)`,
@@ -2478,7 +2534,11 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     }
 
     await connection.commit();
-    return response.status(201).json({ message: "通讯录创建成功", id: contactBookId });
+    return response.status(201).json({
+      message: "通讯录创建成功",
+      id: contactBookId,
+      flexisipContactListId: flexisipContactListId || null,
+    });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to create contact book:", error);
