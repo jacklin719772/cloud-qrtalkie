@@ -84,6 +84,8 @@ import {
   assignContactListToAccount,
   listContactLists,
   addContactToContactList,
+  updateContactList,
+  unassignContactListFromAccount,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 
@@ -2753,16 +2755,35 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    await connection.beginTransaction();
 
+    // 查找本地通讯录，获取 flexisip_contact_list_id
     const [book] = await connection.query(
-      `SELECT id FROM tenant_contact_books WHERE id = ? AND tenant_id = ? FOR UPDATE`,
+      `SELECT id, flexisip_contact_list_id FROM tenant_contact_books WHERE id = ? AND tenant_id = ? FOR UPDATE`,
       [contactBookId, request.admin.tenantId]
     );
     if (!book) {
-      await connection.rollback();
+      connection.release();
       return response.status(404).json({ message: "找不到指定的通讯录。" });
     }
+
+    // ── Flexisip sync: 更新通讯录名称和描述 ──
+    const flexisipContactListId = book.flexisip_contact_list_id;
+    if (flexisipContactListId) {
+      try {
+        await updateContactList(flexisipContactListId, { title: name, description: description || '' });
+      } catch (flexisipErr) {
+        connection.release();
+        if (flexisipErr instanceof FlexisipContactBookError) {
+          return response.status(502).json({
+            message: `Flexisip 通訊錄更新失敗：${flexisipErr.message}`,
+            code: "FLEXISIP_UPDATE_FAILED",
+          });
+        }
+        return response.status(502).json({ message: "Flexisip 通訊錄服務不可用。" });
+      }
+    }
+
+    await connection.beginTransaction();
 
     await connection.query(
       `UPDATE tenant_contact_books
@@ -2776,25 +2797,25 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
       const placeholders = ids.map(() => "?").join(",");
       const statusPlaceholders = statuses.map(() => "?").join(",");
       const rows = await connection.query(
-        `SELECT id
+        `SELECT id, flexisip_account_id
          FROM sip_users
          WHERE id IN (${placeholders})
            AND tenant_id = ?
            AND status IN (${statusPlaceholders})`,
         [...ids, request.admin.tenantId, ...statuses]
       );
-      return rows.map(row => Number(row.id));
+      return rows;
     };
 
-    const validEntryIds = await loadValidAccountIds(accountIds, ['active', "pending"]);
-    const validAssignedIds = await loadValidAccountIds(assignedAccountIds, ['active']);
+    const validEntryRows = await loadValidAccountIds(accountIds, ['active', "pending"]);
+    const validAssignedRows = await loadValidAccountIds(assignedAccountIds, ['active']);
 
     await connection.query(`DELETE FROM tenant_contact_book_entries WHERE contact_book_id = ?`, [contactBookId]);
-    for (const sipUserId of validEntryIds) {
+    for (const row of validEntryRows) {
       await connection.query(
         `INSERT INTO tenant_contact_book_entries (contact_book_id, sip_user_id)
          VALUES (?, ?)`,
-        [contactBookId, sipUserId]
+        [contactBookId, row.id]
       );
     }
 
@@ -2807,7 +2828,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
          AND status = 'active'`,
       [contactBookId, request.admin.tenantId]
     );
-    for (const sipUserId of validAssignedIds) {
+    for (const row of validAssignedRows) {
       await connection.query(
         `INSERT INTO tenant_contact_book_assignments (
            tenant_id, contact_book_id, sip_user_id, assigned_by_admin_id, status, assigned_at, revoked_at
@@ -2818,8 +2839,16 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
            assigned_by_admin_id = VALUES(assigned_by_admin_id),
            assigned_at = CURRENT_TIMESTAMP,
            revoked_at = NULL`,
-        [request.admin.tenantId, contactBookId, sipUserId, request.admin.id]
+        [request.admin.tenantId, contactBookId, row.id, request.admin.id]
       );
+      // Sync to Flexisip: assign contact list to account
+      if (flexisipContactListId && row.flexisip_account_id) {
+        try {
+          await assignContactListToAccount(row.flexisip_account_id, flexisipContactListId);
+        } catch (err) {
+          console.error(`Failed to assign contact list to Flexisip account ${row.flexisip_account_id}:`, err.message);
+        }
+      }
     }
 
     await connection.commit();
