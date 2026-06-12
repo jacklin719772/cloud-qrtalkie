@@ -83,7 +83,6 @@ import {
   createContactList,
   assignContactListToAccount,
   listContactLists,
-  listAccountContacts,
   addContactToContactList,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
@@ -2481,34 +2480,10 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       for (const row of memberRows) {
         if (!row.flexisip_account_id) continue;
         try {
-          let added = false;
-          const contacts = await listAccountContacts(row.flexisip_account_id);
-          console.log(`[contact-book] listAccountContacts(${row.flexisip_account_id}) for ${row.username}:`, JSON.stringify(contacts).substring(0, 200));
-          if (Array.isArray(contacts) && contacts.length > 0) {
-            for (const contact of contacts) {
-              const contactId = contact.id || contact.contact_id;
-              if (contactId) {
-                await addContactToContactList(flexisipContactListId, contactId);
-                added = true;
-              }
-            }
-          }
-          // 如果账号没有 contacts，尝试用 flexisip_account_id 作为 contactId
-          if (!added) {
-            try {
-              await addContactToContactList(flexisipContactListId, row.flexisip_account_id);
-              added = true;
-            } catch (innerErr) {
-              console.error(`Failed to add account ${row.username} (${row.flexisip_account_id}) to contact list:`, innerErr.message);
-            }
-          }
-          if (added) {
-            memberResults.added.push(row.username);
-          } else {
-            memberResults.failed.push(row.username);
-          }
+          await addContactToContactList(flexisipContactListId, row.flexisip_account_id);
+          memberResults.added.push(row.username);
         } catch (err) {
-          console.error(`Failed to add contacts for account ${row.username}:`, err.message);
+          console.error(`Failed to add account ${row.username} to contact list:`, err.message);
           memberResults.failed.push(row.username);
         }
       }
