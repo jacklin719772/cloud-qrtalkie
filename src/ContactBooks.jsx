@@ -786,39 +786,39 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       {isDetailModalOpen && detailBook && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }} onClick={() => setIsDetailModalOpen(false)}>
           <div style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #4b5563', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.5)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>通訊錄詳情</h3>
-              <button type="button" className="ghost-btn" onClick={() => setIsDetailModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄詳情</h3>
+              <button type="button" onClick={() => setIsDetailModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>名稱</span>
-                  <div style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#334155', fontSize: '14px' }}>{detailBook.name || '-'}</div>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱</span>
+                  <div style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px' }}>{detailBook.name || '-'}</div>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>描述</span>
-                  <div style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#334155', fontSize: '14px', minHeight: '40px', wordBreak: 'break-all' }}>{detailBook.description || '-'}</div>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
+                  <div style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '14px', minHeight: '40px', wordBreak: 'break-all' }}>{detailBook.description || '-'}</div>
                 </label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', flex: 1, minHeight: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>包含的帳號 ({detailBook.includedAccounts?.length || 0})</span>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({detailBook.includedAccounts?.length || 0})</span>
+                <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                     ) : renderReadonlyAccountList(detailBook.includedAccounts, '該通訊錄暫無包含帳號')}
                   </div>
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#475569' }}>已分配的帳號 ({detailBook.assignedAccounts?.length || 0})</span>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({detailBook.assignedAccounts?.length || 0})</span>
+                <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
-                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入詳情中...</div>
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                     ) : renderReadonlyAccountList(detailBook.assignedAccounts, '該通訊錄暫無分配帳號')}
                   </div>
                 </div>
@@ -832,9 +832,9 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       {isEditModalOpen && createPortal(
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2147483646 }} onClick={() => setIsEditModalOpen(false)}>
           <form onSubmit={submitEditContactBook} style={{ width: 'min(680px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #4b5563', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.5)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>編輯通訊錄</h3>
-              <button type="button" className="ghost-btn" onClick={() => setIsEditModalOpen(false)} style={{ padding: '4px 8px' }}>關閉</button>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯通訊錄</h3>
+              <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -891,8 +891,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 </div>
               </div>
             </div>
-            <div style={{ padding: '16px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
-              <button type="button" className="ghost-btn" onClick={() => setIsEditModalOpen(false)} disabled={isSaving}>取消</button>
+            <div style={{ padding: '16px 20px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
+              <button type="button" onClick={() => setIsEditModalOpen(false)} disabled={isSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button type="submit" className="primary-btn" disabled={isSaving || isLoadingDetail || !editBookForm.name.trim()}>{isSaving ? '保存中...' : '保存'}</button>
             </div>
           </form>
@@ -946,8 +946,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 ));
               })()}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}>
-              <button type="button" className="ghost-btn" onClick={() => setAssignDrawerOpen(false)}>取消</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 24px', borderTop: '1px solid #1f2937', background: '#1a2332', flexShrink: 0 }}>
+              <button type="button" onClick={() => setAssignDrawerOpen(false)} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button type="button" className="primary-btn" onClick={handleAssignSave}>儲存</button>
             </div>
           </div>
