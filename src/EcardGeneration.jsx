@@ -170,10 +170,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     phone: '+86 138 1234 5678',
     email: 'zhanghao@company.com',
     zipCode: '200120',
-    address: '上海市浦东新区世纪大道100号',
+    address: '臺灣',
     qrDesc: '掃碼二維碼 · 交換名片',
-    companyZh: '上海智联科技有限公司',
-    companyEn: 'Shanghai Zhilian Technology Co., Ltd.',
+    companyZh: 'QRTalkie Team',
+    companyEn: 'QRTalkie Team',
     sloganZh: '连接价值 · 智联未来',
     sloganEn: 'Connecting Value, Linking the Future'
   });
@@ -828,10 +828,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       phone: '+86 138 1234 5678',
       email: 'zhanghao@company.com',
       zipCode: '200120',
-      address: '上海市浦东新区世纪大道100号',
+      address: '臺灣',
       qrDesc: '掃碼二維碼 · 交換名片',
-      companyZh: '上海智联科技有限公司',
-      companyEn: 'Shanghai Zhilian Technology Co., Ltd.',
+      companyZh: 'QRTalkie Team',
+      companyEn: 'QRTalkie Team',
       sloganZh: '连接价值 · 智联未来',
       sloganEn: 'Connecting Value, Linking the Future'
     });
