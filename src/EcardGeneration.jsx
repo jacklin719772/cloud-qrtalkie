@@ -1291,13 +1291,22 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 <label><span>通话 URL (用於二維碼)</span>
                   <div className="ecard-input-with-icon">
                     <input value={callUrl} readOnly />
-                    <button type="button" onClick={() => navigator.clipboard.writeText(callUrl)} title="複製"><Copy size={14} /></button>
+                    <button type="button" onClick={async () => {
+                      try { await navigator.clipboard.writeText(callUrl); } catch {
+                        const input = document.createElement('input'); input.value = callUrl; document.body.appendChild(input); input.select(); document.execCommand('copy'); document.body.removeChild(input);
+                      }
+                    }} title="複製"><Copy size={14} /></button>
                   </div>
                 </label>
                 <label><span>名片展示與下載地址</span>
                   <div className="ecard-input-with-icon">
                     <input value={selectedAccountForCreate?.accessUrl || ecardAccessUrl} readOnly />
-                    <button type="button" onClick={() => navigator.clipboard.writeText(selectedAccountForCreate?.accessUrl || ecardAccessUrl)} title="複製"><Copy size={14} /></button>
+                    <button type="button" onClick={async () => {
+                      const url = selectedAccountForCreate?.accessUrl || ecardAccessUrl;
+                      try { await navigator.clipboard.writeText(url); } catch {
+                        const input = document.createElement('input'); input.value = url; document.body.appendChild(input); input.select(); document.execCommand('copy'); document.body.removeChild(input);
+                      }
+                    }} title="複製"><Copy size={14} /></button>
                   </div>
                 </label>
                 <label><span>名片有效期</span><input value={selectedAccountForCreate ? `${selectedAccountForCreate.validFrom || '-'} ~ ${selectedAccountForCreate.validTo || '-'}` : "—"} readOnly /></label>
@@ -2108,12 +2117,13 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                     {item.configured ? (
                       <a href={item.downloadUrl || `https://ecard.qrtalkie.org/d/${item.sipAccount}`} className="ecard-generation-link" target="_blank" rel="noreferrer" onClick={async (e) => {
                         e.preventDefault();
+                        const url = item.downloadUrl || `https://ecard.qrtalkie.org/d/${item.sipAccount}`;
                         try {
-                          await navigator.clipboard.writeText(item.downloadUrl || `https://ecard.qrtalkie.org/d/${item.sipAccount}`);
-                          alert('下載連結已成功複製到剪贴板！');
-                        } catch (err) {
-                          alert('複製失败，請手动选中并複製。');
+                          await navigator.clipboard.writeText(url);
+                        } catch {
+                          const input = document.createElement('input'); input.value = url; document.body.appendChild(input); input.select(); document.execCommand('copy'); document.body.removeChild(input);
                         }
+                        alert('下載連結已成功複製到剪贴板！');
                       }}>
                         {item.downloadUrl || `https://ecard.qrtalkie.org/d/${item.sipAccount}`} <Copy size={12} />
                       </a>
