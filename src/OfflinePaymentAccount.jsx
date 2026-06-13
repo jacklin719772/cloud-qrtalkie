@@ -164,11 +164,17 @@ export default function OfflinePaymentAccount() {
         #console #offline-account .field-label { color: #d1d5db; }
         #offline-account .tenant-field-grid label { color: #d1d5db; }
         #offline-account .tenant-field-grid input,
-        #offline-account .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #offline-account .tenant-field-grid textarea,
+        #console #offline-account .tenant-field-grid input,
+        #console #offline-account .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #offline-account .tenant-field-grid input:focus,
-        #offline-account .tenant-field-grid textarea:focus { border-color: #3b82f6; }
+        #offline-account .tenant-field-grid textarea:focus,
+        #console #offline-account .tenant-field-grid input:focus,
+        #console #offline-account .tenant-field-grid textarea:focus { border-color: #3b82f6; }
         #offline-account .tenant-field-grid input::placeholder,
-        #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
+        #offline-account .tenant-field-grid textarea::placeholder,
+        #console #offline-account .tenant-field-grid input::placeholder,
+        #console #offline-account .tenant-field-grid textarea::placeholder { color: #6b7280; }
         #offline-account .settings-divider { border-color: #1f2937; }
         #offline-account .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #offline-account .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
