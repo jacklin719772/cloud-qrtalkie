@@ -1050,7 +1050,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             gap: 20px;
             overflow-y: auto;
             padding-right: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: #374151 transparent;
           }
+          .ecard-add-left::-webkit-scrollbar { width: 6px; }
+          .ecard-add-left::-webkit-scrollbar-track { background: transparent; }
+          .ecard-add-left::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
           .ecard-form-group {
             background: #111827;
             border: 1px solid #1f2937;
@@ -1105,7 +1110,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           }
           .ecard-template-cards::-webkit-scrollbar { height: 6px; }
           .ecard-template-cards::-webkit-scrollbar-track { background: #1a2332; border-radius: 4px; }
-          .ecard-template-cards::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+          .ecard-template-cards::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
           
           .ecard-template-card {
             flex: 0 0 160px;
@@ -1137,11 +1142,11 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
           /* --- 字段樣式配置区 --- */
           .ecard-style-config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-          .ecard-style-field-block { background: #1a2332; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+          .ecard-style-field-block { background: #1a2332; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
           .ecard-style-field-label { font-size: 13px; font-weight: 600; color: #f3f4f6; }
           .ecard-style-controls { display: flex; gap: 8px; }
           .ecard-style-controls select {
-            flex: 1; height: 32px; border: 1px solid #cbd5e1; border-radius: 6px; background: #111827; color: #e5e7eb; font-size: 12px; outline: none; padding: 0 4px; min-width: 0; cursor: pointer;
+            flex: 1; height: 32px; border: 1px solid #374151; border-radius: 6px; background: #111827; color: #e5e7eb; font-size: 12px; outline: none; padding: 0 4px; min-width: 0; cursor: pointer;
           }
 
           /* --- 預覽模态框 --- */
@@ -1207,13 +1212,13 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-preview-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
           .ecard-preview-title h3 { margin: 0 0 4px 0; font-size: 16px; color: #f3f4f6; font-weight: 600; }
           .ecard-preview-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-          .ecard-preview-tag { background: #1a2332; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: #9ca3af; cursor: pointer; outline: none; transition: filter 0.2s; font-family: inherit; }
+          .ecard-preview-tag { background: #1a2332; border: 1px solid #374151; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: #9ca3af; cursor: pointer; outline: none; transition: filter 0.2s; font-family: inherit; }
           .ecard-preview-tag:hover { filter: brightness(0.95); }
           
           .ecard-preview-container {
             flex: 1;
             background: #1a2332;
-            border: 1px dashed #cbd5e1;
+            border: 1px dashed #374151;
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -1500,12 +1505,13 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               value={currentSize}
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontSize', Number(e.target.value))}
                               title="字号 (px)"
-                              style={{ width: '48px', height: '32px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', padding: '0 4px', outline: 'none', textAlign: 'center' }}
+                              style={{ width: '48px', height: '32px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', padding: '0 4px', outline: 'none', textAlign: 'center', background: '#111827', color: '#e5e7eb' }}
                             />
-                            <select 
-                              value={currentWeight} 
+                            <select
+                              value={currentWeight}
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontWeight', e.target.value)}
                               title="字重"
+                              style={{ flex: 1, height: '32px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#e5e7eb', fontSize: '12px', padding: '0 4px', outline: 'none', cursor: 'pointer' }}
                               style={{ width: '64px', flex: 'none' }}
                             >
                               <option value="300">细体</option>
