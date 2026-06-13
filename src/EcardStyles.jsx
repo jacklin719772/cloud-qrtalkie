@@ -331,7 +331,7 @@ export default function EcardStyles() {
               <button type="button" onClick={() => setViewMode('list')} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>返回列表</button>
             </div>
             
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
               <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', marginBottom: '16px', marginTop: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>基础信息</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1083,7 +1083,7 @@ export default function EcardStyles() {
         }
         #ecard-styles-management * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
         #ecard-styles-management *::-webkit-scrollbar { width: 6px; height: 6px; }
-        #ecard-styles-management *::-webkit-scrollbar-track { background: transparent; }
+        #ecard-styles-management *::-webkit-scrollbar-track { background: #111827; }
         #ecard-styles-management *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
       `}</style>
 
