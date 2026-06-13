@@ -1275,7 +1275,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <h2>產生 Ecard</h2>
           </div>
           <div className="ecard-add-actions">
-            <button type="button" className="ghost-btn" style={{ padding: '8px 16px', fontSize: '13px' }} onClick={() => {
+            <button type="button" style={{ padding: '8px 16px', fontSize: '13px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => {
               if (isSelfService) { onSelfServiceBack?.(); return; }
               setViewMode('list');
             }}>{isSelfService ? '返回我的帳號' : '返回列表'}</button>
