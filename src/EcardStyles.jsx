@@ -362,7 +362,7 @@ export default function EcardStyles() {
                 </label>
               </div>
 
-              <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
+              <div style={{ borderTop: '1px solid #1f2937', margin: '32px 0' }} />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片展示</h4>
@@ -393,7 +393,7 @@ export default function EcardStyles() {
                 </div>
               )}
 
-              <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
+              <div style={{ borderTop: '1px solid #1f2937', margin: '32px 0' }} />
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
@@ -403,6 +403,12 @@ export default function EcardStyles() {
                 <input type="file" ref={bgFileInputRef} hidden multiple accept="image/jpeg,image/png,image/webp" onChange={handleBgFileSelect} />
               </div>
 
+              {formData.backgrounds.length > 0 && formData.backgrounds.every(bg => !bg.layoutJson && !bg.defaultStyleJson && !bg.displayConfigJson) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', marginBottom: '16px', background: '#1a1a0a', border: '1px solid #fbbf24', borderRadius: '8px', color: '#fbbf24', fontSize: '13px' }}>
+                  <span>⚠</span>
+                  <span>尚未設定配置文件，請點擊背景圖中 <FileCode size={14} style={{ verticalAlign: 'middle', color: '#60a5fa' }} /> 圖標添加配置文件</span>
+                </div>
+              )}
               {formData.backgrounds.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
                   {formData.backgrounds.map(bg => (
@@ -1343,7 +1349,7 @@ export default function EcardStyles() {
                 <p style={{ color: '#64748b', fontSize: '13px', margin: 0, padding: '20px', textAlign: 'center', border: '1px dashed #d8e2ef', borderRadius: '8px' }}>暫無範例圖片</p>
               )}
 
-              <div style={{ borderTop: '1px solid #e2e8f0', margin: '32px 0' }} />
+              <div style={{ borderTop: '1px solid #1f2937', margin: '32px 0' }} />
 
               <h4 style={{ margin: '0 0 16px', fontSize: '15px', color: '#0f172a', borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
               {previewItem.backgrounds && previewItem.backgrounds.length > 0 ? (
