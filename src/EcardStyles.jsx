@@ -602,6 +602,7 @@ export default function EcardStyles() {
                           JSON 格式有誤：{e.message}
                         </div>
                       );
+                    }
                   })()}
                 </div>
                 
