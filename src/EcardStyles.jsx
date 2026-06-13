@@ -469,20 +469,20 @@ export default function EcardStyles() {
         {codeModalOpen && createPortal(
           <div className="modal-overlay" onClick={() => setCodeModalOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: 'min(960px, 95vw)', height: '80vh', backgroundColor: '#111827', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', position: 'relative' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-                <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>背景图 JSON 配置</h3>
-                <button type="button" onClick={() => setCodeModalOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>×</button>
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#1a2332' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>背景圖 JSON 配置</h3>
+                <button type="button" onClick={() => setCodeModalOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '24px', padding: '0 4px', cursor: 'pointer', color: '#9ca3af', lineHeight: 1 }}>✕</button>
               </div>
-              
+
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* 左侧 */}
-                <div style={{ flex: '0 0 35%', borderRight: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#fcfcfc', flexShrink: 0 }}>
-                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#f3f4f6' }}>背景图預覽</h4>
+                <div style={{ flex: '0 0 35%', borderRight: '1px solid #1f2937', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#111827', flexShrink: 0 }}>
+                  <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#f3f4f6' }}>背景圖預覽</h4>
                   {(() => {
                     const currentBg = formData.backgrounds.find(b => b.id === currentCodeBgId);
                     return (
                       <>
-                        <div style={{ width: '100%', aspectRatio: '16/9', border: '1px solid #1f2937', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f1f5f9', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: '100%', aspectRatio: '16/9', border: '1px solid #1f2937', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#1a2332', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {currentBg?.url || currentBg?.imageUrl ? (
                             <img src={getFullImageUrl(currentBg?.url || currentBg?.imageUrl)} alt="Preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                           ) : (
@@ -575,7 +575,7 @@ export default function EcardStyles() {
                     </div>
                   </div>
 
-                  {jsonError && <div style={{ padding: '12px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', flexShrink: 0 }}>{jsonError}</div>}
+                  {jsonError && <div style={{ padding: '12px', background: '#3b1111', border: '1px solid #7f1d1d', color: '#fca5a5', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', flexShrink: 0 }}>{jsonError}</div>}
                   <textarea
                     value={jsonConfigs[{ 'layout_json': 'layoutJson', 'default_style_json': 'defaultStyleJson', 'display_config_json': 'displayConfigJson' }[activeJsonType]]}
                     onChange={(e) => {
@@ -584,11 +584,11 @@ export default function EcardStyles() {
                     }}
                     rows={15} // 初始行数，但 flex: 1 会使其伸展
                     spellCheck={false}
-                    style={{ flex: 1, width: '100%', padding: '18px', borderRadius: '8px', border: '1px solid #1f2937', outline: 'none', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '14px', lineHeight: 1.6, backgroundColor: '#f8fafc', color: '#e5e7eb', boxSizing: 'border-box', minHeight: '320px' }}
+                    style={{ flex: 1, width: '100%', padding: '18px', borderRadius: '8px', border: '1px solid #374151', outline: 'none', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '14px', lineHeight: 1.6, backgroundColor: '#1a2332', color: '#e5e7eb', boxSizing: 'border-box', minHeight: '320px' }}
                     onFocus={e => e.target.style.borderColor = '#3b82f6'}
-                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                    onBlur={e => e.target.style.borderColor = '#374151'}
                   />
-                  <div style={{ marginTop: '16px', padding: '10px 16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #1f2937', flexShrink: 0 }}>
+                  <div style={{ marginTop: '16px', padding: '10px 16px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px solid #1f2937', flexShrink: 0 }}>
                     <h5 style={{ margin: '0 0 8px', fontSize: '13px', color: '#f3f4f6', fontWeight: 600 }}>说明</h5>
                     <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#9ca3af', lineHeight: 1.6 }}>
                       <li>直接粘贴已经调试好的 JSON 内容</li>
@@ -601,7 +601,7 @@ export default function EcardStyles() {
                 </div>
               </div>
 
-              <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontSize: '13px', color: '#9ca3af' }}>
                   当前配置：<strong style={{ color: '#f3f4f6' }}>{activeJsonType}</strong>
                 </div>
@@ -936,8 +936,8 @@ export default function EcardStyles() {
           font-weight: 600;
           white-space: nowrap;
         }
-        .ecard-tag-green { background: #dcfce7; color: #166534; }
-        .ecard-tag-blue { background: #eff6ff; color: #1e40af; }
+        .ecard-tag-green { background: #0d2818; color: #4ade80; }
+        .ecard-tag-blue { background: #1e3a5f; color: #93c5fd; }
         .ecard-status {
           display: inline-flex;
           align-items: center;
