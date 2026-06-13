@@ -508,6 +508,60 @@ export default function EcardStyles() {
                       </>
                     );
                   })()}
+
+                  {/* 实时预览迷你画布 */}
+                  {(() => {
+                    const currentBg2 = formData.backgrounds.find(b => b.id === currentCodeBgId);
+                    if (!currentBg2?.url && !currentBg2?.imageUrl) return null;
+                    try {
+                      const layoutParsed = (() => { try { const v = JSON.parse(jsonConfigs.layoutJson || '{}'); return v.fields || v; } catch { return {}; } })();
+                      const styleParsed = (() => { try { const v = JSON.parse(jsonConfigs.defaultStyleJson || '{}'); return v.styles || v; } catch { return {}; } })();
+                      const displayParsed = (() => { try { return JSON.parse(jsonConfigs.displayConfigJson || '{}'); } catch { return {}; } })();
+                      const showQr = displayParsed.showQrCode !== false;
+                      const showCompany = displayParsed.showCompanyInfo !== false;
+                      const fieldList = Object.keys(layoutParsed).filter(k => k !== 'decorLine' && layoutParsed[k]?.x !== undefined);
+                      return (
+                        <div style={{ marginTop: '24px', padding: '12px', background: '#111827', border: '1px solid #1f2937', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>即時預覽</div>
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1f2937' }}>
+                            <img src={getFullImageUrl(currentBg2?.url || currentBg2?.imageUrl)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {fieldList.map(key => {
+                              const layout = layoutParsed[key] || {};
+                              const style = styleParsed[key] || {};
+                              const sampleText = key === 'name' ? '姓名' : key === 'title' ? '職位' : key === 'phone' ? '0912-345-678' : key === 'email' ? 'user@example.com' : key === 'address' ? '台北市' : key === 'companyNameCn' ? '公司名稱' : key === 'companyNameEn' ? 'Company' : key === 'sloganCn' ? '標語' : key === 'sloganEn' ? 'Slogan' : key === 'qrCaption' ? '掃碼' : key;
+                              if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
+                              if (key === 'qrCaption' && !showQr) return null;
+                              return (
+                                <div key={key} style={{
+                                  position: 'absolute',
+                                  left: `${(layout.x || 0) * 100 / (currentBg2?.imageWidth || 800)}%`,
+                                  top: `${(layout.y || 0) * 100 / (currentBg2?.imageHeight || 450)}%`,
+                                  width: layout.width ? `${layout.width * 100 / (currentBg2?.imageWidth || 800)}%` : 'auto',
+                                  height: layout.height ? `${layout.height * 100 / (currentBg2?.imageHeight || 450)}%` : 'auto',
+                                  fontSize: style.fontSize ? `${Math.max(6, (style.fontSize || 14) * 0.35)}px` : '7px',
+                                  fontWeight: style.fontWeight || '400',
+                                  color: style.color || '#ffffff',
+                                  fontFamily: style.fontFamily || 'sans-serif',
+                                  overflow: 'hidden',
+                                  whiteSpace: 'nowrap',
+                                  textOverflow: 'ellipsis',
+                                }}>
+                                  {sampleText}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>基於 layout / style / display 三組 JSON 即時渲染</div>
+                        </div>
+                      );
+                    } catch {
+                      return (
+                        <div style={{ marginTop: '24px', padding: '12px', background: '#3b1111', border: '1px solid #7f1d1d', borderRadius: '8px', color: '#fca5a5', fontSize: '12px', textAlign: 'center' }}>
+                          JSON 格式有誤，修正後可即時預覽
+                        </div>
+                      );
+                    }
+                  })()}
                 </div>
                 
                 {/* 右侧 */}
