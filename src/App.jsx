@@ -2,15 +2,42 @@ import React, { useState, useEffect } from 'react';
 import Landing from '../Landing';
 import ConsoleLayout from './ConsoleLayout';
 import apiClient from './apiClient';
+import ECardVisitorPage from './pages/ecard/ECardVisitorPage';
+
+function getPublicEcardSlug(pathname, search) {
+  const path = String(pathname || '');
+  const match = path.match(/^\/u\/([^/?#]+)/);
+  if (match?.[1]) return decodeURIComponent(match[1]);
+
+  const legacyMatch = path.match(/^\/ecard\/([^/?#]+)/);
+  if (legacyMatch?.[1]) return decodeURIComponent(legacyMatch[1]);
+
+  if (path === '/ecard') {
+    const params = new URLSearchParams(String(search || ''));
+    const id = params.get('id');
+    if (id) return id.trim();
+  }
+  return '';
+}
 
 export default function App() {
   // 模擬登入狀態。後續可以改用 AuthContext 或 React Router 來管理
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   // 新增 isInitializing 狀態，避免在檢查 Token 時畫面閃爍
   const [isInitializing, setIsInitializing] = useState(true);
+  const [routeInfo, setRouteInfo] = useState(() => ({
+    slug: getPublicEcardSlug(window.location.pathname, window.location.search),
+    pathname: window.location.pathname,
+    search: window.location.search,
+  }));
 
   useEffect(() => {
     async function checkAutoLogin() {
+      if (getPublicEcardSlug(window.location.pathname, window.location.search)) {
+        setIsInitializing(false);
+        return;
+      }
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('resetPasswordToken')) {
         setIsInitializing(false);
@@ -39,6 +66,30 @@ export default function App() {
 
     checkAutoLogin();
   }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRouteInfo({
+        slug: getPublicEcardSlug(window.location.pathname, window.location.search),
+        pathname: window.location.pathname,
+        search: window.location.search,
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pushstate', handlePopState);
+    window.addEventListener('replacestate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pushstate', handlePopState);
+      window.removeEventListener('replacestate', handlePopState);
+    };
+  }, []);
+
+  const publicEcardSlug = routeInfo.slug;
+
+  if (publicEcardSlug) {
+    return <ECardVisitorPage slug={publicEcardSlug} />;
+  }
 
   if (isInitializing) {
     // 在驗證 API 回應前，您可以渲染一個全畫面 Loading，或保留空白

@@ -10176,6 +10176,471 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
   }
 });
 
+function isValidEcardPublicSlug(slug) {
+  return typeof slug === "string" && /^[A-Za-z0-9_-]+$/.test(slug.trim());
+}
+
+function safeEcardDateOnly(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function parseEcardPublicJson(raw) {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseJsonMaybe(raw, fallback = null) {
+  if (raw == null) return fallback;
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function pickFirstString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim() !== "") return value.trim();
+  }
+  return "";
+}
+
+function resolveEcardProfileFromJson(ecardDataJson, sipUser) {
+  const cardData = ecardDataJson && typeof ecardDataJson.cardData === "object" && ecardDataJson.cardData !== null
+    ? ecardDataJson.cardData
+    : {};
+  return {
+    name: pickFirstString(cardData.name, ecardDataJson.name, sipUser?.display_name, sipUser?.username),
+    duty: pickFirstString(cardData.titleZh, cardData.titleCn, cardData.title, cardData.titleEn, ecardDataJson.duty),
+    email: pickFirstString(cardData.email, ecardDataJson.email, sipUser?.email),
+    phone: pickFirstString(cardData.phone, cardData.phoneNumber, ecardDataJson.phone, ecardDataJson.phoneNumber, sipUser?.phone_number),
+    avatarUrl: pickFirstString(ecardDataJson.avatarDataUrl, ecardDataJson.avatarUrl, sipUser?.avatar_url),
+  };
+}
+
+async function loadEcardPublicViewData(connection, slug) {
+  const ecardRows = await connection.query(
+    `SELECT
+       ec.id AS ecard_id,
+       ec.tenant_id,
+       ec.sip_user_id,
+       ec.access_slug,
+       ec.avatar_url,
+       ec.thumbnail_url,
+       ec.status AS ecard_status,
+       ec.valid_from,
+       ec.valid_to,
+       ec.ecard_data_json,
+       su.username AS sip_account,
+       su.display_name AS sip_display_name,
+       su.email AS sip_email,
+       su.phone_number AS sip_phone_number,
+       su.sip_domain AS sip_domain,
+       su.status AS sip_status,
+       t.name AS tenant_name
+     FROM tenant_ecards ec
+     LEFT JOIN sip_users su ON su.id = ec.sip_user_id
+     LEFT JOIN tenants t ON t.id = ec.tenant_id
+     WHERE ec.access_slug = ?
+     LIMIT 1`,
+    [slug],
+  );
+
+  const ecardRow = ecardRows[0] || null;
+  if (!ecardRow) {
+    return { error: { status: 404, code: "ECARD_NOT_FOUND", message: "電子名片不存在或不可用" } };
+  }
+
+  if (!ecardRow.sip_user_id || !ecardRow.sip_account) {
+    return { error: { status: 404, code: "ECARD_SIP_ACCOUNT_NOT_FOUND", message: "對應的 SIP 帳號不存在" } };
+  }
+
+  const ecardDataJson = parseEcardPublicJson(ecardRow.ecard_data_json);
+  const today = new Date().toISOString().slice(0, 10);
+  const validFrom = safeEcardDateOnly(ecardRow.valid_from);
+  const validTo = safeEcardDateOnly(ecardRow.valid_to);
+  const expired = Boolean((validFrom && today < validFrom) || (validTo && today > validTo));
+  const enabled = String(ecardRow.ecard_status || "").toLowerCase() === "active" && !expired;
+
+  const bindingRows = await connection.query(
+    `SELECT
+       wu.id AS web_user_id,
+       wu.username AS web_account,
+       wu.sip_domain AS web_domain,
+       e.id AS entitlement_id
+     FROM tenant_web_account_entitlements e
+     JOIN web_users wu ON wu.id = e.web_user_id
+     WHERE e.sip_user_id = ?
+       AND e.tenant_id = ?
+       AND e.status = 'active'
+       AND (wu.status IS NULL OR wu.status = 'active')
+     ORDER BY e.id ASC
+     LIMIT 1`,
+    [Number(ecardRow.sip_user_id), Number(ecardRow.tenant_id)],
+  );
+
+  const bindingRow = bindingRows[0] || null;
+
+  const styleId = ecardDataJson.selectedTemplateId ?? ecardDataJson.templateId ?? null;
+  const backgroundId = ecardDataJson.selectedBackgroundId ?? ecardDataJson.backgroundId ?? null;
+  let resolvedBackground = null;
+
+  if (styleId) {
+    const styleRows = await connection.query(`SELECT id FROM ecard_styles WHERE id = ? LIMIT 1`, [styleId]);
+    if (styleRows.length > 0) {
+      const bgRows = await connection.query(
+        `SELECT id, style_id, background_name, image_url, layout_json, default_style_json, display_config_json
+         FROM ecard_style_backgrounds
+         WHERE style_id = ?
+           ${backgroundId ? "AND id = ?" : ""}
+         ORDER BY sort_order ASC, id ASC
+         LIMIT 1`,
+        backgroundId ? [styleId, backgroundId] : [styleId],
+      );
+      resolvedBackground = bgRows[0] || null;
+    }
+  }
+
+  const profile = resolveEcardProfileFromJson(ecardDataJson, ecardRow);
+  const publicAccessUrl = `${process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org"}/u/${ecardRow.access_slug}`;
+
+  return {
+    data: {
+      profile,
+      media: {
+        avatarUrl: pickFirstString(ecardRow.avatar_url, profile.avatarUrl),
+        backgroundUrl: pickFirstString(resolvedBackground?.image_url, ecardDataJson.backgroundUrl, ecardDataJson.backgroundImageUrl),
+        qrcodeUrl: publicAccessUrl,
+        thumbnailUrl: pickFirstString(ecardRow.thumbnail_url),
+      },
+      template: {
+        templateId: styleId ? String(styleId) : "",
+        layoutJson: resolvedBackground?.layout_json
+          ? parseJsonMaybe(resolvedBackground.layout_json, {
+              selectedTemplateId: styleId ? String(styleId) : "",
+              selectedBackgroundId: backgroundId ? String(backgroundId) : "",
+            })
+          : {
+              selectedTemplateId: styleId ? String(styleId) : "",
+              selectedBackgroundId: backgroundId ? String(backgroundId) : "",
+              localStyles: ecardDataJson.localStyles || {},
+              localDisplayConfig: ecardDataJson.localDisplayConfig || {},
+              showQrCode: Boolean(ecardDataJson.showQrCode),
+            },
+      },
+      publicStatus: {
+        enabled,
+        expired,
+        validFrom: validFrom || "",
+        validTo: validTo || "",
+      },
+      callCapabilities: {
+        voice: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL === "true",
+        video: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL === "true",
+        webrtc: Boolean(bindingRow),
+      },
+      callConfigSummary: {
+        sipAccount: String(ecardRow.sip_account || ""),
+        sipDomain: String(ecardRow.sip_domain || process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || ""),
+        webAccount: String(bindingRow?.web_account || ""),
+        webrtcDomain: String(bindingRow?.web_domain || process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || webrtcDomain || ""),
+        accessSlug: String(ecardRow.access_slug || ""),
+      },
+      tenantName: String(ecardRow.tenant_name || ""),
+    },
+  };
+}
+
+const ECARD_CALL_SESSION_TTL_MS = 120 * 1000;
+const ECARD_CALL_SESSION_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const ECARD_CALL_SESSION_RATE_LIMIT_MAX = 10;
+const ecardCallSessionStore = new Map();
+const ecardCallSessionRateLimitStore = new Map();
+
+function cleanupEcardCallSessionState(now = Date.now()) {
+  for (const [sessionId, item] of ecardCallSessionStore.entries()) {
+    if (!item || !item.expiresAtMs || item.expiresAtMs <= now) {
+      ecardCallSessionStore.delete(sessionId);
+    }
+  }
+  for (const [key, item] of ecardCallSessionRateLimitStore.entries()) {
+    if (!item || !item.windowEndsAt || item.windowEndsAt <= now) {
+      ecardCallSessionRateLimitStore.delete(key);
+    }
+  }
+}
+
+function getEcardClientIp(request) {
+  const forwardedFor = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const realIp = String(request.headers["x-real-ip"] || "").trim();
+  const cfIp = String(request.headers["cf-connecting-ip"] || "").trim();
+  const fallback = String(request.ip || request.socket?.remoteAddress || "").trim();
+  return forwardedFor || realIp || cfIp || fallback || "unknown";
+}
+
+function isEcardCallSessionAllowedByRateLimit(slug, request) {
+  cleanupEcardCallSessionState();
+  const ip = getEcardClientIp(request);
+  const now = Date.now();
+  const windowKey = `${slug}|${ip}`;
+  const current = ecardCallSessionRateLimitStore.get(windowKey);
+  if (!current || current.windowEndsAt <= now) {
+    ecardCallSessionRateLimitStore.set(windowKey, {
+      windowEndsAt: now + ECARD_CALL_SESSION_RATE_LIMIT_WINDOW_MS,
+      count: 1,
+    });
+    return true;
+  }
+  if (current.count >= ECARD_CALL_SESSION_RATE_LIMIT_MAX) {
+    return false;
+  }
+  current.count += 1;
+  ecardCallSessionRateLimitStore.set(windowKey, current);
+  return true;
+}
+
+function parseEcardIceServers() {
+  const raw = String(process.env.ECARD_WEBRTC_ICE_SERVERS || "").trim();
+  const stunServer = String(process.env.ECARD_WEBRTC_STUN_SERVER || "").trim();
+  const turnUsername = String(process.env.ECARD_WEBRTC_TURN_USERNAME || "").trim();
+  const turnPassword = String(process.env.ECARD_WEBRTC_TURN_PASSWORD || "").trim();
+  const items = raw
+    ? raw.split(",").map((value) => String(value || "").trim()).filter(Boolean)
+    : [];
+  const servers = [];
+  for (const item of items) {
+    if (item.startsWith("stun:")) {
+      servers.push({ urls: item });
+    } else if (item.startsWith("turn:")) {
+      servers.push({ urls: item, username: turnUsername, credential: turnPassword });
+    } else {
+      servers.push({ urls: item });
+    }
+  }
+  if (servers.length === 0 && stunServer) {
+    servers.push({ urls: stunServer });
+  }
+  return servers;
+}
+
+async function loadEcardCallSessionContext(connection, slug) {
+  const rows = await connection.query(
+    `SELECT
+       ec.id AS ecard_id,
+       ec.tenant_id,
+       ec.sip_user_id,
+       ec.access_slug,
+       ec.status AS ecard_status,
+       ec.valid_from,
+       ec.valid_to,
+       ec.ecard_data_json,
+       su.username AS sip_account,
+       su.sip_domain AS sip_domain,
+       su.status AS sip_status,
+       wu.username AS web_account,
+       wu.sip_domain AS web_domain,
+       wu.status AS web_status,
+       t.name AS tenant_name
+     FROM tenant_ecards ec
+     LEFT JOIN sip_users su ON su.id = ec.sip_user_id
+     LEFT JOIN tenant_web_account_entitlements ent
+       ON ent.sip_user_id = ec.sip_user_id
+      AND ent.tenant_id = ec.tenant_id
+      AND ent.status = 'active'
+     LEFT JOIN web_users wu ON wu.id = ent.web_user_id
+     LEFT JOIN tenants t ON t.id = ec.tenant_id
+     WHERE ec.access_slug = ?
+     LIMIT 1`,
+    [slug],
+  );
+
+  const row = rows[0] || null;
+  if (!row) {
+    return { error: { status: 404, code: "ECARD_NOT_FOUND", message: "電子名片不存在或不可用" } };
+  }
+
+  if (String(row.ecard_status || "").toLowerCase() !== "active") {
+    return { error: { status: 403, code: "ECARD_DISABLED", message: "此電子名片目前未啟用" } };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const validFrom = safeEcardDateOnly(row.valid_from);
+  const validTo = safeEcardDateOnly(row.valid_to);
+  const expired = Boolean((validFrom && today < validFrom) || (validTo && today > validTo));
+  if (expired) {
+    return { error: { status: 403, code: "ECARD_EXPIRED", message: "此電子名片已過期" } };
+  }
+
+  if (!row.sip_account) {
+    return { error: { status: 404, code: "ECARD_SIP_ACCOUNT_NOT_FOUND", message: "對應的 SIP 帳號不存在" } };
+  }
+
+  if (!row.web_account) {
+    return { error: { status: 404, code: "ECARD_WEB_ACCOUNT_NOT_BOUND", message: "此帳號尚未綁定 WebRTC 帳號" } };
+  }
+
+  const ecardDataJson = parseEcardPublicJson(row.ecard_data_json);
+  return {
+    row,
+    ecardDataJson,
+    validFrom,
+    validTo,
+    expired,
+  };
+}
+
+app.get("/api/ecard/public/:slug", async (request, response) => {
+  const slug = String(request.params.slug || "").trim();
+  if (!isValidEcardPublicSlug(slug)) {
+    return response.status(400).json({
+      success: false,
+      code: "INVALID_ECARD_SLUG",
+      message: "查詢參數格式不正確",
+    });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const result = await loadEcardPublicViewData(connection, slug);
+    if (result.error) {
+      return response.status(result.error.status || 500).json({
+        success: false,
+        code: result.error.code || "ECARD_PUBLIC_QUERY_FAILED",
+        message: result.error.message || "電子名片資料查詢失敗",
+      });
+    }
+
+    return response.json({
+      success: true,
+      message: "電子名片資料已取得",
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Failed to fetch ecard public data:", error);
+    return response.status(500).json({
+      success: false,
+      code: "ECARD_PUBLIC_QUERY_FAILED",
+      message: "電子名片資料查詢失敗",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.post("/api/ecard/public/:slug/call-session", async (request, response) => {
+  const slug = String(request.params.slug || "").trim();
+  if (!isValidEcardPublicSlug(slug)) {
+    return response.status(400).json({
+      success: false,
+      code: "INVALID_ECARD_SLUG",
+      message: "查詢參數格式不正確",
+    });
+  }
+
+  if (!isEcardCallSessionAllowedByRateLimit(slug, request)) {
+    return response.status(429).json({
+      success: false,
+      code: "ECARD_CALL_SESSION_FAILED",
+      message: "呼叫會話建立過於頻繁，請稍後再試",
+    });
+  }
+
+  const sessionId = randomUUID();
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const context = await loadEcardCallSessionContext(connection, slug);
+    if (context.error) {
+      return response.status(context.error.status || 500).json({
+        success: false,
+        code: context.error.code || "ECARD_CALL_SESSION_FAILED",
+        message: context.error.message || "呼叫配置建立失敗，請稍後再試",
+      });
+    }
+
+    const voiceEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL || "").toLowerCase() === "true";
+    const videoEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL || "").toLowerCase() === "true";
+    if (!voiceEnabled && !videoEnabled) {
+      return response.status(403).json({
+        success: false,
+        code: "ECARD_CALL_DISABLED",
+        message: "目前未開放語音或視頻呼叫",
+      });
+    }
+
+    const wssUrl = String(process.env.ECARD_ASTERISK_WEBRTC_WSS_URL || "").trim();
+    const sharedPassword = String(process.env.ECARD_ASTERISK_WEBRTC_SHARED_PASSWORD || "").trim();
+    const webrtcDomainValue = String(context.row.web_domain || process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || webrtcDomain || "").trim();
+    const sipDomainValue = String(process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || "").trim();
+    const sipAccount = String(context.row.sip_account || "").trim();
+    const targetSipUri = `sip:${sipAccount}@${sipDomainValue}`;
+    const iceServers = parseEcardIceServers();
+    const sipServerPublicIp = String(process.env.ECARD_ASTERISK_WEBRTC_SIP_SERVER_PUBLIC_IP || "").trim();
+    const now = Date.now();
+    const expiresAt = new Date(now + ECARD_CALL_SESSION_TTL_MS).toISOString();
+    const credentialType = "shared-password";
+
+    if (!wssUrl || !sharedPassword || !webrtcDomainValue || !sipDomainValue || !sipAccount) {
+      return response.status(500).json({
+        success: false,
+        code: "ECARD_CALL_SESSION_FAILED",
+        message: "呼叫配置建立失敗，請稍後再試",
+      });
+    }
+
+    ecardCallSessionStore.set(sessionId, {
+      slug,
+      ip: getEcardClientIp(request),
+      createdAtMs: now,
+      expiresAtMs: now + ECARD_CALL_SESSION_TTL_MS,
+    });
+
+    console.log(`[EcardCallSession] slug=${slug} sessionId=${sessionId} success=true`);
+
+    return response.json({
+      success: true,
+      message: "呼叫會話已建立",
+      data: {
+        sessionId,
+        expiresAt,
+        webAccount: String(context.row.web_account || ""),
+        credential: {
+          type: credentialType,
+          value: sharedPassword,
+        },
+        webrtcDomain: webrtcDomainValue,
+        wssUrl,
+        targetSipUri,
+        sipDomain: sipDomainValue,
+        iceServers,
+        sipServerPublicIp,
+        enableVoice: voiceEnabled,
+        enableVideo: videoEnabled,
+      },
+    });
+  } catch (error) {
+    console.error(`[EcardCallSession] slug=${slug} success=false`, error?.message || error);
+    return response.status(500).json({
+      success: false,
+      code: "ECARD_CALL_SESSION_FAILED",
+      message: "呼叫配置建立失敗，請稍後再試",
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "平台管理員無法访问租戶电子名片。" });
