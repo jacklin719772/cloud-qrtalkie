@@ -570,15 +570,19 @@ export default function EcardStyles() {
                     if (!currentBg2?.url && !currentBg2?.imageUrl) return null;
                     try {
                       const layoutParsed = (() => { try { const v = JSON.parse(jsonConfigs.layoutJson || '{}'); return v.fields || v; } catch { return {}; } })();
+                      const layoutMeta = (() => { try { const v = JSON.parse(jsonConfigs.layoutJson || '{}'); return v.canvas || null; } catch { return null; } })();
                       const styleParsed = (() => { try { const v = JSON.parse(jsonConfigs.defaultStyleJson || '{}'); return v.styles || v; } catch { return {}; } })();
                       const displayParsed = (() => { try { return JSON.parse(jsonConfigs.displayConfigJson || '{}'); } catch { return {}; } })();
                       const showQr = displayParsed.showQrCode !== false;
                       const showCompany = displayParsed.showCompanyInfo !== false;
                       const fieldList = Object.keys(layoutParsed).filter(k => k !== 'decorLine' && layoutParsed[k]?.x !== undefined);
+                      // 优先使用 layout JSON 中的 canvas 尺寸作为参考坐标系
+                      const refW = layoutMeta?.width || currentBg2?.imageWidth || 600;
+                      const refH = layoutMeta?.height || currentBg2?.imageHeight || 338;
                       return (
                         <div style={{ marginTop: '24px', padding: '12px', background: '#111827', border: '1px solid #1f2937', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>即時預覽</div>
-                          <div style={{ position: 'relative', width: '100%', aspectRatio: previewImgSize.w && previewImgSize.h ? `${previewImgSize.w}/${previewImgSize.h}` : '16/9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1f2937' }}>
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: `${refW}/${refH}`, borderRadius: '6px', overflow: 'hidden', border: '1px solid #1f2937' }}>
                             <img
                               src={getFullImageUrl(currentBg2?.url || currentBg2?.imageUrl)}
                               alt=""
@@ -599,8 +603,8 @@ export default function EcardStyles() {
                               const sampleText = testData[key] || key;
                               if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
                               if (key === 'qrCaption' && !showQr) return null;
-                              const imgW = previewImgSize.w || currentBg2?.imageWidth || 600;
-                              const imgH = previewImgSize.h || currentBg2?.imageHeight || 338;
+                              const imgW = refW;
+                              const imgH = refH;
                               return (
                                 <div key={key} style={{
                                   position: 'absolute',
@@ -622,7 +626,7 @@ export default function EcardStyles() {
                               );
                             })}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>基於 layout / style / display 三組 JSON 即時渲染</div>
+                          <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>基於 layout / style / display 三組 JSON 即時渲染 · 畫布 {refW}×{refH}</div>
                         </div>
                       );
                     } catch {
