@@ -1959,7 +1959,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         .ecard-generation-page-btn { cursor: pointer; font-size: 18px; line-height: 1; }
         .ecard-generation-page-btn:disabled { color: #cbd5e1; cursor: not-allowed; background: #1a2332; }
         .ecard-generation-page-jump { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 11px; }
-        .ecard-generation-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #1f2937; text-align: center; outline: none; color: #e5e7eb; font-size: 11px; }
+        .ecard-generation-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #1f2937; background: #1a2332; text-align: center; outline: none; color: #e5e7eb; font-size: 11px; }
         
         @media (max-width: 1100px) {
           .ecard-generation-toolbar {
