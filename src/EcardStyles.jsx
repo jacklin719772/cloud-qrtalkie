@@ -564,6 +564,8 @@ export default function EcardStyles() {
                               if ((key === 'qrCaption' || key === 'qrCode' || key === 'qrFrame' || key === 'qrCenterLogo') && !showQr) return null;
                               const imgW = refW;
                               const imgH = refH;
+                              // 字体缩放：以容器宽度 300px 为基准，按 canvas 宽度反比缩放
+                              const fontScale = Math.max(0.12, Math.min(0.5, 300 / refW));
                               return (
                                 <div key={key} style={{
                                   position: 'absolute',
@@ -571,7 +573,7 @@ export default function EcardStyles() {
                                   top: `${(layout.y || 0) * 100 / imgH}%`,
                                   width: layout.width ? `${layout.width * 100 / imgW}%` : 'auto',
                                   height: layout.height ? `${layout.height * 100 / imgH}%` : 'auto',
-                                  fontSize: style.fontSize ? `${Math.max(6, (style.fontSize || 14) * 0.4)}px` : '8px',
+                                  fontSize: style.fontSize ? `${Math.max(5, (style.fontSize || 14) * fontScale)}px` : `${8 * fontScale}px`,
                                   fontWeight: style.fontWeight || '400',
                                   color: style.color || '#ffffff',
                                   fontFamily: style.fontFamily || 'sans-serif',
