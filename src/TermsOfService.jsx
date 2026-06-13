@@ -57,12 +57,14 @@ export default function TermsOfService() {
     <section className="view active settings-form-page" id="terms-of-service" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
         <form className="panel" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
+            <style>{'.tos-textarea::-webkit-scrollbar{width:6px}.tos-textarea::-webkit-scrollbar-track{background:#0f172a}.tos-textarea::-webkit-scrollbar-thumb{background:#374151;border-radius:3px}'}</style>
             {isLoading ? (
               <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>加载内容中...</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
                 <textarea
+                  className="tos-textarea"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="在此输入您的服务条款规范..."
@@ -71,7 +73,8 @@ export default function TermsOfService() {
                     padding: '16px', borderRadius: '8px',
                     border: '1px solid #374151', outline: 'none', resize: 'none',
                     fontSize: '14px', fontFamily: 'inherit', lineHeight: '1.6',
-                    backgroundColor: '#0f172a', color: '#ffffff', boxSizing: 'border-box'
+                    backgroundColor: '#0f172a', color: '#ffffff', boxSizing: 'border-box',
+                    scrollbarWidth: 'thin', scrollbarColor: '#374151 #0f172a'
                   }}
                   onFocus={e => e.target.style.borderColor = '#3b82f6'}
                   onBlur={e => e.target.style.borderColor = '#374151'}
