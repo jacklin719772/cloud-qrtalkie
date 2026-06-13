@@ -106,6 +106,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showSipMgmtHelp, setShowSipMgmtHelp] = useState(false);
   const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
   const [showContactBookHelp, setShowContactBookHelp] = useState(false);
+  const [showAccountMgmtHelp, setShowAccountMgmtHelp] = useState(false);
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -654,6 +655,7 @@ export default function ConsoleLayout({ onLogout }) {
           <button className="primary-btn" type="button" onClick={() => tenantAccountManagementRef.current?.handleBatchResetPassword()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
             重置密碼
           </button>
+          <button type="button" onClick={() => setShowAccountMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1438,6 +1440,78 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>創建通訊錄時，描述欄位會預設填入公司/租戶名稱。</li>
                   <li>僅狀態為「啟用中」或「待啟用」的帳號可被加入通訊錄。</li>
                   <li>僅狀態為「啟用中」的帳號可被分配使用通訊錄。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAccountMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAccountMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>帳號管理 操作說明</h2>
+              <button onClick={() => setShowAccountMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號管理用於管理已分配至當前租戶的 SIP 帳號。管理員可在此查看帳號資訊、編輯顯示名稱與郵箱、重設密碼、啟用/停用帳號，以及進行通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#ef4444", fontSize: "14px", marginBottom: "8px" }}>&#9888;&#65039; 重要提醒</h3>
+                <div style={{ background: "#1e293b", borderRadius: "8px", padding: "16px", border: "1px solid #374151" }}>
+                  <div style={{ marginBottom: "12px" }}>
+                    <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128308; 重設密碼</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>修改密碼後，已登入的設備將<strong style={{ color: "#ef4444" }}>立即斷線</strong>，需使用新密碼重新註冊。建議在非使用高峰期進行操作。</p>
+                  </div>
+                  <div style={{ marginBottom: "12px" }}>
+                    <div style={{ color: "#f59e0b", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128993; 停用帳號</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>停用帳號將阻止該帳號註冊和使用服務，但不會刪除帳號數據。停用後可隨時重新啟用。</p>
+                  </div>
+                  <div>
+                    <div style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128172; 郵箱設定</div>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>發送郵件前請確保帳號已設定正確的電子郵箱。未設定郵箱的帳號將無法接收重置密碼郵件和 Provisioning 郵件。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作選單說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯</strong> — 修改帳號的顯示名稱、電子郵箱、電話號碼和密碼。修改後同步至 Flexisip。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 切換帳號的啟用狀態。已過期帳號無法操作。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 輸入新密碼，同步更新至 Flexisip。密碼至少需要 6 個字符。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該帳號分配通訊錄，選擇已創建的通訊錄進行綁定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>生成二維碼</strong> — 生成 Provisioning 登錄二維碼，支援複製、下載和 Renew 更新。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發送重設密碼郵件</strong> — 向帳號綁定郵箱發送重置密碼郵件（需先設定郵箱）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發送 Provisioning 郵件</strong> — 向帳號綁定郵箱發送 Provisioning 配置郵件（需先設定郵箱）。</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — SIP 用戶名，純數字，不可修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 來電顯示名稱，可透過編輯功能修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Web 帳號</strong> — 關聯的 WebRTC 分機號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>通訊錄</strong> — 已分配的通讯录名称。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂單編號</strong> — 該帳號所屬的訂單編號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中/未啟用/已停用/已過期/待啟用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>開始日期/結束日期</strong> — 服務有效期範圍。</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128161; 使用建議</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>建議為每個使用中的帳號設定易於識別的顯示名稱。</li>
+                  <li>設定正確的電子郵箱後才能使用郵件發送功能。</li>
+                  <li>密碼重設後會同步至 Flexisip，確保雲端與本地一致。</li>
+                  <li>local_only 帳號僅存在於本地數據庫，無法同步至 Flexisip，請聯繫平台管理員處理。</li>
                 </ul>
               </div>
             </div>
