@@ -588,7 +588,15 @@ export default function EcardStyles() {
                             {fieldList.map(key => {
                               const layout = layoutParsed[key] || {};
                               const style = styleParsed[key] || {};
-                              const sampleText = key === 'name' ? '姓名' : key === 'title' ? '職位' : key === 'phone' ? '0912-345-678' : key === 'email' ? 'user@example.com' : key === 'address' ? '台北市' : key === 'companyNameCn' ? '公司名稱' : key === 'companyNameEn' ? 'Company' : key === 'sloganCn' ? '標語' : key === 'sloganEn' ? 'Slogan' : key === 'qrCaption' ? '掃碼' : key;
+                              const testData = {
+                                name: '張大明', title: '技術總監 / CTO',
+                                phone: '0912-345-678', email: 'daming.zhang@example.com',
+                                address: '台北市信義區信義路五段 7 號 101 大樓',
+                                companyNameCn: '雲端通訊科技有限公司', companyNameEn: 'CloudQRTalkie Technology Co., Ltd.',
+                                sloganCn: '讓每一次通話都安全可靠', sloganEn: 'Making Every Call Safe & Reliable',
+                                qrCaption: '掃碼交換名片'
+                              };
+                              const sampleText = testData[key] || key;
                               if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
                               if (key === 'qrCaption' && !showQr) return null;
                               const imgW = previewImgSize.w || currentBg2?.imageWidth || 600;
@@ -600,7 +608,7 @@ export default function EcardStyles() {
                                   top: `${(layout.y || 0) * 100 / imgH}%`,
                                   width: layout.width ? `${layout.width * 100 / imgW}%` : 'auto',
                                   height: layout.height ? `${layout.height * 100 / imgH}%` : 'auto',
-                                  fontSize: style.fontSize ? `${Math.max(6, (style.fontSize || 14) * 0.35)}px` : '7px',
+                                  fontSize: style.fontSize ? `${Math.max(6, (style.fontSize || 14) * 0.4)}px` : '8px',
                                   fontWeight: style.fontWeight || '400',
                                   color: style.color || '#ffffff',
                                   fontFamily: style.fontFamily || 'sans-serif',
@@ -609,6 +617,7 @@ export default function EcardStyles() {
                                   textOverflow: 'ellipsis',
                                 }}>
                                   {sampleText}
+                                  <span style={{ fontSize: '5px', opacity: 0.4, display: 'block' }}>{key}</span>
                                 </div>
                               );
                             })}
