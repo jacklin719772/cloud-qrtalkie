@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Search, Copy, Image as ImageIcon, Plus, RefreshCw, UploadCloud, Check, Eye, Phone, Mail, MapPin, Download } from 'lucide-react';
 import apiClient from './apiClient';
 import { QRCodeSVG } from 'qrcode.react';
+import html2canvas from 'html2canvas';
 
 function getFullImageUrl(url) {
   if (!url) return '';
@@ -598,17 +599,6 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     return { total: ecardAccounts.length, configured, unconfigured, enabled, expiring, expired };
   }, [ecardAccounts]);
 
-  const loadHtml2Canvas = async () => {
-    if (window.html2canvas) return window.html2canvas;
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      script.onload = () => resolve(window.html2canvas);
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  };
-
   const handleSaveAndGenerateImage = async () => {
     if (!selectedAccountForCreate) {
       alert("請先選擇一個帳號");
@@ -617,7 +607,6 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
     setIsGenerating(true);
     try {
-      const html2canvas = await loadHtml2Canvas();
       if (!ecardCanvasRef.current) throw new Error("找不到名片預覽区域");
 
       const canvasEl = ecardCanvasRef.current;
@@ -1515,8 +1504,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               value={currentWeight}
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontWeight', e.target.value)}
                               title="字重"
-                              style={{ flex: 1, height: '32px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#e5e7eb', fontSize: '12px', padding: '0 4px', outline: 'none', cursor: 'pointer' }}
-                              style={{ width: '64px', flex: 'none' }}
+                              style={{ width: '64px', flex: 'none', height: '32px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#e5e7eb', fontSize: '12px', padding: '0 4px', outline: 'none', cursor: 'pointer' }}
                             >
                               <option value="300">细体</option>
                               <option value="400">常规</option>
