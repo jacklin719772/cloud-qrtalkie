@@ -596,13 +596,12 @@ export default function EcardStyles() {
                           <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '8px', textAlign: 'center' }}>基於 layout / style / display 三組 JSON 即時渲染 · 畫布 {refW}×{refH}</div>
                         </div>
                       );
-                    } catch {
+                    } catch (e) {
                       return (
                         <div style={{ marginTop: '24px', padding: '12px', background: '#3b1111', border: '1px solid #7f1d1d', borderRadius: '8px', color: '#fca5a5', fontSize: '12px', textAlign: 'center' }}>
-                          JSON 格式有誤，修正後可即時預覽
+                          JSON 格式有誤：{e.message}
                         </div>
                       );
-                    }
                   })()}
                 </div>
                 
