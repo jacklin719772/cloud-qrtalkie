@@ -419,7 +419,7 @@ export default function EcardStyles() {
 
                           const DEFAULT_DISPLAY = {"version":"1.0","display":{"showAvatar":true,"showName":true,"showTitle":true,"showTitleCn":true,"showTitleEn":true,"showDecorLine":true,"showPhone":true,"showPhoneIcon":true,"showEmail":true,"showEmailIcon":true,"showAddress":true,"showAddressIcon":true,"showPostcode":true,"showQrFrame":true,"showQrCode":true,"showQrCenterLogo":true,"showQrCaption":true,"showCompanyLogo":true,"showCompanyNameCn":true,"showCompanyNameEn":true,"showCompanyDivider":true,"showSloganCn":true,"showSloganEn":true}};
 
-                          const TEST_CARD_DATA = {"name":"张浩","titleCn":"市场经理","titleEn":"Market Manager","phone":"+86 138 1234 5678","email":"zhanghao@company.com","address":"台湾世纪大道100号","postcode":"200120","qrCaption":"扫码二维码 · 交换名片","companyNameCn":"上海智联科技有限公司","companyNameEn":"Shanghai Zhilian Technology Co., Ltd.","sloganCn":"连接价值 · 智联未来","sloganEn":"Connecting Value, Linking the Future"};
+                          const TEST_CARD_DATA = {"name":"張浩","titleCn":"市場經理","titleEn":"Market Manager","phone":"+886 912 345 678","email":"zhanghao@company.com","address":"臺灣臺北市信義區世紀大道100號","postcode":"110","qrCaption":"掃碼二維碼 · 交換名片","companyNameCn":"上海智聯科技有限公司","companyNameEn":"Shanghai Zhilian Technology Co., Ltd.","sloganCn":"連接價值 · 智聯未來","sloganEn":"Connecting Value, Linking the Future","avatarUrl":"/ecard-demo-avatar.jpg","companyLogoUrl":"/ecard-demo-logo.png"};
 
                           const templateMap = {
                             layout_json: DEFAULT_LAYOUT,
@@ -558,8 +558,10 @@ export default function EcardStyles() {
                               const testData = TEST_CARD_DATA;
                               const keyMap = { name: 'name', title: 'titleCn', phone: 'phone', email: 'email', address: 'address', companyNameCn: 'companyNameCn', companyNameEn: 'companyNameEn', sloganCn: 'sloganCn', sloganEn: 'sloganEn', qrCaption: 'qrCaption' };
                               const sampleText = testData[keyMap[key]] || key;
-                              if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
-                              if (key === 'qrCaption' && !showQr) return null;
+                              const isImage = key === 'avatar' || key === 'companyLogo' || key === 'qrCenterLogo';
+                              const imgSrc = key === 'avatar' ? testData.avatarUrl : key === 'companyLogo' ? testData.companyLogoUrl : null;
+                              if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'companyLogo' || key === 'sloganCn' || key === 'sloganEn' || key === 'companyDivider') && !showCompany) return null;
+                              if ((key === 'qrCaption' || key === 'qrCode' || key === 'qrFrame' || key === 'qrCenterLogo') && !showQr) return null;
                               const imgW = refW;
                               const imgH = refH;
                               return (
@@ -576,9 +578,17 @@ export default function EcardStyles() {
                                   overflow: 'hidden',
                                   whiteSpace: 'nowrap',
                                   textOverflow: 'ellipsis',
+                                  borderRadius: layout.borderRadius || 0,
+                                  backgroundColor: isImage ? (style.backgroundColor || '#1a2332') : 'transparent',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                  {sampleText}
-                                  <span style={{ fontSize: '5px', opacity: 0.4, display: 'block' }}>{key}</span>
+                                  {isImage && imgSrc ? (
+                                    <img src={imgSrc} alt={key} style={{ width: '100%', height: '100%', objectFit: layout.objectFit || 'cover', borderRadius: layout.borderRadius || 0 }} />
+                                  ) : isImage ? (
+                                    <span style={{ fontSize: '6px', opacity: 0.4 }}>{key}</span>
+                                  ) : (
+                                    <>{sampleText}<span style={{ fontSize: '5px', opacity: 0.4, display: 'block' }}>{key}</span></>
+                                  )}
                                 </div>
                               );
                             })}
