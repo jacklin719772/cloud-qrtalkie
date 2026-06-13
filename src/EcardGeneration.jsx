@@ -1265,6 +1265,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             color: #9ca3af;
           }
           .ecard-preview-status strong { color: #f3f4f6; }
+          .ecard-add-page * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+          .ecard-add-page *::-webkit-scrollbar { width: 6px; height: 6px; }
+          .ecard-add-page *::-webkit-scrollbar-track { background: transparent; }
+          .ecard-add-page *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         `}</style>
         <div className="ecard-add-header">
           <div className="ecard-add-title">
@@ -1981,6 +1985,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         }
         .ecard-generation-page .ghost-btn { background: #374151 !important; color: #d1d5db !important; border: 1px solid #4b5563 !important; border-radius: 8px; cursor: pointer; }
         .ecard-generation-page .ghost-btn:hover { background: #4b5563 !important; color: #f3f4f6 !important; }
+        .ecard-generation-page * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        .ecard-generation-page *::-webkit-scrollbar { width: 6px; height: 6px; }
+        .ecard-generation-page *::-webkit-scrollbar-track { background: transparent; }
+        .ecard-generation-page *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
       `}</style>
 
       {/* 工具栏 */}
