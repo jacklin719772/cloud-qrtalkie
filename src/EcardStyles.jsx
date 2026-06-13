@@ -494,7 +494,7 @@ export default function EcardStyles() {
 
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 {/* 左侧 */}
-                <div style={{ flex: '0 0 35%', borderRight: '1px solid #1f2937', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#111827', flexShrink: 0 }}>
+                <div style={{ flex: '0 0 35%', borderRight: '1px solid #1f2937', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#111827', flexShrink: 0, scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                   <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#f3f4f6' }}>背景圖預覽</h4>
                   {(() => {
                     const currentBg = formData.backgrounds.find(b => b.id === currentCodeBgId);
