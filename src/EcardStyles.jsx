@@ -493,6 +493,7 @@ export default function EcardStyles() {
               </div>
 
               <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+                <style>{'.json-textarea::-webkit-scrollbar{width:6px;height:6px}.json-textarea::-webkit-scrollbar-track{background:#1a2332}.json-textarea::-webkit-scrollbar-thumb{background:#374151;border-radius:3px}'}</style>
                 {/* 左侧 */}
                 <div style={{ flex: '0 0 35%', borderRight: '1px solid #1f2937', padding: '24px', display: 'flex', flexDirection: 'column', overflowY: 'auto', backgroundColor: '#111827', flexShrink: 0, scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                   <h4 style={{ margin: '0 0 16px', fontSize: '15px', fontWeight: 600, color: '#f3f4f6' }}>背景圖預覽</h4>
@@ -675,6 +676,7 @@ export default function EcardStyles() {
 
                   {jsonError && <div style={{ padding: '12px', background: '#3b1111', border: '1px solid #7f1d1d', color: '#fca5a5', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', flexShrink: 0 }}>{jsonError}</div>}
                   <textarea
+                    className="json-textarea"
                     value={jsonConfigs[{ 'layout_json': 'layoutJson', 'default_style_json': 'defaultStyleJson', 'display_config_json': 'displayConfigJson' }[activeJsonType]]}
                     onChange={(e) => {
                       const camelKey = { 'layout_json': 'layoutJson', 'default_style_json': 'defaultStyleJson', 'display_config_json': 'displayConfigJson' }[activeJsonType];
@@ -682,7 +684,7 @@ export default function EcardStyles() {
                     }}
                     rows={15} // 初始行数，但 flex: 1 会使其伸展
                     spellCheck={false}
-                    style={{ flex: 1, width: '100%', padding: '18px', borderRadius: '8px', border: '1px solid #374151', outline: 'none', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '14px', lineHeight: 1.6, backgroundColor: '#1a2332', color: '#e5e7eb', boxSizing: 'border-box', minHeight: '320px' }}
+                    style={{ flex: 1, width: '100%', padding: '18px', borderRadius: '8px', border: '1px solid #374151', outline: 'none', resize: 'vertical', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '14px', lineHeight: 1.6, backgroundColor: '#1a2332', color: '#e5e7eb', boxSizing: 'border-box', minHeight: '320px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #1a2332' }}
                     onFocus={e => e.target.style.borderColor = '#3b82f6'}
                     onBlur={e => e.target.style.borderColor = '#374151'}
                   />
