@@ -366,7 +366,7 @@ export default function EcardStyles() {
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>範例圖片展示</h4>
-                <button type="button" className="ghost-btn" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}>
+                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer' }}>
                   <Upload size={14} /> 上傳展示圖片
                 </button>
                 <input type="file" ref={fileInputRef} hidden multiple accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} />
@@ -397,7 +397,7 @@ export default function EcardStyles() {
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: '600', color: '#f3f4f6', margin: 0, borderLeft: '3px solid #3b82f6', paddingLeft: '8px' }}>名片背景图库</h4>
-                <button type="button" className="ghost-btn" onClick={() => bgFileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', color: '#3b82f6', borderColor: '#bfdbfe', backgroundColor: '#eff6ff' }}>
+                <button type="button" onClick={() => bgFileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', borderRadius: '6px', cursor: 'pointer' }}>
                   <Upload size={14} /> 上傳背景圖片
                 </button>
                 <input type="file" ref={bgFileInputRef} hidden multiple accept="image/jpeg,image/png,image/webp" onChange={handleBgFileSelect} />
@@ -1081,6 +1081,10 @@ export default function EcardStyles() {
           border-color: #fca5a5;
           background: #7f1d1d;
         }
+        #ecard-styles-management * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        #ecard-styles-management *::-webkit-scrollbar { width: 6px; height: 6px; }
+        #ecard-styles-management *::-webkit-scrollbar-track { background: transparent; }
+        #ecard-styles-management *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
       `}</style>
 
       <div className="ecard-page-header">
