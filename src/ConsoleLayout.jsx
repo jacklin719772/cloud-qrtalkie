@@ -107,6 +107,8 @@ export default function ConsoleLayout({ onLogout }) {
   const [showWebAccountHelp, setShowWebAccountHelp] = useState(false);
   const [showContactBookHelp, setShowContactBookHelp] = useState(false);
   const [showAccountMgmtHelp, setShowAccountMgmtHelp] = useState(false);
+  const [showEcardStylesHelp, setShowEcardStylesHelp] = useState(false);
+  const [showEcardGenerationHelp, setShowEcardGenerationHelp] = useState(false);
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -459,6 +461,7 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="primary-btn" type="button" onClick={() => ecardGenerationRef.current?.handleBatchDownload()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
               批量下載
             </button>
+            <button type="button" onClick={() => setShowEcardGenerationHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           </div>
         );
       }
@@ -1441,6 +1444,57 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>僅狀態為「啟用中」或「待啟用」的帳號可被加入通訊錄。</li>
                   <li>僅狀態為「啟用中」的帳號可被分配使用通訊錄。</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEcardGenerationHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowEcardGenerationHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>電子名片管理 操作說明</h2>
+              <button onClick={() => setShowEcardGenerationHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 功能概述</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>電子名片管理用於管理租戶的電子名片列表。管理員可在此查看已生成的名片、進行批次操作（啟用/停用/下載），以及進入名片產生頁面為 SIP 帳號生成個性化電子名片。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>產生名片</strong> — 點擊上方「+」按鈕進入名片產生頁面，選擇樣式模板、設定個人資訊、上傳頭像和 Logo，即時預覽後保存。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>預覽名片</strong> — 點擊表格中的「預覽」按鈕查看名片完整效果。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>更多操作</strong> — 每行「更多」選單提供：詳情、下載圖片、啟用/停用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用</strong> — 勾選多個名片後點擊上方「批量啟用」，一次啟用多張名片。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量停用</strong> — 勾選多個名片後點擊上方「批量停用」，停用後該名片不再顯示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量下載</strong> — 勾選多個已配置名片後點擊上方「批量下載」，打包下載名片圖片。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>名片縮圖</strong> — 名片的預覽縮略圖。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — 該名片所屬的 SIP 帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Web 帳號</strong> — 關聯的 WebRTC 分機號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>名片名稱</strong> — 名片上顯示的姓名，來自帳號的顯示名稱或編輯時輸入。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>範本</strong> — 使用的名片樣式模板。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中或已停用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>創建時間</strong> — 名片建立的日期。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 產生名片流程</h3>
+                <ol style={{ color: "#9ca3af", margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>點擊「+」進入產生頁面，從左側樣式列表選擇名片模板。</li>
+                  <li>選擇背景圖片（每個模板可有多張背景可選）。</li>
+                  <li>填寫個人資訊：姓名、職位、電話、郵箱、地址等。</li>
+                  <li>上傳頭像圖片和公司 Logo。</li>
+                  <li>在右側即時預覽窗查看效果，調整顏色和字體設定。</li>
+                  <li>點擊「保存名片」完成產生。</li>
+                </ol>
               </div>
             </div>
           </div>
