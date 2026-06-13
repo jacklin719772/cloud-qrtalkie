@@ -1378,6 +1378,12 @@ export default function EcardStyles() {
               <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px", padding: "14px 16px", background: "#1a1a0a", border: "1px solid #fbbf24", borderRadius: "8px" }}>
+                <h3 style={{ color: "#fbbf24", fontSize: "14px", margin: "0 0 8px" }}>&#9888;&#65039; 必須設定 JSON 配置文件</h3>
+                <p style={{ color: "#fcd34d", margin: "0 0 8px" }}>每個背景圖片<strong style={{ color: "#fbbf24" }}>必須設定</strong> layout_json（佈局配置）、default_style_json（預設樣式）和 display_config_json（顯示控制），電子名片樣式才可正常生效。</p>
+                <p style={{ color: "#fcd34d", margin: "0 0 8px" }}>未設定 JSON 檔案時，名片生成頁面<strong style={{ color: "#fbbf24" }}>無法即時預覽</strong>，也<strong style={{ color: "#fbbf24" }}>無法正常產生名片圖片</strong>。</p>
+                <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>操作方式：點擊背景圖片上的 <strong style={{ color: "#60a5fa" }}>📄 CODE 圖標</strong> → 系統自動填入預設模板 → 根據實際設計調整 JSON → 點擊「儲存」按鈕。</p>
+              </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 電子名片樣式的作用</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>電子名片樣式庫是平台級別的名片設計模板管理。管理員在此建立並管理名片樣式，每個樣式可設定不同的排版、背景圖片和 JSON 配置。租戶在生成名片時從樣式庫中選擇套用。</p>
@@ -1387,8 +1393,16 @@ export default function EcardStyles() {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>新增樣式</strong> — 點擊「新增Ecard樣式」按鈕建立新樣式，填寫基本資訊、上傳範例圖片和背景圖庫。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯樣式</strong> — 點擊表格行內的「編輯」按鈕修改現有樣式的所有設定。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>預覽樣式</strong> — 點擊「預覽」按鈕查看樣式的範例圖片和背景圖庫的完整展示。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>JSON 配置</strong> — 每個背景圖片可設定 layoutJson（佈局）、defaultStyleJson（預設樣式）和 displayConfigJson（顯示配置），點擊「CODE」按鈕編輯 JSON。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>背景圖 JSON 配置</strong> — <strong style={{ color: "#fbbf24" }}>這是核心步驟</strong>，點擊背景圖上的 📄 CODE 圖標，設定三組 JSON 配置。系統提供預設模板可直接修改使用。即時預覽窗可即時查看佈局效果。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>儲存與生效</strong> — 設定完成後點擊「儲存 JSON」，樣式才會正式生效。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 三組 JSON 配置說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>layout_json（佈局配置）</strong> — 定義每個欄位在名片上的位置（x/y 座標）、尺寸（width/height）、類型（text/image/shape/icon）。畫布尺寸為 1536×1024。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>default_style_json（預設樣式）</strong> — 定義每個欄位的字體、字型大小、顏色、字重、對齊方式等 CSS 屬性。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>display_config_json（顯示控制）</strong> — 控制哪些欄位顯示或隱藏（如是否顯示二維碼、公司名稱、標語等）。</li>
                 </ul>
               </div>
               <div style={{ marginBottom: "24px" }}>
