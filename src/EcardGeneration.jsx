@@ -1671,13 +1671,14 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         .ecard-generation-panel {
           background: #111827;
           border-radius: 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #1f2937;
           display: flex;
           flex-direction: column;
           flex: 1;
           min-height: 0;
           box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
           overflow: hidden;
+          padding: 0 24px;
         }
         .ecard-generation-toolbar {
           display: flex;
@@ -1768,7 +1769,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         }
         .ecard-generation-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           min-width: 1000px;
           text-align: left;
         }
@@ -1790,11 +1792,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           color: #e5e7eb;
           font-size: 14px;
           vertical-align: middle;
+          background: #111827;
         }
         .ecard-generation-action-head, .ecard-generation-action-cell {
           position: sticky;
           right: 0;
-          box-shadow: -1px 0 0 #e2e8f0;
+          border-left: 1px solid #374151;
           width: 90px;
           min-width: 90px;
           padding-left: 8px !important;
@@ -1970,6 +1973,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         @media (max-width: 720px) {
           .ecard-generation-toolbar { padding: 18px; }
         }
+        .ecard-generation-page .ghost-btn { background: #374151 !important; color: #d1d5db !important; border: 1px solid #4b5563 !important; border-radius: 8px; cursor: pointer; }
+        .ecard-generation-page .ghost-btn:hover { background: #4b5563 !important; color: #f3f4f6 !important; }
       `}</style>
 
       {/* 工具栏 */}
