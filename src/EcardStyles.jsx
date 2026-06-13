@@ -412,51 +412,14 @@ export default function EcardStyles() {
                           setCurrentCodeBgId(bg.id);
                           const currentBg = formData.backgrounds.find(b => b.id === bg.id);
 
-                          // 默认 JSON 模板
-                          const DEFAULT_LAYOUT = {
-                            fields: {
-                              name: { x: 60, y: 280, width: 480, height: 50, borderRadius: 0, objectFit: "cover" },
-                              title: { x: 60, y: 340, width: 480, height: 30, borderRadius: 0, objectFit: "cover" },
-                              phone: { x: 60, y: 450, width: 280, height: 28, borderRadius: 0, objectFit: "cover" },
-                              email: { x: 60, y: 485, width: 400, height: 28, borderRadius: 0, objectFit: "cover" },
-                              address: { x: 60, y: 520, width: 500, height: 28, borderRadius: 0, objectFit: "cover" },
-                              avatar: { x: 430, y: 50, width: 110, height: 110, borderRadius: 999, objectFit: "cover" },
-                              companyLogo: { x: 60, y: 70, width: 160, height: 60, borderRadius: 0, objectFit: "contain" },
-                              companyNameCn: { x: 60, y: 160, width: 400, height: 36, borderRadius: 0, objectFit: "cover" },
-                              companyNameEn: { x: 60, y: 200, width: 400, height: 28, borderRadius: 0, objectFit: "cover" },
-                              sloganCn: { x: 60, y: 360, width: 480, height: 28, borderRadius: 0, objectFit: "cover" },
-                              sloganEn: { x: 60, y: 390, width: 480, height: 28, borderRadius: 0, objectFit: "cover" },
-                              qrCaption: { x: 60, y: 650, width: 200, height: 24, borderRadius: 0, objectFit: "cover" },
-                              qrCenterLogo: { x: 472, y: 572, width: 56, height: 56, borderRadius: 8, objectFit: "contain" }
-                            }
-                          };
+                          // 默认 JSON 模板（来自设计图模板1）
+                          const DEFAULT_LAYOUT = {"version":"1.0","canvas":{"width":1536,"height":1024},"fields":{"avatar":{"type":"image","x":138,"y":130,"width":350,"height":350,"borderRadius":"50%","objectFit":"cover"},"name":{"type":"text","x":540,"y":170,"width":360,"height":80},"title":{"type":"text","x":540,"y":275,"width":520,"height":44},"decorLine":{"type":"shape","x":540,"y":335,"width":52,"height":6,"borderRadius":3},"phoneIcon":{"type":"icon","x":540,"y":367,"width":46,"height":46},"phone":{"type":"text","x":605,"y":375,"width":430,"height":40},"emailIcon":{"type":"icon","x":540,"y":435,"width":46,"height":46},"email":{"type":"text","x":605,"y":445,"width":430,"height":40},"addressIcon":{"type":"icon","x":540,"y":502,"width":46,"height":46},"address":{"type":"text","x":605,"y":510,"width":470,"height":80},"qrFrame":{"type":"shape","x":1096,"y":208,"width":308,"height":368,"borderRadius":18},"qrCode":{"type":"qrcode","x":1120,"y":230,"width":260,"height":260},"qrCenterLogo":{"type":"image","x":1218,"y":335,"width":64,"height":64,"borderRadius":12,"objectFit":"contain"},"qrCaption":{"type":"text","x":1110,"y":530,"width":285,"height":36},"companyLogo":{"type":"image","x":105,"y":700,"width":145,"height":110,"objectFit":"contain"},"companyNameCn":{"type":"text","x":280,"y":710,"width":620,"height":64},"companyNameEn":{"type":"text","x":282,"y":785,"width":620,"height":40},"companyDivider":{"type":"shape","x":948,"y":725,"width":1,"height":82},"sloganCn":{"type":"text","x":1005,"y":740,"width":410,"height":36},"sloganEn":{"type":"text","x":1005,"y":790,"width":430,"height":30}}};
 
-                          const DEFAULT_STYLE = {
-                            styles: {
-                              name: { fontFamily: "sans-serif", fontWeight: "700", fontSize: 42, color: "#ffffff" },
-                              title: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 20, color: "#d4af37" },
-                              phone: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
-                              email: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
-                              address: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
-                              companyNameCn: { fontFamily: "sans-serif", fontWeight: "700", fontSize: 28, color: "#ffffff" },
-                              companyNameEn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
-                              sloganCn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 20, color: "#94a3b8" },
-                              sloganEn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#94a3b8" },
-                              qrCaption: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 14, color: "#94a3b8" },
-                              decorLine: { width: "400px", height: "2px", backgroundColor: "#d4af37" },
-                              phoneIcon: { fontSize: 20, color: "#d4af37" },
-                              emailIcon: { fontSize: 20, color: "#d4af37" },
-                              addressIcon: { fontSize: 20, color: "#d4af37" }
-                            }
-                          };
+                          const DEFAULT_STYLE = {"version":"1.0","styles":{"avatar":{"border":"2px solid #D9B679","boxShadow":"0 8px 24px rgba(0, 0, 0, 0.45)"},"name":{"fontFamily":"Noto Sans SC","fontSize":58,"fontWeight":700,"color":"#F3D6A2","letterSpacing":14,"lineHeight":1.15,"textAlign":"left","textShadow":"0 2px 4px rgba(0, 0, 0, 0.45)"},"title":{"fontFamily":"Noto Sans SC","fontSize":30,"fontWeight":400,"color":"#F5F5F5","letterSpacing":2,"lineHeight":1.25,"textAlign":"left"},"decorLine":{"backgroundColor":"#B51618","boxShadow":"0 0 8px rgba(181, 22, 24, 0.7)"},"phoneIcon":{"backgroundColor":"#A31917","color":"#FFFFFF","borderRadius":"50%","fontSize":22,"boxShadow":"0 3px 8px rgba(0, 0, 0, 0.35)"},"emailIcon":{"backgroundColor":"#A31917","color":"#FFFFFF","borderRadius":"50%","fontSize":22,"boxShadow":"0 3px 8px rgba(0, 0, 0, 0.35)"},"addressIcon":{"backgroundColor":"#A31917","color":"#FFFFFF","borderRadius":"50%","fontSize":22,"boxShadow":"0 3px 8px rgba(0, 0, 0, 0.35)"},"phone":{"fontFamily":"Noto Sans SC","fontSize":26,"fontWeight":400,"color":"#F5F5F5","letterSpacing":1,"lineHeight":1.3,"textAlign":"left"},"email":{"fontFamily":"Noto Sans SC","fontSize":26,"fontWeight":400,"color":"#F5F5F5","letterSpacing":0,"lineHeight":1.3,"textAlign":"left"},"address":{"fontFamily":"Noto Sans SC","fontSize":26,"fontWeight":400,"color":"#F5F5F5","letterSpacing":1,"lineHeight":1.35,"textAlign":"left"},"qrFrame":{"backgroundColor":"rgba(70, 20, 18, 0.62)","border":"2px solid #D7B26F","boxShadow":"0 8px 20px rgba(0, 0, 0, 0.35)"},"qrCenterLogo":{"backgroundColor":"#A31917","border":"6px solid #FFFFFF"},"qrCaption":{"fontFamily":"Noto Sans SC","fontSize":24,"fontWeight":400,"color":"#F6DFB8","letterSpacing":2,"lineHeight":1.25,"textAlign":"center"},"companyLogo":{"filter":"drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45))"},"companyNameCn":{"fontFamily":"Noto Sans SC","fontSize":48,"fontWeight":700,"color":"#E5C99A","letterSpacing":4,"lineHeight":1.15,"textAlign":"left","textShadow":"0 2px 4px rgba(0, 0, 0, 0.45)"},"companyNameEn":{"fontFamily":"Arial, Helvetica, sans-serif","fontSize":28,"fontWeight":400,"color":"#D9C4A2","letterSpacing":0,"lineHeight":1.2,"textAlign":"left"},"companyDivider":{"backgroundColor":"rgba(225, 199, 151, 0.75)"},"sloganCn":{"fontFamily":"Noto Sans SC","fontSize":26,"fontWeight":400,"color":"#E6C58F","letterSpacing":8,"lineHeight":1.25,"textAlign":"left"},"sloganEn":{"fontFamily":"Arial, Helvetica, sans-serif","fontSize":20,"fontWeight":400,"color":"#CFC0AA","letterSpacing":0,"lineHeight":1.25,"textAlign":"left"}}};
 
-                          const DEFAULT_DISPLAY = {
-                            showQrCode: true,
-                            showQrCodeDesc: true,
-                            showCompanyInfo: true,
-                            showEnCompanyName: true,
-                            showSlogan: true
-                          };
+                          const DEFAULT_DISPLAY = {"version":"1.0","display":{"showAvatar":true,"showName":true,"showTitle":true,"showTitleCn":true,"showTitleEn":true,"showDecorLine":true,"showPhone":true,"showPhoneIcon":true,"showEmail":true,"showEmailIcon":true,"showAddress":true,"showAddressIcon":true,"showPostcode":true,"showQrFrame":true,"showQrCode":true,"showQrCenterLogo":true,"showQrCaption":true,"showCompanyLogo":true,"showCompanyNameCn":true,"showCompanyNameEn":true,"showCompanyDivider":true,"showSloganCn":true,"showSloganEn":true}};
+
+                          const TEST_CARD_DATA = {"name":"张浩","titleCn":"市场经理","titleEn":"Market Manager","phone":"+86 138 1234 5678","email":"zhanghao@company.com","address":"台湾世纪大道100号","postcode":"200120","qrCaption":"扫码二维码 · 交换名片","companyNameCn":"上海智联科技有限公司","companyNameEn":"Shanghai Zhilian Technology Co., Ltd.","sloganCn":"连接价值 · 智联未来","sloganEn":"Connecting Value, Linking the Future"};
 
                           const templateMap = {
                             layout_json: DEFAULT_LAYOUT,
@@ -572,13 +535,13 @@ export default function EcardStyles() {
                       const layoutParsed = (() => { try { const v = JSON.parse(jsonConfigs.layoutJson || '{}'); return v.fields || v; } catch { return {}; } })();
                       const layoutMeta = (() => { try { const v = JSON.parse(jsonConfigs.layoutJson || '{}'); return v.canvas || null; } catch { return null; } })();
                       const styleParsed = (() => { try { const v = JSON.parse(jsonConfigs.defaultStyleJson || '{}'); return v.styles || v; } catch { return {}; } })();
-                      const displayParsed = (() => { try { return JSON.parse(jsonConfigs.displayConfigJson || '{}'); } catch { return {}; } })();
+                      const displayParsed = (() => { try { const v = JSON.parse(jsonConfigs.displayConfigJson || '{}'); return v.display || v; } catch { return {}; } })();
                       const showQr = displayParsed.showQrCode !== false;
-                      const showCompany = displayParsed.showCompanyInfo !== false;
-                      const fieldList = Object.keys(layoutParsed).filter(k => k !== 'decorLine' && layoutParsed[k]?.x !== undefined);
+                      const showCompany = displayParsed.showCompanyNameCn !== false;
+                      const fieldList = Object.keys(layoutParsed).filter(k => layoutParsed[k]?.x !== undefined);
                       // 优先使用 layout JSON 中的 canvas 尺寸作为参考坐标系
-                      const refW = layoutMeta?.width || currentBg2?.imageWidth || 600;
-                      const refH = layoutMeta?.height || currentBg2?.imageHeight || 338;
+                      const refW = layoutMeta?.width || currentBg2?.imageWidth || 1536;
+                      const refH = layoutMeta?.height || currentBg2?.imageHeight || 1024;
                       return (
                         <div style={{ marginTop: '24px', padding: '12px', background: '#111827', border: '1px solid #1f2937', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>即時預覽</div>
@@ -592,15 +555,9 @@ export default function EcardStyles() {
                             {fieldList.map(key => {
                               const layout = layoutParsed[key] || {};
                               const style = styleParsed[key] || {};
-                              const testData = {
-                                name: '張大明', title: '技術總監 / CTO',
-                                phone: '0912-345-678', email: 'daming.zhang@example.com',
-                                address: '台北市信義區信義路五段 7 號 101 大樓',
-                                companyNameCn: '雲端通訊科技有限公司', companyNameEn: 'CloudQRTalkie Technology Co., Ltd.',
-                                sloganCn: '讓每一次通話都安全可靠', sloganEn: 'Making Every Call Safe & Reliable',
-                                qrCaption: '掃碼交換名片'
-                              };
-                              const sampleText = testData[key] || key;
+                              const testData = TEST_CARD_DATA;
+                              const keyMap = { name: 'name', title: 'titleCn', phone: 'phone', email: 'email', address: 'address', companyNameCn: 'companyNameCn', companyNameEn: 'companyNameEn', sloganCn: 'sloganCn', sloganEn: 'sloganEn', qrCaption: 'qrCaption' };
+                              const sampleText = testData[keyMap[key]] || key;
                               if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
                               if (key === 'qrCaption' && !showQr) return null;
                               const imgW = refW;
