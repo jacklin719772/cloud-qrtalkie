@@ -61,6 +61,7 @@ export default function EcardStyles() {
   const [jsonError, setJsonError] = useState('');
   const [showHelp, setShowHelp] = useState(false);
   const [activeJsonType, setActiveJsonType] = useState('layout_json');
+  const [previewImgSize, setPreviewImgSize] = useState({ w: 0, h: 0 });
   const [pendingJsonType, setPendingJsonType] = useState(null);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const jsonFileInputRef = useRef(null);
@@ -577,21 +578,28 @@ export default function EcardStyles() {
                       return (
                         <div style={{ marginTop: '24px', padding: '12px', background: '#111827', border: '1px solid #1f2937', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px', fontWeight: 600 }}>即時預覽</div>
-                          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1f2937' }}>
-                            <img src={getFullImageUrl(currentBg2?.url || currentBg2?.imageUrl)} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: previewImgSize.w && previewImgSize.h ? `${previewImgSize.w}/${previewImgSize.h}` : '16/9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #1f2937' }}>
+                            <img
+                              src={getFullImageUrl(currentBg2?.url || currentBg2?.imageUrl)}
+                              alt=""
+                              onLoad={(e) => { setPreviewImgSize({ w: e.target.naturalWidth, h: e.target.naturalHeight }); }}
+                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
                             {fieldList.map(key => {
                               const layout = layoutParsed[key] || {};
                               const style = styleParsed[key] || {};
                               const sampleText = key === 'name' ? '姓名' : key === 'title' ? '職位' : key === 'phone' ? '0912-345-678' : key === 'email' ? 'user@example.com' : key === 'address' ? '台北市' : key === 'companyNameCn' ? '公司名稱' : key === 'companyNameEn' ? 'Company' : key === 'sloganCn' ? '標語' : key === 'sloganEn' ? 'Slogan' : key === 'qrCaption' ? '掃碼' : key;
                               if ((key === 'companyNameCn' || key === 'companyNameEn' || key === 'sloganCn' || key === 'sloganEn') && !showCompany) return null;
                               if (key === 'qrCaption' && !showQr) return null;
+                              const imgW = previewImgSize.w || currentBg2?.imageWidth || 600;
+                              const imgH = previewImgSize.h || currentBg2?.imageHeight || 338;
                               return (
                                 <div key={key} style={{
                                   position: 'absolute',
-                                  left: `${(layout.x || 0) * 100 / (currentBg2?.imageWidth || 800)}%`,
-                                  top: `${(layout.y || 0) * 100 / (currentBg2?.imageHeight || 450)}%`,
-                                  width: layout.width ? `${layout.width * 100 / (currentBg2?.imageWidth || 800)}%` : 'auto',
-                                  height: layout.height ? `${layout.height * 100 / (currentBg2?.imageHeight || 450)}%` : 'auto',
+                                  left: `${(layout.x || 0) * 100 / imgW}%`,
+                                  top: `${(layout.y || 0) * 100 / imgH}%`,
+                                  width: layout.width ? `${layout.width * 100 / imgW}%` : 'auto',
+                                  height: layout.height ? `${layout.height * 100 / imgH}%` : 'auto',
                                   fontSize: style.fontSize ? `${Math.max(6, (style.fontSize || 14) * 0.35)}px` : '7px',
                                   fontWeight: style.fontWeight || '400',
                                   color: style.color || '#ffffff',
