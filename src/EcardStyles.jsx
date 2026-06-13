@@ -410,28 +410,82 @@ export default function EcardStyles() {
                           e.stopPropagation();
                           setCurrentCodeBgId(bg.id);
                           const currentBg = formData.backgrounds.find(b => b.id === bg.id);
-                          const safeStringify = (data) => {
-                            if (!data) return '{}';
-                            if (typeof data === 'object' && Object.keys(data).length === 0) return '{}';
-                            try { return JSON.stringify(data, null, 2); } catch { return '{}'; }
+
+                          // 默认 JSON 模板
+                          const DEFAULT_LAYOUT = {
+                            fields: {
+                              name: { x: 60, y: 280, width: 480, height: 50, borderRadius: 0, objectFit: "cover" },
+                              title: { x: 60, y: 340, width: 480, height: 30, borderRadius: 0, objectFit: "cover" },
+                              phone: { x: 60, y: 450, width: 280, height: 28, borderRadius: 0, objectFit: "cover" },
+                              email: { x: 60, y: 485, width: 400, height: 28, borderRadius: 0, objectFit: "cover" },
+                              address: { x: 60, y: 520, width: 500, height: 28, borderRadius: 0, objectFit: "cover" },
+                              avatar: { x: 430, y: 50, width: 110, height: 110, borderRadius: 999, objectFit: "cover" },
+                              companyLogo: { x: 60, y: 70, width: 160, height: 60, borderRadius: 0, objectFit: "contain" },
+                              companyNameCn: { x: 60, y: 160, width: 400, height: 36, borderRadius: 0, objectFit: "cover" },
+                              companyNameEn: { x: 60, y: 200, width: 400, height: 28, borderRadius: 0, objectFit: "cover" },
+                              sloganCn: { x: 60, y: 360, width: 480, height: 28, borderRadius: 0, objectFit: "cover" },
+                              sloganEn: { x: 60, y: 390, width: 480, height: 28, borderRadius: 0, objectFit: "cover" },
+                              qrCaption: { x: 60, y: 650, width: 200, height: 24, borderRadius: 0, objectFit: "cover" },
+                              qrCenterLogo: { x: 472, y: 572, width: 56, height: 56, borderRadius: 8, objectFit: "contain" }
+                            }
+                          };
+
+                          const DEFAULT_STYLE = {
+                            styles: {
+                              name: { fontFamily: "sans-serif", fontWeight: "700", fontSize: 42, color: "#ffffff" },
+                              title: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 20, color: "#d4af37" },
+                              phone: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
+                              email: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
+                              address: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
+                              companyNameCn: { fontFamily: "sans-serif", fontWeight: "700", fontSize: 28, color: "#ffffff" },
+                              companyNameEn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#cbd5e1" },
+                              sloganCn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 20, color: "#94a3b8" },
+                              sloganEn: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 18, color: "#94a3b8" },
+                              qrCaption: { fontFamily: "sans-serif", fontWeight: "400", fontSize: 14, color: "#94a3b8" },
+                              decorLine: { width: "400px", height: "2px", backgroundColor: "#d4af37" },
+                              phoneIcon: { fontSize: 20, color: "#d4af37" },
+                              emailIcon: { fontSize: 20, color: "#d4af37" },
+                              addressIcon: { fontSize: 20, color: "#d4af37" }
+                            }
+                          };
+
+                          const DEFAULT_DISPLAY = {
+                            showQrCode: true,
+                            showQrCodeDesc: true,
+                            showCompanyInfo: true,
+                            showEnCompanyName: true,
+                            showSlogan: true
+                          };
+
+                          const templateMap = {
+                            layout_json: DEFAULT_LAYOUT,
+                            default_style_json: DEFAULT_STYLE,
+                            display_config_json: DEFAULT_DISPLAY
+                          };
+
+                          const safeStringify = (data, type) => {
+                            if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                              try { return JSON.stringify(data, null, 2); } catch { return JSON.stringify(templateMap[type], null, 2); }
+                            }
+                            return JSON.stringify(templateMap[type] || {}, null, 2);
                           };
                           setJsonConfigs({
-                            layoutJson: safeStringify(currentBg?.layoutJson),
-                            defaultStyleJson: safeStringify(currentBg?.defaultStyleJson),
-                            displayConfigJson: safeStringify(currentBg?.displayConfigJson)
+                            layoutJson: safeStringify(currentBg?.layoutJson, 'layout_json'),
+                            defaultStyleJson: safeStringify(currentBg?.defaultStyleJson, 'default_style_json'),
+                            displayConfigJson: safeStringify(currentBg?.displayConfigJson, 'display_config_json')
                           });
                           setOriginalJsonConfigs({
-                            layoutJson: safeStringify(currentBg?.layoutJson),
-                            defaultStyleJson: safeStringify(currentBg?.defaultStyleJson),
-                            displayConfigJson: safeStringify(currentBg?.displayConfigJson)
+                            layoutJson: safeStringify(currentBg?.layoutJson, 'layout_json'),
+                            defaultStyleJson: safeStringify(currentBg?.defaultStyleJson, 'default_style_json'),
+                            displayConfigJson: safeStringify(currentBg?.displayConfigJson, 'display_config_json')
                           });
                           setActiveJsonType('layout_json');
                           setJsonError('');
                           setCodeModalOpen(true);
-                        }} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex' }} title="配置 JSON">
-                          <FileCode size={14} color="#3b82f6" />
+                        }} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex' }} title="配置 JSON">
+                          <FileCode size={14} color="#60a5fa" />
                         </button>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); removeBackground(bg.id); }} style={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex' }} title="刪除"><Trash2 size={14} color="#ef4444" /></button>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); removeBackground(bg.id); }} style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: '4px', padding: '4px', cursor: 'pointer', display: 'flex' }} title="刪除"><Trash2 size={14} color="#ef4444" /></button>
                       </div>
                       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '12px 10px', background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
                         <input
