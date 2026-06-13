@@ -192,7 +192,7 @@ export default function EcardStyles() {
       });
       setViewMode('edit');
     } catch (err) {
-      alert(err.message || '獲取詳情失败');
+      alert(err.message || '獲取詳情失敗');
     }
   };
 
@@ -249,7 +249,7 @@ export default function EcardStyles() {
       await apiClient.delete(`/admin/ecard-styles/${id}`);
       loadStyles();
     } catch (err) {
-      alert(err.message || '刪除失败');
+      alert(err.message || '刪除失敗');
     }
   };
 
@@ -264,7 +264,7 @@ export default function EcardStyles() {
       await apiClient.put(`/admin/ecard-styles/${item.id}/status`, { status: newStatus });
       loadStyles();
     } catch (err) {
-      alert(err.message || `${actionText}失败`);
+      alert(err.message || `${actionText}失敗`);
       setIsLoading(false);
     }
   };
@@ -312,7 +312,7 @@ export default function EcardStyles() {
       setViewMode('list');
       loadStyles();
     } catch (err) {
-      alert(err.message || '儲存失败');
+      alert(err.message || '儲存失敗');
     } finally {
       setIsSaving(false);
     }
@@ -553,7 +553,7 @@ export default function EcardStyles() {
                           if (error instanceof SyntaxError) {
                             setJsonError('JSON 格式错误：' + error.message);
                           } else {
-                            setJsonError('JSON 文件讀取失败');
+                            setJsonError('JSON 文件讀取失敗');
                           }
                         } finally {
                           e.target.value = '';
@@ -649,7 +649,7 @@ export default function EcardStyles() {
                       if (e instanceof SyntaxError) {
                         setJsonError('JSON 格式错误：' + e.message);
                       } else {
-                        setJsonError('儲存配置失败：' + (e.response?.data?.message || e.message || '請稍後重試'));
+                        setJsonError('儲存配置失敗：' + (e.response?.data?.message || e.message || '請稍後重試'));
                       }
                     }
                   }} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>儲存配置</button>
@@ -692,7 +692,7 @@ export default function EcardStyles() {
                           if (e instanceof SyntaxError) { 
                             setJsonError('JSON 格式错误：' + e.message); 
                           } else { 
-                            setJsonError('儲存配置失败：' + (e.response?.data?.message || e.message || '請稍後重試')); 
+                            setJsonError('儲存配置失敗：' + (e.response?.data?.message || e.message || '請稍後重試')); 
                           }
                           setShowUnsavedConfirm(false);
                           setPendingJsonType(null);

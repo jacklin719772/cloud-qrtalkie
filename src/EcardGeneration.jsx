@@ -170,7 +170,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     email: 'zhanghao@company.com',
     zipCode: '200120',
     address: '上海市浦东新区世纪大道100号',
-    qrDesc: '扫碼二维碼 · 交换名片',
+    qrDesc: '掃碼二維碼 · 交換名片',
     companyZh: '上海智联科技有限公司',
     companyEn: 'Shanghai Zhilian Technology Co., Ltd.',
     sloganZh: '连接价值 · 智联未来',
@@ -476,7 +476,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           phone: meData.admin?.phoneNumber || '',
           email: (typeof meData.admin?.email === 'string' && meData.admin.email.includes('@')) ? meData.admin.email : '',
           zipCode: '', address: '',
-          qrDesc: '扫碼二维碼 · 交换名片',
+          qrDesc: '掃碼二維碼 · 交換名片',
           companyZh: meData.tenant?.companyName || '',
           companyEn: '', sloganZh: '', sloganEn: '',
         });
@@ -772,7 +772,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     }
     const nextStatus = item.enabled ? 'disabled' : 'active';
     const actionText = item.enabled ? '停用' : '啟用';
-    if (!window.confirm(`確定要${actionText}该帳號的電子名片吗？`)) return;
+    if (!window.confirm(`確定要${actionText}该帳號的電子名片嗎？`)) return;
 
     try {
       await apiClient.put(`/tenant/ecard-accounts/${item.id}/ecard/status`, { status: nextStatus });
@@ -813,7 +813,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       return;
     }
 
-    if (!window.confirm(`確定要${actionLabel}选中的 ${actualTargets.length} 個電子名片吗？`)) return;
+    if (!window.confirm(`確定要${actionLabel}选中的 ${actualTargets.length} 個電子名片嗎？`)) return;
     try {
       // 改為串行請求，防止 MySQL 并发更新时产生死锁（Deadlock）
       for (const acc of actualTargets) {
@@ -840,7 +840,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       email: 'zhanghao@company.com',
       zipCode: '200120',
       address: '上海市浦东新区世纪大道100号',
-      qrDesc: '扫碼二维碼 · 交换名片',
+      qrDesc: '掃碼二維碼 · 交換名片',
       companyZh: '上海智联科技有限公司',
       companyEn: 'Shanghai Zhilian Technology Co., Ltd.',
       sloganZh: '连接价值 · 智联未来',
@@ -1290,7 +1290,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                     <button type="button" onClick={generateRandomSlug} title="重新產生"><RefreshCw size={14} /></button>
                   </div>
                 </label>
-                <label><span>通话 URL (用於二维碼)</span>
+                <label><span>通话 URL (用於二維碼)</span>
                   <div className="ecard-input-with-icon">
                     <input value={callUrl} readOnly />
                     <button type="button" onClick={() => navigator.clipboard.writeText(callUrl)} title="複製"><Copy size={14} /></button>
@@ -1343,7 +1343,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <label><span>郵箱</span><input value={cardData.email} onChange={handleCardDataChange('email')} /></label>
               <label><span>邮编</span><input value={cardData.zipCode} onChange={handleCardDataChange('zipCode')} /></label>
               <label><span>地址</span><input value={cardData.address} onChange={handleCardDataChange('address')} /></label>
-              {localDisplayConfig.showQrCodeDesc && <label><span>二维碼说明文字</span><input value={cardData.qrDesc} onChange={handleCardDataChange('qrDesc')} /></label>}
+              {localDisplayConfig.showQrCodeDesc && <label><span>二維碼说明文字</span><input value={cardData.qrDesc} onChange={handleCardDataChange('qrDesc')} /></label>}
                 </div>
               </div>
             </div>
@@ -1426,7 +1426,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showQrCodeDesc')}>
                       <span className="ecard-static-switch" style={{ background: localDisplayConfig.showQrCodeDesc ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showQrCodeDesc ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
-                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>二维碼说明</span>
+                      <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>二維碼说明</span>
                     </div>
                     {showCompanyInfo && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showSlogan')}>
@@ -1445,7 +1445,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                       { label: '手机号', key: 'phone', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
                       { label: '郵箱', key: 'email', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
                       { label: '地址與邮编', key: 'address', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
-                      { label: '二维碼说明', key: 'qrCaption', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 10, show: showQrCode && localDisplayConfig.showQrCodeDesc },
+                      { label: '二維碼说明', key: 'qrCaption', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 10, show: showQrCode && localDisplayConfig.showQrCodeDesc },
                       { label: '公司中文名稱', key: 'companyNameCn', defaultColor: '#ffffff', defaultWeight: '700', defaultSize: 14, show: showCompanyInfo },
                       { label: '公司英文名稱', key: 'companyNameEn', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 11, show: showCompanyInfo && localDisplayConfig.showEnCompanyName },
                       { label: '中文 Slogan', key: 'sloganCn', defaultColor: '#d4af37', defaultWeight: '700', defaultSize: 12, show: showCompanyInfo && localDisplayConfig.showSlogan },
@@ -1543,7 +1543,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 </div>
                 <div className="ecard-preview-tags">
                   <button type="button" className="ecard-preview-tag" onClick={() => setShowQrCode(!showQrCode)}>
-                    {showQrCode ? '移除二维碼' : '新增二维碼'}
+                    {showQrCode ? '移除二維碼' : '新增二維碼'}
                   </button>
                   <button type="button" className="ecard-preview-tag" style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }} onClick={handlePreviewAndTest}>預覽&测试</button>
                 </div>
@@ -1639,7 +1639,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <button className="ecard-template-preview-close" onClick={() => setShowTestPreviewModal(false)}>×</button>
               <img src={testPreviewImageUrl} alt="Ecard Preview & Test" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
               <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
-                請扫描名片中的二维碼测试通话功能是否正常
+                請扫描名片中的二維碼测试通话功能是否正常
               </div>
             </div>
           </div>,
@@ -2206,7 +2206,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <button className="ecard-template-preview-close" onClick={() => setPreviewImageModalOpen(false)}>×</button>
               <img src={previewImageUrl} alt="Ecard Preview" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
               <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
-                請扫描名片中的二维碼测试通话功能是否正常
+                請扫描名片中的二維碼测试通话功能是否正常
               </div>
             </div>
           </div>,
