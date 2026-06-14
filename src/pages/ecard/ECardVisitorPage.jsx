@@ -864,7 +864,6 @@ export default function ECardVisitorPage({ slug }) {
                       aria-label="retry-registration"
                       className="ecard-refreshButton"
                       style={{
-                        ...retryButtonDesktopStyle,
                         opacity: registrationStatus === 'registering' || isReRegistering ? 0.45 : registrationStatus === 'registered' ? 0.9 : 1,
                         cursor: registrationStatus === 'registering' || isReRegistering ? 'not-allowed' : 'pointer',
                       }}
