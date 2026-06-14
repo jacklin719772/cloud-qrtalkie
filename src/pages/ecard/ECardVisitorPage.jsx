@@ -835,6 +835,7 @@ export default function ECardVisitorPage({ slug }) {
                 {ecardData.sipRegistrationStatus === 'online' ? 'SIP 在線' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
               </div>
             </div>
+            </div>
 
             {registrationStatus !== 'registered' && (
               <div className="ecard-registrationMessage" style={{
