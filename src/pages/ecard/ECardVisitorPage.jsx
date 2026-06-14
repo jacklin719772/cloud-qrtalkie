@@ -108,6 +108,7 @@ export default function ECardVisitorPage({ slug }) {
   const activeCallStartedRef = useRef(false);
   const iceTimeoutRef = useRef(null);
   const autoRegisterStartedRef = useRef(false);
+  const isIntentionalHangupRef = useRef(false);
   const isPageUnmountingRef = useRef(false);
   const registeringRef = useRef(false);
 
@@ -207,6 +208,7 @@ export default function ECardVisitorPage({ slug }) {
       currentSessionRef.current = null;
     }
     if (uaRef.current) {
+      isIntentionalHangupRef.current = true;
       try { uaRef.current.stop(); } catch {}
       uaRef.current = null;
     }
@@ -458,8 +460,14 @@ export default function ECardVisitorPage({ slug }) {
           webAccount: callSession.webAccount || '',
           webrtcDomain: callSession.webrtcDomain || '',
         });
-        setRegistrationStatus('failed');
-        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        if (isIntentionalHangupRef.current) {
+          isIntentionalHangupRef.current = false;
+          setRegistrationStatus('disconnected');
+          setRegistrationMessage('');
+        } else {
+          setRegistrationStatus('failed');
+          setRegistrationMessage('帳號忙，請稍後刷新重試');
+        }
         cleanupRegistrationUa();
       });
 
@@ -794,8 +802,8 @@ export default function ECardVisitorPage({ slug }) {
                   </div>
                   <div className="ecard-statusActions">
                     <div
-                      className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}
-                      title={registrationStatus === 'registered' ? '已注册' : '未注册 / 失败'}
+                      className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}
+                      title={registrationStatus === 'registered' ? '已注册' : registrationStatus === 'disconnected' ? '重新注册中' : '未注册 / 失败'}
                     />
                     <button
                       type="button"
@@ -814,9 +822,8 @@ export default function ECardVisitorPage({ slug }) {
                     </button>
                   </div>
                 </div>
-                <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}>
-                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : '註冊失敗'}
-                </div>
+                <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}>
+                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
               </div>
 
               <div className="ecard-statusCard ecard-statusCard-inline" style={{ flex: 1 }}>
