@@ -93,6 +93,7 @@ export default function ECardVisitorPage({ slug }) {
   const [isReRegistering, setIsReRegistering] = useState(false);
   const [isSipRefreshing, setIsSipRefreshing] = useState(false);
   const [idleSeconds, setIdleSeconds] = useState(0);
+  const [sipOfflineHint, setSipOfflineHint] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -628,6 +629,10 @@ export default function ECardVisitorPage({ slug }) {
     if (registrationStatus !== 'registered') return;
     if (isPreparingCall || callBusy) return;
     if (!callSessionRef.current || !uaRef.current) return;
+    if (ecardData.sipRegistrationStatus !== 'online') {
+      setSipOfflineHint(true);
+      return;
+    }
 
     setCallBusy(true);
     setIsVideoCall(Boolean(video && callSessionRef.current?.enableVideo));
@@ -893,6 +898,7 @@ export default function ECardVisitorPage({ slug }) {
                       onClick={async () => {
                         if (isSipRefreshing) return;
                         setIsSipRefreshing(true);
+                        setSipOfflineHint(false);
                         try {
                           const res = await apiClient.get(`/ecard/public/${slug}`);
                           if (res?.data?.sipRegistrationStatus) {
@@ -930,6 +936,19 @@ export default function ECardVisitorPage({ slug }) {
                 {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動註銷 Web 帳號，請點擊刷新按鈕重新註冊'
                   : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已註銷，請點擊刷新按鈕重新註冊'
                   : registrationMessage}
+              </div>
+            )}
+
+            {sipOfflineHint && registrationStatus === 'registered' && (
+              <div className="ecard-registrationMessage" style={{
+                marginTop: 2,
+                marginBottom: 4,
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: '#fca5a5',
+                fontWeight: 600,
+              }}>
+                SIP 帳號處於離線狀態，無法發起呼叫，請點擊 SIP 刷新按鈕查看最新狀態
               </div>
             )}
 
