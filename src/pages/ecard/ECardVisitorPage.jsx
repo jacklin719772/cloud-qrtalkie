@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw, Info } from 'lucide-react';
 import apiClient from '../../apiClient';
 import CallModal from './CallModal';
 import ConfirmModal from './ConfirmModal';
@@ -762,7 +762,7 @@ export default function ECardVisitorPage({ slug }) {
             title="Debug"
             aria-label="debug-entry"
           >
-            <span aria-hidden="true">◌</span>
+            <Info size={18} />
           </button>
         </div>
 
