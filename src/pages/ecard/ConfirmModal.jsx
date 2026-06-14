@@ -48,7 +48,7 @@ function ConfirmModal({
     <div style={overlayStyle} onClick={onClose}>
       <div style={panelStyle} onClick={(e) => e.stopPropagation()}>
         <div style={headerStyle}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{title}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#f5efe3' }}>{title}</div>
           <button type="button" onClick={onClose} style={iconButtonStyle} aria-label="close">
             <X size={18} />
           </button>
@@ -65,7 +65,7 @@ function ConfirmModal({
             color: palette.badgeColor,
           }}>
             <div style={{ flexShrink: 0 }}>{palette.icon}</div>
-            <div style={{ color: '#0f172a', lineHeight: 1.6 }}>{message}</div>
+            <div style={{ color: '#f5efe3', lineHeight: 1.6 }}>{message}</div>
           </div>
         </div>
         <div style={footerStyle}>
