@@ -91,6 +91,7 @@ export default function ECardVisitorPage({ slug }) {
   const [isPreparingCall, setIsPreparingCall] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
   const [isReRegistering, setIsReRegistering] = useState(false);
+  const [isSipRefreshing, setIsSipRefreshing] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -829,7 +830,29 @@ export default function ECardVisitorPage({ slug }) {
                       className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
                       title={ecardData.sipRegistrationStatus === 'online' ? '在線' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
                     />
-                </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (isSipRefreshing) return;
+                        setIsSipRefreshing(true);
+                        try {
+                          const res = await apiClient.get(`/ecard/public/${slug}`);
+                          if (res?.data?.sipRegistrationStatus) {
+                            setEcardData(prev => ({ ...prev, sipRegistrationStatus: res.data.sipRegistrationStatus }));
+                          }
+                        } catch {} finally { setIsSipRefreshing(false); }
+                      }}
+                      disabled={isSipRefreshing}
+                      title="重新獲取 SIP 狀態"
+                      className="ecard-refreshButton"
+                      style={{
+                        opacity: isSipRefreshing ? 0.45 : 0.9,
+                        cursor: isSipRefreshing ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <RefreshCw size={15} className={isSipRefreshing ? 'spin' : ''} />
+                    </button>
+                  </div>
               </div>
               <div className={`ecard-statusPill ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}>
                 {ecardData.sipRegistrationStatus === 'online' ? 'SIP 在線' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
