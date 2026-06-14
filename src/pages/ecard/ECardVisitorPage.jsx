@@ -825,6 +825,7 @@ export default function ECardVisitorPage({ slug }) {
                 <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}>
                   {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
               </div>
+              </div>
 
               <div className="ecard-statusCard ecard-statusCard-inline" style={{ flex: 1 }}>
                 <div className="ecard-statusHead">
