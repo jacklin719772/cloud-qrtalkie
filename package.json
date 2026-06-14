@@ -20,6 +20,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "html2canvas": "^1.4.1",
+    "jssip": "^3.10.1",
     "lucide-react": "^0.561.0",
     "mariadb": "^3.5.2",
     "maxmind": "^5.0.6",

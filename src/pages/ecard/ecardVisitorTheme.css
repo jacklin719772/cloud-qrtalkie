@@ -1,0 +1,601 @@
+.ecard-visitor-page {
+  min-height: 100vh;
+  padding: 16px 20px;
+  background:
+    radial-gradient(circle at top left, rgba(212, 175, 55, 0.10), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(125, 16, 16, 0.18), transparent 26%),
+    linear-gradient(180deg, #08090b 0%, #0b0d10 36%, #0d1116 100%);
+  color: #f5efe3;
+}
+
+.ecard-brandTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ecard-brandMark {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  background:
+    linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(125, 16, 16, 0.20)),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.ecard-brandName {
+  color: #f1d37a;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ecard-brandSub {
+  margin-top: 4px;
+  color: #8b8f96;
+  font-size: 12px;
+  line-height: 1.5;
+  display: none;
+}
+
+.ecard-shell {
+  width: min(780px, calc(100vw - 28px));
+  max-width: 780px;
+  margin: 0 auto;
+  border-radius: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, rgba(18,22,28,0.96), rgba(12,15,19,0.98));
+  overflow: hidden;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212,175,55,0.35) rgba(10,12,15,0.8);
+  scrollbar-gutter: stable;
+}
+
+.ecard-visitor-page::-webkit-scrollbar,
+.ecard-shell::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ecard-visitor-page::-webkit-scrollbar-track,
+.ecard-shell::-webkit-scrollbar-track {
+  background: rgba(10,12,15,0.85);
+  border-radius: 999px;
+}
+
+.ecard-visitor-page::-webkit-scrollbar-thumb,
+.ecard-shell::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(212,175,55,0.45), rgba(125,16,16,0.45));
+  border-radius: 999px;
+  border: 2px solid rgba(10,12,15,0.85);
+}
+
+.ecard-visitor-page::-webkit-scrollbar-thumb:hover,
+.ecard-shell::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(241,211,122,0.65), rgba(179,28,28,0.58));
+}
+
+.ecard-shellHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+}
+
+.ecard-shellBody {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  padding: 7px 8px 8px;
+}
+
+.ecard-leftPanel,
+.ecard-rightPanel {
+  border-radius: 22px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background: linear-gradient(180deg, rgba(24,29,36,0.92), rgba(12,15,19,0.94));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
+.ecard-leftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+}
+
+.ecard-profileTop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ecard-avatarWrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #11151b;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.22);
+}
+
+.ecard-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ecard-avatarRing {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(241, 211, 122, 0.14);
+  pointer-events: none;
+}
+
+.ecard-profileMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+}
+
+.ecard-name {
+  margin: 0 !important;
+  color: #fff7df !important;
+  font-size: clamp(22px, 1.8vw, 30px) !important;
+  line-height: 1.08 !important;
+  font-weight: 900 !important;
+}
+
+.ecard-duty {
+  color: #f1d37a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.ecard-company {
+  width: fit-content;
+  margin: 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: rgba(212, 175, 55, 0.06);
+  color: #f5efe3;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.ecard-company b {
+  color: #f1d37a;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.ecard-contactGrid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 0 !important;
+}
+
+.ecard-contactItem {
+  min-height: 42px;
+  padding: 5px 7px;
+  border-radius: 11px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255,255,255,0.03);
+}
+
+.ecard-contactLabel {
+  margin-bottom: 1px;
+  color: #8b8f96;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ecard-contactValue {
+  color: #f5efe3;
+  font-size: 9px;
+  line-height: 1.18;
+  word-break: break-word;
+}
+
+.ecard-sipTarget {
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #fff7df;
+}
+
+.ecard-registrationMessage {
+  padding: 3px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background: rgba(255,255,255,0.02);
+}
+
+.ecard-callButtons {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 0 !important;
+}
+
+.ecard-callButton {
+  min-height: 44px;
+  border-radius: 12px !important;
+  border: 1px solid rgba(212, 175, 55, 0.24) !important;
+  box-shadow: 0 10px 20px rgba(125, 16, 16, 0.14);
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+
+.ecard-statusCard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ecard-statusCard-inline {
+  padding: 6px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255,255,255,0.02);
+}
+
+.ecard-statusHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ecard-statusTitle {
+  color: #fff7df;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.ecard-statusSub {
+  display: none;
+}
+
+.ecard-statusActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ecard-statusDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.ecard-statusDot.is-ok {
+  background: #27c267;
+  box-shadow: 0 0 0 4px rgba(39, 194, 103, 0.10);
+}
+
+.ecard-statusDot.is-bad {
+  background: #ef5350;
+  box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.10);
+}
+
+.ecard-refreshButton,
+.ecard-debugButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ecard-refreshButton {
+  border: 1px solid rgba(212, 175, 55, 0.22) !important;
+  background: rgba(125, 16, 16, 0.14) !important;
+  color: #f1d37a !important;
+}
+
+.ecard-debugButton {
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: rgba(255,255,255,0.03);
+  color: #f1d37a;
+}
+
+.ecard-statusPill {
+  width: fit-content;
+  padding: 3px 6px;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ecard-statusPill.is-ok {
+  color: #d6ffe7;
+  border: 1px solid rgba(39, 194, 103, 0.22);
+  background: rgba(39, 194, 103, 0.12);
+}
+
+.ecard-statusPill.is-bad {
+  color: #ffdada;
+  border: 1px solid rgba(239, 83, 80, 0.22);
+  background: rgba(239, 83, 80, 0.12);
+}
+
+.ecard-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ecard-legend span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255,255,255,0.02);
+  color: #8b8f96;
+  font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .ecard-shell {
+    max-width: 960px;
+  }
+
+  .ecard-shellBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .ecard-visitor-page {
+    padding: 12px 12px 24px;
+  }
+
+  .ecard-brandTitle {
+    align-items: flex-start;
+  }
+
+  .ecard-shell {
+    width: calc(100% - 0px);
+    border-radius: 22px;
+    max-height: none;
+  }
+
+  .ecard-shellHeader,
+  .ecard-shellBody {
+    padding: 14px;
+  }
+
+  .ecard-shellBody {
+    gap: 12px;
+    padding-top: 12px;
+  }
+
+  .ecard-profileTop {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .ecard-avatarWrap {
+    width: 128px;
+    height: 128px;
+    border-radius: 24px;
+  }
+
+  .ecard-contactGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .ecard-callButtons {
+    grid-template-columns: 1fr;
+  }
+
+  .ecard-statusHead {
+    align-items: flex-start;
+  }
+
+  .ecard-statusActions {
+    gap: 6px;
+  }
+
+}
+
+@media (max-width: 420px) {
+  .ecard-brandName {
+    font-size: 15px;
+  }
+
+  .ecard-name {
+    font-size: 28px !important;
+  }
+
+  .ecard-contactValue {
+    font-size: 13px;
+  }
+
+  .ecard-shellHeader,
+  .ecard-shellBody {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}
+
+@media (min-width: 761px) {
+  .ecard-shell {
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+
+  .ecard-leftPanel {
+    gap: 6px;
+  }
+
+  .ecard-profileTop {
+    align-items: flex-start;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .ecard-visitor-page {
+    padding: 6px 12px;
+  }
+
+  .ecard-shell {
+    width: min(760px, calc(100vw - 20px));
+    max-width: 760px;
+    max-height: calc(100vh - 12px);
+  }
+
+  .ecard-shellHeader {
+    min-height: 30px;
+    padding: 6px 8px;
+  }
+
+  .ecard-brandMark {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+  }
+
+  .ecard-brandName {
+    font-size: 12px;
+  }
+
+  .ecard-brandSub {
+    display: none;
+  }
+
+  .ecard-shellBody {
+    gap: 4px;
+    padding: 6px 8px 8px;
+  }
+
+  .ecard-leftPanel {
+    border-radius: 14px;
+  }
+
+  .ecard-leftPanel {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .ecard-profileTop {
+    gap: 6px;
+  }
+
+  .ecard-avatarWrap {
+    width: 92px;
+    height: 92px;
+    border-radius: 16px;
+  }
+
+  .ecard-name {
+    font-size: 26px !important;
+    line-height: 1.08 !important;
+  }
+
+  .ecard-duty {
+    font-size: 10px;
+  }
+
+  .ecard-company {
+    font-size: 8px;
+    padding: 2px 6px;
+  }
+
+  .ecard-statusCard-inline {
+    padding: 5px 7px;
+  }
+
+  .ecard-statusCard {
+    gap: 4px;
+  }
+
+  .ecard-statusTitle {
+    font-size: 9px;
+  }
+
+  .ecard-statusPill {
+    padding: 2px 5px;
+  }
+
+  .ecard-contactGrid {
+    gap: 4px;
+  }
+
+  .ecard-contactItem {
+    min-height: 40px;
+    padding: 4px 6px;
+  }
+
+  .ecard-contactLabel {
+    margin-bottom: 1px;
+    font-size: 7px;
+  }
+
+  .ecard-contactValue {
+    font-size: 9px;
+    line-height: 1.16;
+  }
+
+  .ecard-callButtons {
+    gap: 5px;
+  }
+
+  .ecard-callButton {
+    min-height: 42px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+}
+
+.ecard-visitor-page::-webkit-scrollbar,
+.ecard-shell::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ecard-visitor-page::-webkit-scrollbar-track,
+.ecard-shell::-webkit-scrollbar-track {
+  background: rgba(10,12,15,0.85);
+  border-radius: 999px;
+}
+
+.ecard-visitor-page::-webkit-scrollbar-thumb,
+.ecard-shell::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(212,175,55,0.45), rgba(125,16,16,0.45));
+  border-radius: 999px;
+  border: 2px solid rgba(10,12,15,0.85);
+}
+
+.ecard-visitor-page::-webkit-scrollbar-thumb:hover,
+.ecard-shell::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(241,211,122,0.65), rgba(179,28,28,0.58));
+}

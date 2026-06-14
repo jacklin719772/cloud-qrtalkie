@@ -4,7 +4,7 @@ import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
@@ -121,6 +121,16 @@ const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
 const callCenterImagesDir = path.join(projectRoot, "assets/call-center-images");
 const ASTERISK_PATHS = (() => { try { return getAsteriskPathConfig(); } catch { return {}; } })();
 const WEBRTC_RUNTIME = (() => { try { return getWebrtcRuntimeConfig(); } catch { return {}; } })();
+const ECARD_CALL_SESSION_TTL_MS = 120000;
+
+function safeSecretSummary(value) {
+  const text = String(value || "").trim();
+  return {
+    present: Boolean(text),
+    length: text.length,
+    hashPrefix: text ? createHash("sha256").update(text).digest("hex").slice(0, 12) : "",
+  };
+}
 
 app.use(express.json({ limit: "12mb" }));
 app.use((request, response, next) => {
@@ -10151,7 +10161,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
   try {
     connection = await pool.getConnection();
     const [ec] = await connection.query(
-      `SELECT ec.ecard_data_json, ec.thumbnail_url, ec.avatar_url, ec.access_slug,
+      `SELECT ec.ecard_data_json, ec.card_data_json, ec.thumbnail_url, ec.avatar_url, ec.access_slug,
               DATE_FORMAT(COALESCE(ec.valid_from, su.activated_at), '%Y-%m-%d') AS valid_from,
               DATE_FORMAT(COALESCE(ec.valid_to, su.service_expires_at), '%Y-%m-%d') AS valid_to,
               ec.status
@@ -10162,7 +10172,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
     );
     if (!ec) return response.status(404).json({ message: "SIP 账号不存在" });
     return response.json({
-      ecardDataJson: ec.ecard_data_json ? JSON.parse(ec.ecard_data_json) : null,
+      ecardDataJson: parseEcardPublicJson(ec.ecard_data_json || ec.card_data_json),
       thumbnailUrl: ec.thumbnail_url || null,
       avatarUrl: ec.avatar_url || null,
       accessSlug: ec.access_slug || null,
@@ -10215,6 +10225,67 @@ function pickFirstString(...values) {
   return "";
 }
 
+function getNestedObjectValue(source, path) {
+  if (!source || typeof source !== "object" || !Array.isArray(path) || path.length === 0) return undefined;
+  let current = source;
+  for (const key of path) {
+    if (!current || typeof current !== "object" || !(key in current)) {
+      return undefined;
+    }
+    current = current[key];
+  }
+  return current;
+}
+
+function resolveEcardAddressFromJson(ecardDataJson, sipUser) {
+  const cardData = ecardDataJson && typeof ecardDataJson.cardData === "object" && ecardDataJson.cardData !== null
+    ? ecardDataJson.cardData
+    : {};
+  const profile = ecardDataJson && typeof ecardDataJson.profile === "object" && ecardDataJson.profile !== null
+    ? ecardDataJson.profile
+    : {};
+  const data = ecardDataJson && typeof ecardDataJson.data === "object" && ecardDataJson.data !== null
+    ? ecardDataJson.data
+    : {};
+  const fields = ecardDataJson && typeof ecardDataJson.fields === "object" && ecardDataJson.fields !== null
+    ? ecardDataJson.fields
+    : {};
+  const contact = ecardDataJson && typeof ecardDataJson.contact === "object" && ecardDataJson.contact !== null
+    ? ecardDataJson.contact
+    : {};
+  return pickFirstString(
+    cardData.address,
+    cardData.addressText,
+    cardData.addr,
+    cardData.location,
+    cardData.companyAddress,
+    cardData.contactAddress,
+    profile.address,
+    profile.addressText,
+    profile.addr,
+    profile.location,
+    profile.companyAddress,
+    profile.contactAddress,
+    data.address,
+    data.addressText,
+    data.addr,
+    data.location,
+    data.companyAddress,
+    data.contactAddress,
+    getNestedObjectValue(fields, ["address", "value"]),
+    getNestedObjectValue(fields, ["address", "text"]),
+    fields.address,
+    contact.address,
+    ecardDataJson.address,
+    ecardDataJson.addressText,
+    ecardDataJson.addr,
+    ecardDataJson.location,
+    ecardDataJson.companyAddress,
+    ecardDataJson.contactAddress,
+    sipUser?.address,
+  );
+}
+
 function resolveEcardProfileFromJson(ecardDataJson, sipUser) {
   const cardData = ecardDataJson && typeof ecardDataJson.cardData === "object" && ecardDataJson.cardData !== null
     ? ecardDataJson.cardData
@@ -10224,6 +10295,7 @@ function resolveEcardProfileFromJson(ecardDataJson, sipUser) {
     duty: pickFirstString(cardData.titleZh, cardData.titleCn, cardData.title, cardData.titleEn, ecardDataJson.duty),
     email: pickFirstString(cardData.email, ecardDataJson.email, sipUser?.email),
     phone: pickFirstString(cardData.phone, cardData.phoneNumber, ecardDataJson.phone, ecardDataJson.phoneNumber, sipUser?.phone_number),
+    address: resolveEcardAddressFromJson(ecardDataJson, sipUser),
     avatarUrl: pickFirstString(ecardDataJson.avatarDataUrl, ecardDataJson.avatarUrl, sipUser?.avatar_url),
   };
 }
@@ -10241,6 +10313,7 @@ async function loadEcardPublicViewData(connection, slug) {
        ec.valid_from,
        ec.valid_to,
        ec.ecard_data_json,
+       ec.card_data_json,
        su.username AS sip_account,
        su.display_name AS sip_display_name,
        su.email AS sip_email,
@@ -10265,7 +10338,7 @@ async function loadEcardPublicViewData(connection, slug) {
     return { error: { status: 404, code: "ECARD_SIP_ACCOUNT_NOT_FOUND", message: "對應的 SIP 帳號不存在" } };
   }
 
-  const ecardDataJson = parseEcardPublicJson(ecardRow.ecard_data_json);
+  const ecardDataJson = parseEcardPublicJson(ecardRow.ecard_data_json || ecardRow.card_data_json);
   const today = new Date().toISOString().slice(0, 10);
   const validFrom = safeEcardDateOnly(ecardRow.valid_from);
   const validTo = safeEcardDateOnly(ecardRow.valid_to);
@@ -10361,7 +10434,6 @@ async function loadEcardPublicViewData(connection, slug) {
   };
 }
 
-const ECARD_CALL_SESSION_TTL_MS = 120 * 1000;
 const ECARD_CALL_SESSION_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const ECARD_CALL_SESSION_RATE_LIMIT_MAX = 10;
 const ecardCallSessionStore = new Map();
@@ -10606,7 +10678,15 @@ app.post("/api/ecard/public/:slug/call-session", async (request, response) => {
       expiresAtMs: now + ECARD_CALL_SESSION_TTL_MS,
     });
 
-    console.log(`[EcardCallSession] slug=${slug} sessionId=${sessionId} success=true`);
+    const sharedPasswordSummary = safeSecretSummary(sharedPassword);
+    console.log(
+      `[EcardCallSession] slug=${slug} sessionId=${sessionId} success=true ` +
+      `webAccount=${String(context.row.web_account || "")} ` +
+      `webrtcDomain=${webrtcDomainValue} wssUrl=${wssUrl} targetSipUri=${targetSipUri} ` +
+      `sharedPasswordPresent=${sharedPasswordSummary.present} ` +
+      `sharedPasswordLength=${sharedPasswordSummary.length} ` +
+      `sharedPasswordHashPrefix=${sharedPasswordSummary.hashPrefix}`,
+    );
 
     return response.json({
       success: true,

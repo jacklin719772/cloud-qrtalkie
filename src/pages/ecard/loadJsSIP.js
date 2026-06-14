@@ -1,27 +1,34 @@
+import JsSIP from 'jssip';
+
 let jssipLoaderPromise = null;
 
 export function ensureJsSIPLoaded() {
-  if (window.JsSIP) return Promise.resolve(window.JsSIP);
+  console.log('[ECardVisitor] JsSIP load start', {
+    windowJsSIPExists: Boolean(window.JsSIP),
+    hasPendingPromise: Boolean(jssipLoaderPromise),
+  });
+
+  if (window.JsSIP) {
+    console.log('[ECardVisitor] JsSIP load success', { source: 'window.JsSIP' });
+    return Promise.resolve(window.JsSIP);
+  }
+
   if (jssipLoaderPromise) return jssipLoaderPromise;
 
-  jssipLoaderPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-qrtalkie-jssip="true"]');
-    if (existing) {
-      existing.addEventListener('load', () => resolve(window.JsSIP));
-      existing.addEventListener('error', () => reject(new Error('JsSIP 載入失敗')));
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/jssip@3.10.1/dist/jssip.min.js';
-    script.async = true;
-    script.defer = true;
-    script.dataset.qrtalkieJssip = 'true';
-    script.onload = () => resolve(window.JsSIP);
-    script.onerror = () => reject(new Error('JsSIP 載入失敗'));
-    document.head.appendChild(script);
+  jssipLoaderPromise = Promise.resolve(JsSIP).then((moduleJsSIP) => {
+    window.JsSIP = moduleJsSIP;
+    console.log('[ECardVisitor] JsSIP load success', {
+      source: 'local-dependency',
+      windowJsSIPExists: Boolean(window.JsSIP),
+    });
+    return moduleJsSIP;
+  }).catch((error) => {
+    console.log('[ECardVisitor] JsSIP load error', {
+      name: error?.name || '',
+      message: error?.message || '',
+    });
+    throw error;
   });
 
   return jssipLoaderPromise;
 }
-

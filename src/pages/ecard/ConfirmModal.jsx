@@ -95,8 +95,8 @@ const overlayStyle = {
   position: 'fixed',
   inset: 0,
   zIndex: 200,
-  background: 'rgba(15, 23, 42, 0.55)',
-  backdropFilter: 'blur(6px)',
+  background: 'rgba(0, 0, 0, 0.64)',
+  backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -105,10 +105,11 @@ const overlayStyle = {
 
 const panelStyle = {
   width: 'min(440px, 100%)',
-  background: '#ffffff',
-  borderRadius: 18,
-  boxShadow: '0 24px 80px rgba(15, 23, 42, 0.24)',
+  background: 'linear-gradient(180deg, rgba(24,29,36,0.98), rgba(12,15,19,0.98))',
+  borderRadius: 22,
+  boxShadow: '0 24px 80px rgba(0, 0, 0, 0.42)',
   overflow: 'hidden',
+  border: '1px solid rgba(212, 175, 55, 0.18)',
 };
 
 const headerStyle = {
@@ -116,7 +117,7 @@ const headerStyle = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '16px 20px',
-  borderBottom: '1px solid #e2e8f0',
+  borderBottom: '1px solid rgba(212, 175, 55, 0.14)',
 };
 
 const bodyStyle = {
@@ -128,16 +129,16 @@ const footerStyle = {
   justifyContent: 'flex-end',
   gap: 12,
   padding: '14px 20px 18px',
-  borderTop: '1px solid #e2e8f0',
-  background: '#f8fafc',
+  borderTop: '1px solid rgba(212, 175, 55, 0.14)',
+  background: 'rgba(255,255,255,0.03)',
 };
 
 const secondaryButtonStyle = {
   padding: '10px 16px',
   borderRadius: 10,
-  border: '1px solid #cbd5e1',
-  background: '#ffffff',
-  color: '#334155',
+  border: '1px solid rgba(212, 175, 55, 0.18)',
+  background: '#11151b',
+  color: '#f5efe3',
   fontSize: 14,
   fontWeight: 600,
   cursor: 'pointer',
@@ -156,14 +157,13 @@ const iconButtonStyle = {
   width: 34,
   height: 34,
   borderRadius: 10,
-  border: '1px solid #e2e8f0',
-  background: '#ffffff',
+  border: '1px solid rgba(212, 175, 55, 0.18)',
+  background: '#11151b',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#475569',
+  color: '#f1d37a',
   cursor: 'pointer',
 };
 
 export default ConfirmModal;
-

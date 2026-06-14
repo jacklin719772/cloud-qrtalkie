@@ -101,8 +101,8 @@ const overlayStyle = {
   position: 'fixed',
   inset: 0,
   zIndex: 180,
-  background: 'rgba(0,0,0,0.52)',
-  backdropFilter: 'blur(4px)',
+  background: 'rgba(0,0,0,0.64)',
+  backdropFilter: 'blur(8px)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -111,12 +111,13 @@ const overlayStyle = {
 
 const panelStyle = {
   width: 'min(420px, 100%)',
-  borderRadius: 20,
+  borderRadius: 24,
   overflow: 'hidden',
-  background: '#ffffff',
-  boxShadow: '0 28px 80px rgba(15, 23, 42, 0.26)',
+  background: 'linear-gradient(180deg, rgba(24,29,36,0.98), rgba(12,15,19,0.98))',
+  boxShadow: '0 28px 80px rgba(0, 0, 0, 0.46)',
   display: 'flex',
   flexDirection: 'column',
+  border: '1px solid rgba(212, 175, 55, 0.18)',
 };
 
 const topBodyStyle = {
@@ -132,9 +133,9 @@ const avatarWrapStyle = {
   height: 80,
   borderRadius: '50%',
   overflow: 'hidden',
-  border: '4px solid #f8fafc',
-  boxShadow: '0 2px 8px rgba(15, 23, 42, 0.12)',
-  background: '#f8fafc',
+  border: '4px solid rgba(241, 211, 122, 0.14)',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.18)',
+  background: '#11151b',
   marginBottom: 14,
 };
 
@@ -148,7 +149,7 @@ const nameStyle = {
   fontSize: 20,
   lineHeight: 1.3,
   fontWeight: 800,
-  color: '#0f172a',
+  color: '#fff7df',
 };
 
 const statusStyle = {
@@ -157,13 +158,13 @@ const statusStyle = {
   fontWeight: 800,
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
-  color: '#002B5B',
+  color: '#f1d37a',
 };
 
 const videoStageStyle = {
   position: 'relative',
   width: '100%',
-  background: '#111827',
+  background: '#0a0c10',
   aspectRatio: '16 / 9',
   overflow: 'hidden',
 };
@@ -184,7 +185,7 @@ const selfPreviewStyle = {
   borderRadius: 14,
   overflow: 'hidden',
   background: '#000000',
-  border: '1px solid rgba(255,255,255,0.2)',
+  border: '1px solid rgba(212, 175, 55, 0.18)',
   boxShadow: '0 12px 26px rgba(0,0,0,0.28)',
 };
 
@@ -199,7 +200,7 @@ const selfPreviewPlaceholderStyle = {
 
 const footerStyle = {
   padding: '22px 24px',
-  background: '#f8fafc',
+  background: 'rgba(255,255,255,0.03)',
   display: 'flex',
   justifyContent: 'center',
   gap: 32,
@@ -212,17 +213,16 @@ const roundButtonStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  boxShadow: '0 6px 18px rgba(15, 23, 42, 0.14)',
+  boxShadow: '0 6px 18px rgba(0, 0, 0, 0.24)',
   cursor: 'pointer',
   transition: 'transform 0.12s ease',
 };
 
 const hangupButtonStyle = {
   ...roundButtonStyle,
-  background: '#ef4444',
-  border: 'none',
+  background: 'linear-gradient(180deg, #7d1010, #4c0a0a)',
+  border: '1px solid rgba(212, 175, 55, 0.22)',
   color: '#ffffff',
 };
 
 export default CallModal;
-

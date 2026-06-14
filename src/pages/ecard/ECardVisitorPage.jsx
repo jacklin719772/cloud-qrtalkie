@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle } from 'lucide-react';
+import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw } from 'lucide-react';
 import apiClient from '../../apiClient';
 import CallModal from './CallModal';
 import ConfirmModal from './ConfirmModal';
 import { ensureJsSIPLoaded } from './loadJsSIP';
-
-const JS_SIP_CALL_CDN_NOTE = 'JsSIP 由前端在用戶點擊呼叫時動態載入。';
+import './ecardVisitorTheme.css';
 
 function isValidSlug(slug) {
   return typeof slug === 'string' && /^[A-Za-z0-9_-]+$/.test(String(slug).trim());
@@ -29,6 +28,7 @@ function mapPublicDataToCard(data) {
     name: data?.profile?.name || '',
     duty: data?.profile?.duty || '',
     email: data?.profile?.email || '',
+    address: data?.profile?.address || data?.profile?.contactAddress || data?.profile?.addressText || '',
     avatar: data?.profile?.avatarUrl || data?.media?.avatarUrl || '',
     phone: data?.profile?.phone || '',
     sipAccount: data?.callConfigSummary?.sipAccount || '',
@@ -49,6 +49,29 @@ function mapPublicDataToCard(data) {
   };
 }
 
+function safeSecretSummary(value) {
+  const text = String(value || '').trim();
+  let hashPrefix = '';
+  if (text) {
+    try {
+      const bytes = new TextEncoder().encode(text);
+      let hash = 2166136261;
+      for (const byte of bytes) {
+        hash ^= byte;
+        hash = Math.imul(hash, 16777619);
+      }
+      hashPrefix = (`00000000${(hash >>> 0).toString(16)}`).slice(-8);
+    } catch {
+      hashPrefix = '';
+    }
+  }
+  return {
+    present: Boolean(text),
+    length: text.length,
+    hashPrefix,
+  };
+}
+
 export default function ECardVisitorPage({ slug }) {
   const [loading, setLoading] = useState(true);
   const [errorInfo, setErrorInfo] = useState(null);
@@ -56,7 +79,8 @@ export default function ECardVisitorPage({ slug }) {
   const [publicData, setPublicData] = useState(null);
 
   const [callStatus, setCallStatus] = useState('');
-  const [registrationStatus, setRegistrationStatus] = useState('unregistered');
+  const [registrationStatus, setRegistrationStatus] = useState('registering');
+  const [registrationMessage, setRegistrationMessage] = useState('帳號註冊中...');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(false);
@@ -64,6 +88,7 @@ export default function ECardVisitorPage({ slug }) {
   const [isSystemReady, setIsSystemReady] = useState(false);
   const [isPreparingCall, setIsPreparingCall] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
+  const [isReRegistering, setIsReRegistering] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -79,11 +104,16 @@ export default function ECardVisitorPage({ slug }) {
   const callTypeRef = useRef('voice');
   const activeCallStartedRef = useRef(false);
   const iceTimeoutRef = useRef(null);
+  const autoRegisterStartedRef = useRef(false);
+  const isPageUnmountingRef = useRef(false);
+  const registeringRef = useRef(false);
 
   const pageImage = useMemo(() => {
     if (!ecardData?.avatar) return '';
     return toAbsoluteAssetUrl(ecardData.avatar);
   }, [ecardData?.avatar]);
+
+  const companyName = ecardData?.tenantName || 'QRTalkie';
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +123,16 @@ export default function ECardVisitorPage({ slug }) {
       setErrorInfo(null);
       setEcardData(null);
       setPublicData(null);
+      callSessionRef.current = null;
+      iceServersRef.current = [];
+      currentSessionRef.current = null;
+      activeCallStartedRef.current = false;
+      setRegistrationStatus('registering');
+      setRegistrationMessage('帳號註冊中...');
+      autoRegisterStartedRef.current = false;
+      registeringRef.current = false;
+      cleanupCallResources();
+      cleanupRegistrationUa();
       try {
         const res = await apiClient.get(`/ecard/public/${slug}`);
         if (cancelled) return;
@@ -128,7 +168,8 @@ export default function ECardVisitorPage({ slug }) {
 
   useEffect(() => {
     return () => {
-      cleanupCallResources();
+      isPageUnmountingRef.current = true;
+      cleanupPageResources();
     };
   }, []);
 
@@ -150,9 +191,10 @@ export default function ECardVisitorPage({ slug }) {
     candidateBufferRef.current = [];
     setIsPreparingCall(false);
     setIsConfirmOpen(false);
+    setCallBusy(false);
   }
 
-  function cleanupActiveCall() {
+  function cleanupCurrentCall() {
     if (iceTimeoutRef.current) {
       clearTimeout(iceTimeoutRef.current);
       iceTimeoutRef.current = null;
@@ -178,9 +220,30 @@ export default function ECardVisitorPage({ slug }) {
     setIsCallModalOpen(false);
     setIsLocalVideoActive(false);
     setCallStatus('');
-    setRegistrationStatus('unregistered');
     activeCallStartedRef.current = false;
     candidateBufferRef.current = [];
+    setCallBusy(false);
+  }
+
+  function cleanupRegistrationUa() {
+    if (uaRef.current) {
+      try { uaRef.current.stop(); } catch {}
+      uaRef.current = null;
+    }
+    registeringRef.current = false;
+  }
+
+  function cleanupPageResources() {
+    cleanupCurrentCall();
+    cleanupCallResources();
+    cleanupRegistrationUa();
+  }
+
+  function markRegistrationFailed() {
+    if (isPageUnmountingRef.current) return;
+    setRegistrationStatus('failed');
+    setRegistrationMessage('帳號忙，請稍後刷新重試');
+    cleanupRegistrationUa();
   }
 
   function injectSdpPatch(uaInstance, serverIp) {
@@ -269,7 +332,7 @@ export default function ECardVisitorPage({ slug }) {
     setIsLocalVideoActive(next);
   }
 
-  async function prepareCallSession(video) {
+  async function prepareCallSession() {
     const res = await apiClient.post(`/ecard/public/${slug}/call-session`);
     if (!res?.success) {
       throw new Error(res?.message || '呼叫配置建立失敗，請稍後再試');
@@ -278,10 +341,188 @@ export default function ECardVisitorPage({ slug }) {
     if (!data?.webAccount || !data?.credential?.value || !data?.wssUrl || !data?.webrtcDomain || !data?.targetSipUri) {
       throw new Error('呼叫配置建立失敗，請稍後再試');
     }
+    const credentialSummary = safeSecretSummary(data?.credential?.value);
+    console.log('[ECardVisitor] call-session summary', {
+      success: true,
+      webAccount: data?.webAccount || '',
+      webrtcDomain: data?.webrtcDomain || '',
+      wssUrl: data?.wssUrl || '',
+      targetSipUri: data?.targetSipUri || '',
+      credentialPresent: credentialSummary.present,
+      credentialLength: credentialSummary.length,
+      credentialHashPrefix: credentialSummary.hashPrefix,
+      iceServersCount: Array.isArray(data?.iceServers) ? data.iceServers.length : 0,
+    });
     callSessionRef.current = data;
     iceServersRef.current = Array.isArray(data.iceServers) ? data.iceServers : [];
-    setIsVideoCall(Boolean(video && data.enableVideo));
     return data;
+  }
+
+  async function startRegistration({ forceRefresh = false } = {}) {
+    if (registeringRef.current) {
+      console.log('[ECardVisitor] auto register step: skipped', {
+        reason: 'registering in progress',
+      });
+      return;
+    }
+    if (uaRef.current && !forceRefresh) {
+      console.log('[ECardVisitor] auto register step: skipped', {
+        reason: 'ua already exists',
+      });
+      return;
+    }
+    if (forceRefresh) {
+      cleanupCurrentCall();
+      cleanupRegistrationUa();
+      callSessionRef.current = null;
+      iceServersRef.current = [];
+      currentSessionRef.current = null;
+      activeCallStartedRef.current = false;
+      autoRegisterStartedRef.current = false;
+    } else if (autoRegisterStartedRef.current) {
+      console.log('[ECardVisitor] auto register step: skipped', {
+        reason: 'already started',
+      });
+      return;
+    }
+    autoRegisterStartedRef.current = true;
+    registeringRef.current = true;
+    if (forceRefresh) setIsReRegistering(true);
+    setRegistrationStatus('registering');
+    setRegistrationMessage('帳號註冊中...');
+
+    try {
+      console.log('[ECardVisitor] auto register step: call-session ok');
+      const callSession = await prepareCallSession();
+      if (isPageUnmountingRef.current) return;
+
+      console.log('[ECardVisitor] auto register step: before load JsSIP');
+      const JsSIP = await ensureJsSIPLoaded();
+      if (!JsSIP) {
+        throw new Error('JsSIP 載入失敗');
+      }
+      console.log('[ECardVisitor] auto register step: after load JsSIP');
+
+      const passwordSummary = safeSecretSummary(callSession?.credential?.value);
+      console.log('[ECardVisitor] auto register step: before create UA', {
+        uri: `sip:${callSession.webAccount}@${callSession.webrtcDomain}`,
+        authorizationUser: callSession.webAccount || '',
+        socketsCount: 1,
+        wssUrl: callSession.wssUrl || '',
+        passwordPresent: passwordSummary.present,
+        passwordLength: passwordSummary.length,
+        credentialHashPrefix: passwordSummary.hashPrefix,
+      });
+      const socket = new JsSIP.WebSocketInterface(callSession.wssUrl);
+      const uaInstance = new JsSIP.UA({
+        sockets: [socket],
+        uri: `sip:${callSession.webAccount}@${callSession.webrtcDomain}`,
+        password: callSession.credential.value,
+        register: true,
+      });
+      console.log('[ECardVisitor] auto register step: UA create');
+
+      uaRef.current = uaInstance;
+      activeCallStartedRef.current = false;
+
+      uaInstance.on('connected', () => {
+        if (isPageUnmountingRef.current) return;
+        console.log('[ECardVisitor] JsSIP connected', {
+          webAccount: callSession.webAccount || '',
+          webrtcDomain: callSession.webrtcDomain || '',
+          wssUrl: callSession.wssUrl || '',
+        });
+        if (registrationStatus !== 'registered') {
+          setRegistrationStatus('registering');
+          setRegistrationMessage('帳號註冊中...');
+        }
+      });
+
+      uaInstance.on('registered', () => {
+        if (isPageUnmountingRef.current) return;
+        console.log('[ECardVisitor] JsSIP registered', {
+          webAccount: callSession.webAccount || '',
+          webrtcDomain: callSession.webrtcDomain || '',
+        });
+        setRegistrationStatus('registered');
+        setRegistrationMessage('');
+        injectSdpPatch(uaInstance, callSession.sipServerPublicIp);
+      });
+
+      uaInstance.on('unregistered', () => {
+        if (isPageUnmountingRef.current) return;
+        console.log('[ECardVisitor] JsSIP unregistered', {
+          webAccount: callSession.webAccount || '',
+          webrtcDomain: callSession.webrtcDomain || '',
+        });
+        setRegistrationStatus('failed');
+        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        cleanupRegistrationUa();
+      });
+
+      uaInstance.on('registrationFailed', (event) => {
+        if (isPageUnmountingRef.current) return;
+        console.log('[ECardVisitor] JsSIP registrationFailed', {
+          webAccount: callSession.webAccount || '',
+          webrtcDomain: callSession.webrtcDomain || '',
+          cause: event?.cause || '',
+          statusCode: event?.response?.status_code || '',
+          reasonPhrase: event?.response?.reason_phrase || '',
+        });
+        setRegistrationStatus('failed');
+        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        cleanupRegistrationUa();
+      });
+
+      uaInstance.on('disconnected', () => {
+        if (isPageUnmountingRef.current) return;
+        console.log('[ECardVisitor] JsSIP disconnected', {
+          webAccount: callSession.webAccount || '',
+          webrtcDomain: callSession.webrtcDomain || '',
+        });
+        setRegistrationStatus('failed');
+        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        cleanupRegistrationUa();
+      });
+
+      console.log('[ECardVisitor] auto register step: before ua.start');
+      uaInstance.start();
+      console.log('[ECardVisitor] auto register step: ua.start called');
+    } catch (err) {
+      if (isPageUnmountingRef.current) return;
+      console.log('[ECardVisitor] auto register catch', {
+        name: err?.name || '',
+        message: err?.message || '',
+        stack: String(err?.stack || '')
+          .split('\n')
+          .slice(0, 4)
+          .join(' | '),
+      });
+      markRegistrationFailed();
+    } finally {
+      registeringRef.current = false;
+      setIsReRegistering(false);
+    }
+  }
+
+  async function handleRetryRegister() {
+    console.log('[ECardVisitor] manual retry register clicked', {
+      currentStatus: registrationStatus,
+    });
+    await startRegistration({ forceRefresh: true });
+  }
+
+  function handleDebugEntry() {
+    console.log('[ECardVisitor] debug entry clicked', {
+      slug,
+      hasCard: Boolean(ecardData),
+      registrationStatus,
+      callCapabilities: {
+        voice: Boolean(publicData?.callCapabilities?.voice),
+        video: Boolean(publicData?.callCapabilities?.video),
+        webrtc: Boolean(publicData?.callCapabilities?.webrtc),
+      },
+    });
   }
 
   async function prepareLocalMediaAndIce() {
@@ -328,13 +569,14 @@ export default function ECardVisitorPage({ slug }) {
     if (!publicData?.callCapabilities?.webrtc) return;
     if (video && !publicData?.callCapabilities?.video) return;
     if (!video && !publicData?.callCapabilities?.voice) return;
+    if (registrationStatus !== 'registered') return;
     if (isPreparingCall || callBusy) return;
+    if (!callSessionRef.current || !uaRef.current) return;
 
     setCallBusy(true);
-    setIsVideoCall(Boolean(video));
+    setIsVideoCall(Boolean(video && callSessionRef.current?.enableVideo));
     setCallStatus('準備中...');
     try {
-      await prepareCallSession(video);
       await prepareLocalMediaAndIce();
       setIsConfirmOpen(true);
     } catch (err) {
@@ -351,7 +593,8 @@ export default function ECardVisitorPage({ slug }) {
 
   async function handleConfirmCall() {
     const callSession = callSessionRef.current;
-    if (!callSession) {
+    const uaInstance = uaRef.current;
+    if (!callSession || !uaInstance || registrationStatus !== 'registered') {
       setErrorInfo({ code: 'ECARD_CALL_SESSION_FAILED', message: '呼叫配置建立失敗，請稍後再試' });
       return;
     }
@@ -360,24 +603,6 @@ export default function ECardVisitorPage({ slug }) {
     setIsCallModalOpen(true);
     setCallStatus('呼叫中...');
     callStartTimeRef.current = Date.now();
-
-    const JsSIP = await ensureJsSIPLoaded();
-    if (!JsSIP) {
-      setErrorInfo({ code: 'ECARD_CALL_SESSION_FAILED', message: '呼叫配置建立失敗，請稍後再試' });
-      handleHangup();
-      return;
-    }
-
-    const socket = new JsSIP.WebSocketInterface(callSession.wssUrl);
-    const uaInstance = new JsSIP.UA({
-      sockets: [socket],
-      uri: `sip:${callSession.webAccount}@${callSession.webrtcDomain}`,
-      password: callSession.credential.value,
-      register: true,
-    });
-
-    uaRef.current = uaInstance;
-    activeCallStartedRef.current = false;
 
     const targetUri = callSession.targetSipUri;
     const options = {
@@ -446,34 +671,28 @@ export default function ECardVisitorPage({ slug }) {
       },
     };
 
-    uaInstance.on('registered', () => {
-      setRegistrationStatus('registered');
-      injectSdpPatch(uaInstance, callSession.sipServerPublicIp);
-      if (!activeCallStartedRef.current) {
-        activeCallStartedRef.current = true;
-        try {
-          currentSessionRef.current = uaInstance.call(targetUri, options);
-        } catch {
-          handleHangup();
-        }
+    if (!activeCallStartedRef.current) {
+      activeCallStartedRef.current = true;
+      try {
+        currentSessionRef.current = uaInstance.call(targetUri, options);
+      } catch {
+        handleHangup();
       }
-    });
-
-    uaInstance.on('unregistered', () => {
-      setRegistrationStatus('unregistered');
-    });
-    uaInstance.on('registrationFailed', () => {
-      setRegistrationStatus('unregistered');
-      handleHangup();
-    });
-
-    uaInstance.start();
+    }
   }
 
   const publicStatus = publicData?.publicStatus || {};
   const canVoice = Boolean(publicData?.callCapabilities?.voice && publicData?.callCapabilities?.webrtc);
   const canVideo = Boolean(publicData?.callCapabilities?.video && publicData?.callCapabilities?.webrtc);
   const displayAvatar = pageImage || '';
+
+  useEffect(() => {
+    if (loading || errorInfo || !ecardData || !publicData) return;
+    if (!publicStatus.enabled) return;
+    if (autoRegisterStartedRef.current || uaRef.current || registrationStatus === 'registered') return;
+    startRegistration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, errorInfo, ecardData, publicData, slug, publicStatus.enabled, registrationStatus]);
 
   if (loading) {
     return (
@@ -501,7 +720,7 @@ export default function ECardVisitorPage({ slug }) {
 
   if (!publicStatus.enabled) {
     return (
-      <div style={errorPageStyle}>
+      <div className="ecard-visitor-page" style={errorPageStyle}>
         <div style={errorCardStyle}>
           <div style={errorIconWrapStyle}>
             <AlertTriangle size={34} />
@@ -518,84 +737,154 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   return (
-    <div style={pageStyle}>
-      <div style={shellStyle}>
-        <div style={leftPanelStyle}>
-          <h1 style={nameStyle}>{ecardData.name}</h1>
-
-          <div style={infoBlockStyle}>
-            <div style={infoRowStyle}>
-              <UserRound size={18} color="#475569" />
-              <span style={infoLabelStyle}>職務：</span>
-              <span style={infoValueStyle}>{ecardData.duty || '—'}</span>
+    <div className="ecard-visitor-page" style={pageStyle}>
+      <div className="ecard-shell">
+        <div className="ecard-shellHeader">
+          <div className="ecard-brandTitle">
+            <div className="ecard-brandMark" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 5.5H18M4 11H18M4 16.5H12" stroke="#F1D37A" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div>
+              <div className="ecard-brandName">QRTalkie Ecard</div>
+              <div className="ecard-brandSub">Secure visitor page · voice / video calling enabled</div>
             </div>
           </div>
 
-          <div style={mobileAvatarWrapStyle}>
-            <div style={mobileAvatarOuterStyle}>
-              <img
-                src={displayAvatar}
-                alt={ecardData.name}
-                style={mobileAvatarStyle}
-                onError={(e) => { e.currentTarget.src = fallbackAvatar; }}
-              />
-              <div style={{ ...statusDotStyle, background: registrationStatus === 'registered' ? '#22c55e' : '#ef4444' }} />
-            </div>
-          </div>
-
-          <div style={infoBlockStyle}>
-            <div style={infoRowStyle}>
-              <Phone size={18} color="#475569" />
-              <span style={contactTextStyle}>{`${ecardData.sipAccount || '—'}@${ecardData.sipAccountInfo?.domain || ''}`}</span>
-            </div>
-            <div style={infoRowStyle}>
-              <Mail size={18} color="#475569" />
-              <span style={contactTextStyle}>{ecardData.email || '—'}</span>
-            </div>
-          </div>
-
-          <div style={buttonGroupStyle}>
-            <button
-              type="button"
-              onClick={() => handleCallClick(false)}
-              disabled={!canVoice || callBusy}
-              style={{
-                ...callButtonStyle,
-                background: canVoice && !callBusy ? '#000000' : '#d1d5db',
-                color: canVoice && !callBusy ? '#ffffff' : '#6b7280',
-                cursor: canVoice && !callBusy ? 'pointer' : 'not-allowed',
-              }}
-            >
-              <Headphones size={18} style={{ marginRight: 8 }} />
-              語音呼叫
-            </button>
-            <button
-              type="button"
-              onClick={() => handleCallClick(true)}
-              disabled={!canVideo || callBusy}
-              style={{
-                ...callButtonStyle,
-                background: canVideo && !callBusy ? '#000000' : '#d1d5db',
-                color: canVideo && !callBusy ? '#ffffff' : '#6b7280',
-                cursor: canVideo && !callBusy ? 'pointer' : 'not-allowed',
-              }}
-            >
-              <Video size={18} style={{ marginRight: 8 }} />
-              視頻呼叫
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleDebugEntry}
+            className="ecard-debugButton"
+            title="Debug"
+            aria-label="debug-entry"
+          >
+            <span aria-hidden="true">◌</span>
+          </button>
         </div>
 
-        <div style={rightPanelStyle}>
-          <div style={desktopAvatarOuterStyle}>
-            <img
-              src={displayAvatar}
-              alt={ecardData.name}
-              style={desktopAvatarStyle}
-              onError={(e) => { e.currentTarget.src = fallbackAvatar; }}
-            />
-            <div style={{ ...statusDotStyle, top: 16, right: 16, background: registrationStatus === 'registered' ? '#22c55e' : '#ef4444' }} />
+        <div className="ecard-shellBody">
+          <div className="ecard-leftPanel">
+            <div className="ecard-profileTop">
+              <div className="ecard-avatarWrap">
+                <img
+                  src={displayAvatar}
+                  alt={ecardData.name}
+                  className="ecard-avatar"
+                  onError={(e) => { e.currentTarget.src = fallbackAvatar; }}
+                />
+                <div className="ecard-avatarRing" />
+              </div>
+              <div className="ecard-profileMain">
+                <h1 className="ecard-name" style={nameStyle}>{ecardData.name}</h1>
+                <div className="ecard-duty">{ecardData.duty || '—'}</div>
+                <div className="ecard-company"><b>{companyName}</b></div>
+              </div>
+            </div>
+
+            <div className="ecard-statusCard ecard-statusCard-inline">
+              <div className="ecard-statusHead">
+                <div>
+                  <div className="ecard-statusTitle">Web 账号状态</div>
+                  <div className="ecard-statusSub">已注册后可进行语音 / 视频呼叫</div>
+                </div>
+                <div className="ecard-statusActions">
+                  <div
+                    className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}
+                    title={registrationStatus === 'registered' ? '已注册' : '未注册 / 失败'}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRetryRegister}
+                    disabled={registrationStatus === 'registering' || isReRegistering}
+                    title={registrationStatus === 'registered' ? '重新註冊' : registrationStatus === 'registering' ? '正在註冊...' : '重新嘗試註冊'}
+                    aria-label="retry-registration"
+                    className="ecard-refreshButton"
+                    style={{
+                      ...retryButtonDesktopStyle,
+                      opacity: registrationStatus === 'registering' || isReRegistering ? 0.45 : registrationStatus === 'registered' ? 0.9 : 1,
+                      cursor: registrationStatus === 'registering' || isReRegistering ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <RefreshCw size={15} className={registrationStatus === 'registering' || isReRegistering ? 'spin' : ''} />
+                  </button>
+                </div>
+              </div>
+              <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}>
+                {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : '註冊失敗'}
+              </div>
+            </div>
+
+            {registrationStatus !== 'registered' && (
+              <div className="ecard-registrationMessage" style={{
+                marginTop: 2,
+                marginBottom: 4,
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: registrationStatus === 'failed' ? '#fca5a5' : '#d6c59c',
+                fontWeight: 600,
+              }}>
+                {registrationMessage}
+              </div>
+            )}
+
+            <div className="ecard-contactGrid" style={infoBlockStyle}>
+              <div className="ecard-contactItem">
+                <div className="ecard-contactLabel">手機</div>
+                <div className="ecard-contactValue">{ecardData.phone || '—'}</div>
+              </div>
+              <div className="ecard-contactItem">
+                <div className="ecard-contactLabel">郵箱</div>
+                <div className="ecard-contactValue">{ecardData.email || '—'}</div>
+              </div>
+              <div className="ecard-contactItem">
+                <div className="ecard-contactLabel">地址</div>
+                <div className="ecard-contactValue">{ecardData.address || '未填寫'}</div>
+              </div>
+              <div className="ecard-contactItem">
+                <div className="ecard-contactLabel">SIP 目標</div>
+                <div className="ecard-contactValue ecard-sipTarget">{ecardData.sipAccount || '—'}</div>
+              </div>
+            </div>
+
+            <div className="ecard-callButtons" style={buttonGroupStyle}>
+              <button
+                type="button"
+                onClick={() => handleCallClick(false)}
+                disabled={!canVoice || callBusy || registrationStatus !== 'registered'}
+                className="ecard-callButton ecard-callButton-voice"
+                style={{
+                  ...callButtonStyle,
+                  background: canVoice && !callBusy && registrationStatus === 'registered'
+                    ? 'linear-gradient(180deg, #7d1010 0%, #4c0a0a 100%)'
+                    : 'linear-gradient(180deg, #343941 0%, #23272f 100%)',
+                  color: canVoice && !callBusy && registrationStatus === 'registered' ? '#fff4dd' : '#8a93a3',
+                  cursor: canVoice && !callBusy && registrationStatus === 'registered' ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <Headphones size={18} style={{ marginRight: 8 }} />
+                語音呼叫
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCallClick(true)}
+                disabled={!canVideo || callBusy || registrationStatus !== 'registered'}
+                className="ecard-callButton ecard-callButton-video"
+                style={{
+                  ...callButtonStyle,
+                  background: canVideo && !callBusy && registrationStatus === 'registered'
+                    ? 'linear-gradient(180deg, #7d1010 0%, #4c0a0a 100%)'
+                    : 'linear-gradient(180deg, #343941 0%, #23272f 100%)',
+                  color: canVideo && !callBusy && registrationStatus === 'registered' ? '#fff4dd' : '#8a93a3',
+                  cursor: canVideo && !callBusy && registrationStatus === 'registered' ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <Video size={18} style={{ marginRight: 8 }} />
+                視頻呼叫
+              </button>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -644,8 +933,8 @@ const loadingStyle = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#ffffff',
-  color: '#475569',
+  background: 'radial-gradient(circle at top left, rgba(212, 175, 55, 0.10), transparent 30%), linear-gradient(180deg, #08090b 0%, #0d1116 100%)',
+  color: '#f1d37a',
 };
 
 const errorPageStyle = {
@@ -653,17 +942,18 @@ const errorPageStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#ffffff',
+  background: 'radial-gradient(circle at top left, rgba(212, 175, 55, 0.10), transparent 30%), linear-gradient(180deg, #08090b 0%, #0d1116 100%)',
   padding: 24,
 };
 
 const errorCardStyle = {
   width: 'min(440px, 100%)',
-  borderRadius: 20,
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 20px 54px rgba(15, 23, 42, 0.08)',
+  borderRadius: 24,
+  border: '1px solid rgba(212, 175, 55, 0.18)',
+  boxShadow: '0 20px 54px rgba(0, 0, 0, 0.34)',
   padding: 28,
   textAlign: 'center',
+  background: 'linear-gradient(180deg, rgba(24,29,36,0.98), rgba(12,15,19,0.98))',
 };
 
 const errorIconWrapStyle = {
@@ -674,119 +964,126 @@ const errorIconWrapStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(239, 68, 68, 0.1)',
-  color: '#ef4444',
+  background: 'rgba(239, 83, 80, 0.12)',
+  color: '#ffb5b5',
 };
 
 const errorTitleStyle = {
   fontSize: 20,
   lineHeight: 1.4,
   fontWeight: 800,
-  color: '#0f172a',
+  color: '#fff7df',
 };
 
 const errorMessageStyle = {
   marginTop: 12,
   fontSize: 14,
   lineHeight: 1.8,
-  color: '#475569',
+  color: '#c8bfae',
 };
 
 const errorHintStyle = {
   marginTop: 10,
   fontSize: 12,
   lineHeight: 1.7,
-  color: '#64748b',
+  color: '#8b8f96',
 };
 
 const pageStyle = {
   minHeight: '100vh',
-  background: '#ffffff',
+  background: 'radial-gradient(circle at top left, rgba(212, 175, 55, 0.10), transparent 30%), radial-gradient(circle at bottom right, rgba(125, 16, 16, 0.18), transparent 26%), linear-gradient(180deg, #08090b 0%, #0b0d10 36%, #0d1116 100%)',
   display: 'flex',
-  alignItems: 'stretch',
+  alignItems: 'center',
   justifyContent: 'center',
-  color: '#333333',
+  color: '#f5efe3',
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  padding: '8px 12px',
+  overflow: 'hidden',
 };
 
 const shellStyle = {
   width: '100%',
-  maxWidth: 960,
-  display: 'flex',
-  flexDirection: 'row',
-  background: '#ffffff',
+  maxWidth: 1040,
+  display: 'block',
+  margin: '0 auto',
 };
 
 const leftPanelStyle = {
   flex: '1 1 0%',
-  padding: 24,
+  padding: 0,
+  borderRadius: 0,
+  border: 'none',
+  background: 'transparent',
 };
 
 const rightPanelStyle = {
   flex: '1 1 0%',
-  padding: 32,
+  padding: 0,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: '#f8fafc',
+  borderRadius: 0,
+  border: 'none',
+  background: 'transparent',
 };
 
 const nameStyle = {
-  fontSize: 'clamp(30px, 4vw, 40px)',
-  lineHeight: 1.2,
-  fontWeight: 800,
-  color: '#111827',
-  margin: '0 0 24px',
+  fontSize: 'clamp(22px, 1.9vw, 30px)',
+  lineHeight: 1.08,
+  fontWeight: 900,
+  color: '#fff7df',
+  margin: 0,
 };
 
 const infoBlockStyle = {
-  marginBottom: 24,
+  marginBottom: 0,
   display: 'grid',
-  gap: 14,
+  gap: 8,
 };
 
 const infoRowStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: 12,
+  gap: 10,
   minHeight: 24,
   flexWrap: 'wrap',
 };
 
 const infoLabelStyle = {
-  color: '#475569',
-  fontWeight: 600,
+  color: '#8b8f96',
+  fontWeight: 700,
 };
 
 const infoValueStyle = {
-  color: '#1f2937',
-  fontSize: 16,
+  color: '#f5efe3',
+  fontSize: 14,
 };
 
 const contactTextStyle = {
-  color: '#1f2937',
-  fontSize: 16,
+  color: '#f5efe3',
+  fontSize: 14,
   wordBreak: 'break-word',
 };
 
 const buttonGroupStyle = {
   display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-  marginTop: 24,
+  flexDirection: 'row',
+  gap: 8,
+  marginTop: 0,
 };
 
 const callButtonStyle = {
   width: '100%',
-  padding: '16px 18px',
-  borderRadius: 14,
+  padding: '8px 14px',
+  borderRadius: 12,
   fontWeight: 800,
-  fontSize: 16,
-  border: 'none',
+  fontSize: 13,
+  border: '1px solid rgba(212, 175, 55, 0.22)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   transition: 'transform 0.15s ease, background 0.15s ease',
+  boxShadow: '0 8px 18px rgba(125, 16, 16, 0.14)',
 };
 
 const mobileAvatarWrapStyle = {
@@ -799,11 +1096,48 @@ const mobileAvatarOuterStyle = {
   width: 112,
   height: 112,
   borderRadius: '50%',
-  border: '6px solid #ffffff',
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)',
+  border: '6px solid rgba(241, 211, 122, 0.14)',
+  boxShadow: '0 14px 28px rgba(0, 0, 0, 0.26)',
   overflow: 'hidden',
   position: 'relative',
-  background: '#f8fafc',
+  background: '#11151b',
+};
+
+const statusActionWrapStyle = {
+  position: 'absolute',
+  right: 4,
+  bottom: 4,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+};
+
+const statusActionDesktopWrapStyle = {
+  position: 'absolute',
+  top: 12,
+  right: 12,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+};
+
+const retryButtonStyle = {
+  width: 20,
+  height: 20,
+  borderRadius: '50%',
+  border: '1px solid rgba(212, 175, 55, 0.22)',
+  background: 'rgba(125, 16, 16, 0.14)',
+  color: '#f1d37a',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: '0 1px 4px rgba(0,0,0,0.16)',
+};
+
+const retryButtonDesktopStyle = {
+  ...retryButtonStyle,
+  width: 22,
+  height: 22,
 };
 
 const mobileAvatarStyle = {
@@ -816,11 +1150,11 @@ const desktopAvatarOuterStyle = {
   width: 256,
   height: 256,
   borderRadius: 18,
-  border: '6px solid #ffffff',
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)',
+  border: '6px solid rgba(241, 211, 122, 0.14)',
+  boxShadow: '0 14px 28px rgba(0, 0, 0, 0.26)',
   overflow: 'hidden',
   position: 'relative',
-  background: '#f8fafc',
+  background: '#11151b',
 };
 
 const desktopAvatarStyle = {
@@ -833,10 +1167,9 @@ const statusDotStyle = {
   width: 24,
   height: 24,
   borderRadius: '50%',
-  border: '4px solid #ffffff',
-  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.12)',
+  border: '4px solid rgba(12,15,19,0.98)',
+  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.18)',
   position: 'absolute',
   right: 6,
   bottom: 6,
 };
-
