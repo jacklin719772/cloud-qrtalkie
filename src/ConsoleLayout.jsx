@@ -1473,6 +1473,15 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>批量下載</strong> — 勾選多個已配置名片後點擊上方「批量下載」，打包下載名片圖片。</li>
                 </ul>
               </div>
+              <div style={{ marginBottom: "24px", padding: "14px 16px", background: "#1e3a5f", border: "1px solid #3b82f6", borderRadius: "8px" }}>
+                <h3 style={{ color: "#93c5fd", fontSize: "14px", margin: "0 0 8px" }}>&#127909; 訪客視訊通話控制</h3>
+                <p style={{ color: "#9ca3af", margin: "0 0 8px" }}>在產生名片頁面的「帳號綁定與路由」區塊中，新增了<strong style={{ color: "#e5e7eb" }}>「允許視頻通話」</strong>複選框，預設為勾選狀態。</p>
+                <ul style={{ color: "#9ca3af", margin: "0 0 8px", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px" }}>
+                  <li>勾選：訪客打開名片頁面後，可發起視訊通話。</li>
+                  <li>取消勾選：訪客打開名片頁面後，視訊通話按鈕顯示為不可用狀態，僅保留語音通話功能。</li>
+                  <li>重新啟用：再次勾選並儲存後，訪客頁面重新開放視訊通話。</li>
+                </ul>
+                <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>此設定只影響訪客端的視訊功能，不影響語音通話和管理員操作。</p>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -1493,6 +1502,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>填寫個人資訊：姓名、職位、電話、郵箱、地址等。</li>
                   <li>上傳頭像圖片和公司 Logo。</li>
                   <li>在右側即時預覽窗查看效果，調整顏色和字體設定。</li>
+                  <li>在「帳號綁定與路由」區塊中，可勾選或取消「允許視頻通話」控制訪客端視訊功能。</li>
                   <li>點擊「保存名片」完成產生。</li>
                 </ol>
               </div>
