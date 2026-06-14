@@ -1312,7 +1312,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   </div>
                 </label>
                 <label><span>名片有效期</span><input value={selectedAccountForCreate ? `${selectedAccountForCreate.validFrom || '-'} ~ ${selectedAccountForCreate.validTo || '-'}` : "—"} readOnly /></label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px', cursor: 'pointer', whiteSpace: 'nowrap', flexWrap: 'nowrap' }}>
                   <input type="checkbox" checked={enableVideoCall} onChange={e => setEnableVideoCall(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#3b82f6', cursor: 'pointer' }} />
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>允許視頻通話</span>
                 </label>
