@@ -323,7 +323,7 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   function handleHangup() {
-    cleanupActiveCall();
+    cleanupCurrentCall();
     cleanupCallResources();
   }
 
