@@ -784,50 +784,51 @@ export default function ECardVisitorPage({ slug }) {
               </div>
             </div>
 
-            <div className="ecard-statusCard ecard-statusCard-inline">
-              <div className="ecard-statusHead">
-                <div>
-                  <div className="ecard-statusTitle">Web 账号状态</div>
-                  <div className="ecard-statusSub">已注册后可进行语音 / 视频呼叫</div>
+            <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+              <div className="ecard-statusCard ecard-statusCard-inline" style={{ flex: 1 }}>
+                <div className="ecard-statusHead">
+                  <div>
+                    <div className="ecard-statusTitle">Web 账号状态</div>
+                    <div className="ecard-statusSub">已注册后可进行语音 / 视频呼叫</div>
+                  </div>
+                  <div className="ecard-statusActions">
+                    <div
+                      className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}
+                      title={registrationStatus === 'registered' ? '已注册' : '未注册 / 失败'}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRetryRegister}
+                      disabled={registrationStatus === 'registering' || isReRegistering}
+                      title={registrationStatus === 'registered' ? '重新註冊' : registrationStatus === 'registering' ? '正在註冊...' : '重新嘗試註冊'}
+                      aria-label="retry-registration"
+                      className="ecard-refreshButton"
+                      style={{
+                        ...retryButtonDesktopStyle,
+                        opacity: registrationStatus === 'registering' || isReRegistering ? 0.45 : registrationStatus === 'registered' ? 0.9 : 1,
+                        cursor: registrationStatus === 'registering' || isReRegistering ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      <RefreshCw size={15} className={registrationStatus === 'registering' || isReRegistering ? 'spin' : ''} />
+                    </button>
+                  </div>
                 </div>
-                <div className="ecard-statusActions">
-                  <div
-                    className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}
-                    title={registrationStatus === 'registered' ? '已注册' : '未注册 / 失败'}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRetryRegister}
-                    disabled={registrationStatus === 'registering' || isReRegistering}
-                    title={registrationStatus === 'registered' ? '重新註冊' : registrationStatus === 'registering' ? '正在註冊...' : '重新嘗試註冊'}
-                    aria-label="retry-registration"
-                    className="ecard-refreshButton"
-                    style={{
-                      ...retryButtonDesktopStyle,
-                      opacity: registrationStatus === 'registering' || isReRegistering ? 0.45 : registrationStatus === 'registered' ? 0.9 : 1,
-                      cursor: registrationStatus === 'registering' || isReRegistering ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <RefreshCw size={15} className={registrationStatus === 'registering' || isReRegistering ? 'spin' : ''} />
-                  </button>
+                <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}>
+                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : '註冊失敗'}
                 </div>
               </div>
-              <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}>
-                {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : '註冊失敗'}
-              </div>
-            </div>
 
-            <div className="ecard-statusCard ecard-statusCard-inline">
-              <div className="ecard-statusHead">
-                <div>
-                  <div className="ecard-statusTitle">SIP 账号状态</div>
-                  <div className="ecard-statusSub">{ecardData.sipAccount || '—'}</div>
-                </div>
-                <div className="ecard-statusActions">
-                  <div
-                    className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
-                    title={ecardData.sipRegistrationStatus === 'online' ? '在線' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
-                  />
+              <div className="ecard-statusCard ecard-statusCard-inline" style={{ flex: 1 }}>
+                <div className="ecard-statusHead">
+                  <div>
+                    <div className="ecard-statusTitle">SIP 账号状态</div>
+                    <div className="ecard-statusSub">{ecardData.sipAccount || '—'}</div>
+                  </div>
+                  <div className="ecard-statusActions">
+                    <div
+                      className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
+                      title={ecardData.sipRegistrationStatus === 'online' ? '在線' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
+                    />
                 </div>
               </div>
               <div className={`ecard-statusPill ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}>
