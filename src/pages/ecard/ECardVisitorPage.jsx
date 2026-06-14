@@ -111,6 +111,8 @@ export default function ECardVisitorPage({ slug }) {
   const isIntentionalHangupRef = useRef(false);
   const isPageUnmountingRef = useRef(false);
   const registeringRef = useRef(false);
+  const idleTimeoutRef = useRef(null);
+  const IDLE_TIMEOUT_MS = 30000;
 
   const pageImage = useMemo(() => {
     if (!ecardData?.avatar) return '';
@@ -118,6 +120,17 @@ export default function ECardVisitorPage({ slug }) {
   }, [ecardData?.avatar]);
 
   const companyName = ecardData?.tenantName || 'QRTalkie';
+
+  useEffect(() => {
+    function handleBeforeUnload() {
+      isPageUnmountingRef.current = true;
+      clearIdleTimer();
+      if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
+      if (currentSessionRef.current) { try { currentSessionRef.current.terminate(); } catch {} }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,6 +211,21 @@ export default function ECardVisitorPage({ slug }) {
     setCallBusy(false);
   }
 
+  function clearIdleTimer() {
+    if (idleTimeoutRef.current) { clearTimeout(idleTimeoutRef.current); idleTimeoutRef.current = null; }
+  }
+
+  function startIdleTimer() {
+    clearIdleTimer();
+    idleTimeoutRef.current = setTimeout(() => {
+      console.log('[ECardVisitor] idle timeout reached, auto-unregistering');
+      isIntentionalHangupRef.current = true;
+      if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
+      setRegistrationStatus('idle_timeout');
+      setRegistrationMessage('');
+    }, IDLE_TIMEOUT_MS);
+  }
+
   function cleanupCurrentCall() {
     if (iceTimeoutRef.current) {
       clearTimeout(iceTimeoutRef.current);
@@ -228,6 +256,9 @@ export default function ECardVisitorPage({ slug }) {
     activeCallStartedRef.current = false;
     candidateBufferRef.current = [];
     setCallBusy(false);
+    clearIdleTimer();
+    setRegistrationStatus('hangup');
+    setRegistrationMessage('');
   }
 
   function cleanupRegistrationUa() {
@@ -451,6 +482,7 @@ export default function ECardVisitorPage({ slug }) {
         });
         setRegistrationStatus('registered');
         setRegistrationMessage('');
+        startIdleTimer();
         injectSdpPatch(uaInstance, callSession.sipServerPublicIp);
       });
 
@@ -462,7 +494,7 @@ export default function ECardVisitorPage({ slug }) {
         });
         if (isIntentionalHangupRef.current) {
           isIntentionalHangupRef.current = false;
-          setRegistrationStatus('disconnected');
+          setRegistrationStatus('idle_timeout');
           setRegistrationMessage('');
         } else {
           setRegistrationStatus('failed');
@@ -520,6 +552,7 @@ export default function ECardVisitorPage({ slug }) {
     console.log('[ECardVisitor] manual retry register clicked', {
       currentStatus: registrationStatus,
     });
+    clearIdleTimer();
     await startRegistration({ forceRefresh: true });
   }
 
@@ -576,6 +609,7 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   async function handleCallClick(video) {
+    clearIdleTimer();
     if (!ecardData?.publicStatus?.enabled) return;
     if (!publicData?.callCapabilities?.webrtc) return;
     if (video && !publicData?.callCapabilities?.video) return;
@@ -700,7 +734,7 @@ export default function ECardVisitorPage({ slug }) {
   useEffect(() => {
     if (loading || errorInfo || !ecardData || !publicData) return;
     if (!publicStatus.enabled) return;
-    if (autoRegisterStartedRef.current || uaRef.current || registrationStatus === 'registered') return;
+    if (autoRegisterStartedRef.current || uaRef.current || registrationStatus === 'registered' || registrationStatus === 'idle_timeout' || registrationStatus === 'hangup') return;
     startRegistration();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, errorInfo, ecardData, publicData, slug, publicStatus.enabled, registrationStatus]);
@@ -802,8 +836,8 @@ export default function ECardVisitorPage({ slug }) {
                   </div>
                   <div className="ecard-statusActions">
                     <div
-                      className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}
-                      title={registrationStatus === 'registered' ? '已注册' : registrationStatus === 'disconnected' ? '重新注册中' : '未注册 / 失败'}
+                      className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' ? 'is-warn' : 'is-bad'}`}
+                      title={registrationStatus === 'registered' ? '已注册' : registrationStatus === 'idle_timeout' ? '空閒超時已註銷' : registrationStatus === 'hangup' ? '通話結束已註銷' : '未注册 / 失败'}
                     />
                     <button
                       type="button"
@@ -822,8 +856,8 @@ export default function ECardVisitorPage({ slug }) {
                     </button>
                   </div>
                 </div>
-                <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}>
-                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
+                <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' || registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}>
+                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'idle_timeout' ? '已自動註銷' : registrationStatus === 'hangup' ? '通話已結束' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
               </div>
               </div>
 
@@ -874,10 +908,12 @@ export default function ECardVisitorPage({ slug }) {
                 marginBottom: 4,
                 fontSize: 13,
                 lineHeight: 1.6,
-                color: registrationStatus === 'failed' ? '#fca5a5' : '#d6c59c',
+                color: registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' ? '#fbbf24' : registrationStatus === 'failed' ? '#fca5a5' : '#d6c59c',
                 fontWeight: 600,
               }}>
-                {registrationMessage}
+                {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動註銷 Web 帳號，請點擊刷新按鈕重新註冊'
+                  : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已註銷，請點擊刷新按鈕重新註冊'
+                  : registrationMessage}
               </div>
             )}
 
