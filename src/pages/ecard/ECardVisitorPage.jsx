@@ -43,6 +43,7 @@ function mapPublicDataToCard(data) {
     publicStatus: data?.publicStatus || {},
     callCapabilities: data?.callCapabilities || {},
     callConfigSummary: data?.callConfigSummary || {},
+    enableVideoCall: data?.enableVideoCall !== false,
     media: data?.media || {},
     template: data?.template || {},
     tenantName: data?.tenantName || '',
@@ -683,7 +684,7 @@ export default function ECardVisitorPage({ slug }) {
 
   const publicStatus = publicData?.publicStatus || {};
   const canVoice = Boolean(publicData?.callCapabilities?.voice && publicData?.callCapabilities?.webrtc);
-  const canVideo = Boolean(publicData?.callCapabilities?.video && publicData?.callCapabilities?.webrtc);
+  const canVideo = Boolean(publicData?.callCapabilities?.video && publicData?.callCapabilities?.webrtc && ecardData?.enableVideoCall);
   const displayAvatar = pageImage || '';
 
   useEffect(() => {

@@ -10120,16 +10120,18 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
     const ecardDataJson = payload.ecardDataJson || {};
     ecardDataJson.avatarDataUrl = avatarUrl;
     ecardDataJson.logoDataUrl = logoUrl;
+    const enableVideoCall = payload.enableVideoCall !== false; // 默认 true
 
     await connection.query(
       `INSERT INTO tenant_ecards (
-         tenant_id, sip_user_id, access_slug, avatar_url, thumbnail_url, status,
+         tenant_id, sip_user_id, access_slug, avatar_url, thumbnail_url, status, enable_video_call,
          created_by_admin_id, ecard_data_json, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, NOW(), NOW())
+       ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, NOW(), NOW())
        ON DUPLICATE KEY UPDATE
          access_slug = VALUES(access_slug),
          avatar_url = VALUES(avatar_url),
          thumbnail_url = VALUES(thumbnail_url),
+         enable_video_call = VALUES(enable_video_call),
          ecard_data_json = VALUES(ecard_data_json),
          updated_at = NOW()`,
       [
@@ -10138,6 +10140,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
         payload.accessSlug || null,
         avatarUrl || null,
         thumbnailUrl || null,
+        enableVideoCall ? 1 : 0,
         request.admin.id,
         JSON.stringify(ecardDataJson)
       ]
@@ -10314,6 +10317,7 @@ async function loadEcardPublicViewData(connection, slug) {
        ec.valid_to,
        ec.ecard_data_json,
        ec.card_data_json,
+       ec.enable_video_call,
        su.username AS sip_account,
        su.display_name AS sip_display_name,
        su.email AS sip_email,
@@ -10419,9 +10423,10 @@ async function loadEcardPublicViewData(connection, slug) {
       },
       callCapabilities: {
         voice: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL === "true",
-        video: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL === "true",
+        video: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL === "true" && ecardRow.enable_video_call !== 0,
         webrtc: Boolean(bindingRow),
       },
+      enableVideoCall: ecardRow.enable_video_call !== 0,
       callConfigSummary: {
         sipAccount: String(ecardRow.sip_account || ""),
         sipDomain: String(ecardRow.sip_domain || process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || ""),

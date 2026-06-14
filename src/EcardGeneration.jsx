@@ -120,6 +120,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [selectedBackgroundId, setSelectedBackgroundId] = useState(null);
   const [showQrCode, setShowQrCode] = useState(false);
+  const [enableVideoCall, setEnableVideoCall] = useState(true);
 
   const [callPublicSlug, setCallPublicSlug] = useState(() => {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -640,7 +641,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         avatarDataUrl,
         logoDataUrl,
         thumbnailDataUrl,
-        ecardDataJson
+        ecardDataJson,
+        enableVideoCall
       };
 
       await apiClient.post(`/tenant/ecard-accounts/${selectedAccountForCreate.sip_user_id || selectedAccountForCreate.id}/ecard`, payload);
@@ -1310,6 +1312,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   </div>
                 </label>
                 <label><span>名片有效期</span><input value={selectedAccountForCreate ? `${selectedAccountForCreate.validFrom || '-'} ~ ${selectedAccountForCreate.validTo || '-'}` : "—"} readOnly /></label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={enableVideoCall} onChange={e => setEnableVideoCall(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#3b82f6', cursor: 'pointer' }} />
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>允許視頻通話</span>
+                </label>
               </div>
             </div>
             
