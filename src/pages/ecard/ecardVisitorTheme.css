@@ -303,6 +303,11 @@
   box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.10);
 }
 
+.ecard-statusDot.is-warn {
+  background: #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.10);
+}
+
 .ecard-refreshButton,
 .ecard-debugButton {
   width: 32px;
@@ -345,6 +350,12 @@
   color: #ffdada;
   border: 1px solid rgba(239, 83, 80, 0.22);
   background: rgba(239, 83, 80, 0.12);
+}
+
+.ecard-statusPill.is-warn {
+  color: #fef3c7;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  background: rgba(245, 158, 11, 0.12);
 }
 
 .ecard-legend {

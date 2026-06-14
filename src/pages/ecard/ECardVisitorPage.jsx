@@ -44,6 +44,7 @@ function mapPublicDataToCard(data) {
     callCapabilities: data?.callCapabilities || {},
     callConfigSummary: data?.callConfigSummary || {},
     enableVideoCall: data?.enableVideoCall !== false,
+    sipRegistrationStatus: data?.sipRegistrationStatus || 'unknown',
     media: data?.media || {},
     template: data?.template || {},
     tenantName: data?.tenantName || '',
@@ -813,6 +814,24 @@ export default function ECardVisitorPage({ slug }) {
               </div>
               <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : 'is-bad'}`}>
                 {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : '註冊失敗'}
+              </div>
+            </div>
+
+            <div className="ecard-statusCard ecard-statusCard-inline">
+              <div className="ecard-statusHead">
+                <div>
+                  <div className="ecard-statusTitle">SIP 账号状态</div>
+                  <div className="ecard-statusSub">{ecardData.sipAccount || '—'}</div>
+                </div>
+                <div className="ecard-statusActions">
+                  <div
+                    className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
+                    title={ecardData.sipRegistrationStatus === 'online' ? '在線' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
+                  />
+                </div>
+              </div>
+              <div className={`ecard-statusPill ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}>
+                {ecardData.sipRegistrationStatus === 'online' ? 'SIP 在線' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
               </div>
             </div>
 

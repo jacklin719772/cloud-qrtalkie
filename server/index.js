@@ -40,6 +40,7 @@ import {
   discoverAccountsFromRedis,
   getAccountRegistrationDetail,
 } from "./flexisipRegistrationStatusService.js";
+import { readRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
 import {
   FlexisipCallLogQueryError,
   isValidIsoDateTime as isValidFlexisipCallLogIsoDateTime,
@@ -10391,6 +10392,22 @@ async function loadEcardPublicViewData(connection, slug) {
   const profile = resolveEcardProfileFromJson(ecardDataJson, ecardRow);
   const publicAccessUrl = `${process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org"}/u/${ecardRow.access_slug}`;
 
+  // 查询 SIP 注册状态
+  let sipRegistrationStatus = "unknown";
+  if (ecardRow.sip_account && ecardRow.sip_domain) {
+    try {
+      const redisKey = `fs:${ecardRow.sip_account}@${ecardRow.sip_domain}`;
+      const redisResult = await readRegistrarKeys([redisKey]);
+      const regData = redisResult.get(redisKey);
+      if (regData && regData.type === "hash" && regData.ttl !== -2) {
+        const hasValidContact = (regData.entries || []).length > 0;
+        sipRegistrationStatus = hasValidContact ? "online" : "offline";
+      } else {
+        sipRegistrationStatus = "offline";
+      }
+    } catch { /* keep unknown */ }
+  }
+
   return {
     data: {
       profile,
@@ -10426,6 +10443,7 @@ async function loadEcardPublicViewData(connection, slug) {
         video: process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL === "true" && ecardRow.enable_video_call !== 0,
         webrtc: Boolean(bindingRow),
       },
+      sipRegistrationStatus,
       enableVideoCall: ecardRow.enable_video_call !== 0,
       callConfigSummary: {
         sipAccount: String(ecardRow.sip_account || ""),
