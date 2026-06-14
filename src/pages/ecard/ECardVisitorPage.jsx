@@ -92,6 +92,7 @@ export default function ECardVisitorPage({ slug }) {
   const [callBusy, setCallBusy] = useState(false);
   const [isReRegistering, setIsReRegistering] = useState(false);
   const [isSipRefreshing, setIsSipRefreshing] = useState(false);
+  const [idleSeconds, setIdleSeconds] = useState(0);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -212,18 +213,28 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   function clearIdleTimer() {
-    if (idleTimeoutRef.current) { clearTimeout(idleTimeoutRef.current); idleTimeoutRef.current = null; }
+    if (idleTimeoutRef.current) { clearInterval(idleTimeoutRef.current); idleTimeoutRef.current = null; }
+    setIdleSeconds(0);
   }
 
   function startIdleTimer() {
     clearIdleTimer();
-    idleTimeoutRef.current = setTimeout(() => {
-      console.log('[ECardVisitor] idle timeout reached, auto-unregistering');
-      isIntentionalHangupRef.current = true;
-      if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
-      setRegistrationStatus('idle_timeout');
-      setRegistrationMessage('');
-    }, IDLE_TIMEOUT_MS);
+    setIdleSeconds(Math.ceil(IDLE_TIMEOUT_MS / 1000));
+    idleTimeoutRef.current = setInterval(() => {
+      setIdleSeconds(prev => {
+        const next = prev - 1;
+        if (next <= 0) {
+          clearIdleTimer();
+          console.log('[ECardVisitor] idle timeout reached, auto-unregistering');
+          isIntentionalHangupRef.current = true;
+          if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
+          setRegistrationStatus('idle_timeout');
+          setRegistrationMessage('');
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
   }
 
   function cleanupCurrentCall() {
@@ -825,6 +836,12 @@ export default function ECardVisitorPage({ slug }) {
                 <div className="ecard-duty">{ecardData.duty || '—'}</div>
                 <div className="ecard-company"><b>{companyName}</b></div>
               </div>
+              {registrationStatus === 'registered' && idleSeconds > 0 && (
+                <div style={{ marginLeft: 'auto', textAlign: 'center', flexShrink: 0 }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: idleSeconds <= 10 ? '#ef4444' : '#f1d37a', lineHeight: 1 }}>{idleSeconds}</div>
+                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>秒後自動註銷</div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
