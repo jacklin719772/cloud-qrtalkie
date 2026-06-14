@@ -954,7 +954,7 @@ export default function ECardVisitorPage({ slug }) {
         confirmText={isSystemReady ? '確認呼叫' : '優化網路'}
         confirmDisabled={!isSystemReady}
         cancelText="取消"
-        message={`確定要呼叫此電子名片的${isVideoCall ? '視頻' : '語音'}通話嗎？`}
+        message={`${isSystemReady ? `確定要呼叫此電子名片的${isVideoCall ? '視頻' : '語音'}通話嗎？` : `網路優化結束後點擊確認呼叫按鈕可進行${isVideoCall ? '視頻' : '語音'}通話`}`}
       />
 
       <CallModal
