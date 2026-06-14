@@ -1482,6 +1482,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>重新啟用：再次勾選並儲存後，訪客頁面重新開放視訊通話。</li>
                 </ul>
                 <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>此設定只影響訪客端的視訊功能，不影響語音通話和管理員操作。</p>
+              </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
