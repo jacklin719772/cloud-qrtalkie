@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw, Info } from 'lucide-react';
+import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw, Info, HelpCircle } from 'lucide-react';
 import apiClient from '../../apiClient';
 import CallModal from './CallModal';
 import ConfirmModal from './ConfirmModal';
@@ -94,6 +94,7 @@ export default function ECardVisitorPage({ slug }) {
   const [isSipRefreshing, setIsSipRefreshing] = useState(false);
   const [idleSeconds, setIdleSeconds] = useState(0);
   const [sipOfflineHint, setSipOfflineHint] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -813,15 +814,26 @@ export default function ECardVisitorPage({ slug }) {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDebugEntry}
-            className="ecard-debugButton"
-            title="Debug"
-            aria-label="debug-entry"
-          >
-            <Info size={18} />
-          </button>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setShowHelp(true)}
+              className="ecard-debugButton"
+              title="操作說明"
+              aria-label="help-guide"
+            >
+              <HelpCircle size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={handleDebugEntry}
+              className="ecard-debugButton"
+              title="Debug"
+              aria-label="debug-entry"
+            >
+              <Info size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="ecard-shellBody">
@@ -1039,6 +1051,71 @@ export default function ECardVisitorPage({ slug }) {
         avatarUrl={displayAvatar}
         videoRefs={{ remoteVideoRef, localVideoRef }}
       />
+
+      {showHelp && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.64)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'flex-end' }} onClick={() => setShowHelp(false)}>
+          <div style={{ width: 'min(420px, 90vw)', height: '100%', background: 'linear-gradient(180deg, rgba(24,29,36,0.98), rgba(12,15,19,0.98))', borderLeft: '1px solid rgba(212, 175, 55, 0.18)', overflow: 'auto', padding: '28px 24px', scrollbarWidth: 'thin', scrollbarColor: 'rgba(212,175,55,0.35) rgba(10,12,15,0.8)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#f5efe3' }}>操作說明</h2>
+              <button onClick={() => setShowHelp(false)} style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid rgba(212, 175, 55, 0.18)', background: '#11151b', color: '#f1d37a', cursor: 'pointer', fontSize: '18px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>&#10005;</button>
+            </div>
+
+            <div style={{ color: '#e5e7eb', fontSize: '13px', lineHeight: 1.8 }}>
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>電子名片瀏覽頁面</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>此頁面展示電子名片的公開資訊，包括姓名、職務、公司、聯絡方式等。訪客可在此頁面查看名片詳情，並可通過 Web 帳號向名片持有人發起語音或視訊通話。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>Web 帳號狀態</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>進入頁面後，系統會自動為訪客註冊一個臨時 Web 通話帳號。狀態指示燈顯示如下：</p>
+                <ul style={{ color: '#9ca3af', margin: '8px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li><span style={{ color: '#27c267', fontWeight: 700 }}>綠色</span> — 已註冊，可以發起通話</li>
+                  <li><span style={{ color: '#f59e0b', fontWeight: 700 }}>黃色</span> — 已自動註銷（閒置超時或通話結束）</li>
+                  <li><span style={{ color: '#ef5350', fontWeight: 700 }}>紅色</span> — 註冊失敗，帳號忙碌</li>
+                </ul>
+                <p style={{ color: '#9ca3af', margin: '8px 0 0' }}>點擊刷新按鈕可重新註冊 Web 帳號。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>SIP 帳號狀態</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>顯示名片持有人的 SIP 帳號是否在線：</p>
+                <ul style={{ color: '#9ca3af', margin: '8px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li><span style={{ color: '#27c267', fontWeight: 700 }}>綠色</span> — SIP 在線，可接收來電</li>
+                  <li><span style={{ color: '#ef5350', fontWeight: 700 }}>紅色</span> — SIP 離線，無法接通</li>
+                  <li><span style={{ color: '#f59e0b', fontWeight: 700 }}>黃色</span> — 狀態未知</li>
+                </ul>
+                <p style={{ color: '#9ca3af', margin: '8px 0 0' }}>當 SIP 處於離線狀態時，點擊語音或視訊按鈕會提示無法發起呼叫。可點擊刷新按鈕獲取最新狀態。</p>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>發起通話</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>當 Web 帳號已註冊且 SIP 帳號在線時，可點擊「語音呼叫」或「視頻呼叫」按鈕發起通話：</p>
+                <ul style={{ color: '#9ca3af', margin: '8px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <li>點擊按鈕後，系統會進行網路優化檢測</li>
+                  <li>優化完成後，彈窗顯示確認對話框，點擊「確認呼叫」開始通話</li>
+                  <li>通話過程中可點擊掛斷按鈕結束通話</li>
+                  <li>視訊通話可在通話中開關本地攝像頭</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>閒置自動註銷</h3>
+                <p style={{ color: '#9ca3af', margin: 0 }}>為保護帳號安全，若訪客在 30 秒內未進行任何操作，系統會自動註銷 Web 帳號。註銷後頭像右側的倒計時消失，狀態變為黃色「已自動註銷」。點擊刷新按鈕可重新註冊。通話過程中不受此計時影響。</p>
+              </div>
+
+              <div>
+                <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>常見問題</h3>
+                <ul style={{ color: '#9ca3af', margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <li><strong style={{ color: '#e5e7eb' }}>通話結束後如何重新撥打？</strong><br/>通話結束後 Web 帳號會自動註銷，點擊 Web 狀態旁的刷新按鈕重新註冊即可再次發起通話。</li>
+                  <li><strong style={{ color: '#e5e7eb' }}>為什麼按鈕是灰色的？</strong><br/>可能原因：Web 帳號未註冊、SIP 帳號離線、或名片未啟用通話功能。</li>
+                  <li><strong style={{ color: '#e5e7eb' }}>關閉頁面會怎樣？</strong><br/>關閉或刷新頁面時，Web 帳號會自動註銷，不會繼續佔用資源。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
