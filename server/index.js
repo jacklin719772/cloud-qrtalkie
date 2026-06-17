@@ -11598,6 +11598,7 @@ app.get("/callcenter", async (request, response) => {
       requiredFields: (() => { try { if (typeof cc.visitor_info_required_fields === 'object') return cc.visitor_info_required_fields || []; return cc.visitor_info_required_fields ? JSON.parse(cc.visitor_info_required_fields) : []; } catch(e) { return []; } })(),
       optionalFields: (() => { try { if (typeof cc.visitor_info_optional_fields === 'object') return cc.visitor_info_optional_fields || []; return cc.visitor_info_optional_fields ? JSON.parse(cc.visitor_info_optional_fields) : []; } catch(e) { return []; } })(),
       categories,
+      sipDomain,
       allAgents: categories.flatMap(cat => cat.agents.map(a => ({
         id: a.id,
         name: a.name,
@@ -11622,6 +11623,27 @@ app.get("/callcenter", async (request, response) => {
     return response.status(500).send("<h2 style='text-align:center;margin-top:20vh;'>500 Internal Error</h2><p style='text-align:center;'>系统繁忙，請稍後再試。</p>");
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// GET /api/public/call-centers/agent-status - 查询坐席 SIP 在线状态
+app.get("/api/public/call-centers/agent-status", async (request, response) => {
+  const account = sanitizeString(String(request.query.account || ''), 100);
+  const domain = sanitizeString(String(request.query.domain || ''), 200);
+  if (!account || !domain) return response.status(400).json({ code: -1, message: "缺少 account 或 domain 参数" });
+
+  try {
+    const redisKey = `fs:${account}@${domain}`;
+    const redisResult = await readRegistrarKeys([redisKey]);
+    const regData = redisResult.get(redisKey);
+    let online = false;
+    if (regData && regData.type === "hash" && regData.ttl !== -2) {
+      online = (regData.entries || []).length > 0;
+    }
+    return response.json({ code: 0, data: { account, domain, online } });
+  } catch (error) {
+    console.error("Failed to query agent SIP status:", error);
+    return response.status(500).json({ code: -1, message: "查询失败" });
   }
 });
 

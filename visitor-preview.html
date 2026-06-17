@@ -310,6 +310,35 @@
       align-items: center;
       gap: 12px;
     }
+    .agent-sip-status {
+      margin-left: auto;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .agent-sip-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .agent-sip-dot.online { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,0.15); }
+    .agent-sip-dot.offline { background: #6b7280; }
+    .agent-sip-dot.loading { background: #f59e0b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .agent-sip-refresh {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px;
+      font-size: 11px;
+      line-height: 1;
+      border-radius: 4px;
+    }
+    .agent-sip-refresh:hover { color: var(--primary); background: var(--bg-card-hover); }
     .agent-avatar {
       width: 48px;
       height: 48px;
@@ -633,6 +662,7 @@
       document.getElementById('mobileStepAgents').style.display = 'none';
 
       selectCategory((data.categories || [])[0]?.id, sidebar.querySelector('.sidebar-btn'));
+      loadAllAgentStatuses();
     }
 
     function selectCategory(catId, btn) {
@@ -640,8 +670,11 @@
       if (btn) btn.classList.add('active');
       var cat = (data.categories || []).find(function(c) { return c.id === catId; });
       document.getElementById('currentCategoryTitle').textContent = cat ? cat.name : '';
-      document.getElementById('agentsContainer').innerHTML = (cat?.agents || []).map(function(a) {
-        return '<div class="agent-card"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div><div class="agent-contact">' +
+      document.getElementById('agentsContainer').innerHTML = (cat?.agents || []).map(function(a, idx) {
+        var agentId = 'agent-card-' + idx;
+        return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div>' +
+          (a.sip ? '<div class="agent-sip-status"><span class="agent-sip-dot loading" id="' + agentId + '-dot"></span><span id="' + agentId + '-txt" style="color:var(--text-muted);">...</span><button class="agent-sip-refresh" onclick="refreshAgentStatus(\'' + esc(a.sip) + '\',\'' + agentId + '\')" title="刷新狀態">↻</button></div>' : '') +
+        '</div><div class="agent-contact">' +
           (a.sip ? '<div class="contact-item">SIP: ' + a.sip + '</div>' : '') +
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '') +
@@ -670,6 +703,52 @@
     function goBackToMobileCats() {
       document.getElementById('mobileStepAgents').style.display = 'none';
       document.getElementById('mobileStepCats').style.display = 'flex';
+    }
+
+    function fetchAgentStatus(sip, cardId) {
+      var dot = document.getElementById(cardId + '-dot');
+      var txt = document.getElementById(cardId + '-txt');
+      if (!dot || !txt) return;
+      dot.className = 'agent-sip-dot loading';
+      txt.textContent = '...';
+      var xhr = new XMLHttpRequest();
+      var domain = data.sipDomain || 'sip.qrtalkie.org';
+      xhr.open('GET', '/api/public/call-centers/agent-status?account=' + encodeURIComponent(sip) + '&domain=' + encodeURIComponent(domain));
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          try {
+            var res = JSON.parse(xhr.responseText);
+            if (res.code === 0 && res.data) {
+              var online = res.data.online;
+              dot.className = 'agent-sip-dot ' + (online ? 'online' : 'offline');
+              txt.textContent = online ? '在線' : '離線';
+              return;
+            }
+          } catch(e) {}
+        }
+        dot.className = 'agent-sip-dot offline';
+        txt.textContent = '離線';
+      };
+      xhr.onerror = function() {
+        dot.className = 'agent-sip-dot offline';
+        txt.textContent = '離線';
+      };
+      xhr.send();
+    }
+
+    function refreshAgentStatus(sip, cardId) {
+      fetchAgentStatus(sip, cardId);
+    }
+
+    function loadAllAgentStatuses() {
+      (data.categories || []).forEach(function(cat, catIdx) {
+        (cat.agents || []).forEach(function(a, aIdx) {
+          if (a.sip) {
+            var cardId = 'agent-card-' + aIdx;
+            fetchAgentStatus(a.sip, cardId);
+          }
+        });
+      });
     }
 
     function openMessageModal(selectedAgentId) {
