@@ -3,6 +3,21 @@ import { createPortal } from 'react-dom';
 import { Search, Settings, Eye, Copy } from 'lucide-react';
 import apiClient from './apiClient';
 
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+}
+
 const CallCenterConfiguration = forwardRef((props, ref) => {
   const { onEdit, onViewInquiries } = props;
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -558,7 +573,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                       <button
                         type="button"
                         onClick={async () => {
-                          await navigator.clipboard.writeText(item.url);
+                          await copyToClipboard(item.url);
                           alert('連結已複製！');
                         }}
                         style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
