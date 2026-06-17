@@ -351,24 +351,27 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           flex-direction: column;
           gap: 24px;
           padding: 24px 32px;
-          min-height: 100%; /* 保持高度 */
+          min-height: 100%;
           background: transparent;
-          color: #0f172a;
+          color: #e5e7eb;
           font-family: system-ui, -apple-system, sans-serif;
           width: 100%;
           box-sizing: border-box;
         }
+        .cc-add-page * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        .cc-add-page *::-webkit-scrollbar { width: 6px; height: 6px; }
+        .cc-add-page *::-webkit-scrollbar-track { background: transparent; }
+        .cc-add-page *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
 
-        /* 顶部操作区 */
         .cc-add-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding: 16px 32px;
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 12px;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
           position: sticky;
           top: 0;
           z-index: 50;
@@ -379,15 +382,14 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           font-size: 20px;
           font-weight: 600;
           margin: 0;
-          color: #0f172a;
+          color: #f3f4f6;
         }
         .cc-add-actions {
           display: flex;
           gap: 12px;
           align-items: center;
         }
-        
-        /* 按鈕通用樣式 */
+
         .cc-btn {
           display: inline-flex;
           align-items: center;
@@ -403,22 +405,22 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           outline: none;
         }
         .cc-btn-outline {
-          background: #fff;
-          border: 1px solid #cbd5e1;
-          color: #475569;
+          background: #111827;
+          border: 1px solid #374151;
+          color: #9ca3af;
         }
         .cc-btn-outline:hover {
-          background: #f8fafc;
-          color: #0f172a;
+          background: #1a2332;
+          color: #e5e7eb;
         }
         .cc-btn-preview {
-          background: #fff;
-          border: 1px solid #cbd5e1;
-          color: #475569;
+          background: #111827;
+          border: 1px solid #374151;
+          color: #9ca3af;
         }
         .cc-btn-preview:hover {
-          background: #f8fafc;
-          color: #0f172a;
+          background: #1a2332;
+          color: #e5e7eb;
         }
         .cc-btn-primary {
           background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
@@ -432,31 +434,30 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-btn-ghost {
           background: transparent;
           border: none;
-          color: #64748b;
+          color: #9ca3af;
           padding: 0 8px;
         }
         .cc-btn-ghost:hover {
-          background: #f1f5f9;
-          color: #0f172a;
+          background: #1a2332;
+          color: #e5e7eb;
         }
         .cc-btn-danger-outline {
-          background: #fff;
-          border: 1px solid #fca5a5;
-          color: #ef4444;
+          background: #111827;
+          border: 1px solid #7f1d1d;
+          color: #f87171;
         }
         .cc-btn-danger-outline:hover {
-          background: #fef2f2;
+          background: #1a2332;
         }
         .cc-btn-blue-outline {
-          background: #fff;
-          border: 1px solid #bfdbfe;
-          color: #2563eb;
+          background: #111827;
+          border: 1px solid #1e3a5f;
+          color: #60a5fa;
         }
         .cc-btn-blue-outline:hover {
-          background: #eff6ff;
+          background: #1a2332;
         }
 
-        /* 頁面主體內容区 */
         .cc-add-content {
           display: flex;
           flex-direction: column;
@@ -465,12 +466,11 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           box-sizing: border-box;
         }
 
-        /* 卡片區塊 */
         .cc-card {
-          background: #fff;
+          background: #111827;
           border-radius: 12px;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+          border: 1px solid #1f2937;
+          box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
           padding: 32px;
           width: 100%;
           box-sizing: border-box;
@@ -479,10 +479,9 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           font-size: 16px;
           font-weight: 600;
           margin: 0 0 24px 0;
-          color: #1e293b;
+          color: #f3f4f6;
         }
-        
-        /* 基礎資訊布局 */
+
         .cc-basic-layout {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -495,7 +494,6 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           gap: 32px;
         }
 
-        /* 表單佈局 */
         .cc-form-grid {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
@@ -514,7 +512,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-field-label {
           font-size: 14px;
           font-weight: 500;
-          color: #334155;
+          color: #9ca3af;
           line-height: 20px;
         }
         .cc-field-label.required::after {
@@ -525,10 +523,11 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-input {
           height: 44px;
           padding: 0 14px;
-          border: 1px solid #cbd5e1;
+          border: 1px solid #374151;
           border-radius: 8px;
           font-size: 14px;
-          color: #0f172a;
+          color: #e5e7eb;
+          background: #111827;
           outline: none;
           transition: border-color 0.2s;
           box-sizing: border-box;
@@ -537,23 +536,24 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           border-color: #3b82f6;
         }
         .cc-input[readonly] {
-          background: #f8fafc;
-          color: #64748b;
-          border-color: #e2e8f0;
+          background: #1a2332;
+          color: #9ca3af;
+          border-color: #374151;
         }
         .cc-input:disabled, .cc-textarea:disabled {
-          background: #f8fafc;
-          color: #94a3b8;
-          border-color: #e2e8f0;
+          background: #1a2332;
+          color: #6b7280;
+          border-color: #374151;
           cursor: not-allowed;
         }
         .cc-textarea {
           min-height: 118px;
           padding: 12px 14px;
-          border: 1px solid #cbd5e1;
+          border: 1px solid #374151;
           border-radius: 8px;
           font-size: 14px;
-          color: #0f172a;
+          color: #e5e7eb;
+          background: #111827;
           outline: none;
           resize: vertical;
           font-family: inherit;
@@ -562,31 +562,30 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         }
         .cc-help-text {
           font-size: 12px;
-          color: #94a3b8;
+          color: #6b7280;
           margin-top: 2px;
         }
 
-        /* 上傳区 */
         .cc-upload-box {
           padding: 12px;
           text-align: center;
-          border: 1px dashed #cbd5e1;
+          border: 1px dashed #374151;
           border-radius: 10px;
-          background: #f8fafc;
+          background: #1a2332;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          color: #64748b;
+          color: #9ca3af;
           cursor: pointer;
           transition: all 0.2s;
           box-sizing: border-box;
         }
         .cc-upload-box:hover {
-          border-color: #3b82f6;
-          background: #eff6ff;
-          color: #3b82f6;
+          border-color: #60a5fa;
+          background: #1a2332;
+          color: #60a5fa;
         }
         .cc-upload-box.cc-upload-Logo {
           width: 160px;
@@ -599,14 +598,13 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-upload-text {
           font-size: 14px;
           font-weight: 500;
-          color: #334155;
+          color: #9ca3af;
         }
         .cc-upload-hint {
           font-size: 12px;
-          color: #94a3b8;
+          color: #6b7280;
         }
 
-        /* 開關 */
         .cc-switch {
           width: 36px;
           height: 20px;
@@ -616,7 +614,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           transition: background-color 0.2s;
         }
         .cc-switch.on { background-color: #2563eb; }
-        .cc-switch.off { background-color: #cbd5e1; }
+        .cc-switch.off { background-color: #374151; }
         .cc-switch::after {
           content: '';
           position: absolute;
@@ -625,13 +623,12 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           height: 16px;
           background: #fff;
           border-radius: 50%;
-          box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+          box-shadow: 0 1px 2px rgba(0,0,0,0.2);
           transition: left 0.2s;
         }
         .cc-switch.on::after { left: 18px; }
         .cc-switch.off::after { left: 2px; }
 
-        /* 核取方塊組 */
         .cc-checkbox-group {
           display: flex;
           flex-direction: column;
@@ -643,12 +640,12 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           align-items: center;
           gap: 8px;
           font-size: 14px;
-          color: #334155;
+          color: #9ca3af;
           font-weight: normal;
           cursor: pointer;
         }
         .cc-checkbox-label.disabled {
-          color: #94a3b8;
+          color: #6b7280;
           cursor: not-allowed;
         }
         .cc-checkbox-label input {
@@ -660,8 +657,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-checkbox-label.disabled input {
           cursor: not-allowed;
         }
-        
-        /* 坐席設定左右布局 */
+
         .cc-agent-layout {
           display: flex;
           gap: 32px;
@@ -681,7 +677,6 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           gap: 16px;
         }
 
-        /* 分类列表 */
         .cc-category-header {
           display: flex;
           justify-content: space-between;
@@ -690,7 +685,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-category-header span {
           font-size: 14px;
           font-weight: 600;
-          color: #1e293b;
+          color: #f3f4f6;
         }
         .cc-category-list {
           display: flex;
@@ -702,19 +697,19 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #1f2937;
           border-radius: 8px;
-          background: #fff;
+          background: #111827;
           cursor: pointer;
           transition: all 0.2s;
         }
         .cc-category-item:hover {
-          border-color: #cbd5e1;
-          background: #f8fafc;
+          border-color: #374151;
+          background: #1a2332;
         }
         .cc-category-item.active {
           border-color: #3b82f6;
-          background: #eff6ff;
+          background: #1e293b;
         }
         .cc-category-info {
           display: flex;
@@ -724,15 +719,15 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-category-name {
           font-size: 14px;
           font-weight: 500;
-          color: #0f172a;
+          color: #e5e7eb;
         }
         .cc-category-item.active .cc-category-name {
-          color: #1d4ed8;
+          color: #60a5fa;
           font-weight: 600;
         }
         .cc-category-count {
           font-size: 12px;
-          color: #64748b;
+          color: #9ca3af;
         }
         .cc-category-actions {
           display: none;
@@ -744,7 +739,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-category-action-btn {
           background: transparent;
           border: none;
-          color: #94a3b8;
+          color: #6b7280;
           cursor: pointer;
           padding: 6px;
           border-radius: 6px;
@@ -753,16 +748,15 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           justify-content: center;
           transition: all 0.2s;
         }
-        .cc-category-action-btn:hover { background: #e2e8f0; color: #0f172a; }
-        .cc-category-action-btn.delete:hover { background: #fee2e2; color: #ef4444; }
+        .cc-category-action-btn:hover { background: #374151; color: #e5e7eb; }
+        .cc-category-action-btn.delete:hover { background: #7f1d1d; color: #fca5a5; }
 
-        /* 坐席列表区 */
         .cc-agent-main-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           padding-bottom: 16px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
         }
         .cc-agent-main-title {
           display: flex;
@@ -772,29 +766,29 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-agent-main-title h4 {
           margin: 0;
           font-size: 16px;
-          color: #0f172a;
+          color: #f3f4f6;
           font-weight: 600;
         }
         .cc-agent-badge {
-          background: #f1f5f9;
-          color: #475569;
+          background: #1a2332;
+          color: #9ca3af;
           padding: 2px 8px;
           border-radius: 999px;
           font-size: 12px;
           font-weight: 500;
         }
-        
+
         .cc-agent-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 16px;
         }
         .cc-agent-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 12px;
           padding: 20px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -808,11 +802,11 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           width: 48px;
           height: 48px;
           border-radius: 50%;
-          background: #e2e8f0;
+          background: #374151;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #64748b;
+          color: #9ca3af;
           flex-shrink: 0;
         }
         .cc-agent-info {
@@ -830,24 +824,24 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
         .cc-agent-name {
           font-size: 15px;
           font-weight: 600;
-          color: #0f172a;
+          color: #f3f4f6;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .cc-agent-title {
           font-size: 13px;
-          color: #64748b;
+          color: #9ca3af;
         }
         .cc-agent-contact {
           display: flex;
           flex-direction: column;
           gap: 4px;
           font-size: 13px;
-          color: #475569;
+          color: #9ca3af;
           padding: 12px 0;
-          border-top: 1px solid #f1f5f9;
-          border-bottom: 1px solid #f1f5f9;
+          border-top: 1px solid #1f2937;
+          border-bottom: 1px solid #1f2937;
         }
         .cc-agent-card-actions {
           display: flex;
@@ -859,14 +853,13 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           font-size: 12px;
         }
 
-        /* 新增分類彈窗樣式 */
         .cc-modal-overlay {
           position: fixed;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(15, 23, 42, 0.6);
+          background-color: rgba(0, 0, 0, 0.7);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -874,27 +867,28 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           animation: fadeIn 0.2s ease-out;
         }
         .cc-modal-content {
-          background: #fff;
+          background: #111827;
           border-radius: 12px;
           width: 420px;
           max-width: 90vw;
-          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+          box-shadow: 0 20px 25px -5px rgba(0,0,0,0.4);
+          border: 1px solid #1f2937;
         }
         .cc-modal-header {
           padding: 16px 24px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-        .cc-modal-title { font-size: 16px; font-weight: 600; color: #1e293b; margin: 0; }
-        .cc-modal-close-btn { background: none; border: none; color: #64748b; font-size: 24px; cursor: pointer; line-height: 1; }
+        .cc-modal-title { font-size: 16px; font-weight: 600; color: #f3f4f6; margin: 0; }
+        .cc-modal-close-btn { background: none; border: none; color: #9ca3af; font-size: 24px; cursor: pointer; line-height: 1; }
         .cc-modal-body { padding: 24px; display: flex; flex-direction: column; gap: 12px; }
-        .cc-modal-error { color: #ef4444; font-size: 13px; min-height: 18px; }
+        .cc-modal-error { color: #f87171; font-size: 13px; min-height: 18px; }
         .cc-modal-footer {
           padding: 16px 24px;
-          border-top: 1px solid #e2e8f0;
-          background: #f8fafc;
+          border-top: 1px solid #1f2937;
+          background: #1a2332;
           display: flex;
           justify-content: flex-end;
           gap: 12px;
@@ -915,7 +909,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           <button 
             type="button" 
             className="cc-btn cc-btn-preview" 
-            style={{ color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff' }}
+            style={{ color: '#60a5fa', borderColor: '#1e3a5f', background: '#1e293b' }}
             onClick={() => window.open(callUrl, '_blank')}
           >
             <Eye size={16} />
@@ -945,7 +939,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                 <div className="cc-field">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span className="cc-field-label required" style={{ margin: 0 }}>唯一標識 Slug</span>
-                    <button type="button" onClick={handleRefreshSlug} title="重新生成" style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#2563eb'} onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}><RefreshCw size={14} /></button>
+                    <button type="button" onClick={handleRefreshSlug} title="重新生成" style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#60a5fa'} onMouseOut={(e) => e.currentTarget.style.color = '#6b7280'}><RefreshCw size={14} /></button>
                   </div>
                   <input type="text" className="cc-input" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="例如：qrtalkie-service" />
                 </div>
@@ -1060,7 +1054,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
             <div className="cc-agent-sidebar">
               <div className="cc-category-header">
                 <span>服務分類設定</span> {/* 新增分類按鈕 */}
-                <button type="button" className="cc-btn cc-btn-ghost" style={{ color: '#2563eb' }} onClick={handleAddCategoryClick}>
+                <button type="button" className="cc-btn cc-btn-ghost" style={{ color: '#60a5fa' }} onClick={handleAddCategoryClick}>
                   <Plus size={14} /> 新增分類
                 </button>
               </div>
@@ -1075,7 +1069,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                       <span className="cc-category-name">{category.name}</span>
                       <span className="cc-category-count">{category.agentCount}名坐席</span>
                     </div>
-                    <ChevronRight className="cc-category-chevron" size={16} color="#94a3b8" />
+                    <ChevronRight className="cc-category-chevron" size={16} color="#6b7280" />
                     <div className="cc-category-actions">
                       <button type="button" className="cc-category-action-btn" title="編輯" onClick={(e) => handleEditCategoryClick(category, e)}>
                         <Edit size={14} />
@@ -1103,11 +1097,11 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
               
               <div className="cc-agent-grid">
                 {!activeCategory ? (
-                  <div style={{ gridColumn: '1 / -1', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ gridColumn: '1 / -1', padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px dashed #374151' }}>
                     請先在左側新增或選擇一個服務分類。
                   </div>
                 ) : activeCategory.agents.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '13px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  <div style={{ gridColumn: '1 / -1', padding: '32px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', backgroundColor: '#1a2332', borderRadius: '8px', border: '1px dashed #374151' }}>
                     該分類下暫無坐席，請點擊右上方按鈕新增。
                   </div>
                 ) : (
@@ -1240,7 +1234,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                 </label>
                 <label className="cc-field" style={{ flex: 1 }}>
                   <span className="cc-field-label required">選擇電子名片</span>
-                  <select className="cc-input" value={newAgentForm.ecardId} onChange={handleEcardSelect} style={{ backgroundColor: '#fff', cursor: 'pointer' }}>
+                  <select className="cc-input" value={newAgentForm.ecardId} onChange={handleEcardSelect} style={{ backgroundColor: '#111827', cursor: 'pointer', color: '#e5e7eb' }}>
                     <option value="">請選擇...</option>
                     {isEcardAccountsLoading ? (
                       <option value="" disabled>加載中...</option>
@@ -1313,8 +1307,8 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                   )}
                 </label>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: '13px', color: '#64748b' }}>SIP號碼：</span>
-                  <strong style={{ fontSize: '14px', color: '#0f172a', marginLeft: '8px' }}>{editAgentForm.sip}</strong>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>SIP號碼：</span>
+                  <strong style={{ fontSize: '14px', color: '#f3f4f6', marginLeft: '8px' }}>{editAgentForm.sip}</strong>
                 </div>
               </div>
               <label className="cc-field">
