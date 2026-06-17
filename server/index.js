@@ -11597,7 +11597,16 @@ app.get("/callcenter", async (request, response) => {
       visitorDescription: cc.visitor_info_form_desc || '',
       requiredFields: (() => { try { if (typeof cc.visitor_info_required_fields === 'object') return cc.visitor_info_required_fields || []; return cc.visitor_info_required_fields ? JSON.parse(cc.visitor_info_required_fields) : []; } catch(e) { return []; } })(),
       optionalFields: (() => { try { if (typeof cc.visitor_info_optional_fields === 'object') return cc.visitor_info_optional_fields || []; return cc.visitor_info_optional_fields ? JSON.parse(cc.visitor_info_optional_fields) : []; } catch(e) { return []; } })(),
-      categories
+      categories,
+      allAgents: categories.flatMap(cat => cat.agents.map(a => ({
+        id: a.id,
+        name: a.name,
+        title: a.title || '',
+        sip: a.sip || '',
+        web: a.web || '',
+        categoryId: cat.id,
+        categoryName: cat.name
+      })))
     };
 
     // 载入模板、替换标题，注入动态数据
@@ -11665,12 +11674,16 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
   const slug = sanitizeString(request.params.slug, 100);
   if (!slug) return response.status(400).json({ code: -1, message: "無效的链接。" });
 
-  const { name, phone, email, company, content } = request.body || {};
+  const { name, phone, email, company, content, agentId, agentName, agentSip, categoryId } = request.body || {};
   const visitorName = sanitizeString(String(name || ''), 100);
   const visitorPhone = sanitizeString(String(phone || ''), 50);
   const visitorEmail = sanitizeString(String(email || ''), 200);
   const visitorCompany = sanitizeString(String(company || ''), 200);
   const messageContent = sanitizeString(String(content || ''), 2000);
+  const targetAgentId = agentId ? Number(agentId) : null;
+  const targetAgentName = sanitizeString(String(agentName || ''), 100);
+  const targetAgentSip = sanitizeString(String(agentSip || ''), 64);
+  const targetCategoryId = categoryId ? Number(categoryId) : null;
 
   if (!visitorEmail) return response.status(400).json({ code: -1, message: "郵箱為必填項。" });
   if (!messageContent) return response.status(400).json({ code: -1, message: "諮詢內容為必填項。" });
@@ -11678,19 +11691,65 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
   let connection;
   try {
     connection = await pool.getConnection();
-    const [cc] = await connection.query(`SELECT id, tenant_id, status FROM call_centers WHERE center_slug = ? LIMIT 1`, [slug]);
+    const [cc] = await connection.query(`SELECT id, tenant_id, status, center_name FROM call_centers WHERE center_slug = ? LIMIT 1`, [slug]);
     if (!cc || cc.status !== 'active') {
       return response.status(404).json({ code: -1, message: "該呼叫中心不存在或已停用。" });
     }
 
+    // Look up agent sip_account_id if targeting a specific agent
+    let agentSipAccountId = null;
+    if (targetAgentId) {
+      const [agentRow] = await connection.query(
+        `SELECT sip_account_id FROM call_center_category_agents WHERE id = ? AND call_center_id = ? LIMIT 1`,
+        [targetAgentId, cc.id]
+      );
+      if (agentRow) agentSipAccountId = agentRow.sip_account_id || null;
+    }
+
     await connection.query(
       `INSERT INTO call_center_visitor_inquiries (
-         call_center_id, tenant_id, visitor_name, visitor_phone, visitor_email,
-         visitor_company, visitor_message, visitor_ip, user_agent
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [cc.id, cc.tenant_id, visitorName || null, visitorPhone || null, visitorEmail, visitorCompany || null, messageContent,
+         call_center_id, tenant_id, category_id, agent_id, sip_account_id, sip_number,
+         visitor_name, visitor_phone, visitor_email, visitor_company,
+         visitor_message, visitor_ip, user_agent
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [cc.id, cc.tenant_id, targetCategoryId, targetAgentId, agentSipAccountId, targetAgentSip || null,
+       visitorName || null, visitorPhone || null, visitorEmail, visitorCompany || null,
+       messageContent,
        (request.ip || request.connection?.remoteAddress || '').slice(0, 64), (request.headers['user-agent'] || '').slice(0, 1000)]
     );
+
+    // Create notification for tenant admin
+    const notifyTitle = targetAgentName
+      ? `訪客留言給 ${targetAgentName}`
+      : `訪客留言`;
+    const notifyBody = targetAgentName
+      ? `${visitorName || '訪客'}（${visitorEmail}）在「${cc.center_name}」給 ${targetAgentName} 留言：${messageContent.slice(0, 200)}`
+      : `${visitorName || '訪客'}（${visitorEmail}）在「${cc.center_name}」留言：${messageContent.slice(0, 200)}`;
+    const dedupeKey = `visitor_message_${cc.id}_${Date.now()}`;
+
+    await connection.query(
+      `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
+       VALUES (?, 'call_center', ?, 'visitor_message', 'visitor', ?, ?, ?, 'info', 'active')`,
+      [cc.tenant_id, cc.id, dedupeKey, notifyTitle, notifyBody]
+    );
+
+    // Send receipts to tenant admins
+    const adminRows = await connection.query(
+      `SELECT id FROM admin_users WHERE tenant_id = ? AND account_type = 'tenant' AND status = 'active'`,
+      [cc.tenant_id]
+    );
+    const [eventRow] = await connection.query(
+      `SELECT id FROM notification_events WHERE dedupe_key = ? LIMIT 1`,
+      [dedupeKey]
+    );
+    if (eventRow) {
+      for (const admin of adminRows) {
+        await connection.query(
+          `INSERT IGNORE INTO notification_receipts (event_id, admin_user_id, receiver_type) VALUES (?, ?, 'admin')`,
+          [eventRow.id, admin.id]
+        );
+      }
+    }
 
     return response.json({ code: 0, message: "留言提交成功" });
   } catch (error) {

@@ -434,9 +434,17 @@
       </div>
       <p class="modal-desc" style="margin-bottom:16px;">如有任何疑問，請填寫以下資訊，我們將盡快回覆。</p>
       <form id="messageForm" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-        <div class="form-group" style="padding-right:4px;">
-          <label>郵箱 <span>*</span></label>
-          <input type="email" name="email" required placeholder="請輸入您的郵箱" autocomplete="email">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-right:4px;">
+          <div class="form-group">
+            <label>郵箱 <span>*</span></label>
+            <input type="email" name="email" required placeholder="請輸入您的郵箱" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label>留言給</label>
+            <select name="agentId" style="width:100%;height:42px;padding:0 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;background:#fff;color:#334155;box-sizing:border-box;cursor:pointer;">
+              <option value="">不指定（選填）</option>
+            </select>
+          </div>
         </div>
         <div class="message-scroll-area" style="flex:1;overflow-y:auto;min-height:0;padding-right:4px;scrollbar-width:thin;scrollbar-color:transparent transparent;">
           <div class="form-group">
@@ -650,6 +658,27 @@
       document.getElementById('messageModal').classList.remove('hidden');
       document.getElementById('messageError').textContent = '';
       document.getElementById('messageForm').reset();
+      // Populate agent dropdown
+      var agentSelect = document.querySelector('#messageForm select[name="agentId"]');
+      agentSelect.innerHTML = '<option value="">不指定（選填）</option>';
+      var allAgents = (data.allAgents || []);
+      if (allAgents.length === 0) {
+        // Fallback: flatten from categories
+        (data.categories || []).forEach(function(cat) {
+          (cat.agents || []).forEach(function(a) {
+            allAgents.push({ id: a.id, name: a.name, title: a.title || '', sip: a.sip || '', categoryId: cat.id, categoryName: cat.name });
+          });
+        });
+      }
+      allAgents.forEach(function(a) {
+        var opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.name + (a.title ? ' - ' + a.title : '') + ' (' + a.categoryName + ')';
+        opt.setAttribute('data-agent-name', a.name);
+        opt.setAttribute('data-agent-sip', a.sip);
+        opt.setAttribute('data-category-id', a.categoryId);
+        agentSelect.appendChild(opt);
+      });
     }
     function closeMessageModal() {
       document.getElementById('messageModal').classList.add('hidden');
@@ -692,12 +721,19 @@
         btn.textContent = '提交留言';
         errEl.textContent = '網絡錯誤，請稍後再試';
       };
+
+      var agentSelect = document.querySelector('#messageForm select[name="agentId"]');
+      var selectedOption = agentSelect.selectedOptions[0];
       xhr.send(JSON.stringify({
         name: (formData.get('name') || '').trim(),
         phone: (formData.get('phone') || '').trim(),
         email: email,
         company: (formData.get('company') || '').trim(),
-        content: content
+        content: content,
+        agentId: agentSelect.value || null,
+        agentName: selectedOption ? (selectedOption.getAttribute('data-agent-name') || '') : '',
+        agentSip: selectedOption ? (selectedOption.getAttribute('data-agent-sip') || '') : '',
+        categoryId: selectedOption ? (selectedOption.getAttribute('data-category-id') || null) : null
       }));
     });
 
