@@ -900,8 +900,12 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         #device-management .device-table-wrapper { scrollbar-width: none; }
         #device-management .device-table-wrapper::-webkit-scrollbar { display: none; }
         #device-management .device-table input[type="checkbox"] { accent-color: #3b82f6; background: transparent; }
-        #device-management .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
-        #device-management .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
+        #device-management .ghost-btn,
+        #device-management-detail .ghost-btn,
+        #device-management-form .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
+        #device-management .ghost-btn:hover,
+        #device-management-detail .ghost-btn:hover,
+        #device-management-form .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #device-management .form-message { color: #d1d5db; }
         #device-management .form-message.error { background: #3b1111; color: #ef4444; }
         #device-management .form-message.success { background: #0d2818; color: #22c55e; }
