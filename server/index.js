@@ -11569,10 +11569,23 @@ app.get("/callcenter", async (request, response) => {
       webRows.forEach(r => { webAccountMap[Number(r.sip_user_id)] = r.username; });
     }
 
+    // Get ecard access slugs for agents
+    let ecardSlugMap = {};
+    if (agentSipIds.length > 0) {
+      const ecardRows = await connection.query(
+        `SELECT sip_user_id, access_slug FROM tenant_ecards WHERE sip_user_id IN (?) AND tenant_id = ? AND status = 'active'`,
+        [agentSipIds, cc.tenant_id]
+      );
+      ecardRows.forEach(r => { ecardSlugMap[Number(r.sip_user_id)] = r.access_slug; });
+    }
+
+    const ecardBaseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+
     const categories = categoriesRows.map(cat => {
       const agents = agentsRows.filter(a => a.category_id === cat.id).map(a => ({
         id: Number(a.id),
         ecardId: a.sip_account_id ? Number(a.sip_account_id) : null,
+        ecardSlug: a.sip_account_id ? (ecardSlugMap[Number(a.sip_account_id)] || '') : '',
         sip: a.sip_number || '',
         web: a.sip_account_id ? (webAccountMap[Number(a.sip_account_id)] || '') : '',
         name: a.display_name || '',
@@ -11599,6 +11612,7 @@ app.get("/callcenter", async (request, response) => {
       optionalFields: (() => { try { if (typeof cc.visitor_info_optional_fields === 'object') return cc.visitor_info_optional_fields || []; return cc.visitor_info_optional_fields ? JSON.parse(cc.visitor_info_optional_fields) : []; } catch(e) { return []; } })(),
       categories,
       sipDomain,
+      ecardBaseUrl,
       allAgents: categories.flatMap(cat => cat.agents.map(a => ({
         id: a.id,
         name: a.name,
@@ -11606,7 +11620,8 @@ app.get("/callcenter", async (request, response) => {
         sip: a.sip || '',
         web: a.web || '',
         categoryId: cat.id,
-        categoryName: cat.name
+        categoryName: cat.name,
+        ecardSlug: a.ecardSlug || ''
       })))
     };
 

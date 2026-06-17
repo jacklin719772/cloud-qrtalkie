@@ -680,7 +680,9 @@
         '<div class="agent-contact">' +
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '<div class="contact-item">📱 -</div>') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '<div class="contact-item">✉ -</div>') +
-        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞 電子名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
+        '</div><div class="agent-actions">' +
+          (a.ecardSlug ? '<a class="btn-call" href="' + (data.ecardBaseUrl || '') + '/u/' + a.ecardSlug + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">📇 電子名片</a>' : '<button class="btn-call" disabled style="opacity:0.5;cursor:not-allowed;">📇 無名片</button>') +
+          '<button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
       }).join('');
     }
 
