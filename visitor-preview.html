@@ -807,15 +807,23 @@
         btn.disabled = false;
         btn.textContent = '提交留言';
         if (xhr.status >= 200 && xhr.status < 300) {
-          var res = JSON.parse(xhr.responseText);
-          if (res.code === 0) {
-            closeMessageModal();
-            alert('留言已提交，感謝您的諮詢！');
-          } else {
-            errEl.textContent = res.message || '提交失敗，請稍後再試';
+          try {
+            var res = JSON.parse(xhr.responseText);
+            if (res.code === 0) {
+              closeMessageModal();
+              alert('留言已提交，感謝您的諮詢！');
+            } else {
+              errEl.textContent = res.message || '提交失敗，請稍後再試';
+            }
+          } catch(e) {
+            errEl.textContent = '提交失敗 (status ' + xhr.status + '): ' + xhr.responseText.slice(0, 200);
           }
         } else {
-          errEl.textContent = '提交失敗，請稍後再試';
+          errEl.textContent = '提交失敗 (HTTP ' + xhr.status + ')';
+          try {
+            var errRes = JSON.parse(xhr.responseText);
+            if (errRes.message) errEl.textContent = errRes.message;
+          } catch(e) {}
         }
       };
       xhr.onerror = function() {
