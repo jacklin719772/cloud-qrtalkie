@@ -38,7 +38,9 @@
     .hero {
       position: relative;
       flex: 0 0 300px;
-      height: 300px;
+      min-height: 300px;
+      max-height: 300px;
+      overflow: hidden;
       background-size: cover;
       background-position: center;
       background-color: #0f172a;
@@ -237,7 +239,7 @@
     @media (max-width: 768px) {
       body { padding: 0; }
       #app { border-radius: 0; }
-      .hero { flex-basis: 200px; height: 200px; }
+      .hero { flex-basis: 200px; min-height: 200px; max-height: 200px; }
       .hero .logo { width: 40px; height: 40px; }
       .center-name { font-size: 20px; }
       .center-desc { font-size: 12px; }
