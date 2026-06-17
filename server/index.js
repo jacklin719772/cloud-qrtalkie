@@ -11742,8 +11742,8 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
 
     return response.json({ code: 0, message: "留言提交成功" });
   } catch (error) {
-    console.error("Failed to save visitor message:", error);
-    return response.status(500).json({ code: -1, message: "系统繁忙，請稍後再試。" });
+    console.error("Failed to save visitor message:", error.message, error.stack);
+    return response.status(500).json({ code: -1, message: error.message || "系统繁忙，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
