@@ -1046,7 +1046,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               </p>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isAssigning} onClick={() => setAssignDialogOpen(false)}>取消</button>
+              <button type="button" disabled={isAssigning} onClick={() => setAssignDialogOpen(false)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="button" disabled={isAssigning || !selectedTenantId} onClick={handleConfirmAssign}>{isAssigning ? '分配中...' : '確認分配'}</button>
             </div>
           </div>
@@ -1072,7 +1072,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isBatchAssigning} onClick={() => setBatchAssignDialogOpen(false)}>取消</button>
+              <button type="button" disabled={isBatchAssigning} onClick={() => setBatchAssignDialogOpen(false)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="button" disabled={isBatchAssigning || !batchAssignTenantId} onClick={handleConfirmBatchAssign}>{isBatchAssigning ? '分配中...' : '確認分配'}</button>
             </div>
           </div>
@@ -1106,7 +1106,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
               {batchAddMessage.text && <p style={{ margin: 0, fontSize: '11px', color: batchAddMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{batchAddMessage.text}</p>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button className="ghost-btn" type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)}>取消</button>
+              <button type="button" disabled={isBatchAdding} onClick={() => setBatchAddOpen(false)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '新增中...' : '確認新增'}</button>
             </div>
           </form>
