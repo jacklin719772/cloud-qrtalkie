@@ -677,7 +677,7 @@
         var agentId = 'agent-card-' + idx;
         return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div>' +
           (a.sip ? '<div class="agent-sip-status"><span class="agent-sip-dot loading" id="' + agentId + '-dot"></span><span id="' + agentId + '-txt" style="color:var(--text-muted);">...</span><button class="agent-sip-refresh" onclick="refreshAgentStatus(\'' + esc(a.sip) + '\',\'' + agentId + '\')" title="刷新狀態">↻</button></div>' : '') +
-        '</div><div class="agent-contact">' +
+        '<div class="agent-contact">' +
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '<div class="contact-item">📱 -</div>') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '<div class="contact-item">✉ -</div>') +
         '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞 電子名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
