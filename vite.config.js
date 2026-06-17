@@ -29,6 +29,14 @@ export default defineConfig({
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
       },
+      '/access': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
+      '/visitor-assets': {
+        target: 'http://127.0.0.1:3001',
+        changeOrigin: true,
+      },
       '/payment-proofs': {
         target: 'http://127.0.0.1:3001',
         changeOrigin: true,
