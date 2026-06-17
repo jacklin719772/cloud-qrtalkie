@@ -37,7 +37,9 @@
     /* 顶部横幅 */
     .hero {
       position: relative;
-      flex: 0 0 300px;
+      display: block;
+      flex: none;
+      width: 100%;
       height: 300px !important;
       min-height: 300px;
       max-height: 300px;
@@ -600,7 +602,10 @@
 
     function renderMain() {
       document.getElementById('app').style.display = '';
-      document.getElementById('heroBanner').style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
+      var heroBanner = document.getElementById('heroBanner');
+      heroBanner.style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
+      heroBanner.style.height = '300px';
+      heroBanner.style.display = 'block';
       var logo = document.getElementById('centerLogo');
       if (data.logoDataUrl) { logo.src = data.logoDataUrl; logo.style.display = ''; }
       else { logo.style.display = 'none'; }
