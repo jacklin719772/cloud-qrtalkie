@@ -11660,6 +11660,47 @@ app.post("/api/public/call-centers/:slug/visitor-submit", async (request, respon
   }
 });
 
+// POST /api/public/call-centers/:slug/visitor-message - 访客在線留言
+app.post("/api/public/call-centers/:slug/visitor-message", async (request, response) => {
+  const slug = sanitizeString(request.params.slug, 100);
+  if (!slug) return response.status(400).json({ code: -1, message: "無效的链接。" });
+
+  const { name, phone, email, company, content } = request.body || {};
+  const visitorName = sanitizeString(String(name || ''), 100);
+  const visitorPhone = sanitizeString(String(phone || ''), 50);
+  const visitorEmail = sanitizeString(String(email || ''), 200);
+  const visitorCompany = sanitizeString(String(company || ''), 200);
+  const messageContent = sanitizeString(String(content || ''), 2000);
+
+  if (!visitorEmail) return response.status(400).json({ code: -1, message: "郵箱為必填項。" });
+  if (!messageContent) return response.status(400).json({ code: -1, message: "諮詢內容為必填項。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [cc] = await connection.query(`SELECT id, tenant_id, status FROM call_centers WHERE center_slug = ? LIMIT 1`, [slug]);
+    if (!cc || cc.status !== 'active') {
+      return response.status(404).json({ code: -1, message: "該呼叫中心不存在或已停用。" });
+    }
+
+    await connection.query(
+      `INSERT INTO call_center_visitor_inquiries (
+         call_center_id, tenant_id, visitor_name, visitor_phone, visitor_email,
+         visitor_company, visitor_message, visitor_ip, user_agent
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [cc.id, cc.tenant_id, visitorName || null, visitorPhone || null, visitorEmail, visitorCompany || null, messageContent,
+       (request.ip || request.connection?.remoteAddress || '').slice(0, 64), (request.headers['user-agent'] || '').slice(0, 1000)]
+    );
+
+    return response.json({ code: 0, message: "留言提交成功" });
+  } catch (error) {
+    console.error("Failed to save visitor message:", error);
+    return response.status(500).json({ code: -1, message: "系统繁忙，請稍後再試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // GET /api/call-centers/:id/visitor-inquiries - 获取呼叫中心的访客记录
 app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {

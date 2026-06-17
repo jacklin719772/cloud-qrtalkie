@@ -94,28 +94,41 @@
       background: #eff6ff;
       border: 1px solid #bfdbfe;
       color: #1e40af;
-      padding: 10px 40px 10px 14px;
+      padding: 10px 14px;
       border-radius: 12px;
       margin-bottom: 12px;
       font-size: 13px;
       line-height: 1.5;
-      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .welcome-banner-close {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: transparent;
-      border: none;
-      color: #93c5fd;
+    .welcome-banner-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .btn-message {
+      flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid #bfdbfe;
+      background: #fff;
+      color: #2563eb;
+      font-size: 20px;
       cursor: pointer;
-      padding: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color 0.2s;
+      transition: all 0.2s;
+      padding: 0;
     }
-    .welcome-banner-close:hover { color: #2563eb; }
+    .btn-message:hover {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
 
     .mobile-step { display: none; }
 
@@ -405,6 +418,41 @@
     </div>
   </div>
 
+  <!-- 访客留言弹窗 -->
+  <div id="messageModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width:480px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 class="modal-title" style="margin:0;">在線留言</h2>
+        <button onclick="closeMessageModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;padding:0;line-height:1;">&times;</button>
+      </div>
+      <p class="modal-desc">如有任何疑問，請填寫以下資訊，我們將盡快回覆。</p>
+      <form id="messageForm">
+        <div class="form-group">
+          <label>郵箱 <span>*</span></label>
+          <input type="email" name="email" required placeholder="請輸入您的郵箱" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>諮詢內容 <span>*</span></label>
+          <textarea name="content" required placeholder="請描述您的問題或需求" rows="4" style="resize:vertical;padding:12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;font-family:inherit;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label>電話</label>
+          <input type="tel" name="phone" placeholder="請輸入您的電話（選填）" autocomplete="tel">
+        </div>
+        <div class="form-group">
+          <label>公司</label>
+          <input type="text" name="company" placeholder="請輸入您的公司名稱（選填）" autocomplete="organization">
+        </div>
+        <div id="messageError" style="color:#ef4444;font-size:13px;min-height:20px;margin-bottom:8px;"></div>
+        <button type="submit" class="btn-submit" id="messageSubmitBtn">提交留言</button>
+      </form>
+    </div>
+  </div>
+
   <!-- 页面主结构 -->
   <div id="app" style="display: none;">
     <header class="hero" id="heroBanner">
@@ -419,7 +467,10 @@
     </header>
 
     <main class="main-container">
-      <div id="welcomeBanner" class="welcome-banner"></div>
+      <div id="welcomeBanner" class="welcome-banner">
+        <span class="welcome-banner-text" id="welcomeBannerText"></span>
+        <button class="btn-message" onclick="openMessageModal()" title="在線留言">✉</button>
+      </div>
       
       <div class="content-layout" id="contentLayout">
         <aside id="categorySidebar" class="category-sidebar"></aside>
@@ -528,7 +579,7 @@
       else { logo.style.display = 'none'; }
       document.getElementById('centerName').textContent = data.name;
       document.getElementById('centerDesc').textContent = data.description || '';
-      if (data.welcomeMessage) document.getElementById('welcomeBanner').innerHTML = data.welcomeMessage;
+      if (data.welcomeMessage) document.getElementById('welcomeBannerText').textContent = data.welcomeMessage;
 
       var sidebar = document.getElementById('categorySidebar');
       sidebar.innerHTML = (data.categories || []).map(function(c, i) {
@@ -583,6 +634,61 @@
       document.getElementById('mobileStepAgents').style.display = 'none';
       document.getElementById('mobileStepCats').style.display = 'flex';
     }
+
+    function openMessageModal() {
+      document.getElementById('messageModal').classList.remove('hidden');
+      document.getElementById('messageError').textContent = '';
+      document.getElementById('messageForm').reset();
+    }
+    function closeMessageModal() {
+      document.getElementById('messageModal').classList.add('hidden');
+    }
+
+    document.getElementById('messageForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var btn = document.getElementById('messageSubmitBtn');
+      var errEl = document.getElementById('messageError');
+      var formData = new FormData(e.target);
+      var email = (formData.get('email') || '').trim();
+      var content = (formData.get('content') || '').trim();
+      if (!email) { errEl.textContent = '請輸入郵箱'; return; }
+      if (!content) { errEl.textContent = '請輸入諮詢內容'; return; }
+
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+      errEl.textContent = '';
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/public/call-centers/' + encodeURIComponent(data.slug) + '/visitor-message');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.onload = function() {
+        btn.disabled = false;
+        btn.textContent = '提交留言';
+        if (xhr.status >= 200 && xhr.status < 300) {
+          var res = JSON.parse(xhr.responseText);
+          if (res.code === 0) {
+            closeMessageModal();
+            alert('留言已提交，感謝您的諮詢！');
+          } else {
+            errEl.textContent = res.message || '提交失敗，請稍後再試';
+          }
+        } else {
+          errEl.textContent = '提交失敗，請稍後再試';
+        }
+      };
+      xhr.onerror = function() {
+        btn.disabled = false;
+        btn.textContent = '提交留言';
+        errEl.textContent = '網絡錯誤，請稍後再試';
+      };
+      xhr.send(JSON.stringify({
+        name: (formData.get('name') || '').trim(),
+        phone: (formData.get('phone') || '').trim(),
+        email: email,
+        company: (formData.get('company') || '').trim(),
+        content: content
+      }));
+    });
 
     render();
   </script>
