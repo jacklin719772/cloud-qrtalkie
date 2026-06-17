@@ -12168,11 +12168,19 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
     );
     if (existingSlug) return response.status(409).json({ message: "該唯一標識 Slug 已被佔用，請更換。" });
 
+    const logoUrl = sanitizeString(payload.logoUrl, 500) || null;
+    const bannerUrl = sanitizeString(payload.bannerUrl, 500) || null;
+    const visitorTitle = sanitizeString(payload.visitorTitle, 200) || null;
+    const showTips = payload.showTips === false ? false : true;
+    const tipsText = sanitizeString(payload.tipsText, 500) || null;
+
     const result = await connection.query(
       `INSERT INTO access_communities
-         (tenant_id, name, slug, address, latitude, longitude, service_scope, contact_person, contact_phone, contact_email, access_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [request.admin.tenantId, name, slug, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, accessUrl]
+         (tenant_id, name, slug, address, latitude, longitude, service_scope, contact_person, contact_phone, contact_email, access_url,
+          logo_url, banner_url, visitor_title, show_tips, tips_text)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [request.admin.tenantId, name, slug, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, accessUrl,
+       logoUrl, bannerUrl, visitorTitle, showTips, tipsText]
     );
     response.status(201).json({
       code: 0,
@@ -12190,6 +12198,11 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
         contactPhone,
         contactEmail,
         accessUrl,
+        logoUrl,
+        bannerUrl,
+        visitorTitle,
+        showTips,
+        tipsText,
       }
     });
   } catch (error) {
@@ -12275,6 +12288,11 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
         contactPhone,
         contactEmail,
         accessUrl,
+        logoUrl,
+        bannerUrl,
+        visitorTitle,
+        showTips: showTips === 1,
+        tipsText,
       }
     });
   } catch (error) {
