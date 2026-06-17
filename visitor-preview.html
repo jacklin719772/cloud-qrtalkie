@@ -47,11 +47,10 @@
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      background-size: 100% auto;
-      background-position: top center;
+      background-size: contain;
+      background-position: center;
       background-repeat: no-repeat;
-      background-color: #f00;
-      outline: 3px solid blue;
+      background-color: #0f172a;
     }
     .hero-overlay {
       position: absolute;
@@ -247,7 +246,7 @@
     @media (max-width: 768px) {
       body { padding: 0; }
       #app { border-radius: 0; }
-      .hero { flex-basis: 200px; min-height: 200px; max-height: 200px; }
+      .hero { flex-basis: 120px; min-height: 120px; max-height: 120px; }
       .hero .logo { width: 40px; height: 40px; }
       .center-name { font-size: 20px; }
       .center-desc { font-size: 12px; }
@@ -484,7 +483,7 @@
 
   <!-- 页面主结构 -->
   <div id="app" style="display: none;">
-    <header class="hero" id="heroBanner" style="height:150px;display:block;background-color:#f00;">
+    <header class="hero" id="heroBanner">
       <div class="hero-overlay"></div>
       <div class="hero-content">
         <img id="centerLogo" class="logo" src="" alt="Logo">
@@ -606,8 +605,6 @@
       heroBanner.style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
       heroBanner.style.height = '150px';
       heroBanner.style.display = 'block';
-      heroBanner.style.backgroundColor = '#f00';
-      heroBanner.style.flex = '0 0 150px';
       var logo = document.getElementById('centerLogo');
       if (data.logoDataUrl) { logo.src = data.logoDataUrl; logo.style.display = ''; }
       else { logo.style.display = 'none'; }
