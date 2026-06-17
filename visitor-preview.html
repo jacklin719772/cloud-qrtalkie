@@ -578,8 +578,8 @@
       <div style="font-size:20px;font-weight:700;color:var(--text-main);margin-bottom:2px;" id="callName"></div>
       <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;" id="callTitle"></div>
       <div style="background:var(--bg-card-hover);border-radius:12px;padding:14px;text-align:left;font-size:13px;color:var(--text-muted);line-height:1.8;">
-        <div><strong>SIP 帳號：</strong><span id="callSip"></span></div>
-        <div><strong>Web 帳號：</strong><span id="callWeb"></span></div>
+        <div>📱 電話：<span id="callPhone"></span></div>
+        <div>✉ 郵箱：<span id="callEmail"></span></div>
       </div>
       <button onclick="closeCallPopup()" style="margin-top:18px;padding:10px 32px;border-radius:10px;border:1px solid var(--border-color);background:var(--bg-card-hover);color:var(--text-muted);font-size:13px;font-weight:600;cursor:pointer;">關閉</button>
     </div>
@@ -678,18 +678,17 @@
         return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div>' +
           (a.sip ? '<div class="agent-sip-status"><span class="agent-sip-dot loading" id="' + agentId + '-dot"></span><span id="' + agentId + '-txt" style="color:var(--text-muted);">...</span><button class="agent-sip-refresh" onclick="refreshAgentStatus(\'' + esc(a.sip) + '\',\'' + agentId + '\')" title="刷新狀態">↻</button></div>' : '') +
         '</div><div class="agent-contact">' +
-          (a.sip ? '<div class="contact-item">SIP: ' + a.sip + '</div>' : '') +
-          (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '') +
-          (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '') +
-        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞 電子名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
+          (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '<div class="contact-item">📱 -</div>') +
+          (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '<div class="contact-item">✉ -</div>') +
+        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞 電子名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
       }).join('');
     }
 
-    function showCallPopup(name, sip, web, title) {
+    function showCallPopup(name, phone, email, title) {
       document.getElementById('callName').textContent = name;
       document.getElementById('callTitle').textContent = title || '';
-      document.getElementById('callSip').textContent = sip;
-      document.getElementById('callWeb').textContent = web;
+      document.getElementById('callPhone').textContent = phone || '-';
+      document.getElementById('callEmail').textContent = email || '-';
       document.getElementById('callPopup').style.display = 'flex';
     }
     function closeCallPopup() { document.getElementById('callPopup').style.display = 'none'; }
@@ -698,7 +697,7 @@
       document.getElementById('mobileAgentTitle').textContent = catName;
       var agents = (data.categories || []).find(function(c) { return c.id === catId; })?.agents || [];
       document.getElementById('mobileAgentsArea').innerHTML = agents.map(function(a) {
-        return '<div class="mobile-agent-card"><div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div></div><button class="mobile-agent-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞</button></div>';
+        return '<div class="mobile-agent-card"><div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div></div><button class="mobile-agent-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞</button></div>';
       }).join('');
       document.getElementById('mobileStepCats').style.display = 'none';
       document.getElementById('mobileStepAgents').style.display = 'flex';
