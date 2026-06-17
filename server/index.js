@@ -153,6 +153,81 @@ app.use("/api/ecard-images", express.static(ecardImagesDir));
 app.use("/api/call-center-images", express.static(callCenterImagesDir));
 app.use("/visitor-assets", express.static(path.join(projectRoot, "public/visitor")));
 
+// POST /api/access/room-call-session - 門禁房間語音/視頻呼叫會話
+app.post("/api/access/room-call-session", async (request, response) => {
+  const roomId = Number(request.body?.roomId);
+  const lockId = sanitizeString(String(request.body?.lockId || ''), 120);
+  if (!roomId || !lockId) return response.status(400).json({ success: false, message: "缺少參數" });
+
+  const voiceEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL || "").toLowerCase() === "true";
+  const videoEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL || "").toLowerCase() === "true";
+  if (!voiceEnabled && !videoEnabled) return response.status(403).json({ success: false, message: "通話功能未啟用" });
+
+  const wssUrl = String(process.env.ECARD_ASTERISK_WEBRTC_WSS_URL || "").trim();
+  const sharedPassword = String(process.env.ECARD_ASTERISK_WEBRTC_SHARED_PASSWORD || "").trim();
+  const webrtcDomainValue = String(process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || webrtcDomain || "").trim();
+  const sipDomainValue = String(process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || "").trim();
+  const sipServerPublicIp = String(process.env.ECARD_ASTERISK_WEBRTC_SIP_SERVER_PUBLIC_IP || "").trim();
+
+  if (!wssUrl || !sharedPassword || !webrtcDomainValue || !sipDomainValue) {
+    return response.status(500).json({ success: false, message: "呼叫服務未配置" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Verify device exists
+    const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
+    if (!device) return response.status(404).json({ success: false, message: "設備不存在" });
+
+    // Get room with SIP account
+    const [room] = await connection.query(
+      `SELECT r.id, r.room_number, r.tenant_id, s.username AS sip_account
+       FROM access_rooms r
+       LEFT JOIN sip_users s ON s.id = r.sip_user_id
+       WHERE r.id = ? AND r.tenant_id = ? LIMIT 1`,
+      [roomId, device.tenant_id]
+    );
+    if (!room || !room.sip_account) return response.status(404).json({ success: false, message: "該房間未配置SIP帳號" });
+
+    // Get web account for this SIP user
+    const [webRow] = await connection.query(
+      `SELECT wu.username FROM tenant_web_account_entitlements ent
+       JOIN web_users wu ON wu.id = ent.web_user_id
+       WHERE ent.sip_user_id = (SELECT id FROM sip_users WHERE username = ? AND tenant_id = ? LIMIT 1)
+         AND ent.tenant_id = ? AND ent.status = 'active' LIMIT 1`,
+      [room.sip_account, room.tenant_id, room.tenant_id]
+    );
+
+    const webAccount = webRow?.username || `guest_${room.sip_account}`;
+    const targetSipUri = `sip:${room.sip_account}@${sipDomainValue}`;
+    const iceServers = parseEcardIceServers();
+
+    return response.json({
+      success: true,
+      data: {
+        webAccount,
+        credential: { type: "shared-password", value: sharedPassword },
+        webrtcDomain: webrtcDomainValue,
+        wssUrl,
+        targetSipUri,
+        sipDomain: sipDomainValue,
+        iceServers,
+        sipServerPublicIp,
+        enableVoice: voiceEnabled,
+        enableVideo: videoEnabled,
+        roomNumber: room.room_number,
+      },
+    });
+  } catch (error) {
+    console.error("Room call session failed:", error);
+    return response.status(500).json({ success: false, message: "系統繁忙" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // GET /access/visitor - 門禁入口訪客拜訪頁面（type=01社區/02樓宇 & lockId=設備UUID）
 app.get("/access/visitor", async (request, response) => {
   const entranceType = request.query.type || '';

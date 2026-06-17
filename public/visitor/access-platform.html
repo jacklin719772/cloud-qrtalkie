@@ -1549,6 +1549,25 @@
     </div>
   </div>
 
+  <!-- ═══ WebRTC Call Overlay ═══ -->
+  <div id="callOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;">
+    <div style="text-align:center;max-width:480px;width:90%;">
+      <div style="font-size:18px;font-weight:700;color:#f3f4f6;margin-bottom:8px;" id="callRoomLabel"></div>
+      <div style="font-size:14px;color:#e5e7eb;margin-bottom:8px;" id="callStatusText">正在連接...</div>
+      <div style="font-size:32px;font-weight:800;color:#f1d37a;margin-bottom:16px;font-family:monospace;" id="callTimer"></div>
+      <div id="callError" style="display:none;font-size:13px;color:#ef4444;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap;">
+        <video id="localVideo" autoplay muted playsinline style="width:120px;height:90px;border-radius:12px;background:#1a2332;object-fit:cover;"></video>
+        <video id="remoteVideo" autoplay playsinline style="width:200px;height:150px;border-radius:12px;background:#1a2332;object-fit:cover;display:none;"></video>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;">
+        <button id="btnToggleVideo" style="display:none;width:48px;height:48px;border-radius:50%;border:1px solid #374151;background:#1a2332;color:#60a5fa;font-size:20px;cursor:pointer;">📹</button>
+        <button id="btnHangup" style="width:56px;height:56px;border-radius:50%;border:none;background:#dc2626;color:#fff;font-size:24px;cursor:pointer;" title="掛斷">📞</button>
+      </div>
+    </div>
+    <audio id="remoteAudio" autoplay style="display:none;"></audio>
+  </div>
+
   <!-- ═══════════════ Footer ═══════════════ -->
   <div class="footer">
     <span class="footer-icon">🛡️</span>安全守護 &nbsp; 便捷出入 &nbsp;&nbsp; Copyright &copy; <a href="https://www.qrtalkie.org" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none;">QRTalkie Team</a>
@@ -1556,6 +1575,7 @@
 
 </div>
 
+<script src="/visitor-assets/access-call.js"></script>
 <script>
 
   // ─── Load data from server or use static demo ───
@@ -1596,7 +1616,7 @@
     }
     // Populate room cards
     if (ACCESS.rooms) {
-      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleCall(this,\'voice\')" title="語音通話">📞</button><button class="call-icon-btn call-video" onclick="handleCall(this,\'video\')" title="視訊通話">📹</button></div></div>'; }).join('');
+      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'" data-room-id="'+r.id+'" data-room-num="'+esc(r.roomNumber)+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleCall(this,\'voice\')" title="語音通話">📞</button><button class="call-icon-btn call-video" onclick="handleCall(this,\'video\')" title="視訊通話">📹</button></div></div>'; }).join('');
       document.querySelectorAll('.pc-room-grid').forEach(function(g){ g.innerHTML = rh; });
       // Filter rooms by first building
       var firstBld = ACCESS.buildings && ACCESS.buildings[0] ? ACCESS.buildings[0].id : null;
@@ -1652,20 +1672,34 @@
   function handleCall(btn, callType) {
     callType = callType || 'voice';
     var row = btn.closest('.room-row');
-    var roomNumber = row ? (row.querySelector('.room-number')?.textContent || '') : '';
-    var resident = row ? (row.querySelector('.room-contact')?.textContent || '') : '';
-    var sipAccount = '—', webAccount = '—', displayName = resident || '—';
-    if (ACCESS && ACCESS.sipAccounts) {
-      var match = ACCESS.sipAccounts.find(function(s) { return s.roomNumber === roomNumber.replace('室',''); });
-      if (match) { sipAccount = match.sipAccount || '—'; webAccount = match.webAccount || '—'; displayName = match.displayName || resident || '—'; }
+    var roomId = row ? parseInt(row.dataset.roomId) : 0;
+    var roomNumber = row ? (row.dataset.roomNum || row.querySelector('.room-number')?.textContent?.replace('室','') || '') : '';
+    var lockId = (new URLSearchParams(location.search)).get('lockId') || '';
+
+    if (!roomId || !lockId) {
+      alert('無法獲取房間或設備資訊，請重新整理頁面。');
+      return;
     }
-    document.getElementById('popupRoom').textContent = roomNumber;
-    document.getElementById('popupResident').textContent = resident ? '住戶：' + resident : '';
-    document.getElementById('popupSip').textContent = sipAccount;
-    document.getElementById('popupWeb').textContent = webAccount;
-    document.getElementById('popupDevice').textContent = (new URLSearchParams(location.search)).get('lockId') || '—';
-    document.getElementById('popupTitle').textContent = callType === 'video' ? '📹 視訊通話' : '📞 語音通話';
-    document.getElementById('callPopup').style.display = 'flex';
+
+    // Use the WebRTC calling module
+    if (window.AccessCall) {
+      window.AccessCall.call({ roomId: roomId, roomNumber: roomNumber, lockId: lockId }, callType);
+    } else {
+      // Fallback: show info popup (static demo)
+      var resident = row ? (row.querySelector('.room-contact')?.textContent || '') : '';
+      var sipAccount = '—', webAccount = '—', displayName = resident || '—';
+      if (ACCESS && ACCESS.sipAccounts) {
+        var match = ACCESS.sipAccounts.find(function(s) { return s.roomNumber === roomNumber; });
+        if (match) { sipAccount = match.sipAccount || '—'; webAccount = match.webAccount || '—'; displayName = match.displayName || resident || '—'; }
+      }
+      document.getElementById('popupRoom').textContent = roomNumber + '室';
+      document.getElementById('popupResident').textContent = resident ? '住戶：' + resident : '';
+      document.getElementById('popupSip').textContent = sipAccount;
+      document.getElementById('popupWeb').textContent = webAccount;
+      document.getElementById('popupDevice').textContent = lockId;
+      document.getElementById('popupTitle').textContent = callType === 'video' ? '📹 視訊通話' : '📞 語音通話';
+      document.getElementById('callPopup').style.display = 'flex';
+    }
   }
 
   function closeCallPopup() {
