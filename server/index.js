@@ -11764,21 +11764,21 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
   const startDate = sanitizeString(request.query.startDate, 20);
   const endDate = sanitizeString(request.query.endDate, 20);
 
-  const whereClauses = ["tenant_id = ?", "call_center_id = ?"];
+  const whereClauses = ["vi.tenant_id = ?", "vi.call_center_id = ?"];
   const params = [request.admin.tenantId, callCenterId];
 
   if (keyword) {
-    whereClauses.push("(visitor_name LIKE ? OR visitor_phone LIKE ? OR visitor_email LIKE ? OR visitor_company LIKE ? OR visitor_message LIKE ?)");
+    whereClauses.push("(vi.visitor_name LIKE ? OR vi.visitor_phone LIKE ? OR vi.visitor_email LIKE ? OR vi.visitor_company LIKE ? OR vi.visitor_message LIKE ?)");
     const pattern = `%${keyword}%`;
     params.push(pattern, pattern, pattern, pattern, pattern);
   }
 
   if (startDate) {
-    whereClauses.push("created_at >= ?");
+    whereClauses.push("vi.created_at >= ?");
     params.push(`${startDate} 00:00:00`);
   }
   if (endDate) {
-    whereClauses.push("created_at <= ?");
+    whereClauses.push("vi.created_at <= ?");
     params.push(`${endDate} 23:59:59`);
   }
 
