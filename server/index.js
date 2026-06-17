@@ -11793,7 +11793,7 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
       return response.status(404).json({ code: -1, message: "找不到指定的呼叫中心。" });
     }
 
-    const countRows = await connection.query(`SELECT COUNT(*) AS total FROM call_center_visitor_inquiries ${whereSql}`, params);
+    const countRows = await connection.query(`SELECT COUNT(*) AS total FROM call_center_visitor_inquiries vi ${whereSql}`, params);
     const total = Number(countRows[0]?.total || 0);
 
     const rows = await connection.query(`
@@ -11824,8 +11824,8 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
 
     return response.json({ code: 0, data: { list: formattedRows, total, centerName: cc.center_name } });
   } catch (error) {
-    console.error("Failed to fetch visitor inquiries:", error);
-    return response.status(500).json({ code: -1, message: "获取访客记录失败。" });
+    console.error("Failed to fetch visitor inquiries:", error.message, error.stack);
+    return response.status(500).json({ code: -1, message: error.message || "获取访客记录失败。" });
   } finally {
     if (connection) connection.release();
   }
