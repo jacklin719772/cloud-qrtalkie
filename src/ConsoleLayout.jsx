@@ -507,14 +507,14 @@ export default function ConsoleLayout({ onLogout }) {
           </div>
         );
       }
-      if (['add', 'edit'].includes(deviceManagementMode)) {
+      if (['add', 'edit', 'detail'].includes(deviceManagementMode)) {
         return (
           <button
             className="ghost-btn"
             type="button"
             onClick={() => deviceManagementRef.current?.returnToList()}
           >
-            返回設備管理首页
+            {deviceManagementMode === 'detail' ? '返回列表' : '返回設備管理首页'}
           </button>
         );
       }
