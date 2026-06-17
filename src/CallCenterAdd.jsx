@@ -86,7 +86,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
             const data = res.data;
             setName(data.name || '');
             setSlug(data.slug || '');
-            setLogoDataUrl(data.LogoDataUrl || '');
+            setLogoDataUrl(data.logoDataUrl || '');
             setCoverDataUrl(data.coverDataUrl || '');
             setDescription(data.description || '');
             setWelcomeMessage(data.welcomeMessage || '');
@@ -115,7 +115,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
       const payload = {
         name: name.trim(),
         slug: slug.trim(),
-        LogoDataUrl,
+        logoDataUrl: LogoDataUrl,
         coverDataUrl,
         description: description.trim(),
         welcomeMessage: welcomeMessage.trim(),
