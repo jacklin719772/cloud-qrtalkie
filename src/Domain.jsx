@@ -238,12 +238,12 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
         .badge.expired { background: #f1f5f9; color: #6b7280; }
         .badge.expiring { background: #fef3c7; color: #b45309; }
         .ghost-btn { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-        .ghost-btn:hover { background: #f1f5f9; }
-        .dropdown-portal { position: fixed; width: 150px; background: #fff; border: 1px solid #374151; border-radius: 8px; box-shadow: 0 10px 30px rgba(15,23,42,0.15); padding: 4px; z-index: 2147483647; }
+        .ghost-btn:hover { background: #1f2937; }
+        .dropdown-portal { position: fixed; width: 150px; background: #111827; border: 1px solid #1f2937; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); padding: 4px; z-index: 2147483647; }
         .dropdown-portal button { display: block; width: 100%; border: none; background: none; padding: 8px 12px; text-align: left; font-size: 12px; color: #d1d5db; cursor: pointer; border-radius: 4px; }
-        .dropdown-portal button:hover { background: #f1f5f9; }
+        .dropdown-portal button:hover { background: #1a2332; }
         .dropdown-portal button:disabled { color: #6b7280; cursor: not-allowed; }
-        .dropdown-portal button.danger { color: #dc2626; }
+        .dropdown-portal button.danger { color: #f87171; }
       
         .domain-search input { background: #1a2332; }
         .domain-search input::placeholder { color: #6b7280; }
