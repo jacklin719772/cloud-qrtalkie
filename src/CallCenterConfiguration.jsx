@@ -4,17 +4,26 @@ import { Search, Settings, Eye, Copy } from 'lucide-react';
 import apiClient from './apiClient';
 
 async function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+  }
   try {
-    await navigator.clipboard.writeText(text);
-  } catch {
     const ta = document.createElement('textarea');
     ta.value = text;
     ta.style.position = 'fixed';
-    ta.style.opacity = '0';
+    ta.style.left = '-9999px';
+    ta.style.top = '-9999px';
     document.body.appendChild(ta);
+    ta.focus();
     ta.select();
-    document.execCommand('copy');
+    const ok = document.execCommand('copy');
     document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
   }
 }
 
@@ -573,8 +582,8 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                       <button
                         type="button"
                         onClick={async () => {
-                          await copyToClipboard(item.url);
-                          alert('連結已複製！');
+                          const ok = await copyToClipboard(item.url);
+                          alert(ok ? '連結已複製！' : '複製失敗，請手動複製');
                         }}
                         style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
                         title="複製連結" onMouseOver={(e) => e.currentTarget.style.color = '#60a5fa'} onMouseOut={(e) => e.currentTarget.style.color = '#6b7280'}
@@ -647,9 +656,9 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                             {item.status === 'active' ? '禁用' : '啟用'}
                           </button>
                           <button type="button" className="dropdown-item" onClick={async () => {
-                            await navigator.clipboard.writeText(item.url);
-                            alert('連結已複製！');
-                            setOpenDropdownId(null); // 關閉下拉菜单
+                            const ok = await copyToClipboard(item.url);
+                            alert(ok ? '連結已複製！' : '複製失敗，請手動複製');
+                            setOpenDropdownId(null);
                           }}>
                             複製連結
                           </button>
