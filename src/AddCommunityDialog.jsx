@@ -41,19 +41,21 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
     setUploading({ fieldName, progress: 0 });
     try {
       const res = await apiClient.post('/upload/community-image', formDataUpload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
-          const pct = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
-          setUploading({ fieldName, progress: Math.min(pct, 99) });
+          if (progressEvent.total) {
+            const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploading(prev => prev?.fieldName === fieldName ? { fieldName, progress: Math.min(pct, 95) } : prev);
+          }
         },
       });
       setUploading({ fieldName, progress: 100 });
+      await new Promise(r => setTimeout(r, 300));
       if (res && res.url) {
         if (fieldName === 'logoUrl') setLogoUrl(res.url);
         else setBannerUrl(res.url);
       }
     } catch (err) { console.error('Upload failed:', err); }
-    finally { setTimeout(() => setUploading(null), 400); }
+    finally { setTimeout(() => setUploading(null), 100); }
   };
 
   const displaySlug = editSlug || slug;
