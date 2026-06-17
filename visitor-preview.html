@@ -645,7 +645,7 @@
           (a.sip ? '<div class="contact-item">SIP: ' + a.sip + '</div>' : '') +
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '') +
-        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞 名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
+        '</div><div class="agent-actions"><button class="btn-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.sip || '—') + '\', \'' + (a.web || '—') + '\', \'' + esc(a.title || '') + '\')">📞 電子名片</button><button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
       }).join('');
     }
 
