@@ -522,6 +522,7 @@
       document.getElementById('heroBanner').style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
       var logo = document.getElementById('centerLogo');
       if (data.logoDataUrl) { logo.src = data.logoDataUrl; logo.style.display = ''; }
+      else { logo.style.display = 'none'; }
       document.getElementById('centerName').textContent = data.name;
       document.getElementById('centerDesc').textContent = data.description || '';
       if (data.welcomeMessage) document.getElementById('welcomeBanner').innerHTML = data.welcomeMessage;
