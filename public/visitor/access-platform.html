@@ -560,6 +560,22 @@
       transform: none;
     }
 
+    .call-icon-btn.call-video {
+      border-color: #60a5fa;
+      color: #60a5fa;
+    }
+
+    .call-icon-btn.call-video:hover {
+      background: #1e293b;
+      border-color: #3b82f6;
+    }
+
+    .room-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     /* ═══════════════ Footer ═══════════════ */
     .footer {
       text-align: center;
@@ -1199,6 +1215,22 @@
       transform: none;
     }
 
+    .call-icon-btn.call-video {
+      border-color: #60a5fa;
+      color: #60a5fa;
+    }
+
+    .call-icon-btn.call-video:hover {
+      background: #1e293b;
+      border-color: #3b82f6;
+    }
+
+    .room-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
     /* ═══════════════ Footer ═══════════════ */
     .footer {
       text-align: center;
@@ -1505,15 +1537,15 @@
   <!-- ═══ Call Popup ═══ -->
   <div id="callPopup" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;" onclick="closeCallPopup()">
     <div style="background:#111827;border-radius:18px;padding:28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);" onclick="event.stopPropagation()">
-      <div style="font-size:40px;margin-bottom:12px;">📞</div>
-      <div style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px;" id="popupRoom"></div>
-      <div style="font-size:13px;color:#64748b;margin-bottom:16px;" id="popupResident"></div>
-      <div style="background:#1a2332;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#334155;line-height:1.8;">
+      <div style="font-size:40px;margin-bottom:8px;" id="popupTitle">📞 語音通話</div>
+      <div style="font-size:20px;font-weight:700;color:#f3f4f6;margin-bottom:4px;" id="popupRoom"></div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:16px;" id="popupResident"></div>
+      <div style="background:#1a2332;border-radius:12px;padding:14px;text-align:left;font-size:13px;color:#e5e7eb;line-height:1.8;">
         <div><strong>SIP 帳號：</strong><span id="popupSip"></span></div>
         <div><strong>Web 帳號：</strong><span id="popupWeb"></span></div>
         <div><strong>設備 UUID：</strong><span id="popupDevice" style="font-family:monospace;font-size:11px;"></span></div>
       </div>
-      <button onclick="closeCallPopup()" style="margin-top:18px;padding:10px 32px;border-radius:10px;border:1px solid #374151;background:#1a2332;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;">關閉</button>
+      <button onclick="closeCallPopup()" style="margin-top:18px;padding:10px 32px;border-radius:10px;border:1px solid #374151;background:#1a2332;color:#9ca3af;font-size:13px;font-weight:600;cursor:pointer;">關閉</button>
     </div>
   </div>
 
@@ -1564,7 +1596,7 @@
     }
     // Populate room cards
     if (ACCESS.rooms) {
-      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button></div>'; }).join('');
+      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleCall(this,\'voice\')" title="語音通話">📞</button><button class="call-icon-btn call-video" onclick="handleCall(this,\'video\')" title="視訊通話">📹</button></div></div>'; }).join('');
       document.querySelectorAll('.pc-room-grid').forEach(function(g){ g.innerHTML = rh; });
       // Filter rooms by first building
       var firstBld = ACCESS.buildings && ACCESS.buildings[0] ? ACCESS.buildings[0].id : null;
@@ -1617,7 +1649,8 @@
   }
 
   // Call button feedback: static demo only, no real call.
-  function handleCall(btn) {
+  function handleCall(btn, callType) {
+    callType = callType || 'voice';
     var row = btn.closest('.room-row');
     var roomNumber = row ? (row.querySelector('.room-number')?.textContent || '') : '';
     var resident = row ? (row.querySelector('.room-contact')?.textContent || '') : '';
@@ -1631,6 +1664,7 @@
     document.getElementById('popupSip').textContent = sipAccount;
     document.getElementById('popupWeb').textContent = webAccount;
     document.getElementById('popupDevice').textContent = (new URLSearchParams(location.search)).get('lockId') || '—';
+    document.getElementById('popupTitle').textContent = callType === 'video' ? '📹 視訊通話' : '📞 語音通話';
     document.getElementById('callPopup').style.display = 'flex';
   }
 
