@@ -435,13 +435,15 @@
           <label>諮詢內容 <span>*</span></label>
           <textarea name="content" required placeholder="請描述您的問題或需求" rows="4" style="resize:vertical;padding:12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;font-family:inherit;"></textarea>
         </div>
-        <div class="form-group">
-          <label>姓名</label>
-          <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
-        </div>
-        <div class="form-group">
-          <label>電話</label>
-          <input type="tel" name="phone" placeholder="請輸入您的電話（選填）" autocomplete="tel">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label>姓名</label>
+            <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label>電話</label>
+            <input type="tel" name="phone" placeholder="請輸入您的電話（選填）" autocomplete="tel">
+          </div>
         </div>
         <div class="form-group">
           <label>公司</label>
