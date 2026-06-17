@@ -751,6 +751,10 @@ const AccessControl = forwardRef((props, ref) => {
           box-sizing: border-box;
           animation: acFadeIn 0.3s ease-in-out;
         }
+        .ac-dashboard * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        .ac-dashboard *::-webkit-scrollbar { width: 6px; height: 6px; }
+        .ac-dashboard *::-webkit-scrollbar-track { background: transparent; }
+        .ac-dashboard *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         @keyframes acFadeIn {
           from { opacity: 0; transform: translateY(5px); }
           to { opacity: 1; transform: translateY(0); }
@@ -762,10 +766,10 @@ const AccessControl = forwardRef((props, ref) => {
           justify-content: space-between;
           gap: 12px;
           padding: 22px 24px;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+          box-shadow: 0 10px 26px rgba(0,0,0,0.18);
           flex-shrink: 0;
           flex-wrap: nowrap;
           overflow-x: auto;
@@ -790,25 +794,25 @@ const AccessControl = forwardRef((props, ref) => {
           left: 16px;
           top: 50%;
           transform: translateY(-50%);
-          color: #94a3b8;
+          color: #6b7280;
           pointer-events: none;
         }
         .ac-search input {
           height: 46px;
-          border: 1px solid #d8e2ef;
+          border: 1px solid #374151;
           border-radius: 9px;
           font-size: 13px;
           outline: none;
-          background: #fff;
-          color: #334155;
+          background: #111827;
+          color: #e5e7eb;
           box-sizing: border-box;
           width: 100%;
           padding: 0 16px 0 44px;
         }
-        .ac-search input::placeholder { color: #94a3b8; }
+        .ac-search input::placeholder { color: #6b7280; }
         .ac-search input:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
         }
 
         .ac-stats {
@@ -824,9 +828,9 @@ const AccessControl = forwardRef((props, ref) => {
           height: 34px;
           padding: 0 12px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          color: #475569;
+          background: #1a2332;
+          border: 1px solid #1f2937;
+          color: #9ca3af;
           font-size: 12px;
           display: inline-flex;
           align-items: center;
@@ -835,26 +839,26 @@ const AccessControl = forwardRef((props, ref) => {
           white-space: nowrap;
         }
         .ac-stat-pill strong {
-          color: #0f172a;
+          color: #f3f4f6;
           font-size: 13px;
           font-weight: 700;
         }
 
         .ac-panel {
-          background: #fff;
+          background: #111827;
           border-radius: 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #1f2937;
           display: flex;
           flex-direction: column;
           flex: 1;
           min-height: 0;
-          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .ac-tabs {
           display: flex;
           gap: 0;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           padding: 0 24px;
           flex-shrink: 0;
         }
@@ -862,7 +866,7 @@ const AccessControl = forwardRef((props, ref) => {
           padding: 14px 24px;
           font-size: 14px;
           font-weight: 500;
-          color: #64748b;
+          color: #9ca3af;
           cursor: pointer;
           border-bottom: 2px solid transparent;
           margin-bottom: -1px;
@@ -872,7 +876,7 @@ const AccessControl = forwardRef((props, ref) => {
           border-left: 0;
           border-right: 0;
         }
-        .ac-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+        .ac-tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
 
         .ac-list-wrap {
           flex: 1;
@@ -881,15 +885,15 @@ const AccessControl = forwardRef((props, ref) => {
         }
 
         .ac-community-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
           margin-bottom: 16px;
           overflow: hidden;
           transition: box-shadow 0.2s;
-          box-shadow: 0 2px 8px rgba(15,23,42,0.03);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.12);
         }
-        .ac-community-card:hover { box-shadow: 0 6px 20px rgba(15,23,42,0.06); }
+        .ac-community-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
 
         .ac-community-header {
           display: flex;
@@ -900,7 +904,7 @@ const AccessControl = forwardRef((props, ref) => {
           user-select: none;
           transition: background 0.15s;
         }
-        .ac-community-header:hover { background: #f8fafc; }
+        .ac-community-header:hover { background: #1a2332; }
         .ac-community-info {
           display: flex;
           align-items: center;
@@ -910,15 +914,15 @@ const AccessControl = forwardRef((props, ref) => {
           width: 44px;
           height: 44px;
           border-radius: 12px;
-          background: #eff6ff;
-          color: #2563eb;
+          background: #1e293b;
+          color: #60a5fa;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
-        .ac-community-name { font-size: 16px; font-weight: 600; color: #0f172a; }
-        .ac-community-address { font-size: 13px; color: #64748b; margin-top: 2px; }
+        .ac-community-name { font-size: 16px; font-weight: 600; color: #f3f4f6; }
+        .ac-community-address { font-size: 13px; color: #9ca3af; margin-top: 2px; }
 
         .ac-community-meta {
           display: flex;
@@ -930,25 +934,25 @@ const AccessControl = forwardRef((props, ref) => {
           align-items: center;
           gap: 6px;
           font-size: 13px;
-          color: #64748b;
+          color: #9ca3af;
         }
 
         .ac-expand-body {
-          border-top: 1px solid #e2e8f0;
-          background: #f8fafc;
+          border-top: 1px solid #1f2937;
+          background: #0d1117;
         }
         .ac-section-label {
           font-size: 12px;
           font-weight: 600;
-          color: #94a3b8;
+          color: #6b7280;
           text-transform: uppercase;
           letter-spacing: 0.06em;
           padding: 18px 24px 10px;
         }
 
         .ac-building-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 12px;
           margin: 0 24px 14px;
           overflow: hidden;
@@ -961,11 +965,11 @@ const AccessControl = forwardRef((props, ref) => {
           cursor: pointer;
           transition: background 0.15s;
         }
-        .ac-building-header:hover { background: #f8fafc; }
+        .ac-building-header:hover { background: #1a2332; }
         .ac-building-name {
           font-size: 15px;
           font-weight: 600;
-          color: #1e293b;
+          color: #f3f4f6;
           display: flex;
           align-items: center;
           gap: 8px;
@@ -987,8 +991,8 @@ const AccessControl = forwardRef((props, ref) => {
           position: sticky;
           top: 0;
           z-index: 2;
-          background: #f1f5f9;
-          color: #64748b;
+          background: #1a2332;
+          color: #9ca3af;
           font-weight: 600;
           font-size: 12px;
           padding: 10px 16px;
@@ -997,25 +1001,25 @@ const AccessControl = forwardRef((props, ref) => {
         }
         .ac-table td {
           padding: 10px 16px;
-          border-top: 1px solid #f1f5f9;
-          color: #334155;
+          border-top: 1px solid #1f2937;
+          color: #e5e7eb;
           font-size: 13px;
-          background: #fff;
+          background: #111827;
         }
-        .ac-table tr:hover td { background: #f8fafc; }
+        .ac-table tr:hover td { background: #1a2332; }
         .ac-table th:last-child {
           position: sticky;
           right: 0;
           z-index: 3;
-          box-shadow: -2px 0 4px rgba(15,23,42,0.04);
+          box-shadow: -2px 0 4px rgba(0,0,0,0.15);
         }
         .ac-table td:last-child {
           position: sticky;
           right: 0;
           z-index: 1;
-          box-shadow: -2px 0 4px rgba(15,23,42,0.04);
+          box-shadow: -2px 0 4px rgba(0,0,0,0.15);
         }
-        .ac-table tr:hover td:last-child { background: #f8fafc; }
+        .ac-table tr:hover td:last-child { background: #1a2332; }
 
         .ac-badge {
           display: inline-flex;
@@ -1026,19 +1030,19 @@ const AccessControl = forwardRef((props, ref) => {
           font-size: 12px;
           font-weight: 500;
         }
-        .ac-badge.online { background: #f0fdf4; color: #16a34a; }
-        .ac-badge.offline { background: #fef2f2; color: #dc2626; }
-        .ac-badge.unknown { background: #f8fafc; color: #94a3b8; }
-        .ac-badge.none { background: #f8fafc; color: #94a3b8; }
+        .ac-badge.online { background: #0f2818; color: #22c55e; }
+        .ac-badge.offline { background: #2d1111; color: #ef4444; }
+        .ac-badge.unknown { background: #1a2332; color: #9ca3af; }
+        .ac-badge.none { background: #1a2332; color: #9ca3af; }
         .ac-badge-dot {
           width: 6px;
           height: 6px;
           border-radius: 50%;
         }
-        .ac-badge.online .ac-badge-dot { background: #16a34a; }
-        .ac-badge.offline .ac-badge-dot { background: #dc2626; }
-        .ac-badge.unknown .ac-badge-dot { background: #cbd5e1; }
-        .ac-badge.none .ac-badge-dot { background: #cbd5e1; }
+        .ac-badge.online .ac-badge-dot { background: #22c55e; }
+        .ac-badge.offline .ac-badge-dot { background: #ef4444; }
+        .ac-badge.unknown .ac-badge-dot { background: #6b7280; }
+        .ac-badge.none .ac-badge-dot { background: #6b7280; }
 
         .ac-btn-sm {
           height: 32px;
@@ -1050,13 +1054,13 @@ const AccessControl = forwardRef((props, ref) => {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #475569;
+          border: 1px solid #374151;
+          background: #111827;
+          color: #9ca3af;
           transition: all 0.15s;
           white-space: nowrap;
         }
-        .ac-btn-sm:hover { background: #f1f5f9; color: #0f172a; }
+        .ac-btn-sm:hover { background: #1a2332; color: #e5e7eb; }
 
         .ac-dropdown-item {
           display: flex;
@@ -1068,15 +1072,15 @@ const AccessControl = forwardRef((props, ref) => {
           background: none;
           cursor: pointer;
           font-size: 13px;
-          color: #334155;
+          color: #e5e7eb;
           white-space: nowrap;
         }
-        .ac-dropdown-item:hover { background: #f8fafc; }
+        .ac-dropdown-item:hover { background: #111827; }
 
         .ac-empty {
           text-align: center;
           padding: 40px;
-          color: #94a3b8;
+          color: #9ca3af;
           font-size: 14px;
         }
 
@@ -1084,7 +1088,7 @@ const AccessControl = forwardRef((props, ref) => {
           position: fixed;
           inset: 0;
           z-index: 1000;
-          background: rgba(15, 23, 42, 0.4);
+          background: rgba(0,0,0,0.6);
           animation: acOverlayIn 0.2s ease-out;
         }
         @keyframes acOverlayIn { from { opacity: 0; } to { opacity: 1; } }
@@ -1095,12 +1099,13 @@ const AccessControl = forwardRef((props, ref) => {
           bottom: 0;
           width: 640px;
           max-width: 90vw;
-          background: #fff;
+          background: #111827;
           z-index: 1001;
-          box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
+          box-shadow: -8px 0 32px rgba(0,0,0,0.3);
           display: flex;
           flex-direction: column;
           animation: acDrawerIn 0.25s ease-out;
+          border-left: 1px solid #1f2937;
         }
         @keyframes acDrawerIn {
           from { transform: translateX(40px); opacity: 0; }
@@ -1111,13 +1116,13 @@ const AccessControl = forwardRef((props, ref) => {
           align-items: center;
           justify-content: space-between;
           padding: 20px 24px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           flex-shrink: 0;
         }
         .ac-drawer-header h3 {
           font-size: 18px;
           font-weight: 600;
-          color: #0f172a;
+          color: #f3f4f6;
           margin: 0;
         }
         .ac-drawer-body {
@@ -1128,7 +1133,7 @@ const AccessControl = forwardRef((props, ref) => {
         .ac-drawer-body h4 {
           font-size: 14px;
           font-weight: 600;
-          color: #1e293b;
+          color: #f3f4f6;
           margin: 0 0 14px;
           display: flex;
           align-items: center;
@@ -1145,22 +1150,22 @@ const AccessControl = forwardRef((props, ref) => {
           align-items: center;
           gap: 10px;
           padding: 10px 14px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #1f2937;
           border-radius: 8px;
           font-size: 13px;
-          color: #334155;
+          color: #e5e7eb;
           cursor: pointer;
           transition: all 0.15s;
-          background: #fff;
+          background: #111827;
         }
-        .ac-room-check-item:hover { border-color: #93c5fd; background: #f8faff; }
+        .ac-room-check-item:hover { border-color: #60a5fa; background: #1a2332; }
         .ac-room-check-item input[type="checkbox"] {
-          accent-color: #2563eb;
+          accent-color: #3b82f6;
           cursor: pointer;
         }
         .ac-room-meta {
           font-size: 11px;
-          color: #94a3b8;
+          color: #9ca3af;
         }
 
         @media (max-width: 1200px) {
@@ -1235,15 +1240,15 @@ const AccessControl = forwardRef((props, ref) => {
                   </div>
                   {communities.filter(c => (c.buildings || []).length > 0 || (activeTab === 'buildings')).map(c => (
                     <div key={c.id} style={{ marginBottom: '20px' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Building size={16} color="#2563eb" /> {c.name}
-                          <span style={{ fontSize: '12px', fontWeight: 400, color: '#94a3b8' }}>{(c.buildings || []).length} 棟樓宇</span>
+                          <span style={{ fontSize: '12px', fontWeight: 400, color: '#9ca3af' }}>{(c.buildings || []).length} 棟樓宇</span>
                         </div>
                         <button className="ac-btn-sm" type="button" onClick={() => addBuildingDialogRef.current?.showModal({ id: c.id, community: { name: c.name, address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } })}><Plus size={12} /> 新增樓宇</button>
                       </div>
                       {(c.buildings || []).length === 0 && (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px', background: '#f8fafc', borderRadius: '10px' }}>暫無樓宇</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', background: '#1a2332', borderRadius: '10px' }}>暫無樓宇</div>
                       )}
                       {(c.buildings || []).length > 0 && (
                         <div className="ac-table-wrap" style={{ maxHeight: 'none' }}>
@@ -1335,7 +1340,7 @@ const AccessControl = forwardRef((props, ref) => {
                       <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                         <Search size={16} />
                         <input type="search" placeholder="搜尋入口名稱..." value={entranceSearch} onChange={(e) => setEntranceSearch(e.target.value)}
-                          style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#334155', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                   </div>
@@ -1360,8 +1365,8 @@ const AccessControl = forwardRef((props, ref) => {
                         {filtered.map(e => (
                           <tr key={`${e.belongType}-${e.id}`}>
                             <td style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                            <td style={{ fontSize: '12px', color: '#64748b', whiteSpace: 'nowrap' }}>{e.belongType === 'building' ? '樓宇級' : '社區級'}</td>
-                            <td style={{ fontSize: '12px', color: '#64748b', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.belongName}>{e.belongName}</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.belongType === 'building' ? '樓宇級' : '社區級'}</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.belongName}>{e.belongName}</td>
                             <td style={{ fontFamily: 'monospace', fontSize: '12px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.device || ''}>{e.device || '—'}</td>
                             <td style={{ whiteSpace: 'nowrap' }}>
                               {e.deviceStatus === 'none' ? (
@@ -1442,18 +1447,18 @@ const AccessControl = forwardRef((props, ref) => {
               return (
                 <div style={{ display: 'flex', gap: '16px', height: '100%', minHeight: 0 }}>
                   {/* 左側：入口列表 */}
-                  <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
+                  <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
                     <div style={{ padding: '14px 16px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '10px' }}>入口列表 ({allEntrances.length})</div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '10px' }}>入口列表 ({allEntrances.length})</div>
                       <div className="ac-search" style={{ width: '100%', flex: 'none' }}>
                         <Search size={14} />
                         <input type="search" placeholder="搜尋入口..." value={authPageSearch} onChange={(e) => setAuthPageSearch(e.target.value)}
-                          style={{ height: '34px', padding: '0 12px 0 36px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#334155', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '34px', padding: '0 12px 0 36px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto' }}>
                       {filteredEntrances.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>{authPageSearch ? '無匹配入口' : '暫無入口'}</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>{authPageSearch ? '無匹配入口' : '暫無入口'}</div>
                       ) : (
                         filteredEntrances.map(e => {
                           const isSel = authPageSelected && authPageSelected.belongType === e.belongType && authPageSelected.id === e.id;
@@ -1464,8 +1469,8 @@ const AccessControl = forwardRef((props, ref) => {
                               onClick={() => setAuthPageSelected(e)}
                               onMouseEnter={(ev) => { if (!isSel) ev.currentTarget.style.background = '#f8fafc'; }}
                               onMouseLeave={(ev) => { if (!isSel) ev.currentTarget.style.background = '#fff'; }}>
-                              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
-                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: '#f3f4f6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
+                              <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                                 {e.belongName} · {e.belongType === 'building' ? '樓宇級' : '社區級'} · {authCount} 授權
                               </div>
                             </div>
@@ -1475,18 +1480,18 @@ const AccessControl = forwardRef((props, ref) => {
                     </div>
                   </div>
                   {/* 右側：房間列表 */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#fff', minWidth: 0 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#fff', minWidth: 0 }}>
                     {!selectedEntrance ? (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '14px' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px' }}>
                         請從左側選擇一個入口
                       </div>
                     ) : (
                       <>
                         <div style={{ padding: '14px 16px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', minWidth: 0 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', minWidth: 0 }}>
                               {selectedEntrance.name}
-                              <span style={{ fontSize: '12px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>
                                 {selectedEntrance.belongName} · 已授權 {authRooms.length}/{allRooms.length} 房間
                               </span>
                             </div>
@@ -1532,17 +1537,17 @@ const AccessControl = forwardRef((props, ref) => {
                         </div>
                         <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
                           {allRooms.length === 0 ? (
-                            <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>暫無房間</div>
+                            <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>暫無房間</div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               {allRooms.map(r => {
                                 const isAuth = authRoomIds.has(r.id);
                                 return (
-                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', background: isAuth ? '#f0fdf4' : '#fff' }}>
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', border: '1px solid #1f2937', background: isAuth ? '#f0fdf4' : '#fff' }}>
                                     <div>
                                       <span style={{ fontWeight: 600, fontSize: '13px' }}>{r.roomNumber}</span>
-                                      <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '8px' }}>{r.buildingName}</span>
-                                      <span style={{ fontSize: '12px', color: '#64748b', marginLeft: '6px' }}>{r.sipName || ''}</span>
+                                      <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>{r.buildingName}</span>
+                                      <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '6px' }}>{r.sipName || ''}</span>
                                     </div>
                                     <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '26px', color: isAuth ? '#dc2626' : '#2563eb' }}
                                       onClick={() => handleAuthRoomToggle(r.id, !isAuth)}>
@@ -1567,7 +1572,7 @@ const AccessControl = forwardRef((props, ref) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
                   <span className="ac-stat-pill">設備總數<strong>{gateDeviceList.length}</strong></span>
                   <span className="ac-stat-pill">已分配<strong style={{ color: '#2563eb' }}>{gateDeviceList.filter(d => d.status === 'assigned').length}</strong></span>
-                  <span className="ac-stat-pill">未分配<strong style={{ color: '#94a3b8' }}>{gateDeviceList.filter(d => d.status === 'unassigned').length}</strong></span>
+                  <span className="ac-stat-pill">未分配<strong style={{ color: '#9ca3af' }}>{gateDeviceList.filter(d => d.status === 'unassigned').length}</strong></span>
                   <span className="ac-stat-pill">已綁定入口<strong style={{ color: '#16a34a' }}>{gateDeviceList.filter(d => d.boundEntrance).length}</strong></span>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -1595,10 +1600,10 @@ const AccessControl = forwardRef((props, ref) => {
                             </span>
                           </td>
                           <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{d.assignedAt || '—'}</td>
-                          <td style={{ whiteSpace: 'nowrap', color: '#94a3b8' }}>—</td>
+                          <td style={{ whiteSpace: 'nowrap', color: '#9ca3af' }}>—</td>
                           <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{d.expiresAt || '—'}</td>
                           <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.boundEntrance?.name || ''}>{d.boundEntrance ? d.boundEntrance.name : '—'}</td>
-                          <td style={{ fontSize: '12px', color: '#64748b', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.boundEntrance?.belongName || ''}>{d.boundEntrance ? d.boundEntrance.belongName : '—'}</td>
+                          <td style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.boundEntrance?.belongName || ''}>{d.boundEntrance ? d.boundEntrance.belongName : '—'}</td>
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 6px', height: '24px' }} onClick={() => {
@@ -1634,7 +1639,7 @@ const AccessControl = forwardRef((props, ref) => {
                   <div className="ac-community-info">
                     <div className="ac-community-icon"><Building size={22} /></div>
                     <div>
-                      <div className="ac-community-name">{c.name}{c.isActive === false && <span style={{ fontSize: '11px', fontWeight: 500, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', marginLeft: '8px', verticalAlign: 'middle' }}>已停用</span>}</div>
+                      <div className="ac-community-name">{c.name}{c.isActive === false && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', marginLeft: '8px', verticalAlign: 'middle' }}>已停用</span>}</div>
                       <div className="ac-community-address">{c.address || '—'}</div>
                     </div>
                   </div>
@@ -1722,7 +1727,7 @@ const AccessControl = forwardRef((props, ref) => {
                             <Home size={16} color="#2563eb" /> {b.name}
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{(b.rooms || []).length} 房間 · {(b.entrances || []).length} 入口</span>
+                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>{(b.rooms || []).length} 房間 · {(b.entrances || []).length} 入口</span>
                               <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); const rect = ev.currentTarget.getBoundingClientRect(); const menuHeight = 185; const showAbove = rect.bottom + 4 + menuHeight > window.innerHeight; setBuildingDropdownOpen(buildingDropdownOpen && buildingDropdownOpen.id === b.id ? null : { id: b.id, communityId: c.id, top: showAbove ? undefined : rect.bottom + 4, bottom: showAbove ? window.innerHeight - rect.top + 4 : undefined, right: window.innerWidth - rect.right }); }}>
                                 <MoreHorizontal size={14} />
                               </button>
@@ -1779,7 +1784,7 @@ const AccessControl = forwardRef((props, ref) => {
                                         </tr>
                                       ))}
                                       {(!b.rooms || b.rooms.length === 0) && (
-                                        <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無房間</td></tr>
+                                        <tr><td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af' }}>暫無房間</td></tr>
                                       )}
                                     </tbody>
                                   </table>
@@ -1836,7 +1841,7 @@ const AccessControl = forwardRef((props, ref) => {
                                         </tr>
                                       ))}
                                       {(!b.entrances || b.entrances.length === 0) && (
-                                        <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無入口</td></tr>
+                                        <tr><td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af' }}>暫無入口</td></tr>
                                       )}
                                     </tbody>
                                   </table>
@@ -1885,7 +1890,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer" style={{ width: '700px' }}>
               <div className="ac-drawer-header">
                 <h3>權限設置 — {selectedEntrance.name}</h3>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }} onClick={() => setShowAuthDrawer(false)}><X size={20} /></button>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowAuthDrawer(false)}><X size={20} /></button>
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 {/* Tabs */}
@@ -1904,12 +1909,12 @@ const AccessControl = forwardRef((props, ref) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span className="ac-stat-pill">已授權<strong style={{ color: '#2563eb' }}>{authRooms.length}</strong></span>
                         {authSearch && <span className="ac-stat-pill">篩選<strong style={{ color: '#8b5cf6' }}>{filtered.length}</strong></span>}
-                        <span className="ac-stat-pill">未授權<strong style={{ color: '#94a3b8' }}>{unauthRooms.length}</strong></span>
+                        <span className="ac-stat-pill">未授權<strong style={{ color: '#9ca3af' }}>{unauthRooms.length}</strong></span>
                       </div>
                       <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                         <Search size={16} />
                         <input type="search" placeholder="搜尋房間..." value={authSearch} onChange={(e) => setAuthSearch(e.target.value)}
-                          style={{ height: '34px', padding: '0 16px 0 38px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#334155', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '34px', padding: '0 16px 0 38px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -2018,7 +2023,7 @@ const AccessControl = forwardRef((props, ref) => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className="ac-stat-pill">樓宇<strong>{buildings.length}</strong></span>
                           <span className="ac-stat-pill">已授權<strong style={{ color: '#2563eb' }}>{authRooms.length}</strong></span>
-                          <span className="ac-stat-pill">未授權<strong style={{ color: '#94a3b8' }}>{unauthRooms.length}</strong></span>
+                          <span className="ac-stat-pill">未授權<strong style={{ color: '#9ca3af' }}>{unauthRooms.length}</strong></span>
                           {selBuildings > 0 && <span className="ac-stat-pill">已選<strong style={{ color: '#8b5cf6' }}>{selBuildings}</strong></span>}
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -2144,7 +2149,7 @@ const AccessControl = forwardRef((props, ref) => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className="ac-stat-pill">總房間<strong>{allRooms.length}</strong></span>
                           <span className="ac-stat-pill">已授權<strong style={{ color: '#2563eb' }}>{authRooms.length}</strong></span>
-                          <span className="ac-stat-pill">未授權<strong style={{ color: '#94a3b8' }}>{unauthRooms.length}</strong></span>
+                          <span className="ac-stat-pill">未授權<strong style={{ color: '#9ca3af' }}>{unauthRooms.length}</strong></span>
                           {selRooms.length > 0 && <span className="ac-stat-pill">已選<strong style={{ color: '#8b5cf6' }}>{selRooms.length}</strong></span>}
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -2173,7 +2178,7 @@ const AccessControl = forwardRef((props, ref) => {
                               {sorted.map(r => (
                                 <tr key={r.id}>
                                   <td><input type="checkbox" checked={!!r._sel} style={{ accentColor: '#2563eb' }} onChange={(e) => toggleRoom(r.id, e.target.checked)} /></td>
-                                  <td style={{ fontSize: '12px', color: '#64748b' }}>{r.buildingName}</td>
+                                  <td style={{ fontSize: '12px', color: '#9ca3af' }}>{r.buildingName}</td>
                                   <td style={{ fontWeight: 600 }}>{r.roomNumber}</td>
                                   <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{r.sipAccount || '—'}</td>
                                   <td>{r.sipName || '—'}</td>
@@ -2228,13 +2233,13 @@ const AccessControl = forwardRef((props, ref) => {
         const selCount = roomViewSelected.size;
         const allSelected = filtered.length > 0 && filtered.every(r => roomViewSelected.has(r.id));
         return (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#334155' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', maxHeight: '650px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>{viewRoomsBuilding.buildingName} — 房間列表</h2>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', padding: '4px' }} onClick={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>&#x2715;</button>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>{viewRoomsBuilding.buildingName} — 房間列表</h2>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>&#x2715;</button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2245,7 +2250,7 @@ const AccessControl = forwardRef((props, ref) => {
                   <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                     <Search size={16} />
                     <input type="search" placeholder="搜尋房間..." value={roomViewSearch} onChange={(e) => { setRoomViewSearch(e.target.value); setRoomViewSelected(new Set()); }}
-                      style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#334155', boxSizing: 'border-box', width: '100%' }} />
+                      style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                   </div>
                   <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined, whiteSpace: 'nowrap' }} onClick={() => {
                     const names = allRooms.filter(r => roomViewSelected.has(r.id)).map(r => r.roomNumber);
@@ -2300,7 +2305,7 @@ const AccessControl = forwardRef((props, ref) => {
                 </table>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
@@ -2309,17 +2314,17 @@ const AccessControl = forwardRef((props, ref) => {
 
       {/* SIP 帳號分配對話框 */}
       {assignSipRoom && (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '700px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#334155' }}
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '700px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }}
           onClose={() => { setAssignSipRoom(null); setSipSearch(''); }}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '65vh', maxHeight: '520px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>
+                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>
                   分配 SIP 帳號 — {assignSipRoom.roomNumber}
-                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>{assignSipRoom.buildingName}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>{assignSipRoom.buildingName}</span>
                 </h2>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', padding: '4px' }} onClick={() => { setAssignSipRoom(null); setSipSearch(''); }}>&#x2715;</button>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={() => { setAssignSipRoom(null); setSipSearch(''); }}>&#x2715;</button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2331,7 +2336,7 @@ const AccessControl = forwardRef((props, ref) => {
                 <div className="ac-search" style={{ width: '220px', flex: 'none' }}>
                   <Search size={16} />
                   <input type="search" placeholder="搜尋帳號或名稱..." value={sipSearch} onChange={(e) => setSipSearch(e.target.value)}
-                    style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#334155', boxSizing: 'border-box', width: '100%' }} />
+                    style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                 </div>
               </div>
             </div>
@@ -2368,14 +2373,14 @@ const AccessControl = forwardRef((props, ref) => {
                         <td style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 500 }}>{s.username}</td>
                         <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{s.webAccount || '—'}</td>
                         <td>{s.displayName || '—'}</td>
-                        <td style={{ fontSize: '12px', color: '#64748b' }}>
+                        <td style={{ fontSize: '12px', color: '#9ca3af' }}>
                           {s.serviceExpiresAt ? new Date(s.serviceExpiresAt).toLocaleDateString('zh-CN') : '永久有效'}
                         </td>
                         <td>
                           {isAssigned ? (
                             <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={() => handleAssignSip(null)}>取消分配</button>
                           ) : !s.webAccount ? (
-                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>未配置 Web 帳號</span>
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>未配置 Web 帳號</span>
                           ) : (
                             <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => handleAssignSip(s.id)}>分配</button>
                           )}
@@ -2387,7 +2392,7 @@ const AccessControl = forwardRef((props, ref) => {
               );
             })()}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => { setAssignSipRoom(null); setSipSearch(''); }} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
@@ -2486,9 +2491,9 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer" style={{ width: '650px' }}>
               <div className="ac-drawer-header">
                 <h3>社區授權 — {selectedCommunityAuth.communityName}
-                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>{allRoomIds.size} 個房間 · {entrancesWithAuth.length} 個入口</span>
+                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>{allRoomIds.size} 個房間 · {entrancesWithAuth.length} 個入口</span>
                 </h3>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }} onClick={() => setShowCommunityAuthDrawer(false)}><X size={20} /></button>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowCommunityAuthDrawer(false)}><X size={20} /></button>
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexShrink: 0, flexWrap: 'wrap' }}>
@@ -2523,9 +2528,9 @@ const AccessControl = forwardRef((props, ref) => {
                           <tr key={`${e.belongType}-${e.id}`}>
                             <td><input type="checkbox" checked={!!e._sel4} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt4(e.id, ev.target.checked)} /></td>
                             <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                            <td style={{ fontSize: '12px', color: '#64748b' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
                             <td style={{ fontSize: '12px' }}>
-                              {e.total === 0 ? <span style={{ color: '#94a3b8' }}>無房間</span> :
+                              {e.total === 0 ? <span style={{ color: '#9ca3af' }}>無房間</span> :
                                e.isAll ? <span style={{ color: '#16a34a' }}>全部 ({e.authCount}/{e.total})</span> :
                                <span style={{ color: '#b45309' }}>部分 ({e.authCount}/{e.total})</span>}
                             </td>
@@ -2642,9 +2647,9 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer" style={{ width: '650px' }}>
               <div className="ac-drawer-header">
                 <h3>樓宇授權 — {buildingName}
-                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>{roomIds.size} 個房間</span>
+                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>{roomIds.size} 個房間</span>
                 </h3>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }} onClick={() => setShowBuildingAuthDrawer(false)}><X size={20} /></button>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowBuildingAuthDrawer(false)}><X size={20} /></button>
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexShrink: 0, flexWrap: 'wrap' }}>
@@ -2679,9 +2684,9 @@ const AccessControl = forwardRef((props, ref) => {
                           <tr key={`${e.belongType}-${e.id}`}>
                             <td><input type="checkbox" checked={!!e._sel3} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt3(e.id, ev.target.checked)} /></td>
                             <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                            <td style={{ fontSize: '12px', color: '#64748b' }}>{e.belongName}</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName}</td>
                             <td style={{ fontSize: '12px' }}>
-                              {e.totalInBld === 0 ? <span style={{ color: '#94a3b8' }}>無房間</span> :
+                              {e.totalInBld === 0 ? <span style={{ color: '#9ca3af' }}>無房間</span> :
                                e.isAll ? <span style={{ color: '#16a34a' }}>全部 ({e.authInBld}/{e.totalInBld})</span> :
                                <span style={{ color: '#b45309' }}>部分 ({e.authInBld}/{e.totalInBld})</span>}
                             </td>
@@ -2793,9 +2798,9 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer" style={{ width: '650px' }}>
               <div className="ac-drawer-header">
                 <h3>入口授權 — {selectedRoomAuth.roomNumber}
-                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>{selectedRoomAuth.buildingName}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>{selectedRoomAuth.buildingName}</span>
                 </h3>
-                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }} onClick={() => setShowRoomAuthDrawer(false)}><X size={20} /></button>
+                <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowRoomAuthDrawer(false)}><X size={20} /></button>
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexShrink: 0, flexWrap: 'wrap' }}>
@@ -2831,7 +2836,7 @@ const AccessControl = forwardRef((props, ref) => {
                             <tr key={`${e.belongType}-${e.id}`}>
                               <td><input type="checkbox" checked={!!e._sel2} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt(e.id, ev.target.checked)} /></td>
                               <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                              <td style={{ fontSize: '12px', color: '#64748b' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
+                              <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
                               <td>
                                 {isAuth ? (
                                   <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 6px', height: '24px', color: '#dc2626' }} onClick={() => handleRoomAuthOp(e.id, false)}>取消</button>
@@ -2859,7 +2864,7 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); setBuildingDropdownOpen(null); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#e2e8f0' }} />
@@ -2883,7 +2888,7 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setEntranceDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal(ctx, entranceData); setEntranceDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 權限</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openDeviceDialog({ ...entranceData, buildingId: bId || undefined }, cId); setEntranceDropdownOpen(null); }}>📡 設備</button>
@@ -2903,15 +2908,15 @@ const AccessControl = forwardRef((props, ref) => {
       {qrDialog && (() => {
         const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrDialog.url);
         return (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '400px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#334155' }} onClose={() => setQrDialog(null)}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '400px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => setQrDialog(null)}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ padding: '28px 24px 20px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>{qrDialog.title} — 訪問鏈接</h2>
-              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', padding: '4px' }} onClick={() => setQrDialog(null)}>&#x2715;</button>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>{qrDialog.title} — 訪問鏈接</h2>
+              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={() => setQrDialog(null)}>&#x2715;</button>
             </div>
-            <img src={qrUrl} alt="QR Code" style={{ width: '220px', height: '220px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-            <div style={{ marginTop: '12px', fontSize: '11px', color: '#94a3b8', wordBreak: 'break-all' }}>{qrDialog.url}</div>
+            <img src={qrUrl} alt="QR Code" style={{ width: '220px', height: '220px', borderRadius: '8px', border: '1px solid #1f2937' }} />
+            <div style={{ marginTop: '12px', fontSize: '11px', color: '#9ca3af', wordBreak: 'break-all' }}>{qrDialog.url}</div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={async () => { try { var r = await fetch(qrUrl); var b = await r.blob(); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (qrDialog.filename || 'qrcode') + '.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>⬇ 下載 QR</button>
               <button type="button" onClick={async () => { try { var resp = await fetch(qrUrl); var blob = await resp.blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]); window.alert('QR Code 已複製'); } catch(e) { try { await navigator.clipboard.writeText(qrDialog.url); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>📋 複製 QR</button>
@@ -2922,33 +2927,33 @@ const AccessControl = forwardRef((props, ref) => {
       );})()}
       {/* 設備分配對話框 */}
       {deviceDialogOpen && deviceEntrance && (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#334155' }} onClose={() => setDeviceDialogOpen(false)}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => setDeviceDialogOpen(false)}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 28px 0', flexShrink: 0 }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0f172a' }}>綁定設備 — {deviceEntrance.name}</h2>
-              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px', padding: '4px' }} onClick={() => setDeviceDialogOpen(false)}>&#x2715;</button>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>綁定設備 — {deviceEntrance.name}</h2>
+              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={() => setDeviceDialogOpen(false)}>&#x2715;</button>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px 24px' }}>
               {deviceLoading ? (
                 <div className="ac-empty">載入中...</div>
               ) : (
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>選擇設備</span>
+                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>選擇設備</span>
                   <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d8e2ef', fontSize: '13px', color: '#334155', outline: 'none' }}>
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d8e2ef', fontSize: '13px', color: '#e5e7eb', outline: 'none' }}>
                     <option value="">{deviceEntrance.deviceId ? '清除已綁定設備' : '請選擇門控設備'}</option>
                     {availableDevices.map(d => (
                       <option key={d.id} value={d.id}>{d.uuid}{d.tenantName ? ` (已分配: ${d.tenantName})` : ''}</option>
                     ))}
                   </select>
                   {availableDevices.length === 0 && !selectedDeviceId && (
-                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: '8px 0 0' }}>暫無可用設備</p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '8px 0 0' }}>暫無可用設備</p>
                   )}
                 </label>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderRadius: '0 0 16px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => setDeviceDialogOpen(false)} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>取消</button>
               <button type="button" onClick={handleAssignDevice} style={{ height: '40px', padding: '0 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>確認綁定</button>
             </div>
@@ -2962,7 +2967,7 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addCommunityDialogRef.current?.showModal(c); setDropdownOpen(null); }}>✎ 編輯</button>
               {c.isActive !== false && (
                 <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedCommunityAuth({ communityId: c.id, communityName: c.name }); setShowCommunityAuthDrawer(true); setDropdownOpen(null); }}>🔐 授權</button>
@@ -2987,7 +2992,7 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); setRoomDropdownOpen(null); }}>🔐 授權</button>
