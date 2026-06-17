@@ -402,6 +402,11 @@
       padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600;
       cursor: pointer; margin-top: 8px;
     }
+
+    .message-scroll-area::-webkit-scrollbar { width: 4px; }
+    .message-scroll-area::-webkit-scrollbar-track { background: transparent; }
+    .message-scroll-area::-webkit-scrollbar-thumb { background: transparent; }
+    .message-scroll-area:hover::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -420,36 +425,38 @@
 
   <!-- 访客留言弹窗 -->
   <div id="messageModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width:480px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div class="modal-content" style="max-width:480px;max-height:calc(100vh - 40px);display:flex;flex-direction:column;padding:28px 32px 20px;">
+      <div style="position:relative;text-align:center;margin-bottom:12px;">
         <h2 class="modal-title" style="margin:0;">在線留言</h2>
-        <button onclick="closeMessageModal()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;padding:0;line-height:1;">&times;</button>
+        <button onclick="closeMessageModal()" style="position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;padding:0;line-height:1;">&times;</button>
       </div>
-      <p class="modal-desc">如有任何疑問，請填寫以下資訊，我們將盡快回覆。</p>
-      <form id="messageForm">
+      <p class="modal-desc" style="margin-bottom:16px;">如有任何疑問，請填寫以下資訊，我們將盡快回覆。</p>
+      <form id="messageForm" style="display:flex;flex-direction:column;flex:1;min-height:0;">
         <div class="form-group">
           <label>郵箱 <span>*</span></label>
           <input type="email" name="email" required placeholder="請輸入您的郵箱" autocomplete="email">
         </div>
-        <div class="form-group">
-          <label>諮詢內容 <span>*</span></label>
-          <textarea name="content" required placeholder="請描述您的問題或需求" rows="4" style="resize:vertical;padding:12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;font-family:inherit;"></textarea>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="message-scroll-area" style="flex:1;overflow-y:auto;min-height:0;padding-right:4px;scrollbar-width:thin;scrollbar-color:transparent transparent;">
           <div class="form-group">
-            <label>姓名</label>
-            <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
+            <label>諮詢內容 <span>*</span></label>
+            <textarea name="content" required placeholder="請描述您的問題或需求" rows="4" style="resize:vertical;padding:12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;font-family:inherit;"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="form-group">
+              <label>姓名</label>
+              <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label>電話</label>
+              <input type="tel" name="phone" placeholder="請輸入您的電話（選填）" autocomplete="tel">
+            </div>
           </div>
           <div class="form-group">
-            <label>電話</label>
-            <input type="tel" name="phone" placeholder="請輸入您的電話（選填）" autocomplete="tel">
+            <label>公司</label>
+            <input type="text" name="company" placeholder="請輸入您的公司名稱（選填）" autocomplete="organization">
           </div>
         </div>
-        <div class="form-group">
-          <label>公司</label>
-          <input type="text" name="company" placeholder="請輸入您的公司名稱（選填）" autocomplete="organization">
-        </div>
-        <div id="messageError" style="color:#ef4444;font-size:13px;min-height:20px;margin-bottom:8px;"></div>
+        <div id="messageError" style="color:#ef4444;font-size:13px;min-height:20px;margin-bottom:8px;margin-top:8px;"></div>
         <button type="submit" class="btn-submit" id="messageSubmitBtn">提交留言</button>
       </form>
     </div>
