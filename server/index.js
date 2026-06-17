@@ -153,6 +153,11 @@ app.use("/api/ecard-images", express.static(ecardImagesDir));
 app.use("/api/call-center-images", express.static(callCenterImagesDir));
 app.use("/visitor-assets", express.static(path.join(projectRoot, "public/visitor")));
 
+// Serve JsSIP UMD bundle for visitor pages
+app.get("/visitor-assets/jssip.min.js", (_req, res) => {
+  res.sendFile(path.join(projectRoot, "node_modules/jssip/dist/jssip.min.js"));
+});
+
 // POST /api/access/room-call-session - 門禁房間語音/視頻呼叫會話
 app.post("/api/access/room-call-session", async (request, response) => {
   const roomId = Number(request.body?.roomId);

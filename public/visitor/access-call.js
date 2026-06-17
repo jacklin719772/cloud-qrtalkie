@@ -55,7 +55,7 @@
     return new Promise(function (resolve) {
       if (window.JsSIP) { JsSIP = window.JsSIP; resolve(JsSIP); return; }
       var script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/jssip@3.10.0/dist/jssip.min.js';
+      script.src = '/visitor-assets/jssip.min.js';
       script.onload = function () { JsSIP = window.JsSIP; resolve(JsSIP); };
       script.onerror = function () { resolve(null); };
       document.head.appendChild(script);
