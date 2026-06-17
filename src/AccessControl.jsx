@@ -1323,14 +1323,14 @@ const AccessControl = forwardRef((props, ref) => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <select value={entranceStatusFilter} onChange={(e) => setEntranceStatusFilter(e.target.value)}
-                        style={{ height: '34px', padding: '0 10px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer' }}>
+                        style={{ height: '34px', padding: '0 10px', border: '1px solid #374151', borderRadius: '7px', fontSize: '12px', color: '#e5e7eb', background: '#111827', outline: 'none', cursor: 'pointer' }}>
                         <option value="all">全部狀態</option>
                         <option value="active">已啟用</option>
                         <option value="inactive">已停用</option>
                         <option value="none">未綁定</option>
                       </select>
                       <select value={entranceLevelFilter} onChange={(e) => setEntranceLevelFilter(e.target.value)}
-                        style={{ height: '34px', padding: '0 10px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer' }}>
+                        style={{ height: '34px', padding: '0 10px', border: '1px solid #374151', borderRadius: '7px', fontSize: '12px', color: '#e5e7eb', background: '#111827', outline: 'none', cursor: 'pointer' }}>
                         <option value="all">全部層級</option>
                         <option value="community">社區級</option>
                         <option value="building">樓宇級</option>
@@ -1340,15 +1340,15 @@ const AccessControl = forwardRef((props, ref) => {
                       <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                         <Search size={16} />
                         <input type="search" placeholder="搜尋入口名稱..." value={entranceSearch} onChange={(e) => setEntranceSearch(e.target.value)}
-                          style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                   </div>
                   {filtered.length === 0 ? (
                     <div className="ac-empty">無匹配入口</div>
                   ) : (
-                  <div style={{ flex: 1, overflow: 'auto', minHeight: 0, scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}>
-                    <style>{`.entrance-mgmt-table::-webkit-scrollbar { width: 6px; height: 6px; } .entrance-mgmt-table::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }`}</style>
+                  <div style={{ flex: 1, overflow: 'auto', minHeight: 0, scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                    <style>{`.entrance-mgmt-table::-webkit-scrollbar { width: 6px; height: 6px; } .entrance-mgmt-table::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }`}</style>
                     <table className="ac-table" style={{ minWidth: '940px' }}>
                       <thead>
                         <tr>
@@ -1447,13 +1447,13 @@ const AccessControl = forwardRef((props, ref) => {
               return (
                 <div style={{ display: 'flex', gap: '16px', height: '100%', minHeight: 0 }}>
                   {/* 左側：入口列表 */}
-                  <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#fff' }}>
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                  <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#111827' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '10px' }}>入口列表 ({allEntrances.length})</div>
                       <div className="ac-search" style={{ width: '100%', flex: 'none' }}>
                         <Search size={14} />
                         <input type="search" placeholder="搜尋入口..." value={authPageSearch} onChange={(e) => setAuthPageSearch(e.target.value)}
-                          style={{ height: '34px', padding: '0 12px 0 36px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '34px', padding: '0 12px 0 36px', border: '1px solid #374151', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto' }}>
@@ -1465,10 +1465,10 @@ const AccessControl = forwardRef((props, ref) => {
                           const authCount = (e.community?.authMatrix?.[String(e.id)] || []).length;
                           return (
                             <div key={`${e.belongType}-${e.id}`}
-                              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', background: isSel ? '#eff6ff' : '#fff', transition: 'background 0.1s' }}
+                              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #1f2937', background: isSel ? '#1e293b' : '#111827', transition: 'background 0.1s' }}
                               onClick={() => setAuthPageSelected(e)}
-                              onMouseEnter={(ev) => { if (!isSel) ev.currentTarget.style.background = '#f8fafc'; }}
-                              onMouseLeave={(ev) => { if (!isSel) ev.currentTarget.style.background = '#fff'; }}>
+                              onMouseEnter={(ev) => { if (!isSel) ev.currentTarget.style.background = '#1a2332'; }}
+                              onMouseLeave={(ev) => { if (!isSel) ev.currentTarget.style.background = '#111827'; }}>
                               <div style={{ fontSize: '13px', fontWeight: 600, color: '#f3f4f6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
                               <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                                 {e.belongName} · {e.belongType === 'building' ? '樓宇級' : '社區級'} · {authCount} 授權
@@ -1480,14 +1480,14 @@ const AccessControl = forwardRef((props, ref) => {
                     </div>
                   </div>
                   {/* 右側：房間列表 */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#fff', minWidth: 0 }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden', background: '#111827', minWidth: 0 }}>
                     {!selectedEntrance ? (
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px' }}>
                         請從左側選擇一個入口
                       </div>
                     ) : (
                       <>
-                        <div style={{ padding: '14px 16px', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+                        <div style={{ padding: '14px 16px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', minWidth: 0 }}>
                               {selectedEntrance.name}
@@ -1543,7 +1543,7 @@ const AccessControl = forwardRef((props, ref) => {
                               {allRooms.map(r => {
                                 const isAuth = authRoomIds.has(r.id);
                                 return (
-                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', border: '1px solid #1f2937', background: isAuth ? '#f0fdf4' : '#fff' }}>
+                                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', border: '1px solid #1f2937', background: isAuth ? '#0f2818' : '#111827' }}>
                                     <div>
                                       <span style={{ fontWeight: 600, fontSize: '13px' }}>{r.roomNumber}</span>
                                       <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>{r.buildingName}</span>
@@ -1639,7 +1639,7 @@ const AccessControl = forwardRef((props, ref) => {
                   <div className="ac-community-info">
                     <div className="ac-community-icon"><Building size={22} /></div>
                     <div>
-                      <div className="ac-community-name">{c.name}{c.isActive === false && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af', background: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', marginLeft: '8px', verticalAlign: 'middle' }}>已停用</span>}</div>
+                      <div className="ac-community-name">{c.name}{c.isActive === false && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af', background: '#1e293b', padding: '2px 8px', borderRadius: '10px', marginLeft: '8px', verticalAlign: 'middle' }}>已停用</span>}</div>
                       <div className="ac-community-address">{c.address || '—'}</div>
                     </div>
                   </div>
@@ -1736,11 +1736,11 @@ const AccessControl = forwardRef((props, ref) => {
                         </div>
 
                         {expandedBuilding === b.id && (
-                          <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 20px 16px' }}>
+                          <div style={{ borderTop: '1px solid #1f2937', padding: '12px 20px 16px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                               <div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#475569', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><DoorOpen size={14} /> 房間列表</h4>
+                                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><DoorOpen size={14} /> 房間列表</h4>
                                   <div style={{ display: 'flex', gap: '8px' }}>
                                     {(() => { const selCount = (b.rooms || []).filter(r => r._selected).length; return (
                                       <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={(ev) => { ev.stopPropagation(); handleBatchDeleteRooms(b.id); }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
@@ -1748,8 +1748,8 @@ const AccessControl = forwardRef((props, ref) => {
                                     <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: b.id, buildingLabel: b.name }); }}><Plus size={12} /> 添加房間</button>
                                   </div>
                                 </div>
-                                <style>{`.room-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .room-table-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; } .room-table-wrap::-webkit-scrollbar-track { background: transparent; }`}</style>
-                                <div className="room-table-wrap" style={{ width: '100%', overflow: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}>
+                                <style>{`.room-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .room-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; } .room-table-wrap::-webkit-scrollbar-track { background: transparent; }`}</style>
+                                <div className="room-table-wrap" style={{ width: '100%', overflow: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                                   <table className="ac-table" style={{ minWidth: '540px' }}>
                                     <thead>
                                       <tr>
@@ -1792,7 +1792,7 @@ const AccessControl = forwardRef((props, ref) => {
                               </div>
                               <div>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#475569', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><Shield size={14} /> 入口列表</h4>
+                                  <h4 style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><Shield size={14} /> 入口列表</h4>
                                   <div style={{ display: 'flex', gap: '8px' }}>
                                     {(() => { const selCount = (b.entrances || []).filter(e => e._selected).length; return (
                                       <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={(ev) => { ev.stopPropagation(); handleBatchDeleteEntrances(c.id, b.id); }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
@@ -1803,8 +1803,8 @@ const AccessControl = forwardRef((props, ref) => {
                                     <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                                   </div>
                                 </div>
-                                <div className="entrance-table-wrap" style={{ width: '100%', overflow: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent' }}>
-                                  <style>{`.entrance-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .entrance-table-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; } .entrance-table-wrap::-webkit-scrollbar-track { background: transparent; }`}</style>
+                                <div className="entrance-table-wrap" style={{ width: '100%', overflow: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                                  <style>{`.entrance-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .entrance-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; } .entrance-table-wrap::-webkit-scrollbar-track { background: transparent; }`}</style>
                                   <table className="ac-table" style={{ minWidth: '580px' }}>
                                     <thead>
                                       <tr>
@@ -1894,7 +1894,7 @@ const AccessControl = forwardRef((props, ref) => {
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #e2e8f0', marginBottom: '16px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '0', borderBottom: '1px solid #1f2937', marginBottom: '16px', flexShrink: 0 }}>
                   {tabs.map(t => (
                     <button key={t.id} type="button"
                       style={{ padding: '10px 18px', fontSize: '13px', fontWeight: authTab === t.id ? 600 : 400, color: authTab === t.id ? '#2563eb' : '#64748b', border: 'none', borderBottom: authTab === t.id ? '2px solid #2563eb' : '2px solid transparent', background: 'none', cursor: 'pointer', marginBottom: '-1px' }}
@@ -1914,7 +1914,7 @@ const AccessControl = forwardRef((props, ref) => {
                       <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                         <Search size={16} />
                         <input type="search" placeholder="搜尋房間..." value={authSearch} onChange={(e) => setAuthSearch(e.target.value)}
-                          style={{ height: '34px', padding: '0 16px 0 38px', border: '1px solid #d8e2ef', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
+                          style={{ height: '34px', padding: '0 16px 0 38px', border: '1px solid #374151', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
                     <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -2233,7 +2233,7 @@ const AccessControl = forwardRef((props, ref) => {
         const selCount = roomViewSelected.size;
         const allSelected = filtered.length > 0 && filtered.every(r => roomViewSelected.has(r.id));
         return (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', maxHeight: '650px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
@@ -2250,7 +2250,7 @@ const AccessControl = forwardRef((props, ref) => {
                   <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                     <Search size={16} />
                     <input type="search" placeholder="搜尋房間..." value={roomViewSearch} onChange={(e) => { setRoomViewSearch(e.target.value); setRoomViewSelected(new Set()); }}
-                      style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
+                      style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                   </div>
                   <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined, whiteSpace: 'nowrap' }} onClick={() => {
                     const names = allRooms.filter(r => roomViewSelected.has(r.id)).map(r => r.roomNumber);
@@ -2265,8 +2265,8 @@ const AccessControl = forwardRef((props, ref) => {
                 </div>
               </div>
             </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 28px 24px', scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent', minHeight: 0 }}>
-              <style>{`.room-view-body::-webkit-scrollbar { width: 6px; height: 6px; } .room-view-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }`}</style>
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 28px 24px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent', minHeight: 0 }}>
+              <style>{`.room-view-body::-webkit-scrollbar { width: 6px; height: 6px; } .room-view-body::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }`}</style>
               {filtered.length === 0 ? (
                 <div className="ac-empty">{roomViewSearch ? '無匹配房間' : '暫無房間'}</div>
               ) : (
@@ -2305,7 +2305,7 @@ const AccessControl = forwardRef((props, ref) => {
                 </table>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
@@ -2314,7 +2314,7 @@ const AccessControl = forwardRef((props, ref) => {
 
       {/* SIP 帳號分配對話框 */}
       {assignSipRoom && (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '700px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }}
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '700px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }}
           onClose={() => { setAssignSipRoom(null); setSipSearch(''); }}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '65vh', maxHeight: '520px' }}>
@@ -2336,7 +2336,7 @@ const AccessControl = forwardRef((props, ref) => {
                 <div className="ac-search" style={{ width: '220px', flex: 'none' }}>
                   <Search size={16} />
                   <input type="search" placeholder="搜尋帳號或名稱..." value={sipSearch} onChange={(e) => setSipSearch(e.target.value)}
-                    style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
+                    style={{ height: '36px', padding: '0 16px 0 40px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                 </div>
               </div>
             </div>
@@ -2353,7 +2353,7 @@ const AccessControl = forwardRef((props, ref) => {
                 </thead>
               </table>
             </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 28px 24px', scrollbarWidth: 'thin', scrollbarColor: '#cbd5e1 transparent', minHeight: 0 }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 28px 24px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent', minHeight: 0 }}>
               {sipLoading ? (
                 <div className="ac-empty">加載中...</div>
               ) : (() => {
@@ -2392,7 +2392,7 @@ const AccessControl = forwardRef((props, ref) => {
               );
             })()}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => { setAssignSipRoom(null); setSipSearch(''); }} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
@@ -2864,10 +2864,10 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); setBuildingDropdownOpen(null); }}>🔐 授權</button>
-              <div style={{ height: '1px', background: '#e2e8f0' }} />
+              <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteBuilding(buildingData, communityData.id); }}>✕ 刪除</button>
             </div>
           </>
@@ -2888,7 +2888,7 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setEntranceDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal(ctx, entranceData); setEntranceDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 權限</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openDeviceDialog({ ...entranceData, buildingId: bId || undefined }, cId); setEntranceDropdownOpen(null); }}>📡 設備</button>
@@ -2896,7 +2896,7 @@ const AccessControl = forwardRef((props, ref) => {
               {entranceData.deviceStatus !== 'none' && (
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
               )}
-              <div style={{ height: '1px', background: '#e2e8f0' }} />
+              <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未綁定設備，無法生成訪問鏈接。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); window.open(url, '_blank'); setEntranceDropdownOpen(null); }}>🌐 預覽</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未綁定設備，無法生成訪問鏈接。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); setQrDialog({ url: url, title: entranceData.name, filename: (communityData?.name || 'community') + '-' + entranceData.name + '-' + (entranceData.device || 'device') + '-qrcode' }); setEntranceDropdownOpen(null); }}>🔗 鏈接</button>
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteEntrance(entranceData, cId, bId); }}>✕ 刪除</button>
@@ -2908,7 +2908,7 @@ const AccessControl = forwardRef((props, ref) => {
       {qrDialog && (() => {
         const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrDialog.url);
         return (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '400px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => setQrDialog(null)}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '400px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => setQrDialog(null)}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ padding: '28px 24px 20px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -2918,8 +2918,8 @@ const AccessControl = forwardRef((props, ref) => {
             <img src={qrUrl} alt="QR Code" style={{ width: '220px', height: '220px', borderRadius: '8px', border: '1px solid #1f2937' }} />
             <div style={{ marginTop: '12px', fontSize: '11px', color: '#9ca3af', wordBreak: 'break-all' }}>{qrDialog.url}</div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={async () => { try { var r = await fetch(qrUrl); var b = await r.blob(); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (qrDialog.filename || 'qrcode') + '.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>⬇ 下載 QR</button>
-              <button type="button" onClick={async () => { try { var resp = await fetch(qrUrl); var blob = await resp.blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]); window.alert('QR Code 已複製'); } catch(e) { try { await navigator.clipboard.writeText(qrDialog.url); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>📋 複製 QR</button>
+              <button type="button" onClick={async () => { try { var r = await fetch(qrUrl); var b = await r.blob(); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (qrDialog.filename || 'qrcode') + '.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>⬇ 下載 QR</button>
+              <button type="button" onClick={async () => { try { var resp = await fetch(qrUrl); var blob = await resp.blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]); window.alert('QR Code 已複製'); } catch(e) { try { await navigator.clipboard.writeText(qrDialog.url); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>📋 複製 QR</button>
               <button type="button" onClick={() => { navigator.clipboard.writeText(qrDialog.url).then(() => window.alert('鏈接已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>📋 複製鏈接</button>
             </div>
           </div>
@@ -2927,7 +2927,7 @@ const AccessControl = forwardRef((props, ref) => {
       );})()}
       {/* 設備分配對話框 */}
       {deviceDialogOpen && deviceEntrance && (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(15,23,42,0.18)', background: '#fff', color: '#e5e7eb' }} onClose={() => setDeviceDialogOpen(false)}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => setDeviceDialogOpen(false)}>
           <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 28px 0', flexShrink: 0 }}>
@@ -2941,7 +2941,7 @@ const AccessControl = forwardRef((props, ref) => {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>選擇設備</span>
                   <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d8e2ef', fontSize: '13px', color: '#e5e7eb', outline: 'none' }}>
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #374151', fontSize: '13px', color: '#e5e7eb', outline: 'none' }}>
                     <option value="">{deviceEntrance.deviceId ? '清除已綁定設備' : '請選擇門控設備'}</option>
                     {availableDevices.map(d => (
                       <option key={d.id} value={d.id}>{d.uuid}{d.tenantName ? ` (已分配: ${d.tenantName})` : ''}</option>
@@ -2953,8 +2953,8 @@ const AccessControl = forwardRef((props, ref) => {
                 </label>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #e2e8f0', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
-              <button type="button" onClick={() => setDeviceDialogOpen(false)} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '1px solid #d8e2ef', background: '#fff', color: '#475569', cursor: 'pointer' }}>取消</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
+              <button type="button" onClick={() => setDeviceDialogOpen(false)} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>取消</button>
               <button type="button" onClick={handleAssignDevice} style={{ height: '40px', padding: '0 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>確認綁定</button>
             </div>
           </div>
@@ -2967,13 +2967,13 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addCommunityDialogRef.current?.showModal(c); setDropdownOpen(null); }}>✎ 編輯</button>
               {c.isActive !== false && (
                 <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedCommunityAuth({ communityId: c.id, communityName: c.name }); setShowCommunityAuthDrawer(true); setDropdownOpen(null); }}>🔐 授權</button>
               )}
               <button className="ac-dropdown-item" type="button" style={{ color: c.isActive === false ? '#16a34a' : '#94a3b8' }} onClick={(ev) => { ev.stopPropagation(); handleToggleCommunity(c); }}>{c.isActive === false ? '✓' : '◯'} {c.isActive === false ? '啟用' : '停用'}</button>
-              <div style={{ height: '1px', background: '#e2e8f0' }} />
+              <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteCommunity(c); }}>✕ 刪除</button>
             </div>
           </>
@@ -2992,11 +2992,11 @@ const AccessControl = forwardRef((props, ref) => {
         return (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); }} />
-            <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#fff', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(15,23,42,0.12)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
+            <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); setRoomDropdownOpen(null); }}>🔐 授權</button>
-              <div style={{ height: '1px', background: '#e2e8f0' }} />
+              <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteRoom(roomData, roomDropdownOpen.buildingId); setRoomDropdownOpen(null); }}>✕ 刪除</button>
             </div>
           </>
