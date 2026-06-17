@@ -31,21 +31,29 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
   const [editSlug, setEditSlug] = useState(null);
   const [logoUrl, setLogoUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
+  const [uploading, setUploading] = useState(null); // { fieldName, progress } or null
 
   const handleImageUpload = async (e, fieldName) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const formDataUpload = new FormData();
     formDataUpload.append('image', file);
+    setUploading({ fieldName, progress: 0 });
     try {
       const res = await apiClient.post('/upload/community-image', formDataUpload, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const pct = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
+          setUploading({ fieldName, progress: Math.min(pct, 99) });
+        },
       });
+      setUploading({ fieldName, progress: 100 });
       if (res && res.url) {
         if (fieldName === 'logoUrl') setLogoUrl(res.url);
         else setBannerUrl(res.url);
       }
     } catch (err) { console.error('Upload failed:', err); }
+    finally { setTimeout(() => setUploading(null), 400); }
   };
 
   const displaySlug = editSlug || slug;
@@ -278,7 +286,14 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
               <input name="logoUrl" type="hidden" value={logoUrl} readOnly />
               <label className="cc-upload-box cc-upload-logo" style={{ padding: logoUrl ? 0 : '12px', overflow: 'hidden' }}>
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'logoUrl')} />
-                {logoUrl ? (
+                {uploading?.fieldName === 'logoUrl' ? (
+                  <div style={{ textAlign: 'center', padding: '8px' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', display: 'block' }}>上傳中 {uploading.progress}%</span>
+                    <div style={{ width: '100%', height: '6px', background: '#1f2937', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${uploading.progress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '3px', transition: 'width 0.2s' }} />
+                    </div>
+                  </div>
+                ) : logoUrl ? (
                   <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                     <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLogoUrl(''); }}
@@ -298,7 +313,14 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
               <input name="bannerUrl" type="hidden" value={bannerUrl} readOnly />
               <label className="cc-upload-box cc-upload-cover" style={{ padding: bannerUrl ? 0 : '12px', overflow: 'hidden' }}>
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'bannerUrl')} />
-                {bannerUrl ? (
+                {uploading?.fieldName === 'bannerUrl' ? (
+                  <div style={{ textAlign: 'center', padding: '8px' }}>
+                    <span style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '6px', display: 'block' }}>上傳中 {uploading.progress}%</span>
+                    <div style={{ width: '100%', height: '6px', background: '#1f2937', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${uploading.progress}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '3px', transition: 'width 0.2s' }} />
+                    </div>
+                  </div>
+                ) : bannerUrl ? (
                   <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                     <img src={bannerUrl} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBannerUrl(''); }}
