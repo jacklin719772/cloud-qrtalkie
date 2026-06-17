@@ -369,6 +369,7 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
                 <th>電話</th>
                 <th>郵箱</th>
                 <th>公司</th>
+                <th>留言對象</th>
                 <th style={{ maxWidth: '300px' }}>諮詢內容</th>
                 <th>登記時間</th>
                 <th className="cc-action-head">操作</th>
@@ -376,9 +377,9 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>數據加載中...</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>數據加載中...</td></tr>
               ) : inquiries.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>暫無訪客諮詢記錄</td></tr>
+                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>暫無訪客諮詢記錄</td></tr>
               ) : inquiries.map(item => (
                 <tr key={item.id}>
                   <td style={{ width: '48px', textAlign: 'center' }}>
@@ -393,6 +394,15 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
                   <td><span className="cc-cell-text" title={item.visitorPhone}>{item.visitorPhone || '-'}</span></td>
                   <td><span className="cc-cell-text" title={item.visitorEmail}>{item.visitorEmail || '-'}</span></td>
                   <td><span className="cc-cell-text" title={item.visitorCompany}>{item.visitorCompany || '-'}</span></td>
+                  <td>
+                    {item.agentName ? (
+                      <span className="cc-cell-text" title={`${item.categoryName || ''} / ${item.agentName}`}>
+                        {item.categoryName ? `${item.categoryName} / ` : ''}{item.agentName}
+                      </span>
+                    ) : (
+                      <span className="cc-cell-empty">-</span>
+                    )}
+                  </td>
                   <td><span className="cc-cell-message" title={item.visitorMessage}>{item.visitorMessage || '-'}</span></td>
                   <td><span className="cc-cell-time">{formatDate(item.createdAt)}</span></td>
                   <td className="cc-action-cell">

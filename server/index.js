@@ -11808,9 +11808,16 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
     const total = Number(countRows[0]?.total || 0);
 
     const rows = await connection.query(`
-      SELECT id, visitor_name, visitor_phone, visitor_email, visitor_company, visitor_message, inquiry_status, created_at
-      FROM call_center_visitor_inquiries ${whereSql}
-      ORDER BY created_at DESC LIMIT ? OFFSET ?
+      SELECT vi.id, vi.visitor_name, vi.visitor_phone, vi.visitor_email, vi.visitor_company,
+             vi.visitor_message, vi.inquiry_status, vi.created_at,
+             ca.display_name AS agent_name,
+             ccat.category_name,
+             vi.sip_number
+      FROM call_center_visitor_inquiries vi
+      LEFT JOIN call_center_category_agents ca ON ca.id = vi.agent_id
+      LEFT JOIN call_center_categories ccat ON ccat.id = vi.category_id
+      ${whereSql}
+      ORDER BY vi.created_at DESC LIMIT ? OFFSET ?
     `, [...params, limit, offset]);
 
     const formattedRows = rows.map(row => ({
@@ -11821,7 +11828,9 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
       visitorCompany: row.visitor_company || '-',
       visitorMessage: row.visitor_message || '-',
       status: row.inquiry_status,
-      createdAt: row.created_at
+      createdAt: row.created_at,
+      agentName: row.agent_name || null,
+      categoryName: row.category_name || null,
     }));
 
     return response.json({ code: 0, data: { list: formattedRows, total, centerName: cc.center_name } });
