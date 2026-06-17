@@ -11740,39 +11740,6 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
        (request.ip || request.connection?.remoteAddress || '').slice(0, 64), (request.headers['user-agent'] || '').slice(0, 1000)]
     );
 
-    // Create notification for tenant admin
-    const notifyTitle = targetAgentName
-      ? `訪客留言給 ${targetAgentName}`
-      : `訪客留言`;
-    const notifyBody = targetAgentName
-      ? `${visitorName || '訪客'}（${visitorEmail}）在「${cc.center_name}」給 ${targetAgentName} 留言：${messageContent.slice(0, 200)}`
-      : `${visitorName || '訪客'}（${visitorEmail}）在「${cc.center_name}」留言：${messageContent.slice(0, 200)}`;
-    const dedupeKey = `visitor_message_${cc.id}_${Date.now()}`;
-
-    await connection.query(
-      `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
-       VALUES (?, 'call_center', ?, 'visitor_message', 'visitor', ?, ?, ?, 'info', 'active')`,
-      [cc.tenant_id, cc.id, dedupeKey, notifyTitle, notifyBody]
-    );
-
-    // Send receipts to tenant admins
-    const adminRows = await connection.query(
-      `SELECT id FROM admin_users WHERE tenant_id = ? AND account_type = 'tenant' AND status = 'active'`,
-      [cc.tenant_id]
-    );
-    const [eventRow] = await connection.query(
-      `SELECT id FROM notification_events WHERE dedupe_key = ? LIMIT 1`,
-      [dedupeKey]
-    );
-    if (eventRow) {
-      for (const admin of adminRows) {
-        await connection.query(
-          `INSERT IGNORE INTO notification_receipts (event_id, admin_user_id, receiver_type) VALUES (?, ?, 'admin')`,
-          [eventRow.id, admin.id]
-        );
-      }
-    }
-
     return response.json({ code: 0, message: "留言提交成功" });
   } catch (error) {
     console.error("Failed to save visitor message:", error);
