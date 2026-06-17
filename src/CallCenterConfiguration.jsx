@@ -222,30 +222,32 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           display: flex;
           flex-direction: column;
           gap: 20px;
-          height: 100%; /* 保持高度，但移除固定背景 */
+          height: 100%;
           padding: 0;
           box-sizing: border-box;
           animation: fadeIn 0.3s ease-in-out;
         }
+        .cc-config-page * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        .cc-config-page *::-webkit-scrollbar { width: 6px; height: 6px; }
+        .cc-config-page *::-webkit-scrollbar-track { background: transparent; }
+        .cc-config-page *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(5px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- 主面板区 --- */
         .cc-panel {
-          background: #fff;
+          background: #111827;
           border-radius: 16px;
-          border: 1px solid #e2e8f0;
+          border: 1px solid #1f2937;
           display: flex;
           flex-direction: column;
           flex: 1;
           min-height: 0;
-          box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
           overflow: hidden;
         }
-        
-        /* --- 查詢與統計工具栏 --- */
+
         .cc-toolbar {
           display: flex;
           align-items: center;
@@ -253,10 +255,10 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           gap: 12px;
           padding: 22px 24px;
           margin-bottom: 12px;
-          background: rgba(255, 255, 255, 0.96);
-          border: 1px solid #e6eef8;
+          background: #111827;
+          border: 1px solid #1f2937;
           border-radius: 14px;
-          box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
           flex-shrink: 0;
           flex-wrap: nowrap;
           overflow-x: auto;
@@ -282,28 +284,28 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           left: 16px;
           top: 50%;
           transform: translateY(-50%);
-          color: #94a3b8;
+          color: #6b7280;
           pointer-events: none;
         }
         .cc-search input,
         .cc-select {
           height: 46px;
-          border: 1px solid #d8e2ef;
+          border: 1px solid #374151;
           border-radius: 9px;
           font-size: 12px;
           outline: none;
-          background: #fff;
-          color: #334155;
+          background: #111827;
+          color: #e5e7eb;
           box-sizing: border-box;
         }
         .cc-search input { width: 100%; padding: 0 16px 0 44px; }
-        .cc-search input::placeholder { color: #94a3b8; }
+        .cc-search input::placeholder { color: #6b7280; }
         .cc-search input:focus, .cc-select:focus {
-          border-color: #2563eb;
-          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
         }
         .cc-select { padding: 0 12px; min-width: 112px; cursor: pointer; flex-shrink: 0; }
-        
+
         .cc-stats {
           display: flex;
           align-items: center;
@@ -317,9 +319,9 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           height: 34px;
           padding: 0 12px;
           border-radius: 999px;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          color: #475569;
+          background: #1a2332;
+          border: 1px solid #1f2937;
+          color: #9ca3af;
           font-size: 12px;
           display: inline-flex;
           align-items: center;
@@ -328,83 +330,81 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           white-space: nowrap;
         }
         .cc-stat-pill strong {
-          color: #0f172a;
+          color: #f3f4f6;
           font-size: 13px;
           font-weight: 700;
         }
 
-        /* --- 表格区 --- */
         .cc-table-wrap {
           flex: 1;
           overflow: auto;
         }
         .cc-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           min-width: 1000px;
           text-align: left;
         }
         .cc-table th {
           position: sticky;
           top: 0;
-          background: #f8fafc;
-          color: #64748b;
+          background: #1a2332;
+          color: #9ca3af;
           font-weight: 600;
           font-size: 13px;
           padding: 14px 20px;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           white-space: nowrap;
           z-index: 1;
         }
         .cc-table td {
           padding: 14px 20px;
-          border-bottom: 1px solid #f1f5f9;
-          color: #334155;
+          border-bottom: 1px solid #1f2937;
+          color: #e5e7eb;
           font-size: 14px;
           vertical-align: middle;
         }
-        .cc-table tr:hover td { background: #f8fafc; }
-        .cc-table tr:hover .cc-action-cell { background: #f8fafc; }
-        
+        .cc-table tbody tr { background: #111827; }
+        .cc-table tbody tr:hover td { background: #1a2332; }
+        .cc-table tbody tr:hover .cc-action-cell { background: #1a2332; }
+
         .cc-action-head, .cc-action-cell {
           position: sticky;
           right: 0;
-          box-shadow: -1px 0 0 #e2e8f0;
+          box-shadow: -1px 0 0 #1f2937;
           width: 160px;
           min-width: 160px;
           padding-left: 8px !important;
           padding-right: 8px !important;
           text-align: center;
         }
-        .cc-action-head { z-index: 3 !important; background: #f8fafc; }
-        .cc-action-cell { z-index: 1; background: #ffffff; }
-        
-        /* 单元格內容样式 */
-        .cc-name { color: #0f172a; font-weight: 600; display: inline-block; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-        .cc-link { color: #2563eb; text-decoration: none; font-size: 13px; }
+        .cc-action-head { z-index: 3 !important; background: #1a2332; }
+        .cc-action-cell { z-index: 1; background: #111827; }
+
+        .cc-name { color: #f3f4f6; font-weight: 600; display: inline-block; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+        .cc-link { color: #60a5fa; text-decoration: none; font-size: 13px; }
         .cc-link:hover { text-decoration: underline; }
-        .cc-Logo-preview { 
-          display: inline-flex; align-items: center; justify-content: center; 
-          padding: 4px 8px; background: #f1f5f9; border: 1px solid #e2e8f0; 
-          border-radius: 6px; font-size: 12px; color: #64748b; max-width: 120px;
+        .cc-logo-preview {
+          display: inline-flex; align-items: center; justify-content: center;
+          padding: 4px 8px; background: #1a2332; border: 1px solid #1f2937;
+          border-radius: 6px; font-size: 12px; color: #9ca3af; max-width: 120px;
           overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        
-        /* 狀態标签 */
+
         .cc-switch { width: 36px; height: 20px; border-radius: 999px; border: none; padding: 0; position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
         .cc-switch.on { background: #2563eb; }
-        .cc-switch.off { background: #cbd5e1; }
-        .cc-switch .dot { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .cc-switch.off { background: #374151; }
+        .cc-switch .dot { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .cc-switch.on .dot { left: 18px; }
 
-        /* 操作按钮 */
         .dropdown-container { position: relative; }
         .dropdown-menu-portal {
           position: fixed;
-          background-color: #fff;
-          border: 1px solid #e2e8f0;
+          background-color: #1a2332;
+          border: 1px solid #1f2937;
           border-radius: 8px;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
           z-index: 2147483647;
           min-width: 140px;
           display: flex;
@@ -414,7 +414,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
         .dropdown-menu-portal .dropdown-item {
           padding: 8px 16px;
           font-size: 13px;
-          color: #334155;
+          color: #e5e7eb;
           background: transparent;
           border: none;
           text-align: left;
@@ -422,27 +422,45 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           cursor: pointer;
           font-weight: 400;
         }
-        .dropdown-menu-portal .dropdown-item:hover { background-color: #f1f5f9; }
-        .dropdown-menu-portal .dropdown-item-danger { color: #ef4444; }
-        
-        /* --- 分页栏 --- */
+        .dropdown-menu-portal .dropdown-item:hover { background-color: #111827; }
+        .dropdown-menu-portal .dropdown-item-danger { color: #f87171; }
+
         .cc-pagination {
           min-height: 74px;
           padding: 0 30px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #fff;
-          border-top: 1px solid #e2e8f0;
+          background: #111827;
+          border-top: 1px solid #1f2937;
         }
         .cc-page-controls { display: flex; align-items: center; gap: 12px; }
-        .cc-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #d8e2ef; background: #fff; color: #475569; font-size: 11px; display: inline-flex; align-items: center; }
-        .cc-page-btn, .cc-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #d8e2ef; background: #fff; color: #475569; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-        .cc-page-current { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; font-weight: 600; }
+        .cc-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #111827; color: #9ca3af; font-size: 11px; display: inline-flex; align-items: center; }
+        .cc-page-btn, .cc-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #374151; background: #111827; color: #9ca3af; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+        .cc-page-current { border-color: #3b82f6; color: #3b82f6; background: #1e293b; font-weight: 600; }
         .cc-page-btn { cursor: pointer; font-size: 18px; line-height: 1; }
-        .cc-page-btn:disabled { color: #cbd5e1; cursor: not-allowed; background: #f8fafc; }
-        .cc-page-jump { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 11px; }
-        .cc-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #d8e2ef; text-align: center; outline: none; color: #334155; font-size: 11px; }
+        .cc-page-btn:disabled { color: #374151; cursor: not-allowed; background: #1a2332; }
+        .cc-page-jump { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 11px; }
+        .cc-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #374151; text-align: center; outline: none; color: #e5e7eb; font-size: 11px; background: #111827; }
+
+        .cc-config-page .ghost-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid #374151 !important;
+          background: #111827 !important;
+          color: #9ca3af !important;
+          cursor: pointer;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        .cc-config-page .ghost-btn:hover {
+          background: #1a2332 !important;
+          color: #e5e7eb !important;
+        }
       `}</style>
 
       {/* 工具栏 */}
@@ -509,11 +527,11 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>數據加載中...</td>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>數據加載中...</td>
                 </tr>
               ) : callCenters.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>暫無數據</td>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>暫無數據</td>
                 </tr>
               ) : callCenters.map((item) => (
                 <tr key={item.id}>
@@ -543,8 +561,8 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                           await navigator.clipboard.writeText(item.url);
                           alert('連結已複製！');
                         }}
-                        style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
-                        title="複製連結" onMouseOver={(e) => e.currentTarget.style.color = '#2563eb'} onMouseOut={(e) => e.currentTarget.style.color = '#94a3b8'}
+                        style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', transition: 'color 0.2s' }}
+                        title="複製連結" onMouseOver={(e) => e.currentTarget.style.color = '#60a5fa'} onMouseOut={(e) => e.currentTarget.style.color = '#6b7280'}
                       >
                         <Copy size={14} />
                       </button>
@@ -572,7 +590,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                     </button>
                   </td>
                   <td>{item.createdBy || '-'}</td>
-                <td style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{String(item.updatedAt).split('T')[0].split(' ')[0]}</td>
+                <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }}>{String(item.updatedAt).split('T')[0].split(' ')[0]}</td>
                   <td className="cc-action-cell">
                     <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                       <button 
@@ -640,13 +658,13 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
 
         {/* 分页栏 */}
         <div className="cc-pagination">
-          <div style={{ color: '#64748b', fontSize: '12px' }}>共 {total} 條</div>
+          <div style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 條</div>
           <div className="cc-page-controls">
             <select 
               className="cc-page-size" 
               value={pageSize}
               onChange={(e) => { setPageSize(e.target.value); setPage(1); }}
-              style={{ outline: 'none', cursor: 'pointer', paddingRight: '28px', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '14px 14px' }}
+              style={{ outline: 'none', cursor: 'pointer', paddingRight: '28px', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '14px 14px' }}
             >
               <option value="10">10 條/頁</option>
               <option value="20">20 條/頁</option>
