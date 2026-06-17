@@ -2234,7 +2234,7 @@ const AccessControl = forwardRef((props, ref) => {
         const allSelected = filtered.length > 0 && filtered.every(r => roomViewSelected.has(r.id));
         return (
         <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
-          <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
+          <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', maxHeight: '650px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -2316,7 +2316,7 @@ const AccessControl = forwardRef((props, ref) => {
       {assignSipRoom && (
         <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '700px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }}
           onClose={() => { setAssignSipRoom(null); setSipSearch(''); }}>
-          <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
+          <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '65vh', maxHeight: '520px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -2909,7 +2909,7 @@ const AccessControl = forwardRef((props, ref) => {
         const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(qrDialog.url);
         return (
         <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '400px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => setQrDialog(null)}>
-          <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
+          <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
           <div style={{ padding: '28px 24px 20px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>{qrDialog.title} — 訪問鏈接</h2>
@@ -2928,7 +2928,7 @@ const AccessControl = forwardRef((props, ref) => {
       {/* 設備分配對話框 */}
       {deviceDialogOpen && deviceEntrance && (
         <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => setDeviceDialogOpen(false)}>
-          <style>{`dialog::backdrop { background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); }`}</style>
+          <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 28px 0', flexShrink: 0 }}>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>綁定設備 — {deviceEntrance.name}</h2>
@@ -2941,7 +2941,7 @@ const AccessControl = forwardRef((props, ref) => {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>選擇設備</span>
                   <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #374151', fontSize: '13px', color: '#e5e7eb', outline: 'none' }}>
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #374151', fontSize: '13px', color: '#e5e7eb', background: '#111827', outline: 'none', cursor: 'pointer' }}>
                     <option value="">{deviceEntrance.deviceId ? '清除已綁定設備' : '請選擇門控設備'}</option>
                     {availableDevices.map(d => (
                       <option key={d.id} value={d.id}>{d.uuid}{d.tenantName ? ` (已分配: ${d.tenantName})` : ''}</option>
