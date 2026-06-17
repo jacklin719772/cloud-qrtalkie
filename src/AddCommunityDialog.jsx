@@ -174,6 +174,14 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
         .add-community-body::-webkit-scrollbar { width: 4px; }
         .add-community-body::-webkit-scrollbar-track { background: transparent; }
         .add-community-body::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+        .add-community-body input, .add-community-body textarea, .add-community-body select {
+          background: #111827 !important;
+          color: #e5e7eb !important;
+        }
+        .add-community-body input[readonly] {
+          background: #1a2332 !important;
+          color: #9ca3af !important;
+        }
         .cc-upload-box {
           text-align: center; border: 1px dashed #374151; border-radius: 10px;
           background: #1a2332; display: flex; flex-direction: column;
