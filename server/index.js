@@ -232,9 +232,7 @@ app.get("/access/visitor", async (request, response) => {
         `SELECT r.id, r.building_id, r.room_number, r.floor,
                 COALESCE(s.display_name, s.username, '') AS resident_name,
                 s.username AS sip_username,
-                wu.username AS web_username,
-           COALESCE(su.sync_status, 'local_only') AS sync_status,
-           COALESCE(su.sync_status, 'local_only') AS sync_status
+                wu.username AS web_username
          FROM access_rooms r
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
          LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
