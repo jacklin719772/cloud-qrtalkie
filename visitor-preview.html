@@ -300,6 +300,7 @@
       gap: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
     }
     .agent-card:hover {
       transform: translateY(-2px);
@@ -311,7 +312,9 @@
       gap: 12px;
     }
     .agent-sip-status {
-      margin-left: auto;
+      position: absolute;
+      top: 12px;
+      right: 12px;
       font-size: 10px;
       display: flex;
       align-items: center;
@@ -672,7 +675,7 @@
       document.getElementById('currentCategoryTitle').textContent = cat ? cat.name : '';
       document.getElementById('agentsContainer').innerHTML = (cat?.agents || []).map(function(a, idx) {
         var agentId = 'agent-card-' + idx;
-        return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div>' +
+        return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div>' +
           (a.sip ? '<div class="agent-sip-status"><span class="agent-sip-dot loading" id="' + agentId + '-dot"></span><span id="' + agentId + '-txt" style="color:var(--text-muted);">...</span><button class="agent-sip-refresh" onclick="refreshAgentStatus(\'' + esc(a.sip) + '\',\'' + agentId + '\')" title="刷新狀態">↻</button></div>' : '') +
         '</div><div class="agent-contact">' +
           (a.sip ? '<div class="contact-item">SIP: ' + a.sip + '</div>' : '') +
