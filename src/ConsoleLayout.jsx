@@ -1466,54 +1466,114 @@ export default function ConsoleLayout({ onLogout }) {
               <button onClick={() => setShowEcardGenerationHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 功能概述</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>電子名片管理用於管理租戶的電子名片列表。管理員可在此查看已生成的名片、進行批次操作（啟用/停用/下載），以及進入名片產生頁面為 SIP 帳號生成個性化電子名片。</p>
+
+              <div style={{ marginBottom: "28px", padding: "18px", borderRadius: "12px", background: "#1a2332", border: "1px solid #1f2937" }}>
+                <h3 style={{ color: "#f1d37a", fontSize: "15px", marginBottom: "16px", fontWeight: 700 }}>📋 完整產生流程</h3>
+                <p style={{ color: "#9ca3af", margin: "0 0 16px", fontSize: "12px" }}>按以下步驟為每個 SIP 帳號生成專屬電子名片：</p>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>進入產生頁面</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊頁面右上角的「+」按鈕進入名片產生頁面。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>選擇樣式模板</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在左側「名片樣式」區域，從現有模板中選擇一個。模板可在樣式管理頁面（左側選單「電子名片樣式」）預先設計和保存。每個模板可包含多張背景圖片供選擇。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>填寫個人資訊</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>填寫名片持有人的基本資訊：姓名、職位、電話、郵箱、地址。這些資訊將顯示在名片上供訪客查看。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>上傳頭像與 Logo</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>上傳名片持有人的頭像圖片和公司 Logo。建議頭像為正方形，Logo 為橫向長方形。支援 JPG、PNG 格式。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>即時預覽與調整</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>右側提供即時預覽畫布。修改任何資訊都會即時反映在預覽中。可在下方調整顏色、字體等樣式參數。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>6</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>綁定帳號與路由</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在「帳號綁定與路由」區塊中選擇要關聯的 SIP 帳號。系統會自動為該帳號建立呼叫路由。勾選「允許視頻通話」則訪客可發起視訊通話，取消則僅開放語音通話。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>
+                    <div>
+                      <strong style={{ color: "#22c55e" }}>保存並發布</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊「保存名片」完成。系統會生成唯一的訪問鏈接（格式：/u/slug）。訪客可通過該鏈接查看名片並發起語音或視訊通話。</p>
+                    </div>
+                  </div>
+                </div>
               </div>
+
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
-                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>產生名片</strong> — 點擊上方「+」按鈕進入名片產生頁面，選擇樣式模板、設定個人資訊、上傳頭像和 Logo，即時預覽後保存。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>預覽名片</strong> — 點擊表格中的「預覽」按鈕查看名片完整效果。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>更多操作</strong> — 每行「更多」選單提供：詳情、下載圖片、啟用/停用。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用</strong> — 勾選多個名片後點擊上方「批量啟用」，一次啟用多張名片。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量停用</strong> — 勾選多個名片後點擊上方「批量停用」，停用後該名片不再顯示。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量下載</strong> — 勾選多個已配置名片後點擊上方「批量下載」，打包下載名片圖片。</li>
-                </ul>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📇 電子名片樣式管理</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>在「電子名片樣式」頁面可設計和管理名片模板。每個模板包含佈局、顏色、字體、背景圖片等設定。管理員可預覽不同模板的效果，選擇適合企業形象的樣式。模板設計好後，在產生名片頁面即可選用。</p>
               </div>
+
               <div style={{ marginBottom: "24px", padding: "14px 16px", background: "#1e3a5f", border: "1px solid #3b82f6", borderRadius: "8px" }}>
-                <h3 style={{ color: "#93c5fd", fontSize: "14px", margin: "0 0 8px" }}>&#127909; 訪客視訊通話控制</h3>
-                <p style={{ color: "#9ca3af", margin: "0 0 8px" }}>在產生名片頁面的「帳號綁定與路由」區塊中，新增了<strong style={{ color: "#e5e7eb" }}>「允許視頻通話」</strong>複選框，預設為勾選狀態。</p>
+                <h3 style={{ color: "#93c5fd", fontSize: "14px", margin: "0 0 8px" }}>🎬 訪客視訊通話控制</h3>
+                <p style={{ color: "#9ca3af", margin: "0 0 8px" }}>在產生名片頁面的「帳號綁定與路由」區塊中，有<strong style={{ color: "#e5e7eb" }}>「允許視頻通話」</strong>複選框，預設為勾選。</p>
                 <ul style={{ color: "#9ca3af", margin: "0 0 8px", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px" }}>
-                  <li>勾選：訪客打開名片頁面後，可發起視訊通話。</li>
-                  <li>取消勾選：訪客打開名片頁面後，視訊通話按鈕顯示為不可用狀態，僅保留語音通話功能。</li>
-                  <li>重新啟用：再次勾選並儲存後，訪客頁面重新開放視訊通話。</li>
+                  <li>勾選：訪客打開名片頁面後可發起視訊通話。</li>
+                  <li>取消勾選：視訊通話按鈕顯示為不可用，僅保留語音通話。</li>
                 </ul>
-                <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>此設定只影響訪客端的視訊功能，不影響語音通話和管理員操作。</p>
+                <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>此設定只影響訪客端的視訊功能。</p>
               </div>
+
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📋 列表管理功能</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>名片縮圖</strong> — 名片的預覽縮略圖。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — 該名片所屬的 SIP 帳號。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>Web 帳號</strong> — 關聯的 WebRTC 分機號。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>名片名稱</strong> — 名片上顯示的姓名，來自帳號的顯示名稱或編輯時輸入。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>範本</strong> — 使用的名片樣式模板。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中或已停用。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>創建時間</strong> — 名片建立的日期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用/停用</strong> — 勾選多個名片後使用上方按鈕批次操作。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量下載</strong> — 勾選多個已配置名片後打包下載名片圖片。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>預覽與詳情</strong> — 點擊「預覽」查看名片最終效果，「更多」選單提供詳情、下載、啟用/停用。</li>
                 </ul>
               </div>
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127912; 產生名片流程</h3>
-                <ol style={{ color: "#9ca3af", margin: 0, paddingLeft: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li>點擊「+」進入產生頁面，從左側樣式列表選擇名片模板。</li>
-                  <li>選擇背景圖片（每個模板可有多張背景可選）。</li>
-                  <li>填寫個人資訊：姓名、職位、電話、郵箱、地址等。</li>
-                  <li>上傳頭像圖片和公司 Logo。</li>
-                  <li>在右側即時預覽窗查看效果，調整顏色和字體設定。</li>
-                  <li>在「帳號綁定與路由」區塊中，可勾選或取消「允許視頻通話」控制訪客端視訊功能。</li>
-                  <li>點擊「保存名片」完成產生。</li>
-                </ol>
+
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 注意事項</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>名片模板必須先在「電子名片樣式」頁面設計好，才能在此選用。</li>
+                  <li>每個 SIP 帳號只能產生一張電子名片。</li>
+                  <li>名片產生後會生成唯一的 Slug，訪客通過 /u/slug 訪問。</li>
+                  <li>呼叫中心坐席必須先有電子名片才能被添加到呼叫中心。</li>
+                </ul>
               </div>
             </div>
           </div>
