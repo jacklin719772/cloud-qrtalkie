@@ -114,7 +114,7 @@
       min-height: 118px;
       padding: 18px 36px;
       flex-shrink: 0;
-      background: url('banner.png') center/cover no-repeat;
+      background: url('/visitor-assets/banner.png') center/cover no-repeat;
       border-radius: 20px 20px 0 0;
       color: #fff;
       overflow: hidden;
@@ -771,7 +771,7 @@
       min-height: 118px;
       padding: 18px 36px;
       flex-shrink: 0;
-      background: url('banner.png') center/cover no-repeat;
+      background: url('/visitor-assets/banner.png') center/cover no-repeat;
       border-radius: 20px 20px 0 0;
       color: #fff;
       overflow: hidden;
@@ -1463,7 +1463,7 @@
               <span class="room-number">101室</span>
               <span class="room-contact">張先生</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1471,7 +1471,7 @@
               <span class="room-number">102室</span>
               <span class="room-contact">李女士</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1479,7 +1479,7 @@
               <span class="room-number">103室</span>
               <span class="room-contact">王先生</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1487,7 +1487,7 @@
               <span class="room-number">201室</span>
               <span class="room-contact">陳女士</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1495,7 +1495,7 @@
               <span class="room-number">202室</span>
               <span class="room-contact">劉先生</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1503,7 +1503,7 @@
               <span class="room-number">203室</span>
               <span class="room-contact">趙女士</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1511,7 +1511,7 @@
               <span class="room-number">301室</span>
               <span class="room-contact">周先生</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1519,7 +1519,7 @@
               <span class="room-number">302室</span>
               <span class="room-contact">吳女士</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
 
           <div class="room-row">
@@ -1527,9 +1527,24 @@
               <span class="room-number">303室</span>
               <span class="room-contact">孫先生</span>
             </div>
-            <button class="call-icon-btn" onclick="handleCall(this)" title="呼叫">📞</button>
+            <button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話">📞</button>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Access Call Confirm Modal ═══ -->
+  <div id="accessCallConfirm" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.72);align-items:center;justify-content:center;" onclick="if(window.AccessVisitorCall&&window.AccessVisitorCall.cancelConfirm)window.AccessVisitorCall.cancelConfirm()">
+    <div style="background:#111827;border-radius:18px;padding:24px 22px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.42);border:1px solid rgba(96,165,250,0.18);" onclick="event.stopPropagation()">
+      <div style="font-size:18px;font-weight:800;color:#f3f4f6;margin-bottom:8px;" id="accessConfirmTitle">確認呼叫</div>
+      <div style="font-size:15px;font-weight:700;color:#f1d37a;margin-bottom:4px;" id="accessConfirmRoom"></div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:16px;" id="accessConfirmResident"></div>
+      <div style="font-size:13px;color:#e5e7eb;line-height:1.7;margin-bottom:18px;" id="accessConfirmHint">請確認是否要發起呼叫。</div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button id="accessConfirmVoiceBtn" type="button" style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #22c55e;background:rgba(15,40,24,0.92);color:#d1fae5;font-size:14px;font-weight:700;cursor:pointer;">語音呼叫</button>
+        <button id="accessConfirmVideoBtn" type="button" style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #60a5fa;background:rgba(30,41,59,0.92);color:#dbeafe;font-size:14px;font-weight:700;cursor:pointer;">視訊呼叫</button>
+        <button id="accessConfirmCancelBtn" type="button" style="min-width:92px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #374151;background:#1a2332;color:#9ca3af;font-size:14px;font-weight:700;cursor:pointer;">取消</button>
       </div>
     </div>
   </div>
@@ -1575,7 +1590,7 @@
 
 </div>
 
-<script src="/visitor-assets/access-call.js"></script>
+<script src="/visitor-assets/access-visitor-call.js"></script>
 <script>
 
   // ─── Load data from server or use static demo ───
@@ -1616,7 +1631,16 @@
     }
     // Populate room cards
     if (ACCESS.rooms) {
-      var rh = ACCESS.rooms.map(function(r){ return '<div class="room-row" data-bld="'+r.buildingId+'" data-room-id="'+r.id+'" data-room-num="'+esc(r.roomNumber)+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleCall(this,\'voice\')" title="語音通話">📞</button><button class="call-icon-btn call-video" onclick="handleCall(this,\'video\')" title="視訊通話">📹</button></div></div>'; }).join('');
+      var webAccountMap = {};
+      (ACCESS.sipAccounts || []).forEach(function(s) {
+        if (s && s.roomNumber != null) webAccountMap[String(s.roomNumber)] = s.webAccount || '';
+      });
+      var rh = ACCESS.rooms.map(function(r){
+        var roomNumKey = String(r.roomNumber);
+        var webAccount = webAccountMap[roomNumKey] || '';
+        var hasSipAccount = Boolean(r.sipAccount);
+        return '<div class="room-row" data-bld="'+r.buildingId+'" data-room-id="'+r.id+'" data-room-num="'+esc(r.roomNumber)+'" data-sip-account="'+esc(r.sipAccount || '')+'" data-web-account="'+esc(webAccount)+'" data-resident-name="'+esc(r.residentName || '')+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話"'+(hasSipAccount?'':' disabled')+'>📞</button><button class="call-icon-btn call-video" onclick="handleAccessVideoCall(this)" title="視訊通話"'+(hasSipAccount?'':' disabled')+'>📹</button></div></div>';
+      }).join('');
       document.querySelectorAll('.pc-room-grid').forEach(function(g){ g.innerHTML = rh; });
       // Filter rooms by first building
       var firstBld = ACCESS.buildings && ACCESS.buildings[0] ? ACCESS.buildings[0].id : null;
@@ -1668,6 +1692,46 @@
     });
   }
 
+  function openAccessCallConfirm(btn, callType) {
+    var row = btn && btn.closest ? btn.closest('.room-row') : null;
+    var roomId = row ? parseInt(row.dataset.roomId) : 0;
+    var roomNumber = row ? (row.dataset.roomNum || row.querySelector('.room-number')?.textContent?.replace('室','') || '') : '';
+    var roomDisplay = roomNumber ? roomNumber + '室' : '';
+    var resident = row ? (row.dataset.residentName || row.querySelector('.room-contact')?.textContent || '') : '';
+    var sipAccount = row ? (row.dataset.sipAccount || '') : '';
+    var webAccount = row ? (row.dataset.webAccount || '') : '';
+    var lockId = (new URLSearchParams(location.search)).get('lockId') || '';
+
+    if (!roomId || !lockId) {
+      alert('無法獲取房間或設備資訊，請重新整理頁面。');
+      return;
+    }
+    if (!sipAccount) {
+      alert('該房間尚未綁定SIP帳號，暫時無法呼叫。');
+      return;
+    }
+    if (window.AccessVisitorCall && typeof window.AccessVisitorCall.requestCall === 'function') {
+      window.AccessVisitorCall.requestCall({
+        roomId: roomId,
+        roomNumber: roomNumber,
+        roomDisplay: roomDisplay,
+        residentName: resident,
+        lockId: lockId,
+        sipAccount: sipAccount,
+        webAccount: webAccount,
+      }, callType || 'voice');
+      return;
+    }
+    if (window.AccessCall && typeof window.AccessCall.call === 'function') {
+      window.AccessCall.call({ roomId: roomId, roomNumber: roomNumber, lockId: lockId }, callType || 'voice');
+      return;
+    }
+    alert('通話模組未載入，請稍後再試。');
+  }
+
+  window.handleAccessVoiceCall = function(btn) { openAccessCallConfirm(btn, 'voice'); };
+  window.handleAccessVideoCall = function(btn) { openAccessCallConfirm(btn, 'video'); };
+
   // Call button feedback: static demo only, no real call.
   function handleCall(btn, callType) {
     callType = callType || 'voice';
@@ -1681,8 +1745,10 @@
       return;
     }
 
-    // Use the WebRTC calling module
-    if (window.AccessCall) {
+    // Use the Access Visitor calling module
+    if (window.AccessVisitorCall) {
+      openAccessCallConfirm(btn, callType);
+    } else if (window.AccessCall) {
       window.AccessCall.call({ roomId: roomId, roomNumber: roomNumber, lockId: lockId }, callType);
     } else {
       // Fallback: show info popup (static demo)
