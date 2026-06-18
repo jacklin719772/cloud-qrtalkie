@@ -134,7 +134,8 @@
     if (callOverlay) callOverlay.style.display = 'none';
     if (btnToggleVideo) {
       btnToggleVideo.style.display = 'none';
-      btnToggleVideo.textContent = '📹';
+    var icon = document.getElementById('btnToggleVideoIcon');
+    if (icon) icon.style.opacity = '1';
     }
     if (localVideo) {
       localVideo.srcObject = null;
@@ -389,7 +390,8 @@
     var videoTrack = localStream.getVideoTracks()[0];
     if (!videoTrack) return;
     videoTrack.enabled = !videoTrack.enabled;
-    if (btnToggleVideo) btnToggleVideo.textContent = videoTrack.enabled ? '📹' : '📷';
+    var icon = document.getElementById('btnToggleVideoIcon');
+    if (icon) icon.style.opacity = videoTrack.enabled ? '1' : '0.35';
   }
 
   function bindRemoteAudio(pc) {
