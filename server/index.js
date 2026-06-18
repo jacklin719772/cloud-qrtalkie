@@ -16282,16 +16282,8 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
 
 // GET /api/flexisip/accounts/registration-status - Discover accounts from Redis, return registration status.
 app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平台管理員可以查看註冊狀態",
-      error: {
-        code: "FLEXISIP_REGISTRATION_STATUS_FORBIDDEN",
-        message: "只有平台管理員可以查看註冊狀態",
-      },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   const domain = sanitizeString(request.query.domain || "", 255).toLowerCase();
   const includeContacts = String(request.query.includeContacts || "false").toLowerCase() === "true";
@@ -16303,10 +16295,7 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
     return response.status(400).json({
       success: false,
       message: "查詢參數格式不正確",
-      error: {
-        code: "INVALID_REGISTRATION_STATUS_QUERY",
-        message: "查詢參數格式不正確",
-      },
+      error: { code: "INVALID_REGISTRATION_STATUS_QUERY", message: "查詢參數格式不正確" },
     });
   }
 
@@ -16319,6 +16308,21 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
     let items = statusResult.items;
     if (domain) {
       items = items.filter((item) => item.domain === domain);
+    }
+
+    // Tenant filtering: only show accounts belonging to this tenant
+    if (!isPlatform && tenantId) {
+      const connection = await pool.getConnection();
+      try {
+        const tenantSipAccounts = await connection.query(
+          "SELECT username FROM sip_users WHERE tenant_id = ?",
+          [tenantId]
+        );
+        const tenantUsernames = new Set(tenantSipAccounts.map(r => r.username));
+        items = items.filter((item) => tenantUsernames.has(item.username));
+      } finally {
+        connection.release();
+      }
     }
 
     const total = items.length;
@@ -16372,13 +16376,8 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
 
 // GET /api/flexisip/accounts/registration-detail - full detail for a single account from Redis.
 app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平台管理員可以查看註冊詳情",
-      error: { code: "FLEXISIP_REGISTRATION_DETAIL_FORBIDDEN", message: "只有平台管理員可以查看註冊詳情" },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   const username = sanitizeString(request.query.username || "", 120);
   const domain = sanitizeString(request.query.domain || sipDomain, 255).toLowerCase();
@@ -16389,6 +16388,17 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
       message: "查詢參數格式不正確",
       error: { code: "INVALID_REGISTRATION_DETAIL_QUERY", message: "查詢參數格式不正確" },
     });
+  }
+
+  // Tenant admin: verify this account belongs to their tenant
+  if (!isPlatform && tenantId) {
+    const dbConn = await pool.getConnection();
+    try {
+      const [row] = await dbConn.query("SELECT id FROM sip_users WHERE username = ? AND tenant_id = ? LIMIT 1", [username, tenantId]);
+      if (!row) {
+        return response.status(403).json({ success: false, message: "無權限查看該帳號詳情" });
+      }
+    } finally { dbConn.release(); }
   }
 
   try {
@@ -16413,19 +16423,29 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
 
 // GET /api/flexisip/call-logs/date-range - get the earliest and latest call record dates.
 app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平台管理員可以查詢 Flexisip 通話記錄範圍",
-      error: { code: "FLEXISIP_CALL_LOG_RANGE_FORBIDDEN", message: "只有平台管理員可以查詢 Flexisip 通話記錄範圍" },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   try {
     const connection = await pool.getConnection();
     try {
+      let whereClause = "WHERE initiated_at IS NOT NULL";
+      let params = [];
+
+      if (!isPlatform && tenantId) {
+        const tenantSips = await connection.query("SELECT username FROM sip_users WHERE tenant_id = ?", [tenantId]);
+        const usernames = tenantSips.map(r => r.username);
+        if (usernames.length === 0) {
+          return response.json({ success: true, data: { earliest: null, latest: null } });
+        }
+        const placeholders = usernames.map(() => '?').join(',');
+        whereClause += ` AND (from_user IN (${placeholders}) OR to_user IN (${placeholders}))`;
+        params = [...usernames, ...usernames];
+      }
+
       const [row] = await connection.query(
-        "SELECT MIN(initiated_at) AS earliest, MAX(initiated_at) AS latest FROM flexisip_call_logs WHERE initiated_at IS NOT NULL",
+        `SELECT MIN(initiated_at) AS earliest, MAX(initiated_at) AS latest FROM flexisip_call_logs ${whereClause}`,
+        params
       );
       return response.json({
         success: true,
@@ -16489,16 +16509,8 @@ app.get("/api/flexisip/call-logs/accounts", requireAdmin, async (request, respon
 
 // GET /api/flexisip/call-logs - read-only Flexisip call log summary query.
 app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平台管理員可以查詢 Flexisip 通話記錄",
-      error: {
-        code: "FLEXISIP_CALL_LOG_QUERY_FORBIDDEN",
-        message: "只有平台管理員可以查詢 Flexisip 通話記錄",
-      },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   const account = sanitizeString(request.query.account || "", 120);
   const accounts = sanitizeString(request.query.accounts || "", 600);
@@ -16551,9 +16563,22 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   }
 
   try {
+    // Tenant filtering: override accounts param with tenant's SIP accounts
+    let queryAccounts = accounts;
+    if (!isPlatform && tenantId) {
+      const dbConn = await pool.getConnection();
+      try {
+        const tenantSips = await dbConn.query("SELECT username FROM sip_users WHERE tenant_id = ?", [tenantId]);
+        queryAccounts = tenantSips.map(r => r.username).join(',');
+        if (!queryAccounts) {
+          return response.json({ success: true, message: "Flexisip 通話記錄已取得", data: { total: 0, items: [] } });
+        }
+      } finally { dbConn.release(); }
+    }
+
     const data = await queryFlexisipCallLogs({
       account,
-      accounts,
+      accounts: queryAccounts,
       domain,
       direction,
       result,
