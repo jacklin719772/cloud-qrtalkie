@@ -113,6 +113,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [showAccessControlHelp, setShowAccessControlHelp] = useState(false);
   const [showCallCenterHelp, setShowCallCenterHelp] = useState(false);
+  const [showDomainHelp, setShowDomainHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -631,6 +632,7 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="primary-btn" type="button" onClick={() => { setPurchaseContext({ mode: 'create', orderId: null }); setCurrentView('purchase-plan'); }} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><ShoppingCart size={14} /> 購買套餐</button>
           <button className="primary-btn" type="button" onClick={() => domainRef.current?.showPayments()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>💳 付款記錄</button>
+          <button type="button" onClick={() => setShowDomainHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1943,6 +1945,106 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>未上傳 LOGO 時頁面不顯示 LOGO 佔位，封面未上傳時使用預設橫幅。</li>
                   <li>坐席卡片的 SIP 狀態會即時顯示在線/離線，並支援單卡刷新。</li>
                   <li>訪客日誌記錄所有訪客登記和留言，可在操作列的「訪客日誌」查看。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDomainHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowDomainHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "thin", scrollbarColor: "#374151 transparent" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>我的套餐 操作說明</h2>
+              <button onClick={() => setShowDomainHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+
+              <div style={{ marginBottom: "28px", padding: "18px", borderRadius: "12px", background: "#1a2332", border: "1px solid #1f2937" }}>
+                <h3 style={{ color: "#f1d37a", fontSize: "15px", marginBottom: "16px", fontWeight: 700 }}>📋 套餐管理流程</h3>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>查看當前套餐</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>頁面顯示當前租戶已訂購的所有套餐訂單。每筆訂單包含套餐名稱、帳號數量、購買日期、到期日和狀態。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>購買新套餐</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊「購買套餐」按鈕進入套餐選擇頁面。選擇需要的套餐方案、帳號數量、可選增值服務，確認訂單金額後提交。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>完成付款</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>選擇線上支付或線下匯款。線下匯款需上傳付款憑證（截圖或轉帳記錄），提交後等待平台管理員審核。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>查看付款記錄</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊「💳 付款記錄」查看所有歷史付款記錄，包括付款金額、付款方式、狀態（未支付/已支付/待審核/已審核）。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>續訂或修改訂單</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在訂單操作列可點擊「更多」選單進行：續訂、重新購買、編輯訂單、刪除訂單（未支付狀態）。也可提交審核或撤銷審核。</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📊 訂單狀態說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>未支付</strong> — 訂單已建立但尚未付款</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已支付</strong> — 已完成付款，等待審核</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>待審核</strong> — 付款憑證已提交</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>已審核</strong> — 管理員已審核通過，套餐生效</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💳 付款方式</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>線上支付</strong> — 通過平台設定的線上支付方式即時付款（需平台管理員配置）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>線下匯款</strong> — 按照平台提供的收款帳戶資訊進行銀行匯款，並上傳匯款憑證。</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏷️ 優惠碼</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>購買套餐時可輸入優惠碼享受折扣。優惠碼由平台管理員在「優惠碼管理」頁面建立和分配。每個優惠碼有使用次數上限和有效期限。</p>
+              </div>
+
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 注意事項</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>套餐到期前建議提前續訂，避免服務中斷。</li>
+                  <li>線下匯款需要管理員人工審核，處理時間可能較長。</li>
+                  <li>已審核的訂單不可刪除，只能續訂或重新購買。</li>
+                  <li>付款記錄僅供查看，不可修改或刪除。</li>
                 </ul>
               </div>
             </div>
