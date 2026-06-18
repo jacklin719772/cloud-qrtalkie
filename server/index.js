@@ -8156,13 +8156,20 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
 });
 
 app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看 Web 帳號。" });
-  }
+  const isPlatform = request.admin.accountType === 'platform';
+  const tenantId = request.admin.tenantId;
 
   let connection;
   try {
     connection = await pool.getConnection();
+
+    let whereClause = '';
+    let params = [];
+    if (!isPlatform && tenantId) {
+      whereClause = 'WHERE u.tenant_id = ?';
+      params.push(tenantId);
+    }
+
     const rows = await connection.query(`
       SELECT
         u.id,
@@ -8174,13 +8181,15 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
         u.email,
         u.status,
         u.created_at,
+        u.tenant_id,
         c.display_name AS creator_name,
         t.name AS tenant_name
       FROM web_users u
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      ${whereClause}
       ORDER BY u.created_at DESC
-    `);
+    `, params);
 
     const accounts = rows.map((row) => ({
       id: Number(row.id),
@@ -8194,6 +8203,7 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
       createdAt: row.created_at ? new Date(row.created_at).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\//g, "-") : "",
       creatorName: row.creator_name || "-",
       tenantName: row.tenant_name || "",
+      tenantId: row.tenant_id ? Number(row.tenant_id) : null,
     }));
 
     return response.json({ accounts });
@@ -16439,22 +16449,31 @@ app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, resp
 
 // GET /api/flexisip/call-logs/accounts - get distinct phone numbers from call logs.
 app.get("/api/flexisip/call-logs/accounts", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平台管理員可以查詢 Flexisip 通話記錄帳號",
-      error: { code: "FLEXISIP_CALL_LOG_ACCOUNTS_FORBIDDEN", message: "只有平台管理員可以查詢 Flexisip 通話記錄帳號" },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   try {
     const connection = await pool.getConnection();
     try {
-      const rows = await connection.query(
-        "SELECT DISTINCT u.user FROM (SELECT from_user AS user FROM flexisip_call_logs WHERE from_user != '' UNION SELECT to_user AS user FROM flexisip_call_logs WHERE to_user != '') u ORDER BY u.user ASC",
+      if (isPlatform) {
+        const rows = await connection.query(
+          "SELECT DISTINCT u.user FROM (SELECT from_user AS user FROM flexisip_call_logs WHERE from_user != '' UNION SELECT to_user AS user FROM flexisip_call_logs WHERE to_user != '') u ORDER BY u.user ASC",
+        );
+        const accounts = (rows || []).map((r) => String(r.user || "")).filter(Boolean);
+        return response.json({ success: true, data: accounts });
+      }
+
+      if (!tenantId) {
+        return response.json({ success: true, data: [] });
+      }
+
+      // Tenant admin: only return accounts belonging to their tenant's SIP users
+      const sipRows = await connection.query(
+        "SELECT username FROM sip_users WHERE tenant_id = ? AND status = 'active'",
+        [tenantId]
       );
-      const accounts = (rows || []).map((r) => String(r.user || "")).filter(Boolean);
-      return response.json({ success: true, data: accounts });
+      const tenantAccounts = (sipRows || []).map(r => r.username).filter(Boolean);
+      return response.json({ success: true, data: tenantAccounts });
     } finally {
       connection.release();
     }
