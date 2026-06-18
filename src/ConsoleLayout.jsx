@@ -738,7 +738,7 @@ export default function ConsoleLayout({ onLogout }) {
 
         <div className="main-scroll">
           {currentView === 'dashboard' && <PlatformDashboard />}
-          {currentView === 'analytics' && <Analytics tenantId={identity?.admin?.tenantId} isPlatformAdmin={identity?.admin?.accountType === 'platform'} />}
+          {currentView === 'analytics' && <Analytics tenantId={identity?.admin?.tenantId || identity?.tenant?.id} isPlatformAdmin={identity?.admin?.accountType === 'platform'} />}
           {currentView === 'users' && <TenantDashboard onNavigate={setCurrentView} />}
           {currentView === 'registrations' && (
           userType === 'sip' ? <MyAccount identity={identity} /> : <Registrations />
