@@ -202,7 +202,7 @@
     }
     if (confirmVideoBtn) {
       confirmVideoBtn.style.display = pendingCallType === 'video' ? 'inline-flex' : 'none';
-      confirmVideoBtn.textContent = '開始視訊';
+      confirmVideoBtn.textContent = '確認';
     }
     if (confirmOverlay) confirmOverlay.style.display = 'flex';
 
