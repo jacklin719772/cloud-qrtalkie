@@ -1688,42 +1688,99 @@ export default function ConsoleLayout({ onLogout }) {
               <button onClick={() => setShowAccessControlHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+
+              {/* ── Step-by-step 配置流程 ── */}
+              <div style={{ marginBottom: "28px", padding: "18px", borderRadius: "12px", background: "#1a2332", border: "1px solid #1f2937" }}>
+                <h3 style={{ color: "#f1d37a", fontSize: "15px", marginBottom: "16px", fontWeight: 700 }}>📋 完整配置流程</h3>
+                <p style={{ color: "#9ca3af", margin: "0 0 16px", fontSize: "12px" }}>門禁系統的資料之間存在依賴關係，必須按以下順序逐步配置：</p>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>創建社區</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>社區是頂層單位，所有後續資料都歸屬於社區。點擊右上角「新增社區」，填寫名稱、地址、聯絡方式。可上傳 Logo 和封面圖片用於訪客頁面展示。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>新增樓宇</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在社區下創建樓宇。展開社區 → 點擊「新增樓宇」。切換到「樓宇管理」標籤可統一查看所有樓宇。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>設定房間</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在樓宇下新增房間（門牌號碼）。如需語音/視訊通話，需為房間分配 SIP 帳號（通過房間操作列的「帳號」按鈕）。需視頻通話則勾選「允許視頻通話」。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>建立入口</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為社區或樓宇新增入口（如大門、側門）。社區級入口控制整個社區的門禁，樓宇級入口僅控制該樓宇。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>配置門控設備</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>先在「設備管理」頁面新增設備，然後返回此頁面。在入口操作列點擊「設備」，為入口綁定具體的門控設備。支援單個和批量分配。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>6</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>設定訪問權限</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為每個入口指定允許訪問哪些房間。點擊入口操作列的「授權」，勾選該入口可訪問的房間。切換到「權限設置」標籤可按房間或樓宇維度管理授權。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>
+                    <div>
+                      <strong style={{ color: "#22c55e" }}>發佈使用</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>完成配置後，點擊入口的「預覽」或「鏈接」按鈕獲取訪客訪問鏈接。訪客掃碼或打開鏈接即可看到授權房間列表，點擊房間發起語音或視訊通話。</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 各功能區塊說明 ── */}
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏘️ 社區管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>社區是門禁系統的頂層組織單位。每個社區可包含多個樓宇和社區級入口。點擊「新增社區」創建社區，填寫名稱、地址、聯絡人、Logo 和封面圖片等資訊。展開社區後可管理其下的樓宇和入口。</p>
-              </div>
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏗️ 樓宇管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>在社區下新增樓宇，每個樓宇可包含多個房間和樓宇級入口。切換到「樓宇管理」標籤可查看所有樓宇列表，支援編輯和刪除操作。</p>
-              </div>
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🚪 入口管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>入口分為社區級和樓宇級。每個入口可綁定門控設備，設定訪問權限。在「入口管理」標籤可統一查看和管理所有入口，支援批量分配/取消設備、篩選和搜尋。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>社區列表以卡片形式展示。展開社區可查看和管理其下的樓宇和入口。每個社區右側的「更多」選單提供編輯、授權、啟用/停用和刪除操作。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔑 房間管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>在樓宇下新增房間，設定門牌號碼、樓層、聯絡方式等。可為房間分配 SIP 帳號以實現語音/視訊通話功能。支援編輯、刪除和批量操作。編輯時可勾選「允許視頻通話」控制訪客頁面的視訊通話按鈕。</p>
-              </div>
-              <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔐 權限設置</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>為每個入口設定可訪問的房間權限。在入口操作列點擊「授權」，選擇允許該入口訪問的房間。也可按房間或樓宇維度查看和管理授權關係。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>在樓宇下新增房間後，通過房間操作列的「帳號」按鈕為房間分配 SIP 帳號。分配後訪客即可在訪客頁面向該房間發起語音通話。勾選「允許視頻通話」後視訊按鈕才會在訪客頁面啟用。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📡 門控設備</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>管理門控設備的分配和狀態。可單個或批量為入口綁定/取消設備。設備詳情頁面可查看設備 UUID、綁定狀態和所屬入口資訊。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>設備需先在「設備管理」頁面新增並分配給租戶。返回此頁面後，入口操作列的「設備」按鈕可為入口綁定或更換設備。切換到「門控設備」標籤可查看所有設備的綁定狀態。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🌐 訪客頁面</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>每個社區生成專屬的訪客訪問頁面。入口綁定設備後，可通過「預覽」按鈕或複製連結訪問。訪客可瀏覽授權房間列表，點擊房間發起語音或視訊通話。</p>
-              </div>
-              <div>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 操作提示</h3>
-                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li>建議按順序配置：先建社區 → 樓宇 → 房間 → 入口 → 設備 → 授權。</li>
-                  <li>房間需分配 SIP 帳號後才支援語音/視訊通話。</li>
-                  <li>社區級入口適用於整個社區的門禁，樓宇級入口僅控制對應樓宇。</li>
-                  <li>設備需先在「設備管理」頁面新增，才能在此綁定到入口。</li>
-                </ul>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面根據入口設備 UUID 動態生成。頁面顯示授權房間列表，訪客可點擊語音/視訊按鈕呼叫住戶。通話前會有確認彈窗顯示 SIP 狀態和倒計時。社區 Logo 和封面會顯示在頁面頭部。</p>
               </div>
             </div>
           </div>
