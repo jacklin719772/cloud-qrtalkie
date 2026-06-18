@@ -12893,6 +12893,7 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
   const contactPerson = sanitizeString(payload.contactPerson, 120) || null;
   const contactPhone = sanitizeString(payload.contactPhone, 40) || null;
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
+  const allowVideoCall = payload.allowVideoCall === true || payload.allowVideoCall === 1 ? 1 : 0;
 
   let connection;
   try {
