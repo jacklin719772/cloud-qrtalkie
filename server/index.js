@@ -12108,11 +12108,6 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
                 sipAccount: room.sip_account || null,
                 allowVideoCall: room.allow_video_call == null ? true : !!room.allow_video_call,
               });
-                contactEmail: room.contact_email || null,
-                sipUserId: room.sip_user_id ? Number(room.sip_user_id) : null,
-                sipName: room.sip_name || null,
-                sipAccount: room.sip_account || null,
-              });
             }
           } catch (err) { console.error("查詢房間失敗:", err); }
         }
