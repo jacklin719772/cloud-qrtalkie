@@ -710,6 +710,9 @@ export default function ECardVisitorPage({ slug }) {
             if (pc.iceConnectionState === 'connected') {
               bindRemoteAudio(pc);
             }
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+              handleHangup();
+            }
           };
           pc.ontrack = (event) => {
             if (event.track.kind === 'video' && remoteVideoRef.current) {
