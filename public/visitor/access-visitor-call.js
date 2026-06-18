@@ -197,7 +197,7 @@
     }
     if (confirmVoiceBtn) {
       confirmVoiceBtn.style.display = pendingCallType === 'voice' ? 'inline-flex' : 'none';
-      confirmVoiceBtn.textContent = '開始語音';
+      confirmVoiceBtn.textContent = '確認';
     }
     if (confirmVideoBtn) {
       confirmVideoBtn.style.display = pendingCallType === 'video' ? 'inline-flex' : 'none';
