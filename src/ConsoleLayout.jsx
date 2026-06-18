@@ -111,6 +111,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showEcardGenerationHelp, setShowEcardGenerationHelp] = useState(false);
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
+  const [showAccessControlHelp, setShowAccessControlHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -645,7 +646,12 @@ export default function ConsoleLayout({ onLogout }) {
     }
     if (currentView === 'access-control') {
       const actionBaseStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
-      return (<button className="primary-btn" type="button" onClick={() => accessControlRef.current?.showAddCommunityDialog()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增社區</button>);
+      return (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => accessControlRef.current?.showAddCommunityDialog()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><Plus size={14} /> 新增社區</button>
+          <button type="button" onClick={() => setShowAccessControlHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
+      );
     }
     if (currentView === 'tenant-account-management' && tenantAccountMode === 'list') {
       const actionBaseStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
@@ -1667,6 +1673,57 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>訂單列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/billing-orders</code><br/>訂單詳情：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/billing-orders/:id</code><br/>提交審核：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/billing-orders/:id/review</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAccessControlHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAccessControlHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "thin", scrollbarColor: "#374151 transparent" }} onClick={e => e.stopPropagation()}>
+            <style>{`.help-drawer::-webkit-scrollbar { width: 4px; } .help-drawer::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }`}</style>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>門禁系統配置 操作說明</h2>
+              <button onClick={() => setShowAccessControlHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏘️ 社區管理</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>社區是門禁系統的頂層組織單位。每個社區可包含多個樓宇和社區級入口。點擊「新增社區」創建社區，填寫名稱、地址、聯絡人、Logo 和封面圖片等資訊。展開社區後可管理其下的樓宇和入口。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏗️ 樓宇管理</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>在社區下新增樓宇，每個樓宇可包含多個房間和樓宇級入口。切換到「樓宇管理」標籤可查看所有樓宇列表，支援編輯和刪除操作。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🚪 入口管理</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>入口分為社區級和樓宇級。每個入口可綁定門控設備，設定訪問權限。在「入口管理」標籤可統一查看和管理所有入口，支援批量分配/取消設備、篩選和搜尋。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔑 房間管理</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>在樓宇下新增房間，設定門牌號碼、樓層、聯絡方式等。可為房間分配 SIP 帳號以實現語音/視訊通話功能。支援編輯、刪除和批量操作。編輯時可勾選「允許視頻通話」控制訪客頁面的視訊通話按鈕。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔐 權限設置</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>為每個入口設定可訪問的房間權限。在入口操作列點擊「授權」，選擇允許該入口訪問的房間。也可按房間或樓宇維度查看和管理授權關係。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📡 門控設備</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>管理門控設備的分配和狀態。可單個或批量為入口綁定/取消設備。設備詳情頁面可查看設備 UUID、綁定狀態和所屬入口資訊。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🌐 訪客頁面</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>每個社區生成專屬的訪客訪問頁面。入口綁定設備後，可通過「預覽」按鈕或複製連結訪問。訪客可瀏覽授權房間列表，點擊房間發起語音或視訊通話。</p>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 操作提示</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>建議按順序配置：先建社區 → 樓宇 → 房間 → 入口 → 設備 → 授權。</li>
+                  <li>房間需分配 SIP 帳號後才支援語音/視訊通話。</li>
+                  <li>社區級入口適用於整個社區的門禁，樓宇級入口僅控制對應樓宇。</li>
+                  <li>設備需先在「設備管理」頁面新增，才能在此綁定到入口。</li>
+                </ul>
               </div>
             </div>
           </div>
