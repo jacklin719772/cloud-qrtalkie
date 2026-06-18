@@ -112,6 +112,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showAddonServicesHelp, setShowAddonServicesHelp] = useState(false);
   const [showPlanMgmtHelp, setShowPlanMgmtHelp] = useState(false);
   const [showAccessControlHelp, setShowAccessControlHelp] = useState(false);
+  const [showCallCenterHelp, setShowCallCenterHelp] = useState(false);
   const [messages, setMessages] = useState([]);
   const [tenantAccountMode, setTenantAccountMode] = useState('list');
   const [purchaseContext, setPurchaseContext] = useState({ mode: 'create', orderId: null });
@@ -291,6 +292,7 @@ export default function ConsoleLayout({ onLogout }) {
           <button className="primary-btn" type="button" onClick={() => callCenterConfigurationRef.current?.handleBatchDelete()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}>
             <Trash2 size={14} /> 批量刪除
           </button>
+          <button type="button" onClick={() => setShowCallCenterHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1781,6 +1783,107 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🌐 訪客頁面</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面根據入口設備 UUID 動態生成。頁面顯示授權房間列表，訪客可點擊語音/視訊按鈕呼叫住戶。通話前會有確認彈窗顯示 SIP 狀態和倒計時。社區 Logo 和封面會顯示在頁面頭部。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCallCenterHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowCallCenterHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "thin", scrollbarColor: "#374151 transparent" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>呼叫中心設置 操作說明</h2>
+              <button onClick={() => setShowCallCenterHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+
+              <div style={{ marginBottom: "28px", padding: "18px", borderRadius: "12px", background: "#1a2332", border: "1px solid #1f2937" }}>
+                <h3 style={{ color: "#f1d37a", fontSize: "15px", marginBottom: "16px", fontWeight: 700 }}>📋 完整配置流程</h3>
+                <p style={{ color: "#9ca3af", margin: "0 0 16px", fontSize: "12px" }}>呼叫中心的資料存在依賴關係，請嚴格按以下順序配置：</p>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#ef4444", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>!</span>
+                    <div>
+                      <strong style={{ color: "#ef4444" }}>前置條件：為坐席配置電子名片</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>呼叫中心的坐席必須先擁有已配置並啟用的電子名片。請先在「電子名片管理」頁面為每位坐席人員生成電子名片，綁定其 SIP 和 Web 帳號。沒有電子名片的坐席無法被添加到呼叫中心。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>1</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>新增呼叫中心</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊「新增呼叫中心」，填寫名稱、唯一標識 Slug（用於生成訪問鏈接）、上傳 LOGO 和封面圖片、編輯簡介和歡迎語。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>2</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>設定訪客登記</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>開啟訪客登記後，訪客在進入坐席列表前需填寫基本資訊。可設定必填欄位（姓名、電話）和選填欄位（公司、諮詢內容），以及彈窗標題和說明。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>建立服務分類</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在坐席設定區域左側創建服務分類（如「售前諮詢」、「技術支援」），每個分類下可容納多位坐席。分類便於訪客快速定位所需服務類型。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "14px" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>4</span>
+                    <div>
+                      <strong style={{ color: "#e5e7eb" }}>添加坐席</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在分類下點擊「新增坐席」，從已配置的電子名片中選擇坐席。系統會自動帶入頭像、姓名、SIP 號碼等資訊。坐席的職務、電話、郵箱需手動填寫或修改。</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                    <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>
+                    <div>
+                      <strong style={{ color: "#22c55e" }}>儲存並發佈</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>點擊「儲存並發佈」完成配置。系統會生成唯一的訪問鏈接（格式：/callcenter?id=slug）。預覽按鈕可直接查看訪客端效果。訪客可通過此鏈接訪問呼叫中心，選擇服務分類後查看坐席列表並發起通話或在線留言。</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📇 坐席與電子名片</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>每位坐席必須關聯一個已配置的電子名片。電子名片攜帶坐席的 SIP 帳號和 Web 帳號資訊。如果坐席的電子名片未配置 SIP 帳號或未啟用，該坐席將無法被添加。電子名片的頭像和姓名會自動顯示在坐席卡片上。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💬 在線留言</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面的歡迎語右側提供了在線留言按鈕。訪客無需選擇坐席即可提交留言諮詢。留言可指定接收坐席，提交後會在訪客日誌中記錄。被指定的坐席所屬租戶管理員會收到站內通知。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔗 訪問鏈接</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>每個呼叫中心通過唯一的 Slug 標識生成訪問鏈接。鏈接格式為：/callcenter?id=你的slug。在列表中可複製鏈接或直接預覽。呼叫中心狀態設為「啟用」後訪客才能訪問，且所屬租戶套餐需在有效期內。</p>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 注意事項</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li>電子名片必須在「電子名片管理」中先生成並配置 SIP/Web 帳號。</li>
+                  <li>每個呼叫中心可配置多個服務分類，每個分類可包含多位坐席。</li>
+                  <li>未上傳 LOGO 時頁面不顯示 LOGO 佔位，封面未上傳時使用預設橫幅。</li>
+                  <li>坐席卡片的 SIP 狀態會即時顯示在線/離線，並支援單卡刷新。</li>
+                  <li>訪客日誌記錄所有訪客登記和留言，可在操作列的「訪客日誌」查看。</li>
+                </ul>
               </div>
             </div>
           </div>
