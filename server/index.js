@@ -12085,7 +12085,7 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
             const roomRows = await connection.query(
               `SELECT r.id, r.tenant_id, r.building_id, r.room_number, r.floor,
                       r.contact_person, r.contact_phone, r.contact_email,
-                      r.sip_user_id,
+                      r.sip_user_id, r.allow_video_call,
                       COALESCE(s.display_name, s.username, '') AS sip_name,
                       COALESCE(s.username, '') AS sip_account
                FROM access_rooms r
@@ -12102,6 +12102,12 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
                 floor: room.floor || null,
                 contactPerson: room.contact_person || null,
                 contactPhone: room.contact_phone || null,
+                contactEmail: room.contact_email || null,
+                sipUserId: room.sip_user_id ? Number(room.sip_user_id) : null,
+                sipName: room.sip_name || null,
+                sipAccount: room.sip_account || null,
+                allowVideoCall: room.allow_video_call == null ? true : !!room.allow_video_call,
+              });
                 contactEmail: room.contact_email || null,
                 sipUserId: room.sip_user_id ? Number(room.sip_user_id) : null,
                 sipName: room.sip_name || null,
