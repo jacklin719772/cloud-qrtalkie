@@ -1544,6 +1544,7 @@
         <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:#1a2332;border:1px solid #1f2937;">
           <span id="confirmWebDot" style="width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
           <span id="confirmWebText" style="font-size:11px;color:#9ca3af;">Web 註冊中</span>
+          <button id="confirmRefreshWeb" onclick="if(window.AccessVisitorCall)window.AccessVisitorCall.retryConfirmWeb()" style="display:none;background:none;border:none;color:#9ca3af;cursor:pointer;font-size:11px;padding:0 2px;" title="重新註冊">↻</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:#1a2332;border:1px solid #1f2937;">
           <span id="confirmSipDot" style="width:7px;height:7px;border-radius:50%;background:#6b7280;flex-shrink:0;"></span>
@@ -1551,11 +1552,12 @@
           <button id="confirmRefreshSip" onclick="if(window.AccessVisitorCall)window.AccessVisitorCall.refreshConfirmSip()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:11px;padding:0 2px;" title="刷新狀態">↻</button>
         </div>
       </div>
-      <div style="font-size:22px;font-weight:800;color:#f1d37a;margin-bottom:12px;" id="accessConfirmCountdown"></div>
+      <div style="font-size:22px;font-weight:800;color:#f1d37a;margin-bottom:8px;" id="accessConfirmCountdown"></div>
+      <div style="font-size:11px;color:#9ca3af;margin-bottom:4px;min-height:16px;" id="accessConfirmSubHint"></div>
       <div style="font-size:13px;color:#e5e7eb;line-height:1.7;margin-bottom:18px;" id="accessConfirmHint">請確認是否要發起呼叫。</div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <button id="accessConfirmVoiceBtn" type="button" style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #22c55e;background:rgba(15,40,24,0.92);color:#d1fae5;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">確認</button>
-        <button id="accessConfirmVideoBtn" type="button" style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #60a5fa;background:rgba(30,41,59,0.92);color:#dbeafe;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">確認</button>
+        <button id="accessConfirmVoiceBtn" type="button" disabled style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #22c55e;background:rgba(15,40,24,0.92);color:#d1fae5;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:0.5;">確認</button>
+        <button id="accessConfirmVideoBtn" type="button" disabled style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #60a5fa;background:rgba(30,41,59,0.92);color:#dbeafe;font-size:14px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;opacity:0.5;">確認</button>
         <button id="accessConfirmCancelBtn" type="button" style="min-width:92px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #374151;background:#1a2332;color:#9ca3af;font-size:14px;font-weight:700;cursor:pointer;">取消</button>
       </div>
     </div>

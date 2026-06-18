@@ -52,6 +52,8 @@
   var confirmSipText = document.getElementById('confirmSipText');
   var confirmCountdownEl = document.getElementById('accessConfirmCountdown');
   var confirmRefreshSip = document.getElementById('confirmRefreshSip');
+  var confirmRefreshWeb = document.getElementById('confirmRefreshWeb');
+  var confirmSubHintEl = document.getElementById('accessConfirmSubHint');
 
   var confirmCountdownTimer = null;
   var confirmCountdownSeconds = 0;
@@ -215,9 +217,28 @@
 
   function setConfirmWebStatus(state) {
     if (!confirmWebDot || !confirmWebText) return;
-    if (state === 'registered') { confirmWebDot.style.background = '#22c55e'; confirmWebText.textContent = 'Web 已註冊'; }
-    else if (state === 'registering') { confirmWebDot.style.background = '#f59e0b'; confirmWebText.textContent = 'Web 註冊中'; }
-    else { confirmWebDot.style.background = '#ef4444'; confirmWebText.textContent = 'Web 失敗'; }
+    if (state === 'registered') {
+      confirmWebDot.style.background = '#22c55e';
+      confirmWebText.textContent = 'Web 已註冊';
+      if (confirmRefreshWeb) confirmRefreshWeb.style.display = 'none';
+      if (confirmVoiceBtn) { confirmVoiceBtn.disabled = false; confirmVoiceBtn.style.opacity = '1'; }
+      if (confirmVideoBtn) { confirmVideoBtn.disabled = false; confirmVideoBtn.style.opacity = '1'; }
+      if (confirmSubHintEl) confirmSubHintEl.textContent = '';
+    } else if (state === 'registering') {
+      confirmWebDot.style.background = '#f59e0b';
+      confirmWebText.textContent = 'Web 註冊中';
+      if (confirmRefreshWeb) confirmRefreshWeb.style.display = 'none';
+      if (confirmVoiceBtn) { confirmVoiceBtn.disabled = true; confirmVoiceBtn.style.opacity = '0.5'; }
+      if (confirmVideoBtn) { confirmVideoBtn.disabled = true; confirmVideoBtn.style.opacity = '0.5'; }
+      if (confirmSubHintEl) confirmSubHintEl.textContent = 'Web 註冊成功後可發起呼叫';
+    } else {
+      confirmWebDot.style.background = '#ef4444';
+      confirmWebText.textContent = 'Web 註冊失敗';
+      if (confirmRefreshWeb) confirmRefreshWeb.style.display = '';
+      if (confirmVoiceBtn) { confirmVoiceBtn.disabled = true; confirmVoiceBtn.style.opacity = '0.5'; }
+      if (confirmVideoBtn) { confirmVideoBtn.disabled = true; confirmVideoBtn.style.opacity = '0.5'; }
+      if (confirmSubHintEl) confirmSubHintEl.textContent = '註冊失敗，請點擊 ↻ 重試';
+    }
   }
 
   function setConfirmSipLoading() {
@@ -304,6 +325,12 @@
 
   function refreshConfirmSip() {
     fetchConfirmSipStatus();
+  }
+
+  function retryConfirmWeb() {
+    if (!pendingRoomData) return;
+    setConfirmWebStatus('registering');
+    fetchCallSessionForConfirm(pendingRoomData, pendingCallType);
   }
 
   function hideConfirmModal() {
@@ -855,6 +882,7 @@
     toggleVideo: toggleVideo,
     cleanup: cleanupCall,
     refreshConfirmSip: refreshConfirmSip,
+    retryConfirmWeb: retryConfirmWeb,
     refreshCallSip: refreshCallSipStatus,
   };
 
