@@ -46,9 +46,16 @@
   var confirmVoiceBtn = document.getElementById('accessConfirmVoiceBtn');
   var confirmVideoBtn = document.getElementById('accessConfirmVideoBtn');
   var confirmCancelBtn = document.getElementById('accessConfirmCancelBtn');
+  var confirmWebDot = document.getElementById('confirmWebDot');
+  var confirmWebText = document.getElementById('confirmWebText');
   var confirmSipDot = document.getElementById('confirmSipDot');
   var confirmSipText = document.getElementById('confirmSipText');
+  var confirmCountdownEl = document.getElementById('accessConfirmCountdown');
   var confirmRefreshSip = document.getElementById('confirmRefreshSip');
+
+  var confirmCountdownTimer = null;
+  var confirmCountdownSeconds = 0;
+  var CONFIRM_TIMEOUT_SECONDS = 10;
 
   function logSafe(label, extra) {
     try {
@@ -139,6 +146,36 @@
     isVideoCall = false;
   }
 
+  function updateConfirmCountdown() {
+    if (!confirmCountdownEl) return;
+    confirmCountdownSeconds--;
+    if (confirmCountdownSeconds <= 0) {
+      clearConfirmCountdown();
+      confirmCountdownEl.textContent = '';
+      confirmCountdownEl.style.color = '#f1d37a';
+      cancelConfirm();
+      return;
+    }
+    confirmCountdownEl.textContent = confirmCountdownSeconds + ' 秒後自動關閉';
+    confirmCountdownEl.style.color = confirmCountdownSeconds <= 3 ? '#ef4444' : '#f1d37a';
+  }
+
+  function startConfirmCountdown() {
+    clearConfirmCountdown();
+    confirmCountdownSeconds = CONFIRM_TIMEOUT_SECONDS;
+    if (confirmCountdownEl) {
+      confirmCountdownEl.textContent = confirmCountdownSeconds + ' 秒後自動關閉';
+      confirmCountdownEl.style.color = '#f1d37a';
+    }
+    confirmCountdownTimer = setInterval(updateConfirmCountdown, 1000);
+  }
+
+  function clearConfirmCountdown() {
+    if (confirmCountdownTimer) { clearInterval(confirmCountdownTimer); confirmCountdownTimer = null; }
+    confirmCountdownSeconds = 0;
+    if (confirmCountdownEl) confirmCountdownEl.textContent = '';
+  }
+
   function showConfirmModal(roomData, callType) {
     pendingRoomData = roomData || null;
     pendingCallType = callType === 'video' ? 'video' : 'voice';
@@ -167,7 +204,82 @@
       confirmVideoBtn.textContent = '開始視訊';
     }
     if (confirmOverlay) confirmOverlay.style.display = 'flex';
+
+    // Init status indicators
+    setConfirmWebStatus('registering');
+    setConfirmSipLoading();
     fetchConfirmSipStatus();
+
+    // Fetch call session and register Web account immediately
+    fetchCallSessionForConfirm(roomData, callType);
+  }
+
+  function setConfirmWebStatus(state) {
+    if (!confirmWebDot || !confirmWebText) return;
+    if (state === 'registered') { confirmWebDot.style.background = '#22c55e'; confirmWebText.textContent = 'Web 已註冊'; }
+    else if (state === 'registering') { confirmWebDot.style.background = '#f59e0b'; confirmWebText.textContent = 'Web 註冊中'; }
+    else { confirmWebDot.style.background = '#ef4444'; confirmWebText.textContent = 'Web 失敗'; }
+  }
+
+  function setConfirmSipLoading() {
+    if (confirmRefreshSip) confirmRefreshSip.style.display = 'none';
+    if (confirmSipDot) confirmSipDot.style.background = '#f59e0b';
+    if (confirmSipText) confirmSipText.textContent = '狀態查詢中';
+  }
+
+  var confirmCallSessionData = null;
+
+  function fetchCallSessionForConfirm(roomData, callType) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/access/room-call-session');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.onload = function () {
+      try {
+        var res = JSON.parse(xhr.responseText);
+        var normalized = res && res.success ? res.data : null;
+        if (normalized && normalized.webAccount) {
+          confirmCallSessionData = normalized;
+          // Start Web registration
+          initUAForConfirm(roomData, callType);
+        } else {
+          setConfirmWebStatus('failed');
+          if (confirmHintEl) confirmHintEl.textContent = (res && res.message) || '無法取得通話配置，請稍後再試。';
+        }
+      } catch (e) {
+        setConfirmWebStatus('failed');
+        if (confirmHintEl) confirmHintEl.textContent = '服務回應異常，請稍後再試。';
+      }
+    };
+    xhr.onerror = function () {
+      setConfirmWebStatus('failed');
+      if (confirmHintEl) confirmHintEl.textContent = '網絡錯誤，請稍後再試。';
+    };
+    xhr.send(JSON.stringify({ roomId: roomData.roomId, lockId: roomData.lockId }));
+  }
+
+  function initUAForConfirm(roomData, callType) {
+    if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
+    var data = confirmCallSessionData;
+    if (!data) return;
+
+    ensureJsSIPLoaded().then(function (JS) {
+      if (!JS) { setConfirmWebStatus('failed'); return; }
+      var socket = new JS.WebSocketInterface(data.wssUrl);
+      ua = new JS.UA({
+        sockets: [socket],
+        uri: 'sip:' + data.webAccount + '@' + data.webrtcDomain,
+        password: data.credential.value,
+        register: true,
+      });
+      ua.on('registered', function () {
+        setConfirmWebStatus('registered');
+        setCallSipStatus(data.sipOnline);
+        startConfirmCountdown();
+      });
+      ua.on('registrationFailed', function () { setConfirmWebStatus('failed'); });
+      ua.on('disconnected', function () { setConfirmWebStatus('failed'); });
+      ua.start();
+    });
   }
 
   function setConfirmSipStatus(online) {
@@ -491,81 +603,67 @@
           localVideo.srcObject = stream;
           localVideo.style.display = 'block';
         }
-        return ensureJsSIPLoaded();
-      })
-      .then(function (JS) {
-        if (!JS) {
-          throw new Error('JsSIP 載入失敗');
-        }
-        JsSIP = JS;
-        if (ua) {
-          try { ua.stop(); } catch (e) {}
-          ua = null;
-        }
-        var socket = new JsSIP.WebSocketInterface(callSessionData.wssUrl);
-        ua = new JsSIP.UA({
-          sockets: [socket],
-          uri: 'sip:' + callSessionData.webAccount + '@' + callSessionData.webrtcDomain,
-          password: callSessionData.credential.value,
-          register: true,
-        });
-
-        logSafe('UA create', {
-          uri: 'sip:' + callSessionData.webAccount + '@' + callSessionData.webrtcDomain,
-          authorizationUser: callSessionData.webAccount,
-          socketsCount: 1,
-          wssUrl: callSessionData.wssUrl,
-          passwordPresent: Boolean(callSessionData.credential && callSessionData.credential.value),
-          passwordLength: callSessionData.credential && callSessionData.credential.value ? String(callSessionData.credential.value).length : 0,
-        });
-
-        ua.on('connected', function () {
-          logSafe('JsSIP connected', { wssUrl: callSessionData.wssUrl });
-        });
-
-        ua.on('registered', function () {
-          logSafe('JsSIP registered', {
-            webAccount: callSessionData.webAccount,
-            webrtcDomain: callSessionData.webrtcDomain,
-          });
-          setCallWebStatus('registered');
-          injectSdpPatch(callSessionData.sipServerPublicIp);
-          setCallStatus('正在撥號...');
+        // UA already registered from confirm modal, skip recreation
+        if (ua && ua.isRegistered()) {
+          logSafe('UA already registered, reuse', {});
           callViaUa(roomData);
-        });
-
-        ua.on('unregistered', function () {
-          logSafe('JsSIP unregistered', {});
-          if (!isIntentionalHangup) {
-            setCallStatus('通話連接已斷開', true);
-          }
-          isIntentionalHangup = false;
-        });
-
-        ua.on('registrationFailed', function (e) {
-          logSafe('JsSIP registrationFailed', {
-            cause: e && e.cause ? String(e.cause) : '',
-            statusCode: e && e.response && e.response.status_code ? e.response.status_code : '',
-            reasonPhrase: e && e.response && e.response.reason_phrase ? String(e.response.reason_phrase) : '',
+        } else {
+          return ensureJsSIPLoaded().then(function (JS) {
+            if (!JS) throw new Error('JsSIP 載入失敗');
+            JsSIP = JS;
+            if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
+            var socket = new JsSIP.WebSocketInterface(callSessionData.wssUrl);
+            ua = new JsSIP.UA({
+              sockets: [socket],
+              uri: 'sip:' + callSessionData.webAccount + '@' + callSessionData.webrtcDomain,
+              password: callSessionData.credential.value,
+              register: true,
+            });
+            registerNewUA(roomData);
           });
-          setCallStatus('通話服務註冊失敗', true);
-          setTimeout(function () { cleanupCall(); }, 2000);
-        });
-
-        ua.on('disconnected', function () {
-          logSafe('JsSIP disconnected', {});
-          setCallStatus('通話服務已斷開', true);
-          cleanupCall();
-        });
-
-        logSafe('ua.start called', {});
-        ua.start();
+        }
       })
       .catch(function (err) {
         logSafe('prepare call error', { name: err && err.name ? String(err.name) : '', message: err && err.message ? String(err.message) : '' });
         setCallStatus(getMediaErrorMessage(err), true);
         cleanupCall();
       });
+  }
+
+  function registerNewUA(roomData) {
+    var data = callSessionData;
+    if (!ua || !data) return;
+    logSafe('UA create', {
+      uri: 'sip:' + data.webAccount + '@' + data.webrtcDomain,
+      wssUrl: data.wssUrl,
+    });
+    ua.on('connected', function () {
+      logSafe('JsSIP connected', { wssUrl: data.wssUrl });
+    });
+    ua.on('registered', function () {
+      logSafe('JsSIP registered', { webAccount: data.webAccount, webrtcDomain: data.webrtcDomain });
+      setCallWebStatus('registered');
+      injectSdpPatch(data.sipServerPublicIp);
+      setCallStatus('正在撥號...');
+      callViaUa(roomData);
+    });
+    ua.on('unregistered', function () {
+      logSafe('JsSIP unregistered', {});
+      if (!isIntentionalHangup) { setCallStatus('通話連接已斷開', true); }
+      isIntentionalHangup = false;
+    });
+    ua.on('registrationFailed', function (e) {
+      logSafe('JsSIP registrationFailed', { cause: e?.cause || '' });
+      setCallStatus('通話服務註冊失敗', true);
+      setTimeout(function () { cleanupCall(); }, 2000);
+    });
+    ua.on('disconnected', function () {
+      logSafe('JsSIP disconnected', {});
+      setCallStatus('通話服務已斷開', true);
+      cleanupCall();
+    });
+    logSafe('ua.start called', {});
+    ua.start();
   }
 
   function callViaUa(roomData) {
@@ -733,12 +831,20 @@
 
   function confirmCall() {
     if (!pendingRoomData) return;
+    clearConfirmCountdown();
     hideConfirmModal();
-    fetchCallSession(pendingRoomData, pendingCallType);
+    // UA already registered, session data already loaded
+    callSessionData = confirmCallSessionData;
+    setCallSipStatus(callSessionData?.sipOnline);
+    prepareAndCall(pendingRoomData, pendingCallType);
   }
 
   function cancelConfirm() {
+    clearConfirmCountdown();
     hideConfirmModal();
+    // Stop UA and cleanup web registration
+    if (ua) { isIntentionalHangup = true; try { ua.stop(); } catch (e) {} ua = null; }
+    confirmCallSessionData = null;
     resetCallState();
   }
 
