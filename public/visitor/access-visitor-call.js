@@ -126,7 +126,6 @@
   function showCallUI() {
     if (callOverlay) callOverlay.style.display = 'flex';
     if (callErrorEl) callErrorEl.style.display = 'none';
-    setCallWebStatus('registering');
   }
 
   function hideCallUI() {
