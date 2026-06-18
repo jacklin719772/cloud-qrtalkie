@@ -9,21 +9,6 @@ const TABS = [
   { key: 'sipCallLog', label: 'SIP 呼叫日誌' },
 ];
 
-const MOCK_CALL_LOGS = [
-  { linkedId: '1686900010.1001', eventTime: '2026-06-10T14:22:15.000Z', endTime: '2026-06-10T14:24:32.000Z', durationSeconds: 137, cidName: '訪客9503', cidNumber: '9503', extension: '10001', channelName: 'PJSIP/9503-00000001', eventCount: 8, direction: 'outbound' },
-  { linkedId: '1686900010.1002', eventTime: '2026-06-10T14:18:05.000Z', endTime: '2026-06-10T14:19:48.000Z', durationSeconds: 103, cidName: '管理處', cidNumber: '9507', extension: '9508', channelName: 'PJSIP/9507-00000002', eventCount: 6, direction: 'internal' },
-  { linkedId: '1686900010.1003', eventTime: '2026-06-10T14:10:30.000Z', endTime: '2026-06-10T14:12:10.000Z', durationSeconds: 100, cidName: '', cidNumber: '0223456789', extension: '9505', channelName: 'PJSIP/9505-00000003', eventCount: 10, direction: 'inbound' },
-  { linkedId: '1686900010.1004', eventTime: '2026-06-10T13:55:12.000Z', endTime: '2026-06-10T13:56:45.000Z', durationSeconds: 93, cidName: '訪客9508', cidNumber: '9508', extension: '10002', channelName: 'PJSIP/9508-00000004', eventCount: 5, direction: 'outbound' },
-  { linkedId: '1686900010.1005', eventTime: '2026-06-10T13:42:00.000Z', endTime: '2026-06-10T13:42:15.000Z', durationSeconds: 15, cidName: '大廳接待', cidNumber: '9505', extension: '9505', channelName: 'PJSIP/9505-00000005', eventCount: 4, direction: 'internal' },
-  { linkedId: '1686900010.1006', eventTime: '2026-06-10T12:30:22.000Z', endTime: '2026-06-10T12:35:50.000Z', durationSeconds: 328, cidName: '', cidNumber: '0912345678', extension: '9503', channelName: 'PJSIP/9503-00000006', eventCount: 12, direction: 'inbound' },
-  { linkedId: '1686900010.1007', eventTime: '2026-06-10T11:15:08.000Z', endTime: '2026-06-10T11:16:30.000Z', durationSeconds: 82, cidName: '訪客9520-測試', cidNumber: '9520', extension: '9506', channelName: 'PJSIP/9520-00000007', eventCount: 6, direction: 'outbound' },
-  { linkedId: '1686900010.1008', eventTime: '2026-06-10T10:05:44.000Z', endTime: '2026-06-10T10:06:10.000Z', durationSeconds: 26, cidName: '訪客9503', cidNumber: '9503', extension: '9508', channelName: 'PJSIP/9503-00000008', eventCount: 4, direction: 'internal' },
-  { linkedId: '1686900010.1009', eventTime: '2026-06-09T16:40:18.000Z', endTime: '2026-06-09T16:44:55.000Z', durationSeconds: 277, cidName: '', cidNumber: '0312345678', extension: '9507', channelName: 'PJSIP/9507-00000009', eventCount: 14, direction: 'inbound' },
-  { linkedId: '1686900010.1010', eventTime: '2026-06-09T15:20:05.000Z', endTime: '2026-06-09T15:21:00.000Z', durationSeconds: 55, cidName: '訪客9504', cidNumber: '9504', extension: '10001', channelName: 'PJSIP/9504-00000010', eventCount: 5, direction: 'outbound' },
-  { linkedId: '1686900010.1011', eventTime: '2026-06-09T14:10:30.000Z', endTime: '2026-06-09T14:11:00.000Z', durationSeconds: 30, cidName: '訪客9510', cidNumber: '9510', extension: '9509', channelName: 'PJSIP/9510-00000011', eventCount: 3, direction: 'internal' },
-  { linkedId: '1686900010.1012', eventTime: '2026-06-09T11:55:42.000Z', endTime: '2026-06-09T12:02:18.000Z', durationSeconds: 396, cidName: '', cidNumber: '0412345678', extension: '9503', channelName: 'PJSIP/9503-00000012', eventCount: 18, direction: 'inbound' },
-];
-
 const statusBadge = (s) => {
   const map = {
     online: { bg: '#065f46', color: '#6ee7b7', text: '在線' },
@@ -43,20 +28,10 @@ function formatTime(iso) {
   catch { return '-'; }
 }
 
-const MOCK_SIP_ACCOUNTS = [
-  { id: 1, username: '100005', displayName: 'scott', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 2, lastRegisterAt: '2026-06-11T10:30:00Z', expiresAt: '2026-06-11T10:35:00Z', ttlSeconds: 240, accountStatus: 'active', syncStatus: 'active' },
-  { id: 2, username: '100006', displayName: 'pad', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: '2026-06-10T08:15:00Z', expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
-  { id: 3, username: '100003', displayName: 'Jacklin03', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 1, lastRegisterAt: '2026-06-11T11:00:00Z', expiresAt: '2026-06-11T11:05:00Z', ttlSeconds: 280, accountStatus: 'active', syncStatus: 'active' },
-  { id: 4, username: '1000001', displayName: 'jack01', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '翡翠灣社區', buildingName: 'A棟', roomNumber: '101', status: 'online', registered: true, contactsCount: 3, lastRegisterAt: '2026-06-11T10:45:00Z', expiresAt: '2026-06-11T10:50:00Z', ttlSeconds: 200, accountStatus: 'active', syncStatus: 'active' },
-  { id: 5, username: '1000002', displayName: 'jack02', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '翡翠灣社區', buildingName: 'B棟', roomNumber: '202', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
-  { id: 6, username: '100010', displayName: '訪客A', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'unknown', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'inactive', syncStatus: 'local_only' },
-  { id: 7, username: '100011', displayName: '大廳', domain: 'sip.qrtalkie.org', tenantName: '未來社區物業管理有限公司', communityName: '陽光花園', buildingName: 'C棟', roomNumber: '301', status: 'online', registered: true, contactsCount: 5, lastRegisterAt: '2026-06-11T11:15:00Z', expiresAt: '2026-06-11T11:20:00Z', ttlSeconds: 310, accountStatus: 'active', syncStatus: 'active' },
-  { id: 8, username: '100012', displayName: '訪客B', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'offline', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'active' },
-  { id: 9, username: '100013', displayName: '接待處', domain: 'sip.qrtalkie.org', tenantName: '太域科技', communityName: '', buildingName: '', roomNumber: '', status: 'online', registered: true, contactsCount: 1, lastRegisterAt: '2026-06-11T10:50:00Z', expiresAt: '2026-06-11T10:55:00Z', ttlSeconds: 150, accountStatus: 'active', syncStatus: 'active' },
-  { id: 10, username: '123456', displayName: 'test', domain: 'sip.qrtalkie.org', tenantName: '', communityName: '', buildingName: '', roomNumber: '', status: 'unknown', registered: false, contactsCount: 0, lastRegisterAt: null, expiresAt: null, ttlSeconds: 0, accountStatus: 'active', syncStatus: 'local_only' },
-];
 
-export default function Analytics() {
+
+export default function Analytics({ tenantId, isPlatformAdmin }) {
+  const isTenantView = !isPlatformAdmin && !!tenantId;
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -171,7 +146,7 @@ export default function Analytics() {
       const limit = 100;
       // 分页加载全部数据
       while (true) {
-        const res = await apiClient.get(`/flexisip/accounts/registration-status?limit=${limit}&offset=${offset}`);
+        const res = await apiClient.get(`/flexisip/accounts/registration-status?limit=${limit}&offset=${offset}${isTenantView ? `&tenantId=${tenantId}` : ''}`);
         const items = res.data?.items || [];
         total = res.data?.total || 0;
         allItems = allItems.concat(items);
@@ -204,7 +179,7 @@ export default function Analytics() {
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
   const data = useMemo(() => {
-    return accounts.map(acc => {
+    let list = accounts.map(acc => {
       const st = statusMap[acc.username] || {};
       return {
         id: acc.id,
@@ -212,6 +187,7 @@ export default function Analytics() {
         displayName: acc.displayName || '',
         sipAccount: `${acc.username}@${acc.domain || 'pbx.qrtalkie.org'}`,
         tenantName: acc.tenantName || null,
+        tenantId: acc.tenantId || null,
         assigned: Boolean(acc.tenantName),
         status: st.status || st.presenceStatus || 'unknown',
         statusText: st.statusText || '未知',
@@ -220,7 +196,11 @@ export default function Analytics() {
         lastSeen: st.lastSeenAt || st.lastSeen || null,
       };
     });
-  }, [accounts, statusMap]);
+    if (isTenantView) {
+      list = list.filter(a => a.tenantId === tenantId);
+    }
+    return list;
+  }, [accounts, statusMap, isTenantView, tenantId]);
 
   const filtered = useMemo(() => {
     let list = data;
