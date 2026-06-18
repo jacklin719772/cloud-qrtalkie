@@ -32,6 +32,11 @@
   var remoteVideo = document.getElementById('remoteVideo');
   var remoteAudio = document.getElementById('remoteAudio');
   var callErrorEl = document.getElementById('callError');
+  var webStatusDot = document.getElementById('webStatusDot');
+  var webStatusText = document.getElementById('webStatusText');
+  var sipStatusDot = document.getElementById('sipStatusDot');
+  var sipStatusText = document.getElementById('sipStatusText');
+  var btnRefreshCallSip = document.getElementById('btnRefreshSip');
 
   var confirmOverlay = document.getElementById('accessCallConfirm');
   var confirmTitleEl = document.getElementById('accessConfirmTitle');
@@ -41,6 +46,9 @@
   var confirmVoiceBtn = document.getElementById('accessConfirmVoiceBtn');
   var confirmVideoBtn = document.getElementById('accessConfirmVideoBtn');
   var confirmCancelBtn = document.getElementById('accessConfirmCancelBtn');
+  var confirmSipDot = document.getElementById('confirmSipDot');
+  var confirmSipText = document.getElementById('confirmSipText');
+  var confirmRefreshSip = document.getElementById('confirmRefreshSip');
 
   function logSafe(label, extra) {
     try {
@@ -84,9 +92,34 @@
     logSafe('status', { text: text || '', isError: Boolean(isError) });
   }
 
+  function setCallWebStatus(state) {
+    if (!webStatusDot || !webStatusText) return;
+    if (state === 'registered') { webStatusDot.style.background = '#22c55e'; webStatusText.textContent = 'Web 已註冊'; }
+    else if (state === 'registering') { webStatusDot.style.background = '#f59e0b'; webStatusText.textContent = 'Web 註冊中'; }
+    else { webStatusDot.style.background = '#ef4444'; webStatusText.textContent = 'Web 失敗'; }
+  }
+
+  function setCallSipStatus(online) {
+    if (!sipStatusDot || !sipStatusText) return;
+    if (online) { sipStatusDot.style.background = '#22c55e'; sipStatusText.textContent = 'SIP 在線'; }
+    else { sipStatusDot.style.background = '#6b7280'; sipStatusText.textContent = 'SIP 離線'; }
+    if (btnRefreshCallSip) btnRefreshCallSip.style.display = '';
+  }
+
+  function refreshCallSipStatus() {
+    if (!pendingRoomData || !callSessionData) return;
+    if (btnRefreshCallSip) { btnRefreshCallSip.style.display = 'none'; sipStatusDot.style.background = '#f59e0b'; sipStatusText.textContent = 'SIP 查詢中'; }
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/access/room-sip-status?roomId=' + pendingRoomData.roomId + '&lockId=' + pendingRoomData.lockId);
+    xhr.onload = function () { try { var r = JSON.parse(xhr.responseText); setCallSipStatus(r.data?.sipOnline); } catch(e) { setCallSipStatus(false); } };
+    xhr.onerror = function () { setCallSipStatus(false); };
+    xhr.send();
+  }
+
   function showCallUI() {
     if (callOverlay) callOverlay.style.display = 'flex';
     if (callErrorEl) callErrorEl.style.display = 'none';
+    setCallWebStatus('registering');
   }
 
   function hideCallUI() {
@@ -134,6 +167,32 @@
       confirmVideoBtn.textContent = '開始視訊';
     }
     if (confirmOverlay) confirmOverlay.style.display = 'flex';
+    fetchConfirmSipStatus();
+  }
+
+  function setConfirmSipStatus(online) {
+    if (!confirmSipDot || !confirmSipText) return;
+    if (online) { confirmSipDot.style.background = '#22c55e'; confirmSipText.textContent = 'SIP 在線'; }
+    else { confirmSipDot.style.background = '#6b7280'; confirmSipText.textContent = 'SIP 離線'; }
+    if (confirmRefreshSip) confirmRefreshSip.style.display = '';
+  }
+
+  function fetchConfirmSipStatus() {
+    if (!pendingRoomData || !pendingRoomData.roomId || !pendingRoomData.lockId) return;
+    if (confirmRefreshSip) confirmRefreshSip.style.display = 'none';
+    if (confirmSipDot) confirmSipDot.style.background = '#f59e0b';
+    if (confirmSipText) confirmSipText.textContent = 'SIP 查詢中';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/access/room-sip-status?roomId=' + pendingRoomData.roomId + '&lockId=' + pendingRoomData.lockId);
+    xhr.onload = function () {
+      try { var r = JSON.parse(xhr.responseText); setConfirmSipStatus(r.data?.sipOnline); } catch(e) { setConfirmSipStatus(false); }
+    };
+    xhr.onerror = function () { setConfirmSipStatus(false); };
+    xhr.send();
+  }
+
+  function refreshConfirmSip() {
+    fetchConfirmSipStatus();
   }
 
   function hideConfirmModal() {
@@ -469,6 +528,7 @@
             webAccount: callSessionData.webAccount,
             webrtcDomain: callSessionData.webrtcDomain,
           });
+          setCallWebStatus('registered');
           injectSdpPatch(callSessionData.sipServerPublicIp);
           setCallStatus('正在撥號...');
           callViaUa(roomData);
@@ -639,6 +699,7 @@
         });
         if (normalized.success && normalized.webAccount) {
           callSessionData = normalized;
+          setCallSipStatus(normalized.sipOnline);
           prepareAndCall(roomData, callType);
         } else {
           setCallStatus((res && res.message) || '此房間暫時無法呼叫，請稍後再試。', true);
@@ -688,6 +749,8 @@
     hangup: hangup,
     toggleVideo: toggleVideo,
     cleanup: cleanupCall,
+    refreshConfirmSip: refreshConfirmSip,
+    refreshCallSip: refreshCallSipStatus,
   };
 
   // Backward compatibility for existing call handlers

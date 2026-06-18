@@ -1539,7 +1539,14 @@
     <div style="background:#111827;border-radius:18px;padding:24px 22px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.42);border:1px solid rgba(96,165,250,0.18);" onclick="event.stopPropagation()">
       <div style="font-size:18px;font-weight:800;color:#f3f4f6;margin-bottom:8px;" id="accessConfirmTitle">確認呼叫</div>
       <div style="font-size:15px;font-weight:700;color:#f1d37a;margin-bottom:4px;" id="accessConfirmRoom"></div>
-      <div style="font-size:13px;color:#9ca3af;margin-bottom:16px;" id="accessConfirmResident"></div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:12px;" id="accessConfirmResident"></div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:#1a2332;border:1px solid #1f2937;">
+          <span id="confirmSipDot" style="width:7px;height:7px;border-radius:50%;background:#6b7280;flex-shrink:0;"></span>
+          <span id="confirmSipText" style="font-size:11px;color:#9ca3af;">SIP 查詢中</span>
+          <button id="confirmRefreshSip" onclick="if(window.AccessVisitorCall)window.AccessVisitorCall.refreshConfirmSip()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:11px;padding:0 2px;" title="刷新 SIP 狀態">↻</button>
+        </div>
+      </div>
       <div style="font-size:13px;color:#e5e7eb;line-height:1.7;margin-bottom:18px;" id="accessConfirmHint">請確認是否要發起呼叫。</div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
         <button id="accessConfirmVoiceBtn" type="button" style="min-width:124px;height:42px;padding:0 16px;border-radius:12px;border:1px solid #22c55e;background:rgba(15,40,24,0.92);color:#d1fae5;font-size:14px;font-weight:700;cursor:pointer;">語音呼叫</button>
@@ -1578,7 +1585,7 @@
         <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:#1a2332;border:1px solid #1f2937;">
           <span id="sipStatusDot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;"></span>
           <span id="sipStatusText" style="font-size:11px;color:#9ca3af;">SIP 查詢中</span>
-          <button id="btnRefreshSip" onclick="window.AccessCall.refreshSipStatus()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:12px;padding:0 2px;" title="刷新 SIP 狀態">↻</button>
+          <button id="btnRefreshSip" onclick="if(window.AccessVisitorCall)window.AccessVisitorCall.refreshCallSip()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:12px;padding:0 2px;" title="刷新 SIP 狀態">↻</button>
         </div>
       </div>
 
