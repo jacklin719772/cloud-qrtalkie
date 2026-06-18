@@ -12931,6 +12931,7 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
         contactPerson,
         contactPhone,
         contactEmail,
+        allowVideoCall: allowVideoCall === 1,
       }
     });
   } catch (error) {
