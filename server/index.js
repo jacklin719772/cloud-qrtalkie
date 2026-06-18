@@ -363,7 +363,7 @@ app.get("/access/visitor", async (request, response) => {
     let rooms = [];
     if (bIds.length > 0) {
       rooms = await connection.query(
-        `SELECT r.id, r.building_id, r.room_number, r.floor,
+        `SELECT r.id, r.building_id, r.room_number, r.floor, r.allow_video_call,
                 COALESCE(s.display_name, s.username, '') AS resident_name,
                 s.username AS sip_username,
                 wu.username AS web_username
@@ -400,6 +400,7 @@ app.get("/access/visitor", async (request, response) => {
         residentName: r.resident_name || null,
         sipAccount: r.sip_username || null,
         displayName: r.resident_name || null,
+        allowVideoCall: r.allow_video_call == null ? true : !!r.allow_video_call,
       })),
       sipAccounts: rooms.filter(r => r.sip_username).map(r => ({
         roomNumber: r.room_number,
@@ -462,7 +463,7 @@ app.get("/access/:slug", async (request, response) => {
     let rooms = [];
     if (bIds.length > 0) {
       rooms = await connection.query(
-        `SELECT r.id, r.building_id, r.room_number, r.floor,
+        `SELECT r.id, r.building_id, r.room_number, r.floor, r.allow_video_call,
                 COALESCE(s.display_name, s.username, '') AS resident_name,
                 s.username AS sip_username,
                 wu.username AS web_username
@@ -502,6 +503,7 @@ app.get("/access/:slug", async (request, response) => {
         residentName: r.resident_name || null,
         sipAccount: r.sip_username || null,
         displayName: r.resident_name || null,
+        allowVideoCall: r.allow_video_call == null ? true : !!r.allow_video_call,
       })),
       sipAccounts: rooms.filter(r => r.sip_username).map(r => ({
         roomNumber: r.room_number,
@@ -12816,6 +12818,7 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
   const contactPhone = sanitizeString(payload.contactPhone, 40) || null;
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
   const sipUserId = payload.sipUserId != null ? Number(payload.sipUserId) : null;
+  const allowVideoCall = payload.allowVideoCall === true || payload.allowVideoCall === 1 ? 1 : 0;
 
   let connection;
   try {
@@ -12843,9 +12846,9 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
 
     const result = await connection.query(
       `INSERT INTO access_rooms
-         (tenant_id, building_id, room_number, floor, contact_person, contact_phone, contact_email, sip_user_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [request.admin.tenantId, buildingId, roomNumber, floor, contactPerson, contactPhone, contactEmail, sipUserId]
+         (tenant_id, building_id, room_number, floor, contact_person, contact_phone, contact_email, sip_user_id, allow_video_call)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [request.admin.tenantId, buildingId, roomNumber, floor, contactPerson, contactPhone, contactEmail, sipUserId, allowVideoCall]
     );
     response.status(201).json({
       code: 0,
@@ -12862,6 +12865,7 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
         sipUserId,
         sipName: null,
         sipAccount: null,
+        allowVideoCall: allowVideoCall === 1,
       }
     });
   } catch (error) {
@@ -12908,9 +12912,9 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
 
     await connection.query(
       `UPDATE access_rooms
-       SET room_number = ?, floor = ?, contact_person = ?, contact_phone = ?, contact_email = ?
+       SET room_number = ?, floor = ?, contact_person = ?, contact_phone = ?, contact_email = ?, allow_video_call = ?
        WHERE id = ? AND tenant_id = ?`,
-      [roomNumber, floor, contactPerson, contactPhone, contactEmail, roomId, request.admin.tenantId]
+      [roomNumber, floor, contactPerson, contactPhone, contactEmail, allowVideoCall, roomId, request.admin.tenantId]
     );
 
     response.json({

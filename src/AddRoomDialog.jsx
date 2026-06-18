@@ -8,6 +8,7 @@ const fillForm = (form, data) => {
   form.contactPerson.value = data.contactPerson || '';
   form.contactPhone.value = data.contactPhone || '';
   form.contactEmail.value = data.contactEmail || '';
+  if (form.allowVideoCall) form.allowVideoCall.checked = data.allowVideoCall !== false;
 };
 
 const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
@@ -55,6 +56,7 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       contactPerson: formData.get('contactPerson')?.toString().trim() || null,
       contactPhone: formData.get('contactPhone')?.toString().trim() || null,
       contactEmail: formData.get('contactEmail')?.toString().trim() || null,
+      allowVideoCall: formData.get('allowVideoCall') === 'on',
     };
 
     if (!payload.roomNumber) {
@@ -168,6 +170,10 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
               <label style={{ gridColumn: '1 / -1' }}>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>電子郵箱</span>
                 <input name="contactEmail" type="email" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="例如：info@example.hk" />
+              </label>
+              <label style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input name="allowVideoCall" type="checkbox" defaultChecked={false} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af' }}>允許視頻通話</span>
               </label>
             </div>
           </div>
