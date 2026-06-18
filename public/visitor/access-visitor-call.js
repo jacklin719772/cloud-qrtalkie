@@ -128,6 +128,8 @@
   function showCallUI() {
     if (callOverlay) callOverlay.style.display = 'flex';
     if (callErrorEl) callErrorEl.style.display = 'none';
+    var icon = document.getElementById('btnToggleVideoIcon');
+    if (icon) icon.src = '/visitor-assets/camera-off.svg';
   }
 
   function hideCallUI() {
@@ -135,7 +137,7 @@
     if (btnToggleVideo) {
       btnToggleVideo.style.display = 'none';
     var icon = document.getElementById('btnToggleVideoIcon');
-    if (icon) icon.src = '/visitor-assets/camera-on.svg';
+    if (icon) icon.src = '/visitor-assets/camera-off.svg';
     }
     if (localVideo) {
       localVideo.srcObject = null;
@@ -771,6 +773,8 @@
         localVideo.srcObject = localStream || videoStream;
         localVideo.style.display = 'block';
       }
+      var icon = document.getElementById('btnToggleVideoIcon');
+      if (icon) icon.src = '/visitor-assets/camera-on.svg';
       logSafe('upgradeToVideo local track added', {
         localAudioTracks: localStream ? localStream.getAudioTracks().length : 0,
         localVideoTracks: localStream ? localStream.getVideoTracks().length : 0,
