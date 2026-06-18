@@ -135,7 +135,7 @@
     if (btnToggleVideo) {
       btnToggleVideo.style.display = 'none';
     var icon = document.getElementById('btnToggleVideoIcon');
-    if (icon) icon.style.opacity = '1';
+    if (icon) icon.src = '/visitor-assets/camera-on.svg';
     }
     if (localVideo) {
       localVideo.srcObject = null;
@@ -391,7 +391,7 @@
     if (!videoTrack) return;
     videoTrack.enabled = !videoTrack.enabled;
     var icon = document.getElementById('btnToggleVideoIcon');
-    if (icon) icon.style.opacity = videoTrack.enabled ? '1' : '0.35';
+    if (icon) icon.src = '/visitor-assets/' + (videoTrack.enabled ? 'camera-on' : 'camera-off') + '.svg';
   }
 
   function bindRemoteAudio(pc) {
