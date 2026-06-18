@@ -278,12 +278,16 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
               <option value="offline">離線</option>
               <option value="unknown">未知</option>
             </select>
-            <select value={assignFilter} onChange={e => { setAssignFilter(e.target.value); setCurrentPage(1); }}
-              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
-              <option value="all">全部</option>
-              <option value="assigned">已分配</option>
-              <option value="unassigned">未分配</option>
-            </select>
+            {isTenantView ? (
+              <span style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#6b7280', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}>全部帳號（已分配至本租戶）</span>
+            ) : (
+              <select value={assignFilter} onChange={e => { setAssignFilter(e.target.value); setCurrentPage(1); }}
+                style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+                <option value="all">全部</option>
+                <option value="assigned">已分配</option>
+                <option value="unassigned">未分配</option>
+              </select>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{stats.total}</strong></span>
@@ -356,6 +360,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       )}
       {/* SIP 帳號狀態 Tab */}
       {activeTab === 'sip' && <SipAccountTable data={sipData} stats={sipStats} isLoading={isSipLoading} search={sipSearch} statusFilter={sipStatusFilter} tenantFilter={sipTenantFilter}
+        isTenantView={isTenantView}
         onSearchChange={v => { setSipSearch(v); setSipPage(1); }} onStatusChange={v => { setSipStatusFilter(v); setSipPage(1); }} onTenantChange={v => { setSipTenantFilter(v); setSipPage(1); }}
         page={sipPage} pageSize={sipPageSize} onPageChange={setSipPage} onPageSizeChange={v => { setSipPageSize(v); setSipPage(1); }} />}
       {/* Web 呼叫日誌 Tab */}
@@ -485,7 +490,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
 }
 
 // SIP Account Status Table
-function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantFilter, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
+function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantFilter, isTenantView, onSearchChange, onStatusChange, onTenantChange, page, pageSize, onPageChange, onPageSizeChange }) {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -576,12 +581,16 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
             <option value="offline">離線</option>
             <option value="unknown">未知</option>
           </select>
-          <select value={tenantFilter} onChange={e => onTenantChange(e.target.value)}
-            style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
-            <option value="all">全部</option>
-            <option value="assigned">已分配</option>
-            <option value="unassigned">未分配</option>
-          </select>
+          {isTenantView ? (
+            <span style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#6b7280', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}>全部帳號（已分配至本租戶）</span>
+          ) : (
+            <select value={tenantFilter} onChange={e => onTenantChange(e.target.value)}
+              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer' }}>
+              <option value="all">全部</option>
+              <option value="assigned">已分配</option>
+              <option value="unassigned">未分配</option>
+            </select>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{statsData.total}</strong></span>
