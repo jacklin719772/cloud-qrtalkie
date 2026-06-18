@@ -151,7 +151,7 @@
       confirmRoomEl.textContent = (roomData?.roomDisplay || roomData?.roomNumber || '') + (roomData?.roomDisplay ? '' : '室');
     }
     if (confirmResidentEl) {
-      confirmResidentEl.textContent = roomData?.residentName ? ('住戶：' + roomData.residentName) : '';
+      confirmResidentEl.textContent = '';
     }
     if (confirmHintEl) {
       confirmHintEl.textContent = pendingCallType === 'video'
@@ -172,8 +172,8 @@
 
   function setConfirmSipStatus(online) {
     if (!confirmSipDot || !confirmSipText) return;
-    if (online) { confirmSipDot.style.background = '#22c55e'; confirmSipText.textContent = 'SIP 在線'; }
-    else { confirmSipDot.style.background = '#6b7280'; confirmSipText.textContent = 'SIP 離線'; }
+    if (online) { confirmSipDot.style.background = '#22c55e'; confirmSipText.textContent = '在線'; }
+    else { confirmSipDot.style.background = '#6b7280'; confirmSipText.textContent = '離線'; }
     if (confirmRefreshSip) confirmRefreshSip.style.display = '';
   }
 
