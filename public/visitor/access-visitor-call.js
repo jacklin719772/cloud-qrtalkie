@@ -489,6 +489,11 @@
         if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
           bindRemoteAudio(pc);
         }
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+          logSafe('ice disconnected/failed, cleanup', {});
+          setCallStatus('通話已結束');
+          cleanupCall();
+        }
       };
     } catch (e) {}
     try {
