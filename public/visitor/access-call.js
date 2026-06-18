@@ -21,14 +21,21 @@
   var callTimerEl = document.getElementById('callTimer');
   var btnHangup = document.getElementById('btnHangup');
   var btnToggleVideo = document.getElementById('btnToggleVideo');
+  var btnRefreshSip = document.getElementById('btnRefreshSip');
   var localVideo = document.getElementById('localVideo');
   var remoteVideo = document.getElementById('remoteVideo');
   var remoteAudio = document.getElementById('remoteAudio');
   var callErrorEl = document.getElementById('callError');
+  var webStatusDot = document.getElementById('webStatusDot');
+  var webStatusText = document.getElementById('webStatusText');
+  var sipStatusDot = document.getElementById('sipStatusDot');
+  var sipStatusText = document.getElementById('sipStatusText');
 
   var callStartTime = 0;
   var callTimerInterval = null;
   var isVideoCall = false;
+  var pendingRoomData = null;
+  var pendingCallType = null;
 
   function updateTimer() {
     if (!callStartTime) return;
@@ -96,6 +103,8 @@
   function showCallUI() {
     if (callOverlay) callOverlay.style.display = 'flex';
     if (callErrorEl) callErrorEl.style.display = 'none';
+    setWebStatus('registering');
+    if (btnRefreshSip) btnRefreshSip.style.display = '';
   }
 
   function hideCallUI() {
@@ -107,6 +116,33 @@
   function setCallStatus(text, isError) {
     if (callStatusEl) { callStatusEl.textContent = text; callStatusEl.style.color = isError ? '#ef4444' : '#e5e7eb'; }
     if (callErrorEl && isError) { callErrorEl.textContent = text; callErrorEl.style.display = 'block'; }
+  }
+
+  // ─── Status indicators ───
+  function setWebStatus(state) {
+    if (!webStatusDot || !webStatusText) return;
+    if (state === 'registered') { webStatusDot.style.background = '#22c55e'; webStatusText.textContent = 'Web 已註冊'; }
+    else if (state === 'registering') { webStatusDot.style.background = '#f59e0b'; webStatusText.textContent = 'Web 註冊中'; }
+    else { webStatusDot.style.background = '#ef4444'; webStatusText.textContent = 'Web 註冊失敗'; }
+  }
+
+  function setSipStatus(online) {
+    if (!sipStatusDot || !sipStatusText) return;
+    if (online) { sipStatusDot.style.background = '#22c55e'; sipStatusText.textContent = 'SIP 在線'; }
+    else { sipStatusDot.style.background = '#6b7280'; sipStatusText.textContent = 'SIP 離線'; }
+    if (btnRefreshSip) btnRefreshSip.style.display = '';
+  }
+
+  function refreshSipStatus() {
+    if (!pendingRoomData || !callSessionData) return;
+    if (btnRefreshSip) { btnRefreshSip.style.display = 'none'; sipStatusDot.style.background = '#f59e0b'; sipStatusText.textContent = 'SIP 查詢中'; }
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', '/api/access/room-sip-status?roomId=' + pendingRoomData.roomId + '&lockId=' + pendingRoomData.lockId);
+    xhr.onload = function () {
+      try { var r = JSON.parse(xhr.responseText); setSipStatus(r.data?.sipOnline); } catch(e) { setSipStatus(false); }
+    };
+    xhr.onerror = function () { setSipStatus(false); };
+    xhr.send();
   }
 
   // ─── Audio binding ───
@@ -139,8 +175,6 @@
     isVideoCall = Boolean(video && callSessionData && callSessionData.enableVideo);
     setCallStatus(isVideoCall ? '正在建立視訊通話...' : '正在建立語音通話...');
     showCallUI();
-    if (callRoomEl) callRoomEl.textContent = (roomData.roomNumber || '') + '室';
-    if (btnToggleVideo) btnToggleVideo.style.display = isVideoCall ? 'inline-flex' : 'none';
     activeCall = true;
 
     navigator.mediaDevices.getUserMedia({ audio: true, video: isVideoCall })
@@ -204,22 +238,26 @@
       });
 
       ua.on('registered', function () {
+        setWebStatus('registered');
         injectSdpPatch(data.sipServerPublicIp);
         hideCallUI();
         startCall(roomData, isVideoCall);
       });
 
       ua.on('registrationFailed', function () {
+        setWebStatus('failed');
         setCallStatus('通話服務註冊失敗', true);
         setTimeout(function () { hideCallUI(); cleanupCall(); }, 2000);
       });
 
       ua.on('unregistered', function () {
         if (!isIntentionalHangup) { setCallStatus('通話連接已斷開', true); }
+        setWebStatus('failed');
         isIntentionalHangup = false;
       });
 
       ua.on('disconnected', function () {
+        setWebStatus('failed');
         setCallStatus('通話服務已斷開', true);
         cleanupCall();
       });
@@ -238,6 +276,8 @@
     call: function (roomData, type) {
       if (activeCall || !roomData || !roomData.roomId) return;
       var video = type === 'video';
+      pendingRoomData = roomData;
+      pendingCallType = type;
 
       // Fetch call session from server
       var xhr = new XMLHttpRequest();
@@ -248,6 +288,9 @@
           var res = JSON.parse(xhr.responseText);
           if (res.success && res.data) {
             callSessionData = res.data;
+            if (callRoomEl) callRoomEl.textContent = (roomData.roomNumber || '') + '室';
+            if (btnToggleVideo) btnToggleVideo.style.display = video ? 'inline-flex' : 'none';
+            setSipStatus(res.data.sipOnline);
             initUA(roomData, video);
           } else {
             setCallStatus(res.message || '無法取得通話配置', true);
@@ -270,6 +313,7 @@
 
     hangup: hangup,
     toggleVideo: toggleVideo,
+    refreshSipStatus: refreshSipStatus,
   };
 
   // ─── Button events ───

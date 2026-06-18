@@ -1567,7 +1567,21 @@
   <!-- ═══ WebRTC Call Overlay ═══ -->
   <div id="callOverlay" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;">
     <div style="text-align:center;max-width:480px;width:90%;">
-      <div style="font-size:18px;font-weight:700;color:#f3f4f6;margin-bottom:8px;" id="callRoomLabel"></div>
+      <div style="font-size:18px;font-weight:700;color:#f3f4f6;margin-bottom:12px;" id="callRoomLabel"></div>
+
+      <!-- Status indicators -->
+      <div style="display:flex;gap:12px;justify-content:center;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:#1a2332;border:1px solid #1f2937;">
+          <span id="webStatusDot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
+          <span id="webStatusText" style="font-size:11px;color:#9ca3af;">Web 註冊中</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;background:#1a2332;border:1px solid #1f2937;">
+          <span id="sipStatusDot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;flex-shrink:0;"></span>
+          <span id="sipStatusText" style="font-size:11px;color:#9ca3af;">SIP 查詢中</span>
+          <button id="btnRefreshSip" onclick="window.AccessCall.refreshSipStatus()" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:12px;padding:0 2px;" title="刷新 SIP 狀態">↻</button>
+        </div>
+      </div>
+
       <div style="font-size:14px;color:#e5e7eb;margin-bottom:8px;" id="callStatusText">正在連接...</div>
       <div style="font-size:32px;font-weight:800;color:#f1d37a;margin-bottom:16px;font-family:monospace;" id="callTimer"></div>
       <div id="callError" style="display:none;font-size:13px;color:#ef4444;margin-bottom:12px;"></div>

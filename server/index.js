@@ -210,6 +210,17 @@ app.post("/api/access/room-call-session", async (request, response) => {
     const targetSipUri = `sip:${room.sip_account}@${sipDomainValue}`;
     const iceServers = parseEcardIceServers();
 
+    // Check SIP registration status
+    let sipOnline = false;
+    try {
+      const redisKey = `fs:${room.sip_account}@${sipDomainValue}`;
+      const redisResult = await readRegistrarKeys([redisKey]);
+      const regData = redisResult.get(redisKey);
+      if (regData && regData.type === "hash" && regData.ttl !== -2) {
+        sipOnline = (regData.entries || []).length > 0;
+      }
+    } catch {}
+
     return response.json({
       success: true,
       data: {
@@ -224,11 +235,53 @@ app.post("/api/access/room-call-session", async (request, response) => {
         enableVoice: voiceEnabled,
         enableVideo: videoEnabled,
         roomNumber: room.room_number,
+        sipOnline,
+        sipAccount: room.sip_account,
       },
     });
   } catch (error) {
     console.error("Room call session failed:", error);
     return response.status(500).json({ success: false, message: "系統繁忙" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/access/room-sip-status - 查詢房間 SIP 在線狀態
+app.get("/api/access/room-sip-status", async (request, response) => {
+  const roomId = Number(request.query.roomId);
+  const lockId = sanitizeString(String(request.query.lockId || ''), 120);
+  if (!roomId || !lockId) return response.status(400).json({ success: false });
+
+  const sipDomainValue = String(process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || "").trim();
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
+    if (!device) return response.status(404).json({ success: false, message: "設備不存在" });
+
+    const [room] = await connection.query(
+      `SELECT s.username AS sip_account FROM access_rooms r
+       LEFT JOIN sip_users s ON s.id = r.sip_user_id
+       WHERE r.id = ? AND r.tenant_id = ? LIMIT 1`,
+      [roomId, device.tenant_id]
+    );
+    if (!room?.sip_account) return response.status(404).json({ success: false, message: "SIP帳號未配置" });
+
+    let sipOnline = false;
+    try {
+      const redisKey = `fs:${room.sip_account}@${sipDomainValue}`;
+      const redisResult = await readRegistrarKeys([redisKey]);
+      const regData = redisResult.get(redisKey);
+      if (regData && regData.type === "hash" && regData.ttl !== -2) {
+        sipOnline = (regData.entries || []).length > 0;
+      }
+    } catch {}
+
+    return response.json({ success: true, data: { sipOnline } });
+  } catch (error) {
+    return response.status(500).json({ success: false, message: "查詢失敗" });
   } finally {
     if (connection) connection.release();
   }
