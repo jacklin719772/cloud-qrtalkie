@@ -23,9 +23,9 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { id: 'dashboard', label: '平台概覽', icon: Gauge },
-  { id: 'analytics', label: '統計分析', icon: BarChart3 },
   { id: 'users', label: '租戶概覽', icon: RadioTower },
+  { id: 'analytics', label: '統計分析', icon: BarChart3 },
+  { id: 'dashboard', label: '平台概覽', icon: Gauge },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
   { id: 'tenant-account-management', label: '帳號管理', icon: Users },
