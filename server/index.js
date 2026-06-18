@@ -135,7 +135,8 @@ function safeSecretSummary(value) {
 
 app.use(express.json({ limit: "12mb" }));
 app.use((request, response, next) => {
-  response.setHeader("Access-Control-Allow-Origin", appUrl);
+  const origin = request.get("origin") || request.get("referer")?.replace(/\/+$/, "").replace(/\/[^/]*$/, "") || "";
+  if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (request.method === "OPTIONS") return response.sendStatus(204);
