@@ -14330,14 +14330,30 @@ async function handleWebrtcAccountPresenceQuery(request, response) {
 }
 
 async function handleWebrtcAccountPresenceBatchQuery(request, response) {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({ success: false, message: "只有平台管理員可以查詢在線狀態。" });
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
+  if (!isPlatform && !tenantId) {
+    return response.status(403).json({ success: false, message: "無權限查詢在線狀態。" });
   }
   const raw = String(request.query?.extensions || "").trim();
-  const extensions = raw ? raw.split(",").map(e => e.trim()).filter(Boolean) : [];
+  let extensions = raw ? raw.split(",").map(e => e.trim()).filter(Boolean) : [];
   if (!extensions.length || extensions.length > 100) {
     return response.status(400).json({ success: false, message: "請提供 1-100 個分機號。" });
   }
+  // Tenant admin: filter to only their tenant's extensions
+  if (!isPlatform && tenantId) {
+    const dbConn = await pool.getConnection();
+    try {
+      const placeholders = extensions.map(() => '?').join(',');
+      const rows = await dbConn.query(
+        `SELECT username FROM web_users WHERE username IN (${placeholders}) AND tenant_id = ?`,
+        [...extensions, tenantId]
+      );
+      const allowed = new Set(rows.map(r => r.username));
+      extensions = extensions.filter(e => allowed.has(e));
+    } finally { dbConn.release(); }
+  }
+  if (!extensions.length) return response.json({ success: true, data: { items: [] } });
   try {
     const result = await getWebrtcPresenceBatch(extensions);
     return response.json({ success: true, data: result });
