@@ -32,7 +32,6 @@ function formatTime(iso) {
 
 export default function Analytics({ tenantId, isPlatformAdmin }) {
   const isTenantView = Boolean(!isPlatformAdmin && tenantId);
-  console.log('[Analytics] tenantId:', tenantId, 'isPlatformAdmin:', isPlatformAdmin, 'isTenantView:', isTenantView);
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
