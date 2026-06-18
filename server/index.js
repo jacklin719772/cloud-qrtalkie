@@ -14201,21 +14201,20 @@ function buildWebrtcStatusResponseItems(items) {
 }
 
 async function handleWebrtcAccountStatusQuery(request, response) {
-  if (request.admin.accountType !== "platform") {
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
+
+  if (!isPlatform && !tenantId) {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 帳號狀態。",
-      error: {
-        code: "WEBRTC_ACCOUNT_STATUS_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 帳號狀態。",
-      },
+      message: "無權限查詢 WebRTC 帳號狀態。",
     });
   }
 
   const rawFromPath = String(request.params?.extension || "").trim();
   const rawFromQuery = String(request.query?.extensions || request.query?.extension || "").trim();
   const rawValue = rawFromPath || rawFromQuery;
-  const extensions = rawFromPath ? [rawFromPath] : parseWebrtcStatusExtensions(rawValue);
+  let extensions = rawFromPath ? [rawFromPath] : parseWebrtcStatusExtensions(rawValue);
 
   if (!extensions.length) {
     return response.status(400).json({
@@ -14248,6 +14247,19 @@ async function handleWebrtcAccountStatusQuery(request, response) {
         message: "WebRTC 帳號必須為純數字",
       },
     });
+  }
+
+  // Tenant admin: filter extensions to only those belonging to their tenant
+  if (!isPlatform && tenantId) {
+    const dbConn = await pool.getConnection();
+    try {
+      const tenantExts = await dbConn.query(
+        `SELECT u.username FROM web_users u WHERE u.username IN (${extensions.map(() => '?').join(',')}) AND u.tenant_id = ?`,
+        [...extensions, tenantId]
+      );
+      const allowed = new Set(tenantExts.map(r => r.username));
+      extensions = extensions.filter(e => allowed.has(e));
+    } finally { dbConn.release(); }
   }
 
   try {
