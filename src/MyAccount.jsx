@@ -140,7 +140,7 @@ export default function MyAccount({ identity }) {
         .ma-info-label { color: #9ca3af; }
         .ma-info-value { color: #e5e7eb; font-weight: 500; }
         .ma-dialog-overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .ma-dialog { width: min(440px, 100%); background: #111827; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.4); overflow: hidden; border: 1px solid #1f2937; }
+        .ma-dialog { width: min(440px, 100%); background: #111827; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.4); overflow: hidden; border: 1px solid rgba(96,165,250,0.25); }
         .ma-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #1f2937; }
         .ma-dialog-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
         .ma-dialog-body { padding: 20px; display: grid; gap: 14px; }
