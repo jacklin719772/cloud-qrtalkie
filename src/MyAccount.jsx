@@ -148,9 +148,12 @@ export default function MyAccount({ identity }) {
         .ma-dialog-body input { padding: 10px 12px; border: 1px solid #374151; border-radius: 8px; font-size: 14px; outline: none; background: #111827; color: #e5e7eb; }
         .ma-dialog-body input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
         .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #1f2937; background: #0d1117; }
+        .ma-mobile-footer { display: none; text-align: center; padding: 20px 16px; color: #6b7280; font-size: 12px; border-top: 1px solid #1f2937; margin-top: 16px; }
+        .ma-mobile-footer a { color: #60a5fa; text-decoration: none; }
         @media (max-width: 768px) {
           #my-account { padding: 12px; }
           .ma-grid { grid-template-columns: 1fr; gap: 16px; }
+          .ma-mobile-footer { display: flex !important; }
           .ma-card { padding: 16px; border-radius: 12px; }
           .ma-card h3 { font-size: 15px; margin-bottom: 12px; }
           .ma-action-row { grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -367,6 +370,10 @@ export default function MyAccount({ identity }) {
         </div>,
         document.body
       )}
+
+      <div className="ma-mobile-footer">
+        <a href="https://www.qrtalkie.org" target="_blank" rel="noopener noreferrer">QRTalkie Team</a>
+      </div>
     </section>
   );
 }
