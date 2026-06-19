@@ -148,6 +148,25 @@ export default function MyAccount({ identity }) {
         .ma-dialog-body input { padding: 10px 12px; border: 1px solid #374151; border-radius: 8px; font-size: 14px; outline: none; background: #111827; color: #e5e7eb; }
         .ma-dialog-body input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
         .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #1f2937; background: #0d1117; }
+        @media (max-width: 768px) {
+          #my-account { padding: 12px; }
+          .ma-grid { grid-template-columns: 1fr; gap: 16px; }
+          .ma-card { padding: 16px; border-radius: 12px; }
+          .ma-card h3 { font-size: 15px; margin-bottom: 12px; }
+          .ma-action-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+          .ma-action-btn { padding: 12px 14px; font-size: 13px; gap: 8px; }
+          .ma-action-btn .ma-action-icon { width: 32px; height: 32px; font-size: 14px; }
+          .ma-info-row { padding: 8px 0; font-size: 12px; }
+          .ma-dialog-overlay { padding: 12px; align-items: flex-end; }
+          .ma-dialog { border-radius: 16px 16px 0 0; max-height: 85vh; overflow: auto; }
+          .ma-dialog-header { padding: 14px 16px; }
+          .ma-dialog-body { padding: 16px; gap: 12px; }
+          .ma-dialog-body input { font-size: 16px; }
+          .ma-dialog-footer { padding: 12px 16px; }
+        }
+        @media (max-width: 420px) {
+          .ma-action-row { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       <div className="ma-grid">
