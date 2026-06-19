@@ -115,7 +115,7 @@ export default function MyAccount({ identity }) {
     a.click();
   };
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>加载中...</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>加载中...</div>;
 
   const admin = profile?.admin || {};
   const tenant = profile?.tenant || {};
@@ -128,26 +128,26 @@ export default function MyAccount({ identity }) {
     <section className="view active" id="my-account">
       <style>{`
         .ma-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; max-width: 960px; align-items: stretch; }
-        .ma-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 24px; box-shadow: 0 10px 26px rgba(15,23,42,0.06); height: 100%; box-sizing: border-box; }
-        .ma-card h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #0f172a; }
+        .ma-card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; padding: 24px; box-shadow: 0 10px 26px rgba(0,0,0,0.15); height: 100%; box-sizing: border-box; }
+        .ma-card h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #f3f4f6; }
         .ma-action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .ma-action-btn { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; cursor: pointer; font-size: 14px; color: #334155; text-align: left; transition: all 0.15s; }
-        .ma-action-btn:hover { border-color: #93c5fd; background: #f8fafc; }
+        .ma-action-btn { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border: 1px solid #1f2937; border-radius: 10px; background: #111827; cursor: pointer; font-size: 14px; color: #e5e7eb; text-align: left; transition: all 0.15s; }
+        .ma-action-btn:hover { border-color: #60a5fa; background: #1a2332; }
         .ma-action-btn .ma-action-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
         .ma-action-full { grid-column: 1 / -1; }
-        .ma-info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        .ma-info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #1f2937; font-size: 13px; }
         .ma-info-row:last-child { border-bottom: 0; }
-        .ma-info-label { color: #64748b; }
-        .ma-info-value { color: #334155; font-weight: 500; }
-        .ma-dialog-overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(15,23,42,0.36); display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .ma-dialog { width: min(440px, 100%); background: #fff; border-radius: 12px; box-shadow: 0 24px 80px rgba(15,23,42,0.22); overflow: hidden; }
-        .ma-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }
-        .ma-dialog-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+        .ma-info-label { color: #9ca3af; }
+        .ma-info-value { color: #e5e7eb; font-weight: 500; }
+        .ma-dialog-overlay { position: fixed; inset: 0; z-index: 2147483646; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .ma-dialog { width: min(440px, 100%); background: #111827; border-radius: 12px; box-shadow: 0 24px 80px rgba(0,0,0,0.4); overflow: hidden; border: 1px solid #1f2937; }
+        .ma-dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #1f2937; }
+        .ma-dialog-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
         .ma-dialog-body { padding: 20px; display: grid; gap: 14px; }
-        .ma-dialog-body label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #475569; }
-        .ma-dialog-body input { padding: 10px 12px; border: 1px solid #d8e2ef; border-radius: 8px; font-size: 14px; outline: none; }
-        .ma-dialog-body input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
+        .ma-dialog-body label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; color: #9ca3af; }
+        .ma-dialog-body input { padding: 10px 12px; border: 1px solid #374151; border-radius: 8px; font-size: 14px; outline: none; background: #111827; color: #e5e7eb; }
+        .ma-dialog-body input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #1f2937; background: #0d1117; }
       `}</style>
 
       <div className="ma-grid">
@@ -158,31 +158,31 @@ export default function MyAccount({ identity }) {
               <div className="ma-action-row">
                 <button className="ma-action-btn" onClick={() => openDialog('displayName')}>
                   <span className="ma-action-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>&#9998;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置显示名</div><div style={{ fontSize: '12px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置显示名</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || '未设置'}</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => openDialog('email')}>
                   <span className="ma-action-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>&#9993;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置邮箱</div><div style={{ fontSize: '12px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.email || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置邮箱</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.email || '未设置'}</div></div>
                 </button>
               </div>
               <div className="ma-action-row">
                 <button className="ma-action-btn" onClick={() => openDialog('phone')}>
                   <span className="ma-action-icon" style={{ background: '#fef3c7', color: '#b45309' }}>&#9742;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置电话</div><div style={{ fontSize: '12px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.phone || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置电话</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.phone || '未设置'}</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => openDialog('password')}>
                   <span className="ma-action-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>&#128274;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置密码</div><div style={{ fontSize: '12px', color: '#94a3b8' }}>更改登录密码</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置密码</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>更改登录密码</div></div>
                 </button>
               </div>
               <div className="ma-action-row">
                 <button className="ma-action-btn" onClick={() => setShowDeviceDialog(true)}>
                   <span className="ma-action-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>&#9881;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设备管理</div><div style={{ fontSize: '12px', color: '#94a3b8' }}>管理已绑定设备</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设备管理</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>管理已绑定设备</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => setShowQrDialog(true)}>
                   <span className="ma-action-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>&#128273;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>登录二维码</div><div style={{ fontSize: '12px', color: '#94a3b8' }}>扫码登录</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>登录二维码</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>扫码登录</div></div>
                 </button>
               </div>
               {ecardEnabled && (
@@ -236,7 +236,7 @@ export default function MyAccount({ identity }) {
           <form className="ma-dialog" onSubmit={handleSave}>
             <div className="ma-dialog-header">
               <h3>{actionDialog === 'displayName' ? '设置显示名' : actionDialog === 'email' ? '设置邮箱' : actionDialog === 'phone' ? '设置电话' : actionDialog === 'password' ? '设置密码' : '电子名片'}</h3>
-              <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '18px' }}>&#10005;</button>
+              <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>&#10005;</button>
             </div>
             <div className="ma-dialog-body">
               {actionDialog === 'displayName' && (
@@ -257,7 +257,7 @@ export default function MyAccount({ identity }) {
               {message.text && <p style={{ margin: 0, fontSize: '13px', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>{message.text}</p>}
             </div>
             <div className="ma-dialog-footer">
-              <button type="button" onClick={closeDialog} disabled={saving} style={{ padding: '8px 16px', border: '1px solid #d8e2ef', borderRadius: '8px', background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '13px' }}>取消</button>
+              <button type="button" onClick={closeDialog} disabled={saving} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>取消</button>
               <button type="submit" disabled={saving} style={{ padding: '8px 20px', border: '0', borderRadius: '8px', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>{saving ? '保存中...' : '保存'}</button>
             </div>
           </form>
@@ -266,10 +266,10 @@ export default function MyAccount({ identity }) {
       )}
       {showEcardPreview && createPortal(
         <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowEcardPreview(false); }}>
-          <div style={{ background: '#fff', borderRadius: '14px', overflow: 'hidden', maxWidth: '90vw', maxHeight: '90vh' }}>
+          <div style={{ background: '#111827', borderRadius: '14px', overflow: 'hidden', maxWidth: '90vw', maxHeight: '90vh', border: '1px solid #1f2937' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderBottom: '1px solid #e2e8f0' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>名片预览</h3>
-              <button onClick={() => setShowEcardPreview(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94a3b8' }}>&#10005;</button>
+              <button onClick={() => setShowEcardPreview(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
             </div>
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}>
               <img src={ecardThumbnailUrl.startsWith('/') ? '/api' + ecardThumbnailUrl : ecardThumbnailUrl} alt="电子名片" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }} />
@@ -283,13 +283,13 @@ export default function MyAccount({ identity }) {
           <div className="ma-dialog">
             <div className="ma-dialog-header">
               <h3>设备管理</h3>
-              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94a3b8' }}>&#10005;</button>
+              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
             </div>
             <div className="ma-dialog-body">
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '14px' }}>设备管理功能将在后续版本中提供。</div>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>设备管理功能将在后续版本中提供。</div>
             </div>
             <div className="ma-dialog-footer">
-              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ padding: '8px 16px', border: '1px solid #d8e2ef', borderRadius: '8px', background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
+              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
             </div>
           </div>
         </div>,
@@ -300,13 +300,13 @@ export default function MyAccount({ identity }) {
           <div className="ma-dialog" style={{ width: 'min(380px, 100%)' }}>
             <div className="ma-dialog-header">
               <h3>登录二维码</h3>
-              <button type="button" onClick={() => setShowQrDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94a3b8' }}>&#10005;</button>
+              <button type="button" onClick={() => setShowQrDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
             </div>
             <div className="ma-dialog-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('login://' + (profile?.admin?.username || 'user'))}`}
                 alt="登录二维码"
-                style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #1f2937' }}
               />
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button
@@ -337,12 +337,12 @@ export default function MyAccount({ identity }) {
                       } catch { window.alert('复制失败'); }
                     }
                   }}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #d8e2ef', background: '#fff', color: '#475569', fontSize: '12px', cursor: 'pointer' }}
+                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}
                 >复制</button>
               </div>
             </div>
             <div className="ma-dialog-footer" style={{ justifyContent: 'center' }}>
-              <button type="button" onClick={() => setShowQrDialog(false)} style={{ padding: '8px 16px', border: '1px solid #d8e2ef', borderRadius: '8px', background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
+              <button type="button" onClick={() => setShowQrDialog(false)} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
             </div>
           </div>
         </div>,
