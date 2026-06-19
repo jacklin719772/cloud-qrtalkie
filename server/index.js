@@ -1082,7 +1082,7 @@ app.post("/api/auth/login", async (request, response) => {
 
     await connection.query(
       `INSERT INTO admin_sessions (admin_user_id, user_type, sip_user_id, token_hash, expires_at)
-       VALUES (0, 'sip', ?, ?, ?)`,
+       VALUES (NULL, 'sip', ?, ?, ?)`,
       [Number(sipUser.id), tokenHash, sessionExpiresAt],
     );
 
