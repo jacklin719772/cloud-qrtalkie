@@ -1,0 +1,1 @@
+ALTER TABLE admin_sessions MODIFY COLUMN admin_user_id BIGINT UNSIGNED NULL;
