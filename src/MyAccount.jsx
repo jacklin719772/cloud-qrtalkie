@@ -31,6 +31,8 @@ export default function MyAccount({ identity }) {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  const loadProfile = async () => {
     try {
       const data = await apiClient.get('/me');
       setProfile(data);
