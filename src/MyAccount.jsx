@@ -149,6 +149,9 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
             .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
+            .ma-mobile-ecard-wrap label input[type="checkbox"] { width: 16px !important; height: 16px !important; flex-shrink: 0; }
+            .ma-mobile-ecard-wrap label { flex-wrap: wrap !important; white-space: normal !important; max-width: 100% !important; overflow: visible !important; }
+            .ma-mobile-ecard-wrap label span { white-space: normal !important; word-break: break-word; }
           `}</style>
         <div className={`ma-mobile-ecard-wrap view-${mobileEcardView}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
           {mobileEcardView === 'form' ? (
