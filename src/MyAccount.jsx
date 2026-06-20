@@ -131,7 +131,7 @@ export default function MyAccount({ identity }) {
   if (showEcardEditor) {
     if (isMobile) {
       return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
+        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
             <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
             <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px' }}>編輯電子名片</span>
@@ -215,7 +215,15 @@ export default function MyAccount({ identity }) {
           .ma-mobile-ecard-actions { display: flex; gap: 8px; flex-wrap: wrap; }
           .ma-mobile-ecard-tag { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
           /* Mobile action text right */
-          .ma-action-right { margin-left: auto; color: #f97316; font-size: 18px; flex-shrink: 0; }
+          .ma-mobile-ecard-wrap .ecard-generation-page { padding: 16px 12px !important; }
+          .ma-mobile-ecard-wrap .ecard-form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+          .ma-mobile-ecard-wrap .ecard-form-grid input,
+          .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
+          .ma-mobile-ecard-wrap .ecard-preview-panel { width: 100% !important; max-width: 100% !important; margin-top: 16px !important; }
+          .ma-mobile-ecard-wrap .ecard-preview-container { max-height: 300px !important; transform: scale(0.55) !important; transform-origin: top center !important; }
+          .ma-mobile-ecard-wrap .ecard-template-cards { flex-wrap: wrap !important; gap: 8px !important; }
+          .ma-mobile-ecard-wrap .ecard-template-card { width: 100px !important; height: 70px !important; }
+          .ma-mobile-ecard-wrap .ecard-style-field-block { padding: 10px !important; }
           }
         }
       `}</style>
