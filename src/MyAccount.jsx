@@ -156,6 +156,9 @@ export default function MyAccount({ identity }) {
           #my-account { padding: 0; background: #0f0f10; min-height: 100vh; }
           .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; }
           .ma-mobile-footer { display: flex !important; justify-content: center; }
+          .sidebar .nav-item, .sidebar .logout-item { display: none; }
+          .sidebar { border-bottom: none; }
+          .sidebar-foot { display: none !important; }
           .ma-card { padding: 18px; border-radius: 16px; background: #1a1a1d; border: 1px solid rgba(255,255,255,0.06); box-shadow: none; }
           .ma-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: #f97316; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
           .ma-card h3::before { content: ''; display: inline-block; width: 3px; height: 18px; background: #f97316; border-radius: 2px; }
@@ -348,7 +351,7 @@ export default function MyAccount({ identity }) {
       )}
 
       <div className="ma-mobile-footer">
-        <a href="https://www.qrtalkie.org" target="_blank" rel="noopener noreferrer">QRTalkie Team</a>
+        All Right Reserved QRTalkie
       </div>
     </section>
   );
