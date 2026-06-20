@@ -245,6 +245,7 @@ export default function MyAccount({ identity }) {
           <div className="ma-card">
             <h3>基本信息</h3>
             <div className="ma-info-row"><span className="ma-info-label">账号</span><span className="ma-info-value">{admin.username || '-'}</span></div>
+            <div className="ma-info-row"><span className="ma-info-label">状态</span><span className="ma-info-value" style={{ color: admin.flexisipStatus === 'active' ? '#22c55e' : admin.flexisipStatus === 'local_only' ? '#f59e0b' : '#ef4444' }}>{admin.flexisipStatus === 'active' ? '已同步' : admin.flexisipStatus === 'local_only' ? '本地' : admin.flexisipStatus || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">显示名</span><span className="ma-info-value">{admin.displayName || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">邮箱</span><span className="ma-info-value">{admin.email || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">电话</span><span className="ma-info-value">{admin.phoneNumber || '-'}</span></div>
