@@ -136,6 +136,20 @@ export default function MyAccount({ identity }) {
         if (btn) btn.click();
       };
       return (
+        <>
+          <style>{`
+            .ma-mobile-ecard-wrap .ecard-add-left { flex: 1 1 100% !important; max-width: 100% !important; }
+            .ma-mobile-ecard-wrap .ecard-add-right { display: none !important; }
+            .ma-mobile-ecard-wrap .ecard-add-content { padding: 16px 12px !important; flex-direction: column !important; }
+            .ma-mobile-ecard-wrap .ecard-form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+            .ma-mobile-ecard-wrap .ecard-form-grid input,
+            .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
+            .ma-mobile-ecard-wrap .ecard-generation-page { padding: 16px 12px 40px !important; }
+            .ma-mobile-ecard-wrap .ecard-generation-page h1,
+            .ma-mobile-ecard-wrap .ecard-generation-page h2,
+            .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
+            .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
+          `}</style>
         <div className={`ma-mobile-ecard-wrap view-${mobileEcardView}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
           {mobileEcardView === 'form' ? (
             <>
@@ -160,6 +174,7 @@ export default function MyAccount({ identity }) {
             </>
           )}
         </div>
+        </>
       );
     }
     return <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />;
