@@ -1411,7 +1411,6 @@ app.get("/api/me", requireAdmin, async (request, response) => {
           }
         }
       } catch {}
-      } catch {}
 
       return response.json({
         userType: "sip",
