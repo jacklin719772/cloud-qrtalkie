@@ -151,26 +151,63 @@ export default function MyAccount({ identity }) {
         .ma-mobile-footer { display: none; text-align: center; padding: 20px 16px; color: #6b7280; font-size: 12px; border-top: 1px solid #1f2937; margin-top: 16px; }
         .ma-mobile-footer a { color: #60a5fa; text-decoration: none; }
         @media (max-width: 768px) {
-          #my-account { padding: 12px; }
-          .ma-grid { grid-template-columns: 1fr; gap: 16px; }
-          .ma-mobile-footer { display: flex !important; }
-          .ma-card { padding: 16px; border-radius: 12px; }
-          .ma-card h3 { font-size: 15px; margin-bottom: 12px; }
-          .ma-action-row { grid-template-columns: 1fr 1fr; gap: 6px; }
-          .ma-action-btn { padding: 12px 14px; font-size: 13px; gap: 8px; }
-          .ma-action-btn .ma-action-icon { width: 32px; height: 32px; font-size: 14px; }
-          .ma-info-row { padding: 8px 0; font-size: 12px; }
-          .ma-dialog-overlay { padding: 12px; align-items: flex-end; }
-          .ma-dialog { border-radius: 16px 16px 0 0; max-height: 85vh; overflow: auto; }
-          .ma-dialog-header { padding: 14px 16px; }
-          .ma-dialog-body { padding: 16px; gap: 12px; }
-          .ma-dialog-body input { font-size: 16px; }
-          .ma-dialog-footer { padding: 12px 16px; }
-        }
-        @media (max-width: 420px) {
-          .ma-action-row { grid-template-columns: 1fr; }
+          #my-account { padding: 0; background: #0f0f10; min-height: 100vh; }
+          .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; }
+          .ma-mobile-footer { display: flex !important; justify-content: center; }
+          .ma-card { padding: 18px; border-radius: 16px; background: #1a1a1d; border: 1px solid rgba(255,255,255,0.06); box-shadow: none; }
+          .ma-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 14px; color: #f97316; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+          .ma-card h3::before { content: ''; display: inline-block; width: 3px; height: 18px; background: #f97316; border-radius: 2px; }
+          .ma-action-row { grid-template-columns: 1fr; gap: 0; }
+          .ma-action-btn { border: none; border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0; padding: 16px 0; background: transparent; gap: 14px; align-items: center; }
+          .ma-action-btn:last-child { border-bottom: none; }
+          .ma-action-btn:hover { background: transparent; }
+          .ma-action-btn .ma-action-icon { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
+          .ma-info-row { padding: 12px 0; font-size: 14px; }
+          .ma-info-row:last-child { border-bottom: none; }
+          .ma-info-label { font-size: 14px; }
+          .ma-info-value { font-size: 14px; }
+          .ma-dialog-overlay { padding: 0; align-items: flex-end; }
+          .ma-dialog { border-radius: 20px 20px 0 0; max-height: 90vh; overflow: auto; width: 100%; }
+          .ma-dialog-header { padding: 18px 20px; }
+          .ma-dialog-header h3 { font-size: 17px; color: #f3f4f6; }
+          .ma-dialog-body { padding: 20px; gap: 14px; }
+          .ma-dialog-body input { font-size: 16px; padding: 12px 14px; }
+          .ma-dialog-footer { padding: 14px 20px; }
+          /* Mobile header */
+          .ma-mobile-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 56px; background: #0f0f10; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+          .ma-mobile-header-logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #f97316, #ea580c); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px; }
+          .ma-mobile-header-right { width: 32px; height: 32px; border-radius: 50%; background: #1a1a1d; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; border: 1px solid rgba(255,255,255,0.08); }
+          /* Mobile title */
+          .ma-mobile-title { padding: 24px 16px 8px; }
+          .ma-mobile-title h1 { margin: 0; font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+          .ma-mobile-title p { margin: 4px 0 0; font-size: 13px; color: #6b7280; }
+          /* Mobile ecard row */
+          .ma-mobile-ecard-row { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+          .ma-mobile-ecard-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+          .ma-mobile-ecard-tag { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+          /* Mobile action text right */
+          .ma-action-right { margin-left: auto; color: #f97316; font-size: 18px; flex-shrink: 0; }
+          /* PC: hide mobile elements */
+          .ma-mobile-header, .ma-mobile-title { display: none; }
+          /* Mobile: show */
+          @media (max-width: 768px) {
+            .ma-mobile-header, .ma-mobile-title { display: flex; }
+            .ma-mobile-header { display: flex; }
+            .ma-mobile-title h1 { display: block; }
+          }
         }
       `}</style>
+
+      {/* Mobile-only Header & Title */}
+      <div className="ma-mobile-header">
+        <div className="ma-mobile-header-logo">🔒</div>
+        <div style={{ fontWeight: 700, color: '#fff', fontSize: '17px' }}>My Account</div>
+        <div className="ma-mobile-header-right">👤</div>
+      </div>
+      <div className="ma-mobile-title">
+        <h1>我的帳號</h1>
+        <p>管理您的 SIP 帳號設定與電子名片</p>
+      </div>
 
       <div className="ma-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
@@ -304,8 +341,6 @@ export default function MyAccount({ identity }) {
       )}
       {showQrDialog && createPortal(
         <LoginQrDialog isOpen={showQrDialog} onClose={() => setShowQrDialog(false)} account={{ id: profile?.admin?.id }} />,
-        document.body
-      )}
         document.body
       )}
 
