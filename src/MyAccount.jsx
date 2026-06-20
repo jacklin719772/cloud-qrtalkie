@@ -150,6 +150,11 @@ export default function MyAccount({ identity }) {
         .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #1f2937; background: #0d1117; }
         .ma-mobile-footer { display: none; text-align: center; padding: 20px 16px; color: #6b7280; font-size: 12px; border-top: 1px solid #1f2937; margin-top: 16px; }
         .ma-mobile-footer a { color: #60a5fa; text-decoration: none; }
+        /* PC: ecard actions stay inline */
+        .ma-ecard-actions { display: inline-flex !important; width: auto !important; margin-top: 0 !important; }
+        .ma-ecard-toggle { display: block; }
+        /* PC: hide ecard separate-status text */
+        .ma-ecard-status { display: none; }
         @media (max-width: 768px) {
           #my-account { padding: 16px 0 0; background: #0f0f10; min-height: 100vh; }
           .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; }
@@ -164,6 +169,9 @@ export default function MyAccount({ identity }) {
           .ma-action-btn { border: none; border-bottom: 1px solid rgba(255,255,255,0.06); border-radius: 0; padding: 16px 0; background: transparent; gap: 14px; align-items: center; }
           .ma-action-btn:last-child { border-bottom: none; }
           .ma-action-btn:hover { background: transparent; }
+          .ma-ecard-toggle { display: none; }
+          .ma-ecard-actions { width: 100% !important; margin-top: 8px !important; display: flex !important; }
+          .ma-ecard-status { display: block; }
           .ma-action-btn .ma-action-icon { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
           .ma-info-row { padding: 12px 0; font-size: 14px; }
           .ma-info-row:last-child { border-bottom: none; }
@@ -222,14 +230,14 @@ export default function MyAccount({ identity }) {
                 </button>
               </div>
               {ecardEnabled && (
-                <div className="ma-action-btn" style={{ cursor: 'default' }}>
+                <div className="ma-action-btn ma-ecard-btn" style={{ cursor: 'default', flexWrap: 'wrap' }}>
                   <span className="ma-action-icon" style={{ background: '#f3e8ff', color: '#7c3aed' }}>&#128196;</span>
                   <div onClick={() => setShowEcardEditor(true)} style={{ minWidth: 0, flex: 1, cursor: 'pointer' }}>
-                    <div style={{ fontWeight: 500 }}>电子名片</div>
-                    <div style={{ fontSize: '12px', color: ecardData ? (ecardActive ? '#16a34a' : '#94a3b8') : '#94a3b8' }}>{ecardData ? (ecardActive ? '已啟用' : '已停用') : '未设置'}</div>
+                    <div className="ma-ecard-title" style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>电子名片</div>
+                    <div className="ma-ecard-status" style={{ fontSize: '12px', color: ecardData ? (ecardActive ? '#22c55e' : '#9ca3af') : '#9ca3af' }}>{ecardData ? (ecardActive ? '已啟用' : '已停用') : '未设置'}</div>
                   </div>
                   {ecardData && (
-                    <div onClick={handleToggleEcardStatus} style={{
+                    <div className="ma-ecard-toggle" onClick={handleToggleEcardStatus} style={{
                       width: '40px', height: '22px', borderRadius: '11px', cursor: 'pointer',
                       background: ecardActive ? '#16a34a' : '#d1d5db',
                       position: 'relative', transition: 'background 0.2s', flexShrink: 0, marginRight: '8px'
@@ -241,13 +249,15 @@ export default function MyAccount({ identity }) {
                       }} />
                     </div>
                   )}
-                  <span onClick={() => setShowEcardEditor(true)} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 500, background: ecardData ? '#eff6ff' : '#fef3c7', color: ecardData ? '#2563eb' : '#b45309', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer' }}>{ecardData ? '编辑' : '创建'}</span>
-                  {ecardData && ecardThumbnailUrl && (
-                    <span onClick={handleDownloadEcard} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 500, background: '#f0fdf4', color: '#16a34a', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', marginLeft: '6px' }}>下载</span>
-                  )}
-                  {ecardData && ecardThumbnailUrl && (
-                    <span onClick={(e) => { e.stopPropagation(); setShowEcardPreview(true); }} style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 500, background: '#fef3c7', color: '#b45309', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer', marginLeft: '6px' }}>预览</span>
-                  )}
+                  <div className="ma-ecard-actions" style={{ display: 'flex', gap: '6px' }}>
+                    <span onClick={() => setShowEcardEditor(true)} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#1e3a5f', color: '#60a5fa', cursor: 'pointer' }}>{ecardData ? '编辑' : '创建'}</span>
+                    {ecardData && ecardThumbnailUrl && (
+                      <span onClick={handleDownloadEcard} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#0f2818', color: '#22c55e', cursor: 'pointer' }}>下载</span>
+                    )}
+                    {ecardData && ecardThumbnailUrl && (
+                      <span onClick={(e) => { e.stopPropagation(); setShowEcardPreview(true); }} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#3b1f06', color: '#f97316', cursor: 'pointer' }}>预览</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
