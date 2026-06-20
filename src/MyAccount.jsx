@@ -221,7 +221,7 @@ export default function MyAccount({ identity }) {
           .ma-mobile-ecard-wrap .ecard-form-grid input,
           .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
           .ma-mobile-ecard-wrap .ecard-preview-panel { width: 100% !important; max-width: 100% !important; margin-top: 16px !important; }
-          .ma-mobile-ecard-wrap .ecard-preview-panel { display: none; }
+          .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
           .ma-mobile-ecard-wrap.show-preview .ecard-preview-panel { display: block; position: fixed; inset: 56px 0 0 0; z-index: 100; background: #0f0f10; overflow: auto; padding: 16px; }
           .ma-mobile-ecard-wrap.show-preview .ecard-preview-container { max-height: none !important; transform: scale(0.7) !important; transform-origin: top center !important; }
           .ma-mobile-ecard-wrap .ecard-template-cards { flex-wrap: wrap !important; gap: 8px !important; }
