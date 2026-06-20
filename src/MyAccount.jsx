@@ -24,6 +24,7 @@ export default function MyAccount({ identity }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [isMobile, setIsMobile] = useState(false);
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
@@ -131,11 +132,11 @@ export default function MyAccount({ identity }) {
   if (showEcardEditor) {
     if (isMobile) {
       return (
-        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
+        <div className={`ma-mobile-ecard-wrap${showMobilePreview ? ' show-preview' : ''}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
             <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
             <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px' }}>編輯電子名片</span>
-            <div style={{ width: '50px' }} />
+            <button onClick={() => setShowMobilePreview(v => !v)} style={{ background: 'none', border: '1px solid rgba(249,115,22,0.4)', borderRadius: '6px', color: '#f97316', fontSize: '12px', fontWeight: 500, cursor: 'pointer', padding: '6px 10px', whiteSpace: 'nowrap' }}>{showMobilePreview ? '收起' : '預覽'}</button>
           </div>
           <div style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
@@ -220,7 +221,9 @@ export default function MyAccount({ identity }) {
           .ma-mobile-ecard-wrap .ecard-form-grid input,
           .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
           .ma-mobile-ecard-wrap .ecard-preview-panel { width: 100% !important; max-width: 100% !important; margin-top: 16px !important; }
-          .ma-mobile-ecard-wrap .ecard-preview-container { max-height: 300px !important; transform: scale(0.55) !important; transform-origin: top center !important; }
+          .ma-mobile-ecard-wrap .ecard-preview-panel { display: none; }
+          .ma-mobile-ecard-wrap.show-preview .ecard-preview-panel { display: block; position: fixed; inset: 56px 0 0 0; z-index: 100; background: #0f0f10; overflow: auto; padding: 16px; }
+          .ma-mobile-ecard-wrap.show-preview .ecard-preview-container { max-height: none !important; transform: scale(0.7) !important; transform-origin: top center !important; }
           .ma-mobile-ecard-wrap .ecard-template-cards { flex-wrap: wrap !important; gap: 8px !important; }
           .ma-mobile-ecard-wrap .ecard-template-card { width: 100px !important; height: 70px !important; }
           .ma-mobile-ecard-wrap .ecard-style-field-block { padding: 10px !important; }
