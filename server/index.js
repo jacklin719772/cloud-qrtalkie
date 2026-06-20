@@ -7590,9 +7590,9 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 
       if (flexisipAccountId) {
         const flexisipPayload = { username: account.username, algorithm: "SHA-256" };
-        if (changedFields.includes('display_name')) flexisipPayload.display_name = displayName;
-        if (changedFields.includes('email') && email) flexisipPayload.email = email;
-        if (changedFields.includes('phone') && phone) flexisipPayload.phone = phone;
+        flexisipPayload.display_name = displayName || null;
+        flexisipPayload.email = email || null;
+        flexisipPayload.phone = phone || null;
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
@@ -7884,9 +7884,9 @@ app.post("/api/admin/sip-accounts/:id/sync-to-flexisip", requireAdmin, async (re
 
     // 1. 同步資料欄位
     const payload = { username: local.username, algorithm: "SHA-256" };
-    if (local.display_name) payload.display_name = local.display_name;
-    if (local.email) payload.email = local.email;
-    if (local.phone_number) payload.phone = local.phone_number;
+    payload.display_name = local.display_name || null;
+    payload.email = local.email || null;
+    payload.phone = local.phone_number || null;
 
     try {
       await flexisipUpdateAccount(flexisipAccountId, payload);
