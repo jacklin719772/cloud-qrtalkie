@@ -23,8 +23,14 @@ export default function MyAccount({ identity }) {
   const [form, setForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [isMobile, setIsMobile] = useState(false);
 
-  const loadProfile = async () => {
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
     try {
       const data = await apiClient.get('/me');
       setProfile(data);
@@ -119,14 +125,6 @@ export default function MyAccount({ identity }) {
 
   const admin = profile?.admin || {};
   const tenant = profile?.tenant || {};
-
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   if (showEcardEditor) {
     if (isMobile) {
