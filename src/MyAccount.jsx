@@ -150,6 +150,8 @@ export default function MyAccount({ identity }) {
         .ma-dialog-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #1f2937; background: #0d1117; }
         .ma-mobile-footer { display: none; text-align: center; padding: 20px 16px; color: #6b7280; font-size: 12px; border-top: 1px solid #1f2937; margin-top: 16px; }
         .ma-mobile-footer a { color: #60a5fa; text-decoration: none; }
+        .ma-mobile-header, .ma-mobile-title { display: none; }
+        @media (min-width: 769px) { .ma-mobile-header, .ma-mobile-title { display: none !important; } }
         @media (max-width: 768px) {
           #my-account { padding: 0; background: #0f0f10; min-height: 100vh; }
           .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; }
@@ -190,6 +192,7 @@ export default function MyAccount({ identity }) {
           /* PC: hide mobile elements */
           .ma-mobile-header, .ma-mobile-title { display: none; }
           /* Mobile: show */
+        @media (min-width: 769px) { .ma-mobile-header, .ma-mobile-title { display: none !important; } }
           @media (max-width: 768px) {
             .ma-mobile-header, .ma-mobile-title { display: flex; }
             .ma-mobile-header { display: flex; }
