@@ -132,12 +132,6 @@ export default function MyAccount({ identity }) {
 
   if (showEcardEditor) {
     if (isMobile) {
-      const handleMobileSave = () => {
-        const btn = document.querySelector('.ecard-generation-page button.primary-btn') ||
-                    document.querySelector('.ecard-generation-page .cc-btn-primary') ||
-                    document.querySelector('.ecard-add-page button:last-of-type');
-        if (btn) btn.click();
-      };
       return (
         <div className={`ma-mobile-ecard-wrap view-${mobileEcardView}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
           {mobileEcardView === 'form' ? (
@@ -145,9 +139,9 @@ export default function MyAccount({ identity }) {
               <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
                 <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>返回</button>
                 <button onClick={() => setMobileEcardView('preview')} style={{ background: 'none', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#60a5fa', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>預覽</button>
-                <button onClick={handleMobileSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>儲存</button>
+                <span id="ma-mobile-save-slot" style={{ display: 'contents' }} />
               </div>
-              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表')) b.style.display = 'none'; }); const saveBtn = el.querySelector('.cc-btn-primary'); if (saveBtn) saveBtn.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表')) b.style.display = 'none'; }); const saveBtn = el.querySelector('.cc-btn-primary'); const slot = document.getElementById('ma-mobile-save-slot'); if (saveBtn && slot) { saveBtn.style.display = ''; saveBtn.style.padding = '0 18px'; saveBtn.style.height = '42px'; saveBtn.style.fontSize = '14px'; saveBtn.style.borderRadius = '8px'; slot.appendChild(saveBtn); } }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
               </div>
             </>
