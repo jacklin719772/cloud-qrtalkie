@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
 import EcardGeneration from './EcardGeneration';
+import LoginQrDialog from './LoginQrDialog';
 
 function formatDate(value) {
   if (!value) return '-';
@@ -318,56 +319,9 @@ export default function MyAccount({ identity }) {
         document.body
       )}
       {showQrDialog && createPortal(
-        <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowQrDialog(false); }}>
-          <div className="ma-dialog" style={{ width: 'min(380px, 100%)' }}>
-            <div className="ma-dialog-header">
-              <h3>登录二维码</h3>
-              <button type="button" onClick={() => setShowQrDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
-            </div>
-            <div className="ma-dialog-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('login://' + (profile?.admin?.username || 'user'))}`}
-                alt="登录二维码"
-                style={{ width: '200px', height: '200px', borderRadius: '8px', border: '1px solid #1f2937' }}
-              />
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button
-                  onClick={async () => {
-                    try {
-                      const r = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('login://' + (profile?.admin?.username || 'user'))}`);
-                      const b = await r.blob();
-                      const a = document.createElement('a');
-                      a.href = URL.createObjectURL(b);
-                      a.download = `qrcode-${profile?.admin?.username || 'user'}.png`;
-                      a.click();
-                      URL.revokeObjectURL(a.href);
-                    } catch { window.alert('下载失败'); }
-                  }}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: '0', background: 'linear-gradient(90deg, #2563eb, #06b6d4)', color: '#fff', fontSize: '12px', cursor: 'pointer' }}
-                >下载</button>
-                <button
-                  onClick={async () => {
-                    try {
-                      const r = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent('login://' + (profile?.admin?.username || 'user'))}`);
-                      const b = await r.blob();
-                      await navigator.clipboard.write([new ClipboardItem({ [b.type]: b })]);
-                      window.alert('已复制');
-                    } catch {
-                      try {
-                        await navigator.clipboard.writeText('login://' + (profile?.admin?.username || 'user'));
-                        window.alert('图片复制失败，已复制链接');
-                      } catch { window.alert('复制失败'); }
-                    }
-                  }}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}
-                >复制</button>
-              </div>
-            </div>
-            <div className="ma-dialog-footer" style={{ justifyContent: 'center' }}>
-              <button type="button" onClick={() => setShowQrDialog(false)} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
-            </div>
-          </div>
-        </div>,
+        <LoginQrDialog isOpen={showQrDialog} onClose={() => setShowQrDialog(false)} account={{ id: profile?.admin?.id }} />,
+        document.body
+      )}
         document.body
       )}
 
