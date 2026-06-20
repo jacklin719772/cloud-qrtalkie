@@ -1392,14 +1392,25 @@ app.get("/api/me", requireAdmin, async (request, response) => {
       );
       const row = rows[0];
 
-      // Query sip_users for Flexisip status
-      let flexisipStatus = 'local_only';
+      // Query sip_users for Flexisip sync and activation status
+      let flexisipSyncStatus = 'local_only';
+      let flexisipActivated = null;
       try {
         const [su] = await connection.query(
           `SELECT sync_status, flexisip_account_id, sip_uri FROM sip_users WHERE id = ? AND tenant_id = ? LIMIT 1`,
           [request.admin.id, request.admin.tenantId]
         );
-        if (su) flexisipStatus = su.sync_status || 'local_only';
+        if (su) {
+          flexisipSyncStatus = su.sync_status || 'local_only';
+          // Query Flexisip for activation status
+          if (su.flexisip_account_id) {
+            try {
+              const remote = await flexisipGetAccount(su.flexisip_account_id);
+              flexisipActivated = remote?.activated === true || remote?.activated === 1;
+            } catch {}
+          }
+        }
+      } catch {}
       } catch {}
 
       return response.json({
@@ -1421,7 +1432,8 @@ app.get("/api/me", requireAdmin, async (request, response) => {
           permissions: {},
           username: request.admin.username || "",
           email: request.admin.email || "",
-          flexisipStatus,
+          flexisipSyncStatus,
+          flexisipActivated,
         },
       });
     } catch (error) {
