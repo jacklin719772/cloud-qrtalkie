@@ -134,8 +134,8 @@ export default function MyAccount({ identity }) {
     if (isMobile) {
       const handleMobileSave = () => {
         const btn = document.querySelector('.ecard-generation-page button.primary-btn') ||
-                    document.querySelector('.ecard-generation-page button[type="submit"]') ||
-                    document.querySelector('.ecard-add-page .cc-btn-primary');
+                    document.querySelector('.ecard-generation-page .cc-btn-primary') ||
+                    document.querySelector('.ecard-add-page button:last-of-type');
         if (btn) btn.click();
       };
       return (
@@ -147,7 +147,7 @@ export default function MyAccount({ identity }) {
                 <button onClick={() => setMobileEcardView('preview')} style={{ background: 'none', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#60a5fa', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>預覽</button>
                 <button onClick={handleMobileSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>儲存</button>
               </div>
-              <div style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
               </div>
             </>
@@ -157,7 +157,7 @@ export default function MyAccount({ identity }) {
                 <button onClick={() => setMobileEcardView('form')} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
                 <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
               </div>
-              <div style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'block'; const fg = el.querySelector('.ecard-form-grid'); if (fg && fg.parentElement) fg.parentElement.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
               </div>
             </>
