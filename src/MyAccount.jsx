@@ -17,7 +17,6 @@ export default function MyAccount({ identity }) {
   const [ecardThumbnailUrl, setEcardThumbnailUrl] = useState('');
   const [showEcardEditor, setShowEcardEditor] = useState(false);
   const [showEcardPreview, setShowEcardPreview] = useState(false);
-  const [showDeviceDialog, setShowDeviceDialog] = useState(false);
   const [showQrDialog, setShowQrDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionDialog, setActionDialog] = useState(null); // 'displayName' | 'email' | 'phone' | 'password' | 'ecard' | null
@@ -199,9 +198,9 @@ export default function MyAccount({ identity }) {
                 </button>
               </div>
               <div className="ma-action-row">
-                <button className="ma-action-btn" onClick={() => setShowDeviceDialog(true)}>
-                  <span className="ma-action-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>&#9881;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设备管理</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>管理已绑定设备</div></div>
+                <button className="ma-action-btn" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>
+                  <span className="ma-action-icon" style={{ background: '#1e293b', color: '#6b7280' }}>&#9881;</span>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500, color: '#9ca3af' }}>设备管理</div><div style={{ fontSize: '12px', color: '#6b7280' }}>即将推出</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => setShowQrDialog(true)}>
                   <span className="ma-action-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>&#128273;</span>
@@ -297,23 +296,6 @@ export default function MyAccount({ identity }) {
             </div>
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}>
               <img src={ecardThumbnailUrl.startsWith('/') ? '/api' + ecardThumbnailUrl : ecardThumbnailUrl} alt="电子名片" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }} />
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {showDeviceDialog && createPortal(
-        <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowDeviceDialog(false); }}>
-          <div className="ma-dialog">
-            <div className="ma-dialog-header">
-              <h3>设备管理</h3>
-              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
-            </div>
-            <div className="ma-dialog-body">
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '14px' }}>设备管理功能将在后续版本中提供。</div>
-            </div>
-            <div className="ma-dialog-footer">
-              <button type="button" onClick={() => setShowDeviceDialog(false)} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>关闭</button>
             </div>
           </div>
         </div>,
