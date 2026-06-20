@@ -1935,14 +1935,8 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
     }
 
     // ── Flexisip sync (always attempt for data consistency) ──
-    const flexisipChangedFields = [];
-    if (sipUser.display_name !== displayName) flexisipChangedFields.push('display_name');
-    if (sipUser.email !== email) flexisipChangedFields.push('email');
-    if (sipUser.phone_number !== phone) flexisipChangedFields.push('phone');
-    if (password) flexisipChangedFields.push('password');
 
-    if (flexisipChangedFields.length > 0) {
-      let flexisipAccountId = sipUser.flexisip_account_id || null;
+    let flexisipAccountId = sipUser.flexisip_account_id || null;
 
       if (!flexisipAccountId && sipUser.sip_uri) {
         try {
@@ -1965,10 +1959,11 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
 
       if (flexisipAccountId) {
         const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
-        if (flexisipChangedFields.includes('display_name')) flexisipPayload.display_name = displayName;
-        if (flexisipChangedFields.includes('email')) flexisipPayload.email = email || null;
-        if (flexisipChangedFields.includes('phone')) flexisipPayload.phone = phone || null;
-        if (flexisipChangedFields.includes('password')) {
+        // Always include all fields to prevent Flexisip from clearing unchanged values
+        flexisipPayload.display_name = displayName || null;
+        flexisipPayload.email = email || null;
+        flexisipPayload.phone = phone || null;
+        if (password) {
           flexisipPayload.password = password;
           flexisipPayload.algorithm = "SHA-256";
         }
@@ -1997,7 +1992,6 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
           }
           return response.status(502).json({ message: `Flexisip 更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
         }
-      }
     }
 
     let userUpdateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?`;
