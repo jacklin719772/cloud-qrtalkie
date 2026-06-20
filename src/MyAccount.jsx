@@ -147,7 +147,7 @@ export default function MyAccount({ identity }) {
                 <button onClick={() => setMobileEcardView('preview')} style={{ background: 'none', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#60a5fa', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>預覽</button>
                 <button onClick={handleMobileSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px' }}>儲存</button>
               </div>
-              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const backBtn = el.querySelector('.ghost-btn, .cc-btn-outline'); if (backBtn) backBtn.style.display = 'none'; const saveBtn = el.querySelector('.cc-btn-primary'); if (saveBtn) saveBtn.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
               </div>
             </>
