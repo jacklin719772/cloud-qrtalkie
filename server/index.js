@@ -1951,11 +1951,23 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
         } catch {}
       }
 
+      // Try to find by constructing sip URI from username + domain
+      if (!flexisipAccountId && sipUser.sip_domain) {
+        try {
+          const sipUri = `sip:${sipUser.username}@${sipUser.sip_domain}`;
+          const sr = await searchAccountBySip(sipUri);
+          flexisipAccountId = sr?.id;
+          if (flexisipAccountId) {
+            await connection.query(`UPDATE sip_users SET flexisip_account_id = ?, sip_uri = ? WHERE id = ?`, [flexisipAccountId, sipUri, sipUser.id]);
+          }
+        } catch {}
+      }
+
       if (flexisipAccountId) {
         const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
         if (flexisipChangedFields.includes('display_name')) flexisipPayload.display_name = displayName;
-        if (flexisipChangedFields.includes('email') && email) flexisipPayload.email = email;
-        if (flexisipChangedFields.includes('phone') && phone) flexisipPayload.phone = phone;
+        if (flexisipChangedFields.includes('email')) flexisipPayload.email = email || null;
+        if (flexisipChangedFields.includes('phone')) flexisipPayload.phone = phone || null;
         if (flexisipChangedFields.includes('password')) {
           flexisipPayload.password = password;
           flexisipPayload.algorithm = "SHA-256";
