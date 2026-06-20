@@ -156,6 +156,10 @@ export default function MyAccount({ identity }) {
         /* PC: hide ecard separate-status text */
         .ma-ecard-status { display: none; }
         @media (max-width: 768px) {
+          /* Allow scrolling on mobile */
+          html, body { overflow: auto !important; height: auto !important; }
+          .app-shell { overflow: auto !important; height: auto !important; }
+          .main, .main-scroll { overflow: visible !important; height: auto !important; }
           #my-account { padding: 16px 0 0; background: #0f0f10; min-height: 100vh; }
           .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; }
           .ma-mobile-footer { display: flex !important; justify-content: center; }
