@@ -1961,8 +1961,19 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
           flexisipPayload.algorithm = "SHA-256";
         }
 
+        // Get current activation status before update (update deactivates the account)
+        let wasActivated = false;
+        try {
+          const remote = await flexisipGetAccount(flexisipAccountId);
+          wasActivated = remote?.activated === true || remote?.activated === 1;
+        } catch {}
+
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+          // Restore previous activation status
+          if (wasActivated) {
+            await flexisipActivateAccount(flexisipAccountId);
+          }
           if (sipUser.flexisip_account_id !== flexisipAccountId) {
             await connection.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, sipUser.id]);
           }
