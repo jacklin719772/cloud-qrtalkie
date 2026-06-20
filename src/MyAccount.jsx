@@ -24,6 +24,7 @@ export default function MyAccount({ identity }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileEcardView, setMobileEcardView] = useState('form');
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768);
@@ -135,14 +136,29 @@ export default function MyAccount({ identity }) {
         if (btn) btn.click();
       };
       return (
-        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
-          <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
-            <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>返回</button>
-            <button onClick={triggerSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 18px', whiteSpace: 'nowrap' }}>保存</button>
-          </div>
-          <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const pv = el.querySelector('.ecard-preview-panel'); if (pv) pv.style.display = 'none'; const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
-          </div>
+        <div className={`ma-mobile-ecard-wrap view-${mobileEcardView}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
+          {mobileEcardView === 'form' ? (
+            <>
+              <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
+                <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0', flexShrink: 0 }}>返回</button>
+                <button onClick={() => setMobileEcardView('preview')} style={{ background: 'none', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#60a5fa', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 14px', whiteSpace: 'nowrap' }}>預覽</button>
+                <button onClick={triggerSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 14px', whiteSpace: 'nowrap' }}>保存</button>
+              </div>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const right = el.querySelector('.ecard-add-right'); if (right) right.style.display = 'none'; const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
+                <button onClick={() => setMobileEcardView('form')} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
+                <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
+              </div>
+              <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const right = el.querySelector('.ecard-add-right'); if (right) right.style.display = 'block'; const left = el.querySelector('.ecard-add-left'); if (left) left.style.display = 'none'; }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
+              </div>
+            </>
+          )}
         </div>
       );
     }
@@ -222,6 +238,8 @@ export default function MyAccount({ identity }) {
           .ma-mobile-ecard-wrap .ecard-form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
           .ma-mobile-ecard-wrap .ecard-form-grid input,
           .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
+          .ma-mobile-ecard-wrap .ecard-add-left { flex: 1 1 100% !important; max-width: 100% !important; }
+          .ma-mobile-ecard-wrap .ecard-add-content { padding: 16px 12px !important; }
           .ma-mobile-ecard-wrap .ecard-preview-panel { width: 100% !important; max-width: 100% !important; margin-top: 16px !important; }
           .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
           .ma-mobile-ecard-wrap.view-preview .ecard-preview-panel { display: block !important; position: fixed; inset: 56px 0 0 0; z-index: 100; background: #0f0f10; overflow: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
