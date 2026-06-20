@@ -170,7 +170,7 @@ export default function MyAccount({ identity }) {
           .ma-action-btn:last-child { border-bottom: none; }
           .ma-action-btn:hover { background: transparent; }
           .ma-ecard-toggle { display: none; }
-          .ma-ecard-actions { width: 100% !important; margin-top: 8px !important; display: flex !important; }
+          .ma-ecard-actions { display: inline-flex !important; margin-left: auto; flex-shrink: 0; }
           .ma-ecard-status { display: block; }
           .ma-action-btn .ma-action-icon { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
           .ma-info-row { padding: 12px 0; font-size: 14px; }
