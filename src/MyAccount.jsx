@@ -144,7 +144,7 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-form-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
             .ma-mobile-ecard-wrap .ecard-form-grid input,
             .ma-mobile-ecard-wrap .ecard-form-grid select { height: 46px !important; font-size: 16px !important; width: 100% !important; }
-            .ma-mobile-ecard-wrap .ecard-generation-page { padding: 16px 12px 40px !important; }
+            .ma-mobile-ecard-wrap .ecard-generation-page { padding: 16px 12px 40px !important; overflow-x: hidden !important; max-width: 100vw !important; }
             .ma-mobile-ecard-wrap .ecard-generation-page h1,
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
@@ -156,7 +156,7 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap label { flex-wrap: wrap !important; white-space: normal !important; max-width: 100% !important; overflow: visible !important; }
             .ma-mobile-ecard-wrap label span { white-space: normal !important; word-break: break-word; }
           `}</style>
-        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
+        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column', overflowX: 'hidden', maxWidth: '100vw' }}>
           <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
             <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0', flexShrink: 0 }}>返回</button>
             <button onClick={() => { setShowPreviewModal(true); const right = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-right'); const modalBody = document.getElementById('ma-preview-modal-body'); if (right && modalBody) { right.style.display = ''; modalBody.appendChild(right); } const left = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-left'); if (left) left.style.display = 'none'; }} style={{ background: 'none', border: '1px solid rgba(96,165,250,0.4)', borderRadius: '8px', color: '#60a5fa', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 14px', whiteSpace: 'nowrap' }}>預覽</button>
