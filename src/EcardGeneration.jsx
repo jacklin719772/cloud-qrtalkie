@@ -1457,7 +1457,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 </div>
                 <div>
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ca3af', display: 'block', marginBottom: '8px' }}>顯示控制</span>
-                  <div style={{ display: 'flex', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => handleToggleConfig('showEnJobTitle')}>
                       <span className="ecard-static-switch" style={{ background: localDisplayConfig.showEnJobTitle ? '#2563eb' : '#cbd5e1' }}><span style={{ left: localDisplayConfig.showEnJobTitle ? '18px' : '2px', position: 'absolute', top: '2px', width: '16px', height: '16px', background: '#111827', borderRadius: '50%', transition: 'left 0.2s' }}></span></span>
                       <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>英文职位</span>
