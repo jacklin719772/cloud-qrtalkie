@@ -152,8 +152,8 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
             .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
-            .ma-mobile-ecard-wrap.view-preview .ecard-add-right { display: flex !important; position: fixed; inset: 56px 0 0 0; z-index: 9999; background: #0f0f10; }
-            .ma-mobile-ecard-wrap.view-preview .ecard-preview-panel { display: flex !important; height: 100% !important; overflow: auto; -webkit-overflow-scrolling: touch; border: none !important; border-radius: 0 !important; padding: 16px !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-add-right { display: flex !important; position: fixed !important; top: 56px !important; right: 0 !important; bottom: 0 !important; left: 0 !important; z-index: 9999 !important; background: #0f0f10 !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-preview-panel { display: flex !important; height: 100% !important; overflow: auto !important; -webkit-overflow-scrolling: touch; border: none !important; border-radius: 0 !important; padding: 16px !important; }
             .ma-mobile-ecard-wrap.view-preview .ecard-add-left { display: none !important; }
             .ma-mobile-ecard-wrap.view-preview .ecard-generation-page { padding: 0 !important; }
             .ma-mobile-ecard-wrap.view-preview .ecard-generation-page > *:not(.ecard-add-content) { display: none !important; }
