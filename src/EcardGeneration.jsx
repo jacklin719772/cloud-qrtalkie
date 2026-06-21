@@ -620,6 +620,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         backgroundColor: null
       });
 
+      if (canvas.width === 0 || canvas.height === 0) {
+        throw new Error("名片預覽区域尺寸为 0，请检查页面布局");
+      }
+
       canvasEl.style.transform = originalTransform;
 
       const thumbnailDataUrl = canvas.toDataURL("image/jpeg", 0.8);
@@ -656,7 +660,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       }));
     } catch (err) {
       console.error(err);
-      alert(err.message || '儲存和產生圖片失败');
+      const detail = err.data?.detail || err.message;
+      alert(detail || '儲存和產生圖片失败');
     } finally {
       setIsGenerating(false);
     }

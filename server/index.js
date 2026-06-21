@@ -625,7 +625,7 @@ async function savePaymentMethodIcon(dataUrl, methodCode) {
 }
 
 async function saveEcardImage(dataUrl, originalFileName) {
-  const match = String(dataUrl || "").match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  const match = String(dataUrl || "").trim().match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!match) throw new Error("無效的圖片格式");
 
   const mimeType = match[1];
@@ -10287,7 +10287,9 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
     try {
       await connection.query(`ALTER TABLE tenant_ecards ADD COLUMN ecard_data_json LONGTEXT`);
     } catch (err) {
-      // 列已存在时忽略错误
+      if (err.errno !== 1060 && err.code !== 'ER_DUP_FIELDNAME') {
+        throw err;
+      }
     }
 
     const [su] = await connection.query(`SELECT id FROM sip_users WHERE id = ? AND tenant_id = ?`, [sipUserId, request.admin.tenantId]);
@@ -10317,12 +10319,13 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
 
     await connection.query(
       `INSERT INTO tenant_ecards (
-         tenant_id, sip_user_id, access_slug, avatar_url, thumbnail_url, status, enable_video_call,
+         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call,
          created_by_admin_id, ecard_data_json, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, NOW(), NOW())
+       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, NOW(), NOW())
        ON DUPLICATE KEY UPDATE
          access_slug = VALUES(access_slug),
          avatar_url = VALUES(avatar_url),
+         logo_url = VALUES(logo_url),
          thumbnail_url = VALUES(thumbnail_url),
          enable_video_call = VALUES(enable_video_call),
          ecard_data_json = VALUES(ecard_data_json),
@@ -10332,6 +10335,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
         sipUserId,
         payload.accessSlug || null,
         avatarUrl || null,
+        logoUrl || null,
         thumbnailUrl || null,
         enableVideoCall ? 1 : 0,
         request.admin.id,
@@ -10342,7 +10346,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
     return response.json({ message: "电子名片已保存" });
   } catch (err) {
     console.error("Save ecard failed", err);
-    return response.status(500).json({ message: "儲存失敗" });
+    return response.status(500).json({ message: "儲存失敗", detail: err.message || String(err) });
   } finally {
     if (connection) connection.release();
   }
