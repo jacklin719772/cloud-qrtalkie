@@ -614,11 +614,37 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       const originalTransform = canvasEl.style.transform;
       canvasEl.style.transform = 'none';
 
-      const canvas = await html2canvas(canvasEl, {
-        useCORS: true,
-        scale: 2,
-        backgroundColor: null
-      });
+      // Force element and all ancestors to be visible before capture
+      const hiddenAncestors = [];
+      let el = canvasEl;
+      while (el && el !== document.body) {
+        if (window.getComputedStyle(el).display === 'none') {
+          el.style.setProperty('display', 'block', 'important');
+          el.style.setProperty('position', 'fixed', 'important');
+          el.style.setProperty('left', '-9999px', 'important');
+          el.style.setProperty('top', '0', 'important');
+          el.style.setProperty('visibility', 'visible', 'important');
+          hiddenAncestors.push(el);
+        }
+        el = el.parentElement;
+      }
+
+      let canvas;
+      try {
+        canvas = await html2canvas(canvasEl, {
+          useCORS: true,
+          scale: 2,
+          backgroundColor: null
+        });
+      } finally {
+        hiddenAncestors.forEach(el => {
+          el.style.removeProperty('display');
+          el.style.removeProperty('position');
+          el.style.removeProperty('left');
+          el.style.removeProperty('top');
+          el.style.removeProperty('visibility');
+        });
+      }
 
       if (canvas.width === 0 || canvas.height === 0) {
         throw new Error("名片預覽区域尺寸为 0，请检查页面布局");
