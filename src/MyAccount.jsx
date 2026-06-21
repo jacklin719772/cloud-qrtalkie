@@ -215,9 +215,9 @@ export default function MyAccount({ identity }) {
         .ma-ecard-status { display: none; }
         @media (max-width: 768px) {
           /* Allow scrolling on mobile */
-          html, body { overflow: auto !important; height: auto !important; }
-          .app-shell { overflow: auto !important; height: auto !important; }
-          .main, .main-scroll { overflow: visible !important; height: auto !important; }
+          html, body { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; }
+          .app-shell { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; }
+          .main, .main-scroll { overflow-y: auto !important; overflow-x: hidden !important; height: auto !important; }
           #my-account { padding: 16px 0 0; background: #0f0f10; min-height: 100vh; overflow-x: hidden; max-width: 100vw; }
           .ma-grid { grid-template-columns: 1fr; gap: 12px; max-width: 100%; padding: 0 16px 16px; overflow-x: hidden; }
           .ma-mobile-footer { display: flex !important; justify-content: center; }
