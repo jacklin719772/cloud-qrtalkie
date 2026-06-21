@@ -156,7 +156,6 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
             .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
-            #ma-preview-modal-body .ecard-preview-panel { display: flex !important; }
             .ma-mobile-ecard-wrap .ecard-media-layout { flex-direction: column !important; gap: 12px !important; align-items: flex-start !important; }
             .ma-mobile-ecard-wrap .ecard-upload-area { width: 100px !important; height: 100px !important; flex: 0 0 auto !important; }
             .ma-mobile-ecard-wrap .ecard-form-grid.single-column { margin-left: 0 !important; }
@@ -175,17 +174,17 @@ export default function MyAccount({ identity }) {
           <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const right = el.querySelector('.ecard-add-right'); if (right) { right.style.cssText = 'position: absolute !important; left: -9999px !important; top: 0 !important; display: block !important;'; } const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
           </div>
-
-          {showPreviewModal && (
-            <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
-                <button onClick={() => { setShowPreviewModal(false); const right = document.getElementById('ma-preview-modal-body').querySelector('.ecard-add-right'); const content = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-content'); if (right && content) { right.style.cssText = 'position: absolute !important; left: -9999px !important; top: 0 !important; display: block !important;'; content.appendChild(right); } const left = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-left'); if (left) left.style.display = ''; }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
-                <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
-              </div>
-              <div id="ma-preview-modal-body" style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px' }} />
-            </div>
-          )}
         </div>
+        {showPreviewModal && createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
+              <button onClick={() => { setShowPreviewModal(false); const right = document.getElementById('ma-preview-modal-body').querySelector('.ecard-add-right'); const content = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-content'); if (right && content) { right.style.cssText = 'position: absolute !important; left: -9999px !important; top: 0 !important; display: block !important;'; content.appendChild(right); } const left = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-left'); if (left) left.style.display = ''; }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
+              <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
+            </div>
+            <div id="ma-preview-modal-body" style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px' }} />
+          </div>,
+          document.body
+        )}
         </>
       );
     }
