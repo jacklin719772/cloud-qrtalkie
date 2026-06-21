@@ -33,22 +33,6 @@ export default function MyAccount({ identity }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // After portal renders, move .ecard-add-right into preview modal
-  useEffect(() => {
-    if (!showPreviewModal) return;
-    const timer = setTimeout(() => {
-      const right = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-right');
-      const modalBody = document.getElementById('ma-preview-modal-body');
-      if (right && modalBody) {
-        right.style.cssText = 'display: flex !important; position: relative !important; left: auto !important; top: auto !important; width: auto !important;';
-        modalBody.appendChild(right);
-      }
-      const left = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-left');
-      if (left) left.style.display = 'none';
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [showPreviewModal]);
-
   const loadProfile = async () => {
     try {
       const data = await apiClient.get('/me');
@@ -148,18 +132,7 @@ export default function MyAccount({ identity }) {
   if (showEcardEditor) {
     if (isMobile) {
       const openPreview = () => setShowPreviewModal(true);
-
-      const closePreview = () => {
-        const right = document.getElementById('ma-preview-modal-body')?.querySelector('.ecard-add-right');
-        const content = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-content');
-        if (right && content) {
-          right.style.cssText = 'position: absolute !important; left: -9999px !important; top: 0 !important; display: block !important;';
-          content.appendChild(right);
-        }
-        const left = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-left');
-        if (left) left.style.display = '';
-        setShowPreviewModal(false);
-      };
+      const closePreview = () => setShowPreviewModal(false);
 
       const triggerSave = () => {
         const right = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-right');
@@ -186,6 +159,12 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
             .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-add-right { display: flex !important; position: fixed; inset: 56px 0 0 0; z-index: 9999; background: #0f0f10; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-preview-panel { display: flex !important; height: 100% !important; overflow: auto; -webkit-overflow-scrolling: touch; border: none !important; border-radius: 0 !important; padding: 16px !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-add-left { display: none !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-generation-page { padding: 0 !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-generation-page > *:not(.ecard-add-content) { display: none !important; }
+            .ma-mobile-ecard-wrap.view-preview .ecard-add-content { padding: 0 !important; }
             .ma-mobile-ecard-wrap .ecard-media-layout { flex-direction: column !important; gap: 12px !important; align-items: flex-start !important; }
             .ma-mobile-ecard-wrap .ecard-upload-area { width: 100px !important; height: 100px !important; flex: 0 0 auto !important; }
             .ma-mobile-ecard-wrap .ecard-form-grid.single-column { margin-left: 0 !important; }
@@ -193,7 +172,15 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap label { flex-wrap: wrap !important; white-space: normal !important; max-width: 100% !important; overflow: visible !important; }
             .ma-mobile-ecard-wrap label span { white-space: normal !important; word-break: break-word; }
           `}</style>
-        <div className="ma-mobile-ecard-wrap" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+        <div className={`ma-mobile-ecard-wrap${showPreviewModal ? ' view-preview' : ''}`} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0f0f10', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+          {showPreviewModal && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '56px', zIndex: 10001, display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', pointerEvents: 'auto' }}>
+                <button onClick={closePreview} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
+                <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
+              </div>
+            </div>
+          )}
           <div className="ma-ecard-mobile-bar" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', padding: '0 12px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
             <button onClick={() => { setShowEcardEditor(false); loadProfile(); }} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0', flexShrink: 0 }}>返回</button>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -205,16 +192,6 @@ export default function MyAccount({ identity }) {
             <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
           </div>
         </div>
-        {showPreviewModal && createPortal(
-          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#0f0f10', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', padding: '0 16px', height: '56px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0f0f10' }}>
-              <button onClick={closePreview} style={{ background: 'none', border: 'none', color: '#f97316', fontSize: '15px', fontWeight: 500, cursor: 'pointer', padding: '8px 0' }}>← 返回</button>
-              <span style={{ fontWeight: 700, color: '#fff', fontSize: '16px', margin: '0 auto' }}>實時預覽</span>
-            </div>
-            <div id="ma-preview-modal-body" style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px' }} />
-          </div>,
-          document.body
-        )}
         </>
       );
     }
