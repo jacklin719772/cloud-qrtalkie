@@ -156,6 +156,7 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap .ecard-generation-page h2,
             .ma-mobile-ecard-wrap .ecard-add-header { display: none !important; }
             .ma-mobile-ecard-wrap .ecard-preview-panel { display: none !important; }
+            #ma-preview-modal-body .ecard-preview-panel { display: flex !important; }
             .ma-mobile-ecard-wrap .ecard-media-layout { flex-direction: column !important; gap: 12px !important; align-items: flex-start !important; }
             .ma-mobile-ecard-wrap .ecard-upload-area { width: 100px !important; height: 100px !important; flex: 0 0 auto !important; }
             .ma-mobile-ecard-wrap .ecard-form-grid.single-column { margin-left: 0 !important; }
