@@ -151,6 +151,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const [scale, setScale] = useState(1);
   const viewportRef = useRef(null);
   const ecardCanvasRef = useRef(null);
+  const tenantNameInputRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // 用於存储左侧“颜色配置”面板的实时樣式覆盖
@@ -428,6 +429,16 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   useEffect(() => {
     onModeChange?.(viewMode);
   }, [viewMode, onModeChange]);
+
+  // Sync all input widths to match tenant name input
+  useEffect(() => {
+    if (!tenantNameInputRef.current) return;
+    const width = tenantNameInputRef.current.offsetWidth;
+    if (width > 0) {
+      const container = tenantNameInputRef.current.closest('.ecard-add-left');
+      if (container) container.style.setProperty('--input-width', `${width}px`);
+    }
+  });
 
   // Self-service mode: load data and enter add view
   useEffect(() => {
@@ -1100,12 +1111,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-form-grid label { display: flex; flex-direction: column; gap: 8px; }
           .ecard-form-grid label span { font-size: 13px; font-weight: 500; color: #9ca3af; }
           .ecard-form-grid input, .ecard-form-grid select {
-            padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827;
+            padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827; width: var(--input-width, auto); box-sizing: border-box;
           }
           .ecard-form-grid input[readonly] { background: #1a2332; color: #9ca3af; border-color: #374151; }
           
-          .ecard-input-with-icon { position: relative; display: flex; align-items: center; }
-          .ecard-input-with-icon input { flex: 1; padding-right: 36px; }
+          .ecard-input-with-icon { position: relative; display: flex; align-items: center; width: var(--input-width, auto); }
+          .ecard-input-with-icon input { flex: 1; padding-right: 36px; width: var(--input-width, auto); box-sizing: border-box; }
           .ecard-input-with-icon button { position: absolute; right: 8px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px; display: flex; align-items: center; }
           
           .ecard-static-switch { display: inline-flex; width: 36px; height: 20px; background: #2563eb; border-radius: 999px; position: relative; transition: background 0.2s ease; cursor: pointer; }
@@ -1312,7 +1323,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div className="ecard-form-group">
               <h4 className="ecard-form-title">帳號绑定與路由</h4>
               <div className="ecard-form-grid single-column">
-                <label><span>租户名稱</span><input readOnly value={selectedAccountForCreate?.tenantName || "—"} /></label>
+                <label><span>租户名稱</span><input ref={tenantNameInputRef} readOnly value={selectedAccountForCreate?.tenantName || "—"} /></label>
                 <label><span>SIP帳號</span><input readOnly value={selectedAccountForCreate?.sipAccount || "—"} /></label>
                 <label><span>Ecard展示頁URL</span><input readOnly value={selectedAccountForCreate?.accessUrl || ecardAccessUrl} /></label>
                 <label><span>Call Public Slug</span>
