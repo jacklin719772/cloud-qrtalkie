@@ -135,13 +135,6 @@ export default function MyAccount({ identity }) {
       const closePreview = () => setShowPreviewModal(false);
 
       const triggerSave = () => {
-        const right = document.querySelector('.ma-mobile-ecard-wrap .ecard-add-right');
-        if (right) {
-          right.style.setProperty('display', 'block', 'important');
-          right.style.setProperty('position', 'absolute', 'important');
-          right.style.setProperty('left', '-9999px', 'important');
-          right.style.setProperty('top', '0', 'important');
-        }
         const btn = document.querySelector('.ecard-generation-page .primary-btn, .ecard-add-page .primary-btn');
         if (btn) btn.click();
       };
@@ -188,7 +181,7 @@ export default function MyAccount({ identity }) {
             <button onClick={triggerSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 14px', whiteSpace: 'nowrap' }}>保存</button>
             </div>
           </div>
-          <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const right = el.querySelector('.ecard-add-right'); if (right) { right.style.cssText = 'position: absolute !important; left: -9999px !important; top: 0 !important; display: block !important;'; } const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
           </div>
         </div>
