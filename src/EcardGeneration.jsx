@@ -432,12 +432,23 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
   // Sync all input widths to match tenant name input
   useEffect(() => {
-    if (!tenantNameInputRef.current) return;
-    const width = tenantNameInputRef.current.offsetWidth;
-    if (width > 0) {
-      const container = tenantNameInputRef.current.closest('.ecard-add-left');
-      if (container) container.style.setProperty('--input-width', `${width}px`);
-    }
+    const apply = () => {
+      if (!tenantNameInputRef.current) return;
+      const width = tenantNameInputRef.current.offsetWidth;
+      if (width <= 0) return;
+      const left = tenantNameInputRef.current.closest('.ecard-add-left');
+      if (!left) return;
+      left.querySelectorAll('.ecard-form-grid input, .ecard-form-grid select, .ecard-input-with-icon input').forEach(el => {
+        el.style.setProperty('width', `${width}px`, 'important');
+        el.style.setProperty('box-sizing', 'border-box', 'important');
+      });
+      left.querySelectorAll('.ecard-input-with-icon').forEach(el => {
+        el.style.setProperty('width', `${width}px`, 'important');
+      });
+    };
+    apply();
+    const timer = setTimeout(apply, 200);
+    return () => clearTimeout(timer);
   });
 
   // Self-service mode: load data and enter add view
@@ -1111,12 +1122,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-form-grid label { display: flex; flex-direction: column; gap: 8px; }
           .ecard-form-grid label span { font-size: 13px; font-weight: 500; color: #9ca3af; }
           .ecard-form-grid input, .ecard-form-grid select {
-            padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827; width: var(--input-width, auto); box-sizing: border-box;
+            padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827;
           }
           .ecard-form-grid input[readonly] { background: #1a2332; color: #9ca3af; border-color: #374151; }
           
-          .ecard-input-with-icon { position: relative; display: flex; align-items: center; width: var(--input-width, auto); }
-          .ecard-input-with-icon input { flex: 1; padding-right: 36px; width: var(--input-width, auto); box-sizing: border-box; }
+          .ecard-input-with-icon { position: relative; display: flex; align-items: center; }
+          .ecard-input-with-icon input { flex: 1; padding-right: 36px; }
           .ecard-input-with-icon button { position: absolute; right: 8px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px; display: flex; align-items: center; }
           
           .ecard-static-switch { display: inline-flex; width: 36px; height: 20px; background: #2563eb; border-radius: 999px; position: relative; transition: background 0.2s ease; cursor: pointer; }
