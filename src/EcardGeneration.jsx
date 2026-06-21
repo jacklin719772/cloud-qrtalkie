@@ -438,7 +438,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       if (width <= 0) return;
       const left = tenantNameInputRef.current.closest('.ecard-add-left');
       if (!left) return;
-      left.querySelectorAll('.ecard-form-grid input, .ecard-form-grid select, .ecard-input-with-icon input').forEach(el => {
+      left.querySelectorAll('.ecard-form-grid input:not([type="checkbox"]):not([type="file"]), .ecard-form-grid select, .ecard-input-with-icon input').forEach(el => {
         el.style.setProperty('width', `${width}px`, 'important');
         el.style.setProperty('box-sizing', 'border-box', 'important');
       });
