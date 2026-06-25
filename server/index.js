@@ -17007,10 +17007,10 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
 
         // Insert into sip_users
         const insertResult = await connection.query(
-          `INSERT INTO sip_users (username, sip_domain, display_name, email, phone_number, role, status,
+          `INSERT INTO sip_users (username, sip_domain, password_hash, display_name, email, phone_number, role, status,
            flexisip_account_id, sip_uri, sync_status, created_in_flexisip_at, created_by_admin_user_id,
            created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, 'active', NOW(), ?, NOW(), NOW())`,
+           VALUES (?, ?, '', ?, ?, ?, ?, 'active', ?, ?, 'active', NOW(), ?, NOW(), NOW())`,
           [
             username,
             sipDomain,
