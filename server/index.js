@@ -6904,15 +6904,15 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(`
-      SELECT 
-        u.id, 
-        u.username, 
+      SELECT
+        u.id,
+        u.username,
         u.sip_domain AS domain,
         u.display_name AS displayName,
-        u.role, 
-        u.phone_number AS phone, 
-        u.email, 
-        u.status, 
+        u.role,
+        u.phone_number AS phone,
+        u.email,
+        u.status,
         u.created_at,
         c.display_name AS creator_name,
         e.external_username,
@@ -6922,11 +6922,13 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         e.registrar,
         e.outbound_proxy,
         e.protocol,
-        t.name AS tenant_name
+        t.name AS tenant_name,
+        ent.service_expires_at
       FROM sip_users u
       LEFT JOIN sip_external_accounts e ON u.id = e.sip_user_id
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN tenant_sip_account_entitlements ent ON u.id = ent.sip_user_id AND u.tenant_id = ent.tenant_id AND ent.status = 'active'
       ORDER BY u.created_at DESC
     `);
     
@@ -6948,7 +6950,8 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       externalProtocol: r.protocol || '',
       createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') : '',
       creatorName: r.creator_name || '-',
-      tenantName: r.tenant_name || ''
+      tenantName: r.tenant_name || '',
+      expiresAt: r.service_expires_at || null
     }));
 
     console.log('【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数:', accounts.length);

@@ -1645,6 +1645,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     ['username', '帳號', '190px'],
                     ['status', '狀態', '140px'],
                     ['tenantName', '租戶名稱', '150px'],
+                    ['expiresAt', '到期日期', '130px'],
                     ['creatorName', '添加人', '170px'],
                     ['createdAt', '添加時間', '150px'],
                   ].map(([key, label, width]) => (
@@ -1658,7 +1659,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <tbody>
                 {paginatedAccounts.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ padding: 0, textAlign: 'center' }}>
+                    <td colSpan="8" style={{ padding: 0, textAlign: 'center' }}>
                       <div className="sip-empty">
                         <div>{isLoading ? '載入中...' : '暫無SIP帳號數據'}</div>
                       </div>
@@ -1683,6 +1684,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
                       <td>{getStatusBadge(acc.status)}</td>
                       <td title={acc.tenantName || ''}><span style={{ display: 'block', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.tenantName || '未分配'}</span></td>
+                      <td style={{ color: '#9ca3af' }}>{acc.expiresAt ? new Date(acc.expiresAt).toISOString().slice(0, 10) : '-'}</td>
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
