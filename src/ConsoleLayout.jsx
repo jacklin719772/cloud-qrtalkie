@@ -1313,7 +1313,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 SIP 帳號，設定用戶名、密碼、角色等。若用戶名曾被刪除保留，系統會彈窗詢問是否釋放後重新創建。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 SIP 帳號，自動遞增用戶名。如有「已刪除保留」的帳號，可點擊「釋放並重試」一次性釋放後重新創建。全部成功時彈窗自動關閉。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>導入 CSV</strong> — 從 CSV 檔案批量導入 SIP 帳號。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量導入</strong> — 點擊後彈窗選擇導入方式：<strong style={{ color: "#fbbf24" }}>導入 CSV</strong> 從 CSV 檔案批量導入 SIP 帳號；<strong style={{ color: "#fbbf24" }}>導入服務器賬號</strong> 從 Flexisip 服務器同步現有帳號到本地數據庫，可全選或勾選部分帳號導入，導入後預設密碼為 123456（可通過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、郵箱、電話等設定。用戶名和域名不可修改。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊與服務端同步狀態。</li>
@@ -1343,7 +1343,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。新增後不可修改。（必填，純數字）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，預設為 sip.qrtalkie.org。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名</strong> — 來電顯示的名稱，預設與用戶名相同。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增預設密碼為 12345678）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增預設密碼為 12345678；導入服務器賬號預設密碼為 123456，可透過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>手機號碼</strong> — 聯絡電話，需符合國際格式（如 +886912345678），格式不符將不發送至服務端。</li>
@@ -1353,7 +1353,7 @@ export default function ConsoleLayout({ onLogout }) {
               </div>
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code><br/>帳號校驗：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts/:id/verify</code><br/>釋放保留：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/flexisip/accounts/tombstones/release</code></p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts</code><br/>新增/編輯：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/PUT /api/admin/sip-accounts</code><br/>批量新增：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/sip-accounts/batch</code><br/>遠端帳號列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/flexisip/remote-accounts-not-local</code><br/>導入遠端帳號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/flexisip/import-remote-accounts</code><br/>重設密碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/sip-accounts/:id/reset-password</code><br/>帳號校驗：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/sip-accounts/:id/verify</code><br/>釋放保留：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/flexisip/accounts/tombstones/release</code></p>
               </div>
             </div>
           </div>
