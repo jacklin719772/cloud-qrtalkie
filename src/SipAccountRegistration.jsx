@@ -1037,7 +1037,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>帳號詳情</h3>
-              <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>
+              <button type="button" onClick={() => setViewMode('list')} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer', padding: '8px 16px', fontSize: '13px', fontWeight: 500, minHeight: '34px' }}>
                 返回列表
               </button>
             </div>
@@ -1576,8 +1576,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         #sip-account-registration .sip-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         #sip-account-registration .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #sip-account-registration .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
-        #sip-account-registration-detail .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
-        #sip-account-registration-detail .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #sip-account-registration .form-message { color: #d1d5db; }
         #sip-account-registration .form-message.error { background: #3b1111; color: #ef4444; }
         #sip-account-registration .form-message.success { background: #0d2818; color: #22c55e; }
