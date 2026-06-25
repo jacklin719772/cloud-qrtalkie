@@ -1215,9 +1215,17 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       <section className="view active settings-form-page" id="sip-account-registration-import" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>導入服務器賬號</h3>
-              <button className="ghost-btn" type="button" onClick={() => { setServerImportResults(null); fetchRemoteAccounts?.(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
+            <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600', flexShrink: 0 }}>導入服務器賬號</h3>
+              <span style={{ fontSize: '14px', color: '#9ca3af', flexShrink: 0 }}>
+                {serverImportLoading ? '正在載入...' : `共 ${serverAccounts.length} 個，${serverAccounts.filter(a => !a.existsLocally).length} 個可導入`}
+              </span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#9ca3af', flexShrink: 0 }}>
+                <input type="checkbox" checked={serverImportSelected.length > 0 && serverImportSelected.length === sortedServerAccounts.filter(a => !a.existsLocally).length} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', margin: 0 }} />
+                全選可導入
+              </label>
+              <div style={{ flex: 1 }} />
+              <button className="ghost-btn" type="button" onClick={() => { setServerImportResults(null); fetchRemoteAccounts(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', flexShrink: 0 }}>
                 <RefreshCw size={14} /> 刷新列表
               </button>
             </div>
@@ -1241,15 +1249,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               </div>
             ) : (
               <>
-                <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '14px', color: '#9ca3af' }}>
-                    {serverImportLoading ? '正在載入遠端帳號列表...' : `共 ${serverAccounts.length} 個帳號，其中 ${serverAccounts.filter(a => !a.existsLocally).length} 個可導入`}
-                  </span>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#9ca3af' }}>
-                    <input type="checkbox" checked={serverImportSelected.length > 0 && serverImportSelected.length === serverAccounts.filter(a => !a.existsLocally).length} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
-                    全選可導入
-                  </label>
-                </div>
                 <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                   {serverImportLoading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#9ca3af' }}>
