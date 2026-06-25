@@ -17006,9 +17006,9 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
         }
 
         // Insert into sip_users
-        // Generate a random password for local login; actual SIP auth is via Flexisip
-        const randomPassword = randomUUID().slice(0, 16);
-        const hashedPassword = await hashPassword(randomPassword);
+        // Set a default initial password for local SaaS login
+        const initialPassword = process.env.SIP_IMPORT_DEFAULT_PASSWORD || '123456';
+        const hashedPassword = await hashPassword(initialPassword);
         const insertResult = await connection.query(
           `INSERT INTO sip_users (username, sip_domain, password_hash, display_name, email, phone_number, role, status,
            flexisip_account_id, sip_uri, sync_status, created_in_flexisip_at, created_by_admin_user_id,
