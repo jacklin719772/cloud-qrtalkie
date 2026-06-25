@@ -1570,8 +1570,10 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         #sip-account-registration .sip-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
         #sip-account-registration .sip-page-input { background: #1a2332; border: 1px solid #374151; color: #e5e7eb; }
         #sip-account-registration .sip-page-jump { color: #9ca3af; }
-        #sip-account-registration .sip-table-wrapper { scrollbar-width: none; }
-        #sip-account-registration .sip-table-wrapper::-webkit-scrollbar { display: none; }
+        #sip-account-registration .sip-table-wrapper { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        #sip-account-registration .sip-table-wrapper::-webkit-scrollbar { height: 6px; width: 6px; }
+        #sip-account-registration .sip-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        #sip-account-registration .sip-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         #sip-account-registration .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
         #sip-account-registration .ghost-btn:hover { background: #4b5563; color: #f3f4f6; }
         #sip-account-registration-detail .ghost-btn { background: #374151; color: #d1d5db; border: 1px solid #4b5563; border-radius: 8px; }
