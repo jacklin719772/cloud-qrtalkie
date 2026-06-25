@@ -1682,7 +1682,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       </td>
                       <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
                       <td>{getStatusBadge(acc.status)}</td>
-                      <td>{acc.tenantName || '未分配'}</td>
+                      <td title={acc.tenantName || ''}><span style={{ display: 'block', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.tenantName || '未分配'}</span></td>
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
