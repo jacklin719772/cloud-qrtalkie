@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Upload, Plus, UserPlus, Trash2, UserMinus, Search } from 'lucide-react';
+import { Download, Upload, Plus, UserPlus, Trash2, UserMinus, Search, RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
 
 const defaultSipDomain = import.meta.env.VITE_SIP_DOMAIN || import.meta.env.SIP_DOMAIN || 'sip.qrtalkie.org';
@@ -69,6 +69,13 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState({ success: 0, fail: 0, errors: [] });
 
+  // 服务器账号导入
+  const [serverAccounts, setServerAccounts] = useState([]);
+  const [serverImportSelected, setServerImportSelected] = useState([]);
+  const [serverImportLoading, setServerImportLoading] = useState(false);
+  const [serverImportSaving, setServerImportSaving] = useState(false);
+  const [serverImportResults, setServerImportResults] = useState(null);
+
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
   const [resetConfirmPasswordValue, setResetConfirmPasswordValue] = useState('');
@@ -94,6 +101,63 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setBatchAddOpen(true);
   }
 
+  const fetchRemoteAccounts = async () => {
+    setServerImportLoading(true);
+    try {
+      const res = await apiClient.get('/admin/flexisip/remote-accounts-not-local');
+      setServerAccounts(res.accounts || []);
+    } catch (err) {
+      alert(err.message || '獲取遠端帳號列表失敗');
+      setServerAccounts([]);
+    } finally {
+      setServerImportLoading(false);
+    }
+  };
+
+  const startServerImport = () => {
+    setViewMode('server-import');
+    setServerAccounts([]);
+    setServerImportSelected([]);
+    setServerImportResults(null);
+    fetchRemoteAccounts();
+  };
+
+  const handleSelectAllServer = (e) => {
+    if (e.target.checked) {
+      setServerImportSelected(serverAccounts.map(a => String(a.id)));
+    } else {
+      setServerImportSelected([]);
+    }
+  };
+
+  const handleToggleServerAccount = (accId) => {
+    setServerImportSelected(prev =>
+      prev.includes(String(accId)) ? prev.filter(id => id !== String(accId)) : [...prev, String(accId)]
+    );
+  };
+
+  const handleImportServerAccounts = async () => {
+    if (serverImportSelected.length === 0) {
+      alert('请至少選擇一個帳號');
+      return;
+    }
+    setServerImportSaving(true);
+    try {
+      const res = await apiClient.post('/admin/flexisip/import-remote-accounts', { accountIds: serverImportSelected });
+      setServerImportResults(res);
+      // Refresh list if any were imported
+      if (res.success > 0) {
+        fetchAccounts();
+        setServerImportSelected([]);
+        fetchRemoteAccounts();
+      }
+    } catch (err) {
+      alert(err.message || '導入失敗');
+    } finally {
+      setServerImportSaving(false);
+    }
+  };
+
   useImperativeHandle(ref, () => ({
     returnToList: () => {
       setViewMode('list');
@@ -101,9 +165,13 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setFormMessage({ type: '', text: '' });
       setImportStep(1);
       setParsedData([]);
+      setServerImportResults(null);
+      setServerAccounts([]);
+      setServerImportSelected([]);
     },
     handleExportCsv,
     startImport: () => { setViewMode('import'); setImportStep(1); setParsedData([]); },
+    startServerImport,
     startAdd: () => { setViewMode('add'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); },
     startBatchAdd: openBatchAddModal,
     handleBatchUnassign,
@@ -1121,6 +1189,99 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (viewMode === 'server-import') {
+    return (
+      <section className="view active settings-form-page" id="sip-account-registration-import" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>導入服務器賬號</h3>
+              <button className="ghost-btn" type="button" onClick={() => { setServerImportResults(null); fetchRemoteAccounts?.(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
+                <RefreshCw size={14} /> 刷新列表
+              </button>
+            </div>
+
+            {serverImportResults ? (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <h4 style={{ fontSize: '24px', color: serverImportResults.fail === 0 ? '#10b981' : '#f59e0b', margin: '0 0 12px 0' }}>導入完成</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '15px', margin: 0 }}>成功導入 <strong>{serverImportResults.success}</strong> 條，失敗 <strong>{serverImportResults.fail}</strong> 條。</p>
+                </div>
+                {serverImportResults.errors.length > 0 && (
+                  <div style={{ width: '100%', maxWidth: '600px', backgroundColor: '#3b1111', padding: '20px', borderRadius: '8px', border: '1px solid #7f1d1d', maxHeight: '200px', overflowY: 'auto', margin: '0 auto' }}>
+                    {serverImportResults.errors.map((err, i) => (
+                      <p key={i} style={{ color: '#fca5a5', fontSize: '13px', margin: 0 }}>{err}</p>
+                    ))}
+                  </div>
+                )}
+                <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                  <button className="primary-btn" onClick={() => { setViewMode('list'); setServerImportResults(null); }} style={{ padding: '8px 24px' }}>返回帳號登记首页</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '14px', color: '#9ca3af' }}>
+                    {serverImportLoading ? '正在載入遠端帳號列表...' : `共 ${serverAccounts.length} 個帳號可導入`}
+                  </span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#9ca3af' }}>
+                    <input type="checkbox" checked={serverImportSelected.length === serverAccounts.length && serverAccounts.length > 0} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                    全選
+                  </label>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+                  {serverImportLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#9ca3af' }}>
+                      <div style={{ width: '40px', height: '40px', border: '3px solid #374151', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: '12px' }}></div>
+                      載入中...
+                    </div>
+                  ) : serverAccounts.length === 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#6b7280', fontSize: '14px' }}>
+                      暫無可導入的遠端帳號
+                    </div>
+                  ) : (
+                    <table className="sip-table" style={{ width: '100%' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
+                        <tr>
+                          <th style={{ width: '50px', textAlign: 'center', padding: '12px 8px', background: '#1a2332', borderBottom: '1px solid #1f2937' }}>
+                            <input type="checkbox" checked={serverImportSelected.length === serverAccounts.length && serverAccounts.length > 0} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                          </th>
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>帳號</th>
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>顯示名稱</th>
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>郵箱</th>
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>狀態</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {serverAccounts.map(acc => (
+                          <tr key={acc.id} style={{ cursor: 'pointer', background: serverImportSelected.includes(String(acc.id)) ? '#1e293b' : 'transparent' }} onClick={() => handleToggleServerAccount(acc.id)}>
+                            <td style={{ width: '50px', textAlign: 'center', padding: 0 }}>
+                              <input type="checkbox" checked={serverImportSelected.includes(String(acc.id))} onChange={() => handleToggleServerAccount(acc.id)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                            </td>
+                            <td style={{ padding: '10px 16px', color: '#e5e7eb', fontWeight: 500 }}>{acc.username}{acc.domain ? `@${acc.domain}` : ''}</td>
+                            <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.displayName || '-'}</td>
+                            <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.email || '-'}</td>
+                            <td style={{ padding: '10px 16px' }}>{acc.activated ? <span style={{ color: '#10b981', fontSize: '12px' }}>已啟用</span> : <span style={{ color: '#f59e0b', fontSize: '12px' }}>未啟用</span>}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
+                  <button className="primary-btn" type="button" onClick={handleImportServerAccounts} disabled={serverImportSelected.length === 0 || serverImportSaving}>
+                    {serverImportSaving ? '導入中...' : `導入選中帳號 (${serverImportSelected.length})`}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>

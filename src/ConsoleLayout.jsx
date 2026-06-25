@@ -387,7 +387,7 @@ export default function ConsoleLayout({ onLogout }) {
           </div>
         );
       }
-      if (['add', 'import'].includes(sipAccountMode)) {
+      if (['add', 'import', 'server-import'].includes(sipAccountMode)) {
         return (
           <button
             className="ghost-btn"
@@ -823,7 +823,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <input type="radio" name="sip-batch-import-type" checked={sipBatchImportType === 'server'} onChange={() => setSipBatchImportType('server')} style={{ accentColor: '#3b82f6', width: '18px', height: '18px' }} />
                     <div>
                       <div style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb' }}>導入服務器賬號</div>
-                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>從服務器批量導入現有 SIP 帳號（敬請期待）</div>
+                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>從 Flexisip 服務器批量導入現有 SIP 帳號</div>
                     </div>
                   </label>
                 </div>
@@ -834,7 +834,7 @@ export default function ConsoleLayout({ onLogout }) {
                     if (sipBatchImportType === 'csv') {
                       sipAccountRegistrationRef.current?.startImport();
                     } else {
-                      alert('導入服務器賬號功能即將上線，敬請期待！');
+                      sipAccountRegistrationRef.current?.startServerImport();
                     }
                   }} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', padding: '8px 20px', fontSize: '13px', fontWeight: 600 }}>確定</button>
                 </div>

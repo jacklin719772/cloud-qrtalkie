@@ -73,6 +73,7 @@ import {
 import {
   FlexisipAccountManagerError,
   searchAccountBySip,
+  listAccounts as flexisipListAccounts,
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
   getAccount as flexisipGetAccount,
@@ -16821,6 +16822,152 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
       type: "calls",
       source: "flexisip-admin-statistics",
     });
+  }
+});
+
+// GET /api/admin/flexisip/remote-accounts-not-local - 获取 Flexisip 中不在本地数据库的账号列表
+app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以查詢 Flexisip 遠端帳號。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Get all local SIP URIs and flexisip_account_ids
+    const localRows = await connection.query(
+      `SELECT id, flexisip_account_id, sip_uri, username, sip_domain FROM sip_users`
+    );
+    const localSipUris = new Set();
+    const localFlexisipIds = new Set();
+    for (const r of localRows) {
+      if (r.flexisip_account_id) localFlexisipIds.add(String(r.flexisip_account_id));
+      const sipUri = r.sip_uri || `sip:${r.username}@${r.sip_domain || 'sip.qrtalkie.org'}`;
+      localSipUris.add(sipUri);
+    }
+
+    // Fetch all remote Flexisip accounts
+    let remoteAccounts;
+    try {
+      remoteAccounts = await flexisipListAccounts();
+    } catch (err) {
+      console.error("Failed to list Flexisip accounts:", err);
+      return response.status(502).json({ message: "無法連接 Flexisip Account Manager。" });
+    }
+
+    if (!Array.isArray(remoteAccounts)) {
+      return response.json({ accounts: [], total: 0 });
+    }
+
+    // Filter out accounts that already exist locally
+    const notLocal = remoteAccounts.filter(acc => {
+      const accId = String(acc.id || '');
+      const sipUri = acc.sip || '';
+      return !localFlexisipIds.has(accId) && !localSipUris.has(sipUri);
+    });
+
+    const accounts = notLocal.map(acc => ({
+      id: acc.id,
+      username: acc.username || '',
+      sip: acc.sip || '',
+      domain: acc.domain || (acc.sip ? acc.sip.split('@')[1] : ''),
+      displayName: acc.display_name || '',
+      email: acc.email || '',
+      phone: acc.phone || '',
+      role: acc.role || 'user',
+      activated: !!acc.activated,
+    }));
+
+    return response.json({ accounts, total: accounts.length });
+  } catch (err) {
+    console.error("Failed to fetch remote accounts:", err);
+    return response.status(500).json({ message: "獲取遠端帳號列表失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/admin/flexisip/import-remote-accounts - 批量导入 Flexisip 远端账号到本地
+app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以導入 Flexisip 遠端帳號。" });
+  }
+  const { accountIds } = request.body || {};
+  if (!Array.isArray(accountIds) || accountIds.length === 0) {
+    return response.status(400).json({ message: "请选择至少一个要導入的帳號。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Fetch remote account details for each selected ID
+    const results = { success: 0, fail: 0, errors: [] };
+
+    for (const accId of accountIds) {
+      let remoteAcc;
+      try {
+        remoteAcc = await flexisipGetAccount(accId);
+      } catch (err) {
+        results.fail++;
+        results.errors.push(`ID ${accId}: 無法獲取遠端帳號資訊`);
+        continue;
+      }
+
+      if (!remoteAcc) {
+        results.fail++;
+        results.errors.push(`ID ${accId}: 遠端帳號不存在`);
+        continue;
+      }
+
+      const username = remoteAcc.username || '';
+      const sipDomain = remoteAcc.domain || (remoteAcc.sip ? remoteAcc.sip.split('@')[1] || 'sip.qrtalkie.org' : 'sip.qrtalkie.org');
+      const sipUri = remoteAcc.sip || `sip:${username}@${sipDomain}`;
+
+      try {
+        // Check if already exists locally
+        const [existing] = await connection.query(
+          `SELECT id FROM sip_users WHERE flexisip_account_id = ? OR sip_uri = ? OR (username = ? AND sip_domain = ?) LIMIT 1`,
+          [String(accId), sipUri, username, sipDomain]
+        );
+        if (existing) {
+          results.fail++;
+          results.errors.push(`${username}@${sipDomain}: 該帳號已存在於本地數據庫`);
+          continue;
+        }
+
+        // Insert into sip_users
+        const insertResult = await connection.query(
+          `INSERT INTO sip_users (username, sip_domain, display_name, email, phone_number, role, status,
+           flexisip_account_id, sip_uri, sync_status, created_in_flexisip_at, created_by_admin_user_id,
+           created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, 'active', NOW(), ?, NOW(), NOW())`,
+          [
+            username,
+            sipDomain,
+            remoteAcc.display_name || '',
+            remoteAcc.email || '',
+            remoteAcc.phone || '',
+            remoteAcc.role || 'user',
+            String(accId),
+            sipUri,
+            request.admin.id,
+          ]
+        );
+
+        results.success++;
+      } catch (err) {
+        results.fail++;
+        results.errors.push(`${username}@${sipDomain}: ${err.message || '導入失敗'}`);
+      }
+    }
+
+    return response.json(results);
+  } catch (err) {
+    console.error("Failed to import remote accounts:", err);
+    return response.status(500).json({ message: "導入遠端帳號失敗。" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
