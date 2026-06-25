@@ -1296,7 +1296,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           return (
                           <tr key={acc.id} style={{ cursor: isImported ? 'default' : 'pointer', background: isSelected ? '#1e293b' : 'transparent', opacity: isImported ? 0.5 : 1 }} onClick={() => handleToggleServerAccount(acc)}>
                             <td style={{ width: '50px', textAlign: 'center', padding: 0 }}>
-                              <input type="checkbox" checked={isSelected} disabled={isImported} onChange={() => handleToggleServerAccount(acc)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                              <input type="checkbox" checked={isSelected} disabled={isImported} readOnly style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
                             </td>
                             <td style={{ padding: '10px 16px', color: '#e5e7eb', fontWeight: 500, whiteSpace: 'nowrap' }}>{acc.username}{acc.domain ? `@${acc.domain}` : ''}</td>
                             <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.displayName || '-'}</td>
