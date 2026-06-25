@@ -1644,9 +1644,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   {[
                     ['username', '帳號', '190px'],
                     ['status', '狀態', '140px'],
+                    ['tenantName', '租戶名稱', '150px'],
                     ['creatorName', '添加人', '170px'],
                     ['createdAt', '添加時間', '150px'],
-                    ['tenantName', '租戶名稱', '150px'],
                   ].map(([key, label, width]) => (
                     <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" className="sip-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
@@ -1682,9 +1682,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       </td>
                       <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
                       <td>{getStatusBadge(acc.status)}</td>
+                      <td>{acc.tenantName || '未分配'}</td>
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
-                      <td>{acc.tenantName || '未分配'}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                           <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', acc)}>詳情</button>
