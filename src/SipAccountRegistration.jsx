@@ -75,6 +75,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [serverImportLoading, setServerImportLoading] = useState(false);
   const [serverImportSaving, setServerImportSaving] = useState(false);
   const [serverImportResults, setServerImportResults] = useState(null);
+  const [serverImportSortKey, setServerImportSortKey] = useState('username');
+  const [serverImportSortDir, setServerImportSortDir] = useState('asc');
 
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
@@ -121,6 +123,18 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setServerImportResults(null);
     fetchRemoteAccounts();
   };
+
+  const sortedServerAccounts = useMemo(() => {
+    const sorted = [...serverAccounts];
+    sorted.sort((a, b) => {
+      let aVal = (a[serverImportSortKey] ?? '').toString().toLowerCase();
+      let bVal = (b[serverImportSortKey] ?? '').toString().toLowerCase();
+      if (aVal < bVal) return serverImportSortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return serverImportSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [serverAccounts, serverImportSortKey, serverImportSortDir]);
 
   const handleSelectAllServer = (e) => {
     if (e.target.checked) {
@@ -1247,21 +1261,34 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       暫無遠端帳號數據
                     </div>
                   ) : (
-                    <table className="sip-table" style={{ width: '100%' }}>
+                    <table className="sip-table" style={{ width: '100%', minWidth: '700px' }}>
                       <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                         <tr>
                           <th style={{ width: '50px', textAlign: 'center', padding: '12px 8px', background: '#1a2332', borderBottom: '1px solid #1f2937' }}>
-                            <input type="checkbox" checked={serverImportSelected.length === serverAccounts.length && serverAccounts.length > 0} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                            <input type="checkbox" checked={serverImportSelected.length > 0 && serverImportSelected.length === sortedServerAccounts.filter(a => !a.existsLocally).length} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
                           </th>
-                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>帳號</th>
-                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>顯示名稱</th>
-                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>郵箱</th>
-                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>狀態</th>
-                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>導入狀態</th>
+                          {[
+                            ['username', '帳號'],
+                            ['displayName', '顯示名'],
+                            ['email', '電子郵箱'],
+                            ['phone', '電話'],
+                          ].map(([key, label]) => (
+                            <th key={key} style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => {
+                              if (serverImportSortKey === key) {
+                                setServerImportSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setServerImportSortKey(key);
+                                setServerImportSortDir('asc');
+                              }
+                            }}>
+                              {label} {serverImportSortKey === key ? (serverImportSortDir === 'asc' ? '↑' : '↓') : '↕'}
+                            </th>
+                          ))}
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332', whiteSpace: 'nowrap' }}>導入狀態</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {serverAccounts.map(acc => {
+                        {sortedServerAccounts.map(acc => {
                           const isImported = acc.existsLocally;
                           const isSelected = serverImportSelected.includes(String(acc.id));
                           return (
@@ -1269,11 +1296,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                             <td style={{ width: '50px', textAlign: 'center', padding: 0 }}>
                               <input type="checkbox" checked={isSelected} disabled={isImported} onChange={() => handleToggleServerAccount(acc)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
                             </td>
-                            <td style={{ padding: '10px 16px', color: '#e5e7eb', fontWeight: 500 }}>{acc.username}{acc.domain ? `@${acc.domain}` : ''}</td>
+                            <td style={{ padding: '10px 16px', color: '#e5e7eb', fontWeight: 500, whiteSpace: 'nowrap' }}>{acc.username}{acc.domain ? `@${acc.domain}` : ''}</td>
                             <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.displayName || '-'}</td>
                             <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.email || '-'}</td>
-                            <td style={{ padding: '10px 16px' }}>{acc.activated ? <span style={{ color: '#10b981', fontSize: '12px' }}>已啟用</span> : <span style={{ color: '#f59e0b', fontSize: '12px' }}>未啟用</span>}</td>
-                            <td style={{ padding: '10px 16px' }}>{isImported ? <span style={{ color: '#22c55e', fontSize: '12px' }}>已導入</span> : <span style={{ color: '#6b7280', fontSize: '12px' }}>未導入</span>}</td>
+                            <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.phone || '-'}</td>
+                            <td style={{ padding: '10px 16px', whiteSpace: 'nowrap' }}>{isImported ? <span style={{ color: '#22c55e', fontSize: '12px' }}>已導入</span> : <span style={{ color: '#6b7280', fontSize: '12px' }}>未導入</span>}</td>
                           </tr>
                           );
                         })}
