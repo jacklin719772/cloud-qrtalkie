@@ -162,7 +162,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setServerImportResults(res);
       // Refresh list if any were imported
       if (res.success > 0) {
-        fetchAccounts();
+        loadAccounts();
         setServerImportSelected([]);
         fetchRemoteAccounts();
       }
