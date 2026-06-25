@@ -16876,25 +16876,26 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
       console.log('[flexisip-import] first account sample:', JSON.stringify(remoteAccounts[0]));
     }
 
-    const notLocal = remoteAccounts.filter(acc => {
+    const accounts = remoteAccounts.map(acc => {
       const accId = String(acc.id || '');
       const sipUri = acc.sip || '';
-      return !localFlexisipIds.has(accId) && !localSipUris.has(sipUri);
+      const existsLocally = localFlexisipIds.has(accId) || localSipUris.has(sipUri);
+      return {
+        id: acc.id,
+        username: acc.username || '',
+        sip: acc.sip || '',
+        domain: acc.domain || (acc.sip ? acc.sip.split('@')[1] : ''),
+        displayName: acc.display_name || '',
+        email: acc.email || '',
+        phone: acc.phone || '',
+        role: acc.role || 'user',
+        activated: !!acc.activated,
+        existsLocally,
+      };
     });
 
-    const accounts = notLocal.map(acc => ({
-      id: acc.id,
-      username: acc.username || '',
-      sip: acc.sip || '',
-      domain: acc.domain || (acc.sip ? acc.sip.split('@')[1] : ''),
-      displayName: acc.display_name || '',
-      email: acc.email || '',
-      phone: acc.phone || '',
-      role: acc.role || 'user',
-      activated: !!acc.activated,
-    }));
-
-    return response.json({ accounts, total: accounts.length });
+    const notLocalCount = accounts.filter(a => !a.existsLocally).length;
+    return response.json({ accounts, total: accounts.length, notLocalCount });
   } catch (err) {
     console.error("Failed to fetch remote accounts:", err);
     return response.status(500).json({ message: "獲取遠端帳號列表失敗。" });

@@ -124,15 +124,16 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleSelectAllServer = (e) => {
     if (e.target.checked) {
-      setServerImportSelected(serverAccounts.map(a => String(a.id)));
+      setServerImportSelected(serverAccounts.filter(a => !a.existsLocally).map(a => String(a.id)));
     } else {
       setServerImportSelected([]);
     }
   };
 
-  const handleToggleServerAccount = (accId) => {
+  const handleToggleServerAccount = (acc) => {
+    if (acc.existsLocally) return;
     setServerImportSelected(prev =>
-      prev.includes(String(accId)) ? prev.filter(id => id !== String(accId)) : [...prev, String(accId)]
+      prev.includes(String(acc.id)) ? prev.filter(id => id !== String(acc.id)) : [...prev, String(acc.id)]
     );
   };
 
@@ -1228,11 +1229,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <>
                 <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '14px', color: '#9ca3af' }}>
-                    {serverImportLoading ? '正在載入遠端帳號列表...' : `共 ${serverAccounts.length} 個帳號可導入`}
+                    {serverImportLoading ? '正在載入遠端帳號列表...' : `共 ${serverAccounts.length} 個帳號，其中 ${serverAccounts.filter(a => !a.existsLocally).length} 個可導入`}
                   </span>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#9ca3af' }}>
-                    <input type="checkbox" checked={serverImportSelected.length === serverAccounts.length && serverAccounts.length > 0} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
-                    全選
+                    <input type="checkbox" checked={serverImportSelected.length > 0 && serverImportSelected.length === serverAccounts.filter(a => !a.existsLocally).length} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                    全選可導入
                   </label>
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
@@ -1243,7 +1244,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     </div>
                   ) : serverAccounts.length === 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#6b7280', fontSize: '14px' }}>
-                      暫無可導入的遠端帳號
+                      暫無遠端帳號數據
                     </div>
                   ) : (
                     <table className="sip-table" style={{ width: '100%' }}>
@@ -1256,20 +1257,26 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>顯示名稱</th>
                           <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>郵箱</th>
                           <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>狀態</th>
+                          <th style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af', fontWeight: 500, background: '#1a2332' }}>導入狀態</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {serverAccounts.map(acc => (
-                          <tr key={acc.id} style={{ cursor: 'pointer', background: serverImportSelected.includes(String(acc.id)) ? '#1e293b' : 'transparent' }} onClick={() => handleToggleServerAccount(acc.id)}>
+                        {serverAccounts.map(acc => {
+                          const isImported = acc.existsLocally;
+                          const isSelected = serverImportSelected.includes(String(acc.id));
+                          return (
+                          <tr key={acc.id} style={{ cursor: isImported ? 'default' : 'pointer', background: isSelected ? '#1e293b' : 'transparent', opacity: isImported ? 0.5 : 1 }} onClick={() => handleToggleServerAccount(acc)}>
                             <td style={{ width: '50px', textAlign: 'center', padding: 0 }}>
-                              <input type="checkbox" checked={serverImportSelected.includes(String(acc.id))} onChange={() => handleToggleServerAccount(acc.id)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
+                              <input type="checkbox" checked={isSelected} disabled={isImported} onChange={() => handleToggleServerAccount(acc)} style={{ accentColor: '#3b82f6', width: '16px', height: '16px' }} />
                             </td>
                             <td style={{ padding: '10px 16px', color: '#e5e7eb', fontWeight: 500 }}>{acc.username}{acc.domain ? `@${acc.domain}` : ''}</td>
                             <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.displayName || '-'}</td>
                             <td style={{ padding: '10px 16px', color: '#9ca3af' }}>{acc.email || '-'}</td>
                             <td style={{ padding: '10px 16px' }}>{acc.activated ? <span style={{ color: '#10b981', fontSize: '12px' }}>已啟用</span> : <span style={{ color: '#f59e0b', fontSize: '12px' }}>未啟用</span>}</td>
+                            <td style={{ padding: '10px 16px' }}>{isImported ? <span style={{ color: '#22c55e', fontSize: '12px' }}>已導入</span> : <span style={{ color: '#6b7280', fontSize: '12px' }}>未導入</span>}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
