@@ -16866,6 +16866,8 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
         if (!pageAccounts || pageAccounts.length === 0) break;
 
         for (const acc of pageAccounts) {
+          const role = String(acc.role || 'user').toLowerCase();
+          if (role === 'admin') continue; // skip admin accounts
           const sip = acc.sip || `sip:${acc.username}@${acc.domain || sipDomain}`;
           if (!amAccountsMap.has(sip)) {
             amAccountsMap.set(sip, {
