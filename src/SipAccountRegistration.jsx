@@ -1308,8 +1308,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     </table>
                   )}
                 </div>
-                <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button className="ghost-btn" type="button" onClick={() => setViewMode('list')}>返回列表</button>
+                <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                   <button className="primary-btn" type="button" onClick={handleImportServerAccounts} disabled={serverImportSelected.length === 0 || serverImportSaving}>
                     {serverImportSaving ? '導入中...' : `導入選中帳號 (${serverImportSelected.length})`}
                   </button>
