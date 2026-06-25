@@ -16846,52 +16846,67 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
       localSipUris.add(sipUri);
     }
 
-    // Fetch all remote Flexisip accounts (handle pagination)
+    // Fetch all remote Flexisip accounts from Redis (authoritative source)
     let remoteAccounts = [];
     try {
-      // Try different pagination parameter formats
-      let allFetched = false;
-      // Approach 1: try per_page with page
-      for (const params of [{ page: '1', per_page: '500' }, { page: '1', limit: '500' }, { offset: '0', limit: '500' }, {}]) {
-        const rawResponse = await flexisipListAccounts(params);
-        let pageAccounts;
-        if (Array.isArray(rawResponse)) {
-          pageAccounts = rawResponse;
-        } else if (rawResponse && typeof rawResponse === 'object') {
-          pageAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
+      const redisResult = await discoverAccountsFromRedis({ includeContacts: false, domain: sipDomain });
+      const redisItems = redisResult.items || [];
+      console.log('[flexisip-import] Redis discovered accounts:', redisItems.length);
+
+      // Try to enrich with Account Manager data (display name, email, phone)
+      const amAccounts = new Map();
+      try {
+        const amList = await flexisipListAccounts({ page: '1', per_page: '500' });
+        let amArray;
+        if (Array.isArray(amList)) {
+          amArray = amList;
+        } else if (amList && typeof amList === 'object') {
+          amArray = amList.accounts || amList.data || amList.results || amList.items || [];
         } else {
-          continue;
+          amArray = [];
         }
-        if (pageAccounts && pageAccounts.length > 0) {
-          remoteAccounts = pageAccounts;
-          if (pageAccounts.length > 20 || Object.keys(params).length === 0) {
-            // If we got more than default 20, or tried no params, use this
-            break;
-          }
+        for (const acc of amArray) {
+          const sip = acc.sip || `sip:${acc.username}@${acc.domain || sipDomain}`;
+          amAccounts.set(sip, acc);
         }
+        console.log('[flexisip-import] Account Manager accounts:', amArray.length);
+      } catch (err) {
+        console.log('[flexisip-import] Account Manager unavailable, using Redis-only data');
       }
-      // If still only 20, paginate with page parameter
-      if (remoteAccounts.length === 20) {
-        console.log('[flexisip-import] only 20 accounts, trying pagination...');
-        remoteAccounts = [];
-        for (let page = 1; page <= 10; page++) {
-          const rawResponse = await flexisipListAccounts({ page: String(page), per_page: String(200) });
-          let pageAccounts;
-          if (Array.isArray(rawResponse)) {
-            pageAccounts = rawResponse;
-          } else if (rawResponse && typeof rawResponse === 'object') {
-            pageAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
-          }
-          if (!pageAccounts || pageAccounts.length === 0) break;
-          remoteAccounts = remoteAccounts.concat(pageAccounts);
-          console.log(`[flexisip-import] page ${page}: ${pageAccounts.length} accounts (total: ${remoteAccounts.length})`);
-          if (pageAccounts.length < 200) break;
+
+      // Combine Redis accounts with Account Manager enrichment
+      remoteAccounts = redisItems.map(item => {
+        const sipUri = item.sipUri || `sip:${item.username}@${item.domain || sipDomain}`;
+        const amAcc = amAccounts.get(sipUri);
+        if (amAcc) {
+          return {
+            id: amAcc.id || item.id,
+            username: item.username,
+            domain: item.domain,
+            sip: sipUri,
+            displayName: amAcc.display_name || item.displayName || '',
+            email: amAcc.email || '',
+            phone: amAcc.phone || '',
+            role: amAcc.role || 'user',
+            activated: !!amAcc.activated,
+          };
         }
-      }
+        return {
+          id: item.id || sipUri,
+          username: item.username,
+          domain: item.domain,
+          sip: sipUri,
+          displayName: item.displayName || '',
+          email: '',
+          phone: '',
+          role: 'user',
+          activated: item.status === 'online',
+        };
+      });
       console.log('[flexisip-import] total remote accounts:', remoteAccounts.length);
     } catch (err) {
-      console.error("Failed to list Flexisip accounts:", err);
-      return response.status(502).json({ message: "無法連接 Flexisip Account Manager。" });
+      console.error("Failed to discover Flexisip accounts:", err);
+      return response.status(502).json({ message: "無法連接 Flexisip Registrar Redis。" });
     }
 
     // Map all accounts with existsLocally flag
