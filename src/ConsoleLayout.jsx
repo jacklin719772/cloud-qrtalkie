@@ -88,6 +88,8 @@ export default function ConsoleLayout({ onLogout }) {
   const [loginEmailInitialValue, setLoginEmailInitialValue] = useState('');
   const [tenantCouponMode, setTenantCouponMode] = useState('list');
   const [sipAccountMode, setSipAccountMode] = useState('list');
+  const [showSipBatchImportDialog, setShowSipBatchImportDialog] = useState(false);
+  const [sipBatchImportType, setSipBatchImportType] = useState('csv');
   const [webAccountMode, setWebAccountMode] = useState('list');
   const [deviceManagementMode, setDeviceManagementMode] = useState('list');
   const [ecardGenerationMode, setEcardGenerationMode] = useState('list');
@@ -366,8 +368,8 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="ghost-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleExportCsv()} style={{ ...sipActionBase, background: '#fff', color: '#1e3a8a', border: '1px solid #dbeafe', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)' }}>
               <Download size={14} /> 導出 CSV
             </button>
-            <button className="ghost-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.startImport()} style={{ ...sipActionBase, background: '#fff', color: '#1e3a8a', border: '1px solid #dbeafe', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)' }}>
-              <Upload size={14} /> 導入 CSV
+            <button className="ghost-btn" type="button" onClick={() => { setSipBatchImportType('csv'); setShowSipBatchImportDialog(true); }} style={{ ...sipActionBase, background: '#fff', color: '#1e3a8a', border: '1px solid #dbeafe', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)' }}>
+              <Upload size={14} /> 批量導入
             </button>
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.startAdd()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
               <Plus size={14} /> 新增帳號
@@ -802,6 +804,42 @@ export default function ConsoleLayout({ onLogout }) {
           )}
           {currentView === 'sip-account-registration' && (
             <SipAccountRegistration ref={sipAccountRegistrationRef} onModeChange={setSipAccountMode} />
+          )}
+          {showSipBatchImportDialog && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)' }} onClick={() => setShowSipBatchImportDialog(false)}>
+              <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', width: '420px', maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>選擇導入方式</h3>
+                </div>
+                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${sipBatchImportType === 'csv' ? '#3b82f6' : '#374151'}`, borderRadius: '8px', cursor: 'pointer', background: sipBatchImportType === 'csv' ? '#1a2332' : 'transparent' }} onClick={() => setSipBatchImportType('csv')}>
+                    <input type="radio" name="sip-batch-import-type" checked={sipBatchImportType === 'csv'} onChange={() => setSipBatchImportType('csv')} style={{ accentColor: '#3b82f6', width: '18px', height: '18px' }} />
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb' }}>導入 CSV</div>
+                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>上傳 CSV 文件批量導入 SIP 帳號</div>
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${sipBatchImportType === 'server' ? '#3b82f6' : '#374151'}`, borderRadius: '8px', cursor: 'pointer', background: sipBatchImportType === 'server' ? '#1a2332' : 'transparent' }} onClick={() => setSipBatchImportType('server')}>
+                    <input type="radio" name="sip-batch-import-type" checked={sipBatchImportType === 'server'} onChange={() => setSipBatchImportType('server')} style={{ accentColor: '#3b82f6', width: '18px', height: '18px' }} />
+                    <div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb' }}>導入服務器賬號</div>
+                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>從服務器批量導入現有 SIP 帳號（敬請期待）</div>
+                    </div>
+                  </label>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                  <button type="button" onClick={() => setShowSipBatchImportDialog(false)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer', padding: '8px 16px', fontSize: '13px', fontWeight: 500 }}>取消</button>
+                  <button type="button" onClick={() => {
+                    setShowSipBatchImportDialog(false);
+                    if (sipBatchImportType === 'csv') {
+                      sipAccountRegistrationRef.current?.startImport();
+                    } else {
+                      alert('導入服務器賬號功能即將上線，敬請期待！');
+                    }
+                  }} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', cursor: 'pointer', padding: '8px 20px', fontSize: '13px', fontWeight: 600 }}>確定</button>
+                </div>
+              </div>
+            </div>
           )}
           {currentView === 'sip-account-allocation' && (
             <WebAccountRegistration ref={webAccountRegistrationRef} onModeChange={setWebAccountMode} />
