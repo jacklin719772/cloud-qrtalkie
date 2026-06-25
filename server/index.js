@@ -16847,19 +16847,35 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
     }
 
     // Fetch all remote Flexisip accounts
-    let remoteAccounts;
+    let rawResponse;
     try {
-      remoteAccounts = await flexisipListAccounts();
+      rawResponse = await flexisipListAccounts();
+      console.log('[flexisip-import] listAccounts response type:', typeof rawResponse, 'isArray:', Array.isArray(rawResponse));
+      if (rawResponse && typeof rawResponse === 'object' && !Array.isArray(rawResponse)) {
+        console.log('[flexisip-import] response keys:', Object.keys(rawResponse));
+      }
     } catch (err) {
       console.error("Failed to list Flexisip accounts:", err);
       return response.status(502).json({ message: "無法連接 Flexisip Account Manager。" });
     }
 
-    if (!Array.isArray(remoteAccounts)) {
+    // Handle different response formats
+    let remoteAccounts;
+    if (Array.isArray(rawResponse)) {
+      remoteAccounts = rawResponse;
+    } else if (rawResponse && typeof rawResponse === 'object') {
+      // Try common wrapper keys
+      remoteAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
+    } else {
       return response.json({ accounts: [], total: 0 });
     }
 
     // Filter out accounts that already exist locally
+    console.log(`[flexisip-import] total remote: ${remoteAccounts.length}, local known ids: ${localFlexisipIds.size}, local known uris: ${localSipUris.size}`);
+    if (remoteAccounts.length > 0) {
+      console.log('[flexisip-import] first account sample:', JSON.stringify(remoteAccounts[0]));
+    }
+
     const notLocal = remoteAccounts.filter(acc => {
       const accId = String(acc.id || '');
       const sipUri = acc.sip || '';
