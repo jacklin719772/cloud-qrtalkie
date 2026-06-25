@@ -16989,9 +16989,12 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
         continue;
       }
 
-      const username = remoteAcc.username || '';
+      const username = remoteAcc.username || (remoteAcc.sip ? remoteAcc.sip.replace(/^sip:/, '').split('@')[0] : '');
       const sipDomain = remoteAcc.domain || (remoteAcc.sip ? remoteAcc.sip.split('@')[1] || 'sip.qrtalkie.org' : 'sip.qrtalkie.org');
       const sipUri = remoteAcc.sip || `sip:${username}@${sipDomain}`;
+      const activated = !!(remoteAcc.activated === true || remoteAcc.activated === 1 || remoteAcc.activated === '1');
+      const accStatus = activated ? 'active' : 'disabled';
+      const accSyncStatus = activated ? 'active' : 'disabled';
 
       try {
         // Check if already exists locally
@@ -17013,7 +17016,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
           `INSERT INTO sip_users (username, sip_domain, password_hash, display_name, email, phone_number, role, status,
            flexisip_account_id, sip_uri, sync_status, created_in_flexisip_at, created_by_admin_user_id,
            created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'active', NOW(), ?, NOW(), NOW())`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), NOW())`,
           [
             username,
             sipDomain,
@@ -17022,8 +17025,10 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
             remoteAcc.email || '',
             remoteAcc.phone || '',
             remoteAcc.role || 'user',
+            accStatus,
             String(accId),
             sipUri,
+            accSyncStatus,
             request.admin.id,
           ]
         );
