@@ -16846,34 +16846,58 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
       localSipUris.add(sipUri);
     }
 
-    // Fetch all remote Flexisip accounts
-    let rawResponse;
+    // Fetch all remote Flexisip accounts (handle pagination)
+    let remoteAccounts = [];
     try {
-      rawResponse = await flexisipListAccounts();
-      console.log('[flexisip-import] listAccounts response type:', typeof rawResponse, 'isArray:', Array.isArray(rawResponse));
-      if (rawResponse && typeof rawResponse === 'object' && !Array.isArray(rawResponse)) {
-        console.log('[flexisip-import] response keys:', Object.keys(rawResponse));
+      // Try different pagination parameter formats
+      let allFetched = false;
+      // Approach 1: try per_page with page
+      for (const params of [{ page: '1', per_page: '500' }, { page: '1', limit: '500' }, { offset: '0', limit: '500' }, {}]) {
+        const rawResponse = await flexisipListAccounts(params);
+        let pageAccounts;
+        if (Array.isArray(rawResponse)) {
+          pageAccounts = rawResponse;
+        } else if (rawResponse && typeof rawResponse === 'object') {
+          pageAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
+        } else {
+          continue;
+        }
+        if (pageAccounts && pageAccounts.length > 0) {
+          remoteAccounts = pageAccounts;
+          if (pageAccounts.length > 20 || Object.keys(params).length === 0) {
+            // If we got more than default 20, or tried no params, use this
+            break;
+          }
+        }
       }
+      // If still only 20, paginate with page parameter
+      if (remoteAccounts.length === 20) {
+        console.log('[flexisip-import] only 20 accounts, trying pagination...');
+        remoteAccounts = [];
+        for (let page = 1; page <= 10; page++) {
+          const rawResponse = await flexisipListAccounts({ page: String(page), per_page: String(200) });
+          let pageAccounts;
+          if (Array.isArray(rawResponse)) {
+            pageAccounts = rawResponse;
+          } else if (rawResponse && typeof rawResponse === 'object') {
+            pageAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
+          }
+          if (!pageAccounts || pageAccounts.length === 0) break;
+          remoteAccounts = remoteAccounts.concat(pageAccounts);
+          console.log(`[flexisip-import] page ${page}: ${pageAccounts.length} accounts (total: ${remoteAccounts.length})`);
+          if (pageAccounts.length < 200) break;
+        }
+      }
+      console.log('[flexisip-import] total remote accounts:', remoteAccounts.length);
     } catch (err) {
       console.error("Failed to list Flexisip accounts:", err);
       return response.status(502).json({ message: "無法連接 Flexisip Account Manager。" });
     }
 
-    // Handle different response formats
-    let remoteAccounts;
-    if (Array.isArray(rawResponse)) {
-      remoteAccounts = rawResponse;
-    } else if (rawResponse && typeof rawResponse === 'object') {
-      // Try common wrapper keys
-      remoteAccounts = rawResponse.accounts || rawResponse.data || rawResponse.results || rawResponse.items || [];
-    } else {
-      return response.json({ accounts: [], total: 0 });
-    }
-
-    // Filter out accounts that already exist locally
+    // Map all accounts with existsLocally flag
     console.log(`[flexisip-import] total remote: ${remoteAccounts.length}, local known ids: ${localFlexisipIds.size}, local known uris: ${localSipUris.size}`);
     if (remoteAccounts.length > 0) {
-      console.log('[flexisip-import] first account sample:', JSON.stringify(remoteAccounts[0]));
+      console.log('[flexisip-import] first account keys:', Object.keys(remoteAccounts[0]).slice(0, 10));
     }
 
     const accounts = remoteAccounts.map(acc => {

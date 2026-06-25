@@ -107,8 +107,10 @@ export function createAccount(payload) {
   return request("POST", "/accounts", payload);
 }
 
-export function listAccounts() {
-  return request("GET", "/accounts");
+export function listAccounts(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const path = query ? `/accounts?${query}` : "/accounts";
+  return request("GET", path);
 }
 
 export function getAccount(id) {
