@@ -1250,7 +1250,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     全選可導入
                   </label>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
+                <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                   {serverImportLoading ? (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#9ca3af' }}>
                       <div style={{ width: '40px', height: '40px', border: '3px solid #374151', borderTopColor: '#3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite', marginRight: '12px' }}></div>
