@@ -1225,8 +1225,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 全選可導入
               </label>
               <div style={{ flex: 1 }} />
-              <button className="ghost-btn" type="button" onClick={() => { setServerImportResults(null); fetchRemoteAccounts(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', flexShrink: 0 }}>
+              <button type="button" onClick={() => { setServerImportResults(null); fetchRemoteAccounts(); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', flexShrink: 0, background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>
                 <RefreshCw size={14} /> 刷新列表
+              </button>
+              <button className="primary-btn" type="button" onClick={handleImportServerAccounts} disabled={serverImportSelected.length === 0 || serverImportSaving} style={{ flexShrink: 0, padding: '6px 14px', fontSize: '13px' }}>
+                {serverImportSaving ? '導入中...' : `導入選中帳號 (${serverImportSelected.length})`}
               </button>
             </div>
 
@@ -1306,11 +1309,6 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       </tbody>
                     </table>
                   )}
-                </div>
-                <div style={{ flexShrink: 0, padding: '14px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                  <button className="primary-btn" type="button" onClick={handleImportServerAccounts} disabled={serverImportSelected.length === 0 || serverImportSaving}>
-                    {serverImportSaving ? '導入中...' : `導入選中帳號 (${serverImportSelected.length})`}
-                  </button>
                 </div>
               </>
             )}
