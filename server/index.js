@@ -3433,8 +3433,9 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
     // 鏍煎紡鍖栬硣鏂欏瀷鎱嬶紝纰轰繚 JSON 鍥炴噳鑸囧墠绔浉瀹?
     const formattedRows = rows.map((row) => ({
       ...row,
-      id: row.id ? row.id.toString() : null, // 閬垮厤 BigInt 杞夋彌 JSON 鏅傜櫦鐢熷牨閷?
+      id: row.id ? row.id.toString() : null,
       totalPaid: Number(row.totalPaid) || 0,
+      sipAccountCount: Number(row.sipAccountCount) || 0,
     }));
 
     return response.json({ tenants: formattedRows });
