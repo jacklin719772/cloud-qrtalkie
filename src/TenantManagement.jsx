@@ -828,7 +828,7 @@ export default forwardRef(function TenantManagement(props, ref) {
                       ['tenantNumber', '租戶編號', '150px'],
                       ['companyName', '公司名稱', '200px'],
                       ['createdAt', '註冊日期', '150px'],
-                      ['userLimit', '訂閱數量', '100px'],
+                      ['sipAccountCount', 'SIP帳號', '90px'],
                       ['totalPaid', '累計支付', '100px'],
                       ['status', '狀態', '100px']
                     ].map(([key, label, width]) => (
@@ -858,7 +858,7 @@ export default forwardRef(function TenantManagement(props, ref) {
                       <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{tenant.tenantNumber || (tenant.id != null ? String(tenant.id) : null) || '-'}</td>
                       <td>{tenant.companyName || '-'}</td>
                       <td>{formatDate(tenant.createdAt)}</td>
-                      <td>{tenant.userLimit || tenant.subscriptionQuantity || tenant.accountQuantity || tenant.seats || 0}</td>
+                      <td>{tenant.sipAccountCount ?? tenant.userLimit ?? 0}</td>
                       <td>{tenant.totalPaid !== undefined ? tenant.totalPaid : '-'}</td>
                       <td>{getStatusBadge(tenant.status)}</td>
                       <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
@@ -973,7 +973,15 @@ export default forwardRef(function TenantManagement(props, ref) {
                 </div>
                 <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }}></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>訂閱數量:</span>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>SIP 帳號:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.sipAccountCount ?? '-'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>WebRTC 帳號:</span>
+                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.webrtcAccountCount ?? '-'}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>用戶限制:</span>
                   <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.userLimit || 0}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
