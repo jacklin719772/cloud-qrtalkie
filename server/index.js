@@ -3692,7 +3692,8 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 1. 妾㈡煡绉熸埗鏄惁瀛樺湪鍙婂叾鐙€鎱?    const tenantRows = await connection.query(`SELECT id, status FROM tenants WHERE id = ?`, [tenantId]);
+    // Check tenant status
+    const tenantRows = await connection.query(`SELECT id, status FROM tenants WHERE id = ?`, [tenantId]);
     const tenant = tenantRows[0];
     if (!tenant) {
       await connection.rollback();
@@ -3704,7 +3705,8 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
       return response.status(409).json({ message: "只有處於停用狀態的租戶才可以被刪除。" });
     }
 
-    // 2. 妾㈡煡鏄惁鏈夋敮浠樼磤閷?    const paymentRows = await connection.query(`SELECT id FROM billing_payments WHERE tenant_id = ? LIMIT 1`, [tenantId]);
+    // Check payment records
+    const paymentRows = await connection.query(`SELECT id FROM billing_payments WHERE tenant_id = ? LIMIT 1`, [tenantId]);
     if (paymentRows.length > 0) {
       await connection.rollback();
       return response.status(409).json({ message: "該租戶已有支付記錄，為保障財務數據完整性，無法刪除。" });
@@ -3716,9 +3718,10 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE p FROM password_reset_tokens p JOIN admin_users a ON p.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE c FROM admin_email_change_codes c JOIN admin_users a ON c.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
     
-    // 4. 鍒櫎绠＄悊鍝?    await connection.query(`DELETE FROM admin_users WHERE tenant_id = ?`, [tenantId]);
-
-    // 5. 鍒櫎甯冲柈瑷傚柈鑸囩浉闂滄槑绱?    await connection.query(`DELETE FROM billing_order_status_history WHERE tenant_id = ?`, [tenantId]);
+    // Delete admin users
+    await connection.query(`DELETE FROM admin_users WHERE tenant_id = ?`, [tenantId]);
+    // Delete billing records
+    await connection.query(`DELETE FROM billing_order_status_history WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE FROM billing_order_items WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE FROM billing_orders WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE FROM billing_coupons WHERE tenant_id = ?`, [tenantId]);
