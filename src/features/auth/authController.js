@@ -34,7 +34,47 @@ export function createAuthController({
       if (result.devVerificationUrl) console.info("Dev verification URL:", result.devVerificationUrl);
     } catch (error) {
       console.error(error);
-      showAuthMessage(form, error.message || "无法连接注册服务，请确认 API 是否已启动。", "error");
+      if (error.code === "EMAIL_UNVERIFIED") {
+        showAuthMessage(form, error.message || "此邮箱已注册但尚未验证。", "info");
+        let resendContainer = form.querySelector(".resend-verification-wrap");
+        if (!resendContainer) {
+          resendContainer = document.createElement("div");
+          resendContainer.className = "resend-verification-wrap";
+          resendContainer.style.cssText = "margin-top:8px;text-align:center;";
+          form.appendChild(resendContainer);
+        }
+        resendContainer.innerHTML = "";
+        const resendBtn = document.createElement("button");
+        resendBtn.type = "button";
+        resendBtn.textContent = "重新发送验证邮件";
+        resendBtn.style.cssText = "padding:10px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;";
+        resendBtn.onclick = async () => {
+          resendBtn.disabled = true;
+          resendBtn.textContent = "发送中...";
+          try {
+            const resp = await fetch("/api/auth/resend-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: error.email || payload.email }),
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+              resendContainer.innerHTML = `<span style="color:#10b981;font-size:14px;">${data.message || "验证邮件已发送，请检查邮箱。"}</span>`;
+            } else {
+              showAuthMessage(form, data.message || "发送失败，请稍后重试。", "error");
+              resendBtn.disabled = false;
+              resendBtn.textContent = "重新发送验证邮件";
+            }
+          } catch {
+            showAuthMessage(form, "无法连接服务器，请稍后重试。", "error");
+            resendBtn.disabled = false;
+            resendBtn.textContent = "重新发送验证邮件";
+          }
+        };
+        resendContainer.appendChild(resendBtn);
+      } else {
+        showAuthMessage(form, error.message || "无法连接注册服务，请确认 API 是否已启动。", "error");
+      }
     } finally {
       submitButton.disabled = false;
       submitButton.textContent = "注册并验证电子邮件";
