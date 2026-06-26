@@ -3724,7 +3724,11 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE FROM billing_coupons WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE FROM billing_offline_payment_accounts WHERE tenant_id = ?`, [tenantId]);
 
-    // 6. 鍒櫎绉熸埗涓昏〃
+    // Delete entitlements and unlink SIP accounts
+    await connection.query(`DELETE FROM tenant_sip_account_entitlements WHERE tenant_id = ?`, [tenantId]);
+    await connection.query(`UPDATE sip_users SET tenant_id = NULL WHERE tenant_id = ?`, [tenantId]);
+
+    // Delete tenant
     await connection.query(`DELETE FROM tenants WHERE id = ?`, [tenantId]);
 
     await connection.commit();
