@@ -977,10 +977,6 @@ export default forwardRef(function TenantManagement(props, ref) {
                   <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.sipAccountCount ?? '-'}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '14px' }}>WebRTC 帳號:</span>
-                  <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.webrtcAccountCount ?? '-'}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px', alignItems: 'center' }}>
                   <span style={{ color: '#9ca3af', fontSize: '14px' }}>用戶限制:</span>
                   <span style={{ color: '#f3f4f6', fontSize: '14px' }}>{selectedTenantDetails.userLimit || 0}</span>
                 </div>

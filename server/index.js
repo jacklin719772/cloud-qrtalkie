@@ -3417,8 +3417,7 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
         t.user_limit AS userLimit,
         t.status,
         COALESCE(p.totalPaid, 0) AS totalPaid,
-        (SELECT COUNT(*) FROM sip_users WHERE tenant_id = t.id) AS sipAccountCount,
-        (SELECT COUNT(*) FROM webrtc_accounts WHERE tenant_id = t.id) AS webrtcAccountCount
+        (SELECT COUNT(*) FROM sip_users WHERE tenant_id = t.id) AS sipAccountCount
       FROM tenants t
       LEFT JOIN (
         SELECT tenant_id, SUM(payment_amount) AS totalPaid
@@ -3495,8 +3494,7 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
          t.status, t.created_at,
          a.email AS login_email, a.display_name AS admin_display_name, a.phone_number AS admin_phone,
          COALESCE(p.totalPaid, 0) AS totalPaid,
-         (SELECT COUNT(*) FROM sip_users WHERE tenant_id = t.id) AS sip_account_count,
-         (SELECT COUNT(*) FROM webrtc_accounts WHERE tenant_id = t.id) AS webrtc_account_count
+         (SELECT COUNT(*) FROM sip_users WHERE tenant_id = t.id) AS sip_account_count
        FROM tenants t
        LEFT JOIN admin_users a ON a.tenant_id = t.id AND a.role = 'owner'
        LEFT JOIN (
@@ -3525,7 +3523,6 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
         sipDomain: row.sip_domain || "",
         userLimit: Number(row.user_limit || 0),
         sipAccountCount: Number(row.sip_account_count || 0),
-        webrtcAccountCount: Number(row.webrtc_account_count || 0),
         status: row.status || "",
         createdAt: row.created_at,
         totalPaid: Number(row.totalPaid || 0),
