@@ -14132,10 +14132,8 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
     const asteriskDir = asteriskLogDir;
     try {
       execSync("find " + asteriskDir + " -type f \\( -name '*.gz' -o -name 'backup-*.log' -o -name '*.log.1' -o -name '*_log.1' -o -name 'queue_log.1' -o -name 'fwjobs.log' -o -name 'core-*.log.1' \\) -delete", { timeout: 5000 });
-      const truncFiles = ["full", "full.0", "full.1", "ucp_err.log", "ucp_out.log"];
-      for (const f of truncFiles) {
-        try { execSync("truncate -s 0 " + asteriskDir + "/" + f, { timeout: 3000 }); results.truncated.push(f); } catch {}
-      }
+      // Truncate all full.* rotated logs and common error logs
+      execSync("find " + asteriskDir + " -type f \\( -name 'full' -o -name 'full.*' -o -name 'ucp_err.log' -o -name 'ucp_out.log' \\) -exec truncate -s 0 {} \\;", { timeout: 5000 });
       results.freedMB = Math.round(Number(execSync("du -sm " + asteriskDir + " 2>/dev/null | cut -f1", { encoding: "utf8", timeout: 3000 }).trim() || 0));
     } catch {}
 
