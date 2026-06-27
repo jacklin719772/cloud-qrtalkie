@@ -14147,6 +14147,32 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
       }
     } catch {}
 
+    // Clean system logs
+    const systemLogDir = "/var/log";
+    try {
+      // Delete all rotated .gz archives across system logs
+      execSync("find " + systemLogDir + " -type f -name '*.gz' -delete", { timeout: 15000 });
+      // Truncate huge raw logs
+      const truncLogs = [
+        "fail2ban.log", "fail2ban.log.1",
+        "syslog", "syslog.1",
+        "auth.log", "auth.log.1",
+        "kern.log", "kern.log.1",
+        "ufw.log", "ufw.log.1",
+        "mail.log", "mail.log.1",
+        "btmp", "btmp.1",
+        "dpkg.log", "dpkg.log.1",
+        "alternatives.log", "alternatives.log.1",
+      ];
+      for (const f of truncLogs) {
+        try { execSync("truncate -s 0 " + systemLogDir + "/" + f, { timeout: 3000 }); results.truncated.push(f); } catch {}
+      }
+      // Clean service subdirectories
+      for (const dir of ["apache2", "mosquitto", "coturn", "redis", "mongodb"]) {
+        try { execSync("find " + systemLogDir + "/" + dir + " -type f -name '*.log*' -exec truncate -s 0 {} \\;", { timeout: 5000 }); } catch {}
+      }
+    } catch {}
+
     return response.json({ message: "日誌清理完成。當前日誌已清空，歸檔文件已刪除。", ...results });
   } catch (error) {
     console.error("Failed to clean logs:", error);
