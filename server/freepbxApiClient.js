@@ -154,6 +154,17 @@ export async function getAccessToken() {
     });
 
     const responseBody = await parseResponse(response);
+    const accessToken = responseBody?.access_token;
+    // FreePBX may return 500 with a valid token due to PHP warnings
+    if (accessToken) {
+      const expiresIn = Number(responseBody?.expires_in || 3600);
+      cachedToken = {
+        accessToken,
+        expiresAt: Date.now() + Math.max(60, expiresIn - 30) * 1000,
+      };
+      return accessToken;
+    }
+
     if (!response.ok) {
       throw new FreepbxApiError("FreePBX token request failed.", {
         status: response.status,
@@ -162,20 +173,10 @@ export async function getAccessToken() {
       });
     }
 
-    const accessToken = responseBody?.access_token;
-    if (!accessToken) {
-      throw new FreepbxApiError("FreePBX token response did not include an access token.", {
-        status: response.status,
-        code: "FREEPBX_TOKEN_MISSING",
-      });
-    }
-
-    const expiresIn = Number(responseBody?.expires_in || 3600);
-    cachedToken = {
-      accessToken,
-      expiresAt: Date.now() + Math.max(60, expiresIn - 30) * 1000,
-    };
-    return accessToken;
+    throw new FreepbxApiError("FreePBX token response did not include an access token.", {
+      status: response.status,
+      code: "FREEPBX_TOKEN_MISSING",
+    });
   } catch (error) {
     if (error instanceof FreepbxApiError) throw error;
     throw new FreepbxApiError(
