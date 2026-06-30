@@ -397,10 +397,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           }
         })
         .catch(err => {
-          console.error('獲取樣式模板失败:', err);
+          console.error('獲取樣式模板失敗:', err);
           // 提取真实错误信息暴露在界面上，便於联调（如 404 Not Found 等）
           const errorMsg = err.response?.data?.message || err.response?.statusText || err.message || '未知异常';
-          setTemplatesError(`載入失败: ${errorMsg}`);
+          setTemplatesError(`載入失敗: ${errorMsg}`);
           setTemplates([]);
           setSelectedTemplateId('');
           setSelectedTemplate(null);
@@ -550,7 +550,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       const data = await apiClient.get('/tenant/ecard-accounts');
       setEcardAccounts(data.accounts || []);
     } catch (err) {
-      console.warn('接口載入失败，降级使用模拟數據:', err);
+      console.warn('接口載入失敗，降级使用模拟數據:', err);
       setEcardAccounts(mockEcardAccounts);
     } finally {
       setIsLoadingAccounts(false);
@@ -630,7 +630,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
     setIsGenerating(true);
     try {
-      if (!ecardCanvasRef.current) throw new Error("找不到名片預覽区域");
+      if (!ecardCanvasRef.current) throw new Error("找不到名片預覽區域");
 
       const canvasEl = ecardCanvasRef.current;
       const originalTransform = canvasEl.style.transform;
@@ -669,7 +669,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       }
 
       if (canvas.width === 0 || canvas.height === 0) {
-        throw new Error("名片預覽区域尺寸为 0，请检查页面布局");
+        throw new Error("名片預覽區域尺寸為 0，請检查页面布局");
       }
 
       canvasEl.style.transform = originalTransform;
@@ -709,7 +709,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     } catch (err) {
       console.error(err);
       const detail = err.data?.detail || err.message;
-      alert(detail || '儲存和產生圖片失败');
+      alert(detail || '儲存和產生圖片失敗');
     } finally {
       setIsGenerating(false);
     }
@@ -717,7 +717,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
   const handlePreviewEcard = (item) => {
     if (!item.configured || !item.ecardThumbnailUrl) {
-      alert('该帳號尚未配置名片圖片');
+      alert('該帳號尚未配置名片圖片');
       return;
     }
     setPreviewImageUrl(getFullImageUrl(item.ecardThumbnailUrl));
@@ -726,7 +726,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
   const handlePreviewAndTest = () => {
     if (!selectedAccountForCreate || !selectedAccountForCreate.configured || !selectedAccountForCreate.ecardThumbnailUrl) {
-      alert("当前設置未儲存，無法进行預覽&测试操作");
+      alert("當前設置未儲存，無法进行預覽&测试操作");
       return;
     }
     setTestPreviewImageUrl(getFullImageUrl(selectedAccountForCreate.ecardThumbnailUrl));
@@ -747,7 +747,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     const rawImageUrl = item.ecardImageUrl || item.ecardThumbnailUrl || item.thumbnailDataUrl;
 
     if (!item.configured || !rawImageUrl) {
-      alert('该帳號尚未配置名片圖片，無法下載。');
+      alert('該帳號尚未配置名片圖片，無法下載。');
       return;
     }
 
@@ -759,8 +759,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       rawImageUrl === item.accessUrl;
 
     if (invalidPageUrl) {
-      console.error('当前下載地址不是圖片地址，而是頁面地址:', rawImageUrl, item);
-      alert('当前記錄没有返回真实圖片地址，無法直接下載圖片。請检查后端 ecardThumbnailUrl / ecardImageUrl 字段。');
+      console.error('當前下載地址不是圖片地址，而是頁面地址:', rawImageUrl, item);
+      alert('當前記錄没有返回真实圖片地址，無法直接下載圖片。請检查后端 ecardThumbnailUrl / ecardImageUrl 字段。');
       return;
     }
 
@@ -781,7 +781,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       const response = await fetch(imageUrl);
 
       if (!response.ok) {
-        throw new Error(`下載請求失败：${response.status}`);
+        throw new Error(`下載請求失敗：${response.status}`);
       }
 
       const contentType = response.headers.get('content-type') || '';
@@ -803,26 +803,26 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error('下載圖片失败:', err);
-      alert('下載圖片失败，請稍後重試。');
+      console.error('下載圖片失敗:', err);
+      alert('下載圖片失敗，請稍後重試。');
     }
   };
 
   const handleToggleStatus = async (item) => {
     setOpenDropdownId(null);
     if (!item.configured) {
-      alert('该帳號尚未配置名片，無法啟用/停用。');
+      alert('該帳號尚未配置名片，無法啟用/停用。');
       return;
     }
     const nextStatus = item.enabled ? 'disabled' : 'active';
     const actionText = item.enabled ? '停用' : '啟用';
-    if (!window.confirm(`確定要${actionText}该帳號的電子名片嗎？`)) return;
+    if (!window.confirm(`確定要${actionText}該帳號的電子名片嗎？`)) return;
 
     try {
       await apiClient.put(`/tenant/ecard-accounts/${item.id}/ecard/status`, { status: nextStatus });
       loadEcardAccounts();
     } catch (err) {
-      alert(err.message || `${actionText}失败`);
+      alert(err.message || `${actionText}失敗`);
     }
   };
 
@@ -867,7 +867,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       loadEcardAccounts();
       alert(`批量${actionLabel}成功`);
     } catch (err) {
-      alert(err.message || `部分或全部${actionLabel}失败`);
+      alert(err.message || `部分或全部${actionLabel}失敗`);
       loadEcardAccounts();
     }
   };
@@ -1037,8 +1037,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       window.URL.revokeObjectURL(blobUrl);
 
     } catch (err) {
-      console.error('批量下載失败:', err);
-      alert('批量下載失败，請稍後重試。');
+      console.error('批量下載失敗:', err);
+      alert('批量下載失敗，請稍後重試。');
     }
   };
 
@@ -1141,7 +1141,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-upload-area span { font-size: 12px; font-weight: 500; }
           .ecard-upload-area small { font-size: 11px; color: #94a3b8; }
           
-          /* 模板横向滚动区域 */
+          /* 模板横向滚动區域 */
           .ecard-template-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
           .ecard-template-nav-btns { display: flex; gap: 8px; }
           .ecard-template-nav-btn { width: 24px; height: 24px; border: 1px solid #cbd5e1; border-radius: 4px; background: #111827; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; font-size: 16px; line-height: 1; }
@@ -2198,7 +2198,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                           await navigator.clipboard.writeText(item.accessUrl);
                           alert('访问連結已成功複製到剪贴板！');
                         } catch (err) {
-                          alert('複製失败，請手动选中并複製。');
+                          alert('複製失敗，請手动选中并複製。');
                         }
                       }}>
                         {item.accessUrl} <Copy size={12} />

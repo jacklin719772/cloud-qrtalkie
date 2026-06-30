@@ -247,7 +247,7 @@ export default function EcardStyles() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('確定要刪除该樣式吗？')) return;
+    if (!window.confirm('確定要刪除該樣式嗎？')) return;
     try {
       await apiClient.delete(`/admin/ecard-styles/${id}`);
       loadStyles();
@@ -260,7 +260,7 @@ export default function EcardStyles() {
     setOpenDropdownId(null);
     const newStatus = item.status === 'active' ? 'disabled' : 'active';
     const actionText = newStatus === 'active' ? '啟用' : '停用';
-    if (!window.confirm(`確定要${actionText}樣式「${item.styleName}」吗？`)) return;
+    if (!window.confirm(`確定要${actionText}樣式「${item.styleName}」嗎？`)) return;
     
     setIsLoading(true);
     try {
@@ -340,13 +340,13 @@ export default function EcardStyles() {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="例如：企业商务蓝卡" />
+                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="例如：企業商务蓝卡" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式類型 <span style={{ color: '#ef4444' }}>*</span></span>
                   <select required value={formData.styleType} onChange={e => setFormData({ ...formData, styleType: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'}>
-                    <option value="with_company">包含企业名稱</option>
-                    <option value="without_company">不包含企业名稱</option>
+                    <option value="with_company">包含企業名稱</option>
+                    <option value="without_company">不包含企業名稱</option>
                   </select>
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -358,7 +358,7 @@ export default function EcardStyles() {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
-                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="简单描述该风格的特點" />
+                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="简单描述該风格的特點" />
                 </label>
               </div>
 
@@ -479,7 +479,7 @@ export default function EcardStyles() {
                 </div>
               ) : (
                 <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px', border: '1px dashed #cbd5e1', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
-                  暫無背景圖片，請點击右上角「上傳背景圖片」补充图库。用户在使用该模板时可任选其中一张作為背景。
+                  暫無背景圖片，請點击右上角「上傳背景圖片」补充图库。用户在使用該模板时可任选其中一张作為背景。
                 </div>
               )}
             </div>
@@ -1118,8 +1118,8 @@ export default function EcardStyles() {
           </label>
           <select className="ecard-select" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="all">全部類型</option>
-            <option value="with_company">包含企业名稱</option>
-            <option value="without_company">不包含企业名稱</option>
+            <option value="with_company">包含企業名稱</option>
+            <option value="without_company">不包含企業名稱</option>
           </select>
           <select className="ecard-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
             <option value="all">全部狀態</option>
@@ -1129,8 +1129,8 @@ export default function EcardStyles() {
         </div>
         <div className="ecard-stats">
           <span className="ecard-stat-pill">樣式總數<strong>{totalCount}</strong></span>
-          <span className="ecard-stat-pill">包含企业名稱<strong style={{ color: '#16a34a' }}>{withCompanyCount}</strong></span>
-          <span className="ecard-stat-pill">不包含企业名稱<strong style={{ color: '#3b82f6' }}>{withoutCompanyCount}</strong></span>
+          <span className="ecard-stat-pill">包含企業名稱<strong style={{ color: '#16a34a' }}>{withCompanyCount}</strong></span>
+          <span className="ecard-stat-pill">不包含企業名稱<strong style={{ color: '#3b82f6' }}>{withoutCompanyCount}</strong></span>
         </div>
       </div>
 
@@ -1174,7 +1174,7 @@ export default function EcardStyles() {
                     </td>
                     <td>
                       <span className={`ecard-tag ${item.styleType === 'with_company' ? 'ecard-tag-green' : 'ecard-tag-blue'}`}>
-                        {item.styleType === 'with_company' ? '包含企业名稱' : '不包含企业名稱'}
+                        {item.styleType === 'with_company' ? '包含企業名稱' : '不包含企業名稱'}
                       </span>
                     </td>
                     <td>{item.sampleCount} 张</td>
@@ -1410,7 +1410,7 @@ export default function EcardStyles() {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>樣式代碼</strong> — 唯一識別碼，用於 API 調用時的樣式參照。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>樣式名稱</strong> — 顯示名稱，租戶選擇樣式時可見。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>樣式類型</strong> — 包含企业名稱 / 不包含企业名稱，決定名片是否顯示公司欄位。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>樣式類型</strong> — 包含企業名稱 / 不包含企業名稱，決定名片是否顯示公司欄位。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用 / 停用，停用的樣式不會在租戶端顯示。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>描述</strong> — 樣式的文字說明。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>排序</strong> — 數字越小越靠前，控制樣式在選擇列表中的排列順序。</li>
