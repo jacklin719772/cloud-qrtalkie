@@ -311,7 +311,7 @@ const DiscountData = forwardRef((props, ref) => {
           <section className="discount-summary-grid" aria-label="折扣概覽">
             <div className="discount-summary-card">
               <TicketPercent size={20} aria-hidden="true" />
-              <span>折扣碼總數</span>
+              <span>優惠碼總數</span>
               <strong>{coupons.length}</strong>
             </div>
             <div className="discount-summary-card">
