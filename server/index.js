@@ -4307,6 +4307,96 @@ app.get("/api/billing/addon-services", requireAdmin, async (request, response) =
   }
 });
 
+// PUT /api/billing/addon-services - 创建或更新增值服務
+app.put("/api/billing/addon-services", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以管理增值服務。" });
+  }
+
+  const addon = request.body || {};
+  const addonCode = String(addon.addonCode || '').trim();
+  const name = String(addon.name || '').trim();
+  const description = String(addon.description || '').trim();
+  const billingUnit = ['account', 'extension', 'device'].includes(addon.billingUnit) ? addon.billingUnit : 'account';
+  const status = ['active', 'disabled'].includes(addon.status) ? addon.status : 'active';
+  const sortOrder = Math.max(0, Number(addon.sortOrder || 0));
+
+  if (!addonCode || !name) return response.status(400).json({ message: "請輸入服務代碼和名稱。" });
+  if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(addonCode)) return response.status(400).json({ message: "服務代碼格式無效。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [existing] = await connection.query(
+      `SELECT id FROM billing_addons WHERE addon_code = ? LIMIT 1`, [addonCode]
+    );
+
+    if (existing) {
+      await connection.query(
+        `UPDATE billing_addons SET name = ?, description = ?, billing_unit = ?, status = ?, sort_order = ? WHERE addon_code = ?`,
+        [name, description, billingUnit, status, sortOrder, addonCode]
+      );
+    } else {
+      await connection.query(
+        `INSERT INTO billing_addons (addon_code, name, description, billing_unit, status, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
+        [addonCode, name, description, billingUnit, status, sortOrder]
+      );
+    }
+
+    // Update plan-specific pricing
+    if (Array.isArray(addon.prices)) {
+      const addonRow = await connection.query(`SELECT id FROM billing_addons WHERE addon_code = ? LIMIT 1`, [addonCode]);
+      const addonId = Number(addonRow[0].id);
+      for (const price of addon.prices) {
+        if (!price.planId) continue;
+        const currency = price.currency || 'USD';
+        const unitPrice = Math.max(0, Number(price.unitPrice || 0));
+        const syncWithPlanTerm = price.syncWithPlanTerm !== false ? 1 : 0;
+        const priceStatus = price.status || 'active';
+        const priceSort = Number(price.sortOrder || 0);
+        await connection.query(
+          `INSERT INTO billing_plan_addons (plan_id, addon_id, currency, unit_price, sync_with_plan_term, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE currency = VALUES(currency), unit_price = VALUES(unit_price), sync_with_plan_term = VALUES(sync_with_plan_term), status = VALUES(status)`,
+          [price.planId, addonId, currency, unitPrice, syncWithPlanTerm, priceStatus, priceSort]
+        );
+      }
+    }
+
+    return response.json({ message: "增值服務已儲存。" });
+  } catch (error) {
+    console.error("Failed to save addon service:", error);
+    return response.status(500).json({ message: "儲存增值服務失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/billing/addon-services/:addonCode - 刪除增值服務
+app.delete("/api/billing/addon-services/:addonCode", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以管理增值服務。" });
+  }
+
+  const addonCode = String(request.params.addonCode || '').trim();
+  if (!addonCode) return response.status(400).json({ message: "請指定服務代碼。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [row] = await connection.query(`SELECT id FROM billing_addons WHERE addon_code = ? LIMIT 1`, [addonCode]);
+    if (row) {
+      await connection.query(`DELETE FROM billing_plan_addons WHERE addon_id = ?`, [row.id]);
+      await connection.query(`DELETE FROM billing_addons WHERE id = ?`, [row.id]);
+    }
+    return response.json({ message: "增值服務已刪除。" });
+  } catch (error) {
+    console.error("Failed to delete addon service:", error);
+    return response.status(500).json({ message: "刪除增值服務失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.get("/api/billing/plans", requireAdmin, async (request, response) => {
   let connection;
   try {

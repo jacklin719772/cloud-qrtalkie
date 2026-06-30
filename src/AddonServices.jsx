@@ -1,48 +1,12 @@
-import React, { forwardRef, useImperativeHandle, useMemo, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { Boxes, CircleDollarSign, PackagePlus, Search, ToggleRight, Trash2 } from 'lucide-react';
+import apiClient from './apiClient';
 
 const currencyOptions = [
   { value: 'TWD', label: '新台币 TWD' },
   { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
   { value: 'EUR', label: '歐元 EUR' },
-];
-
-const demoPlans = [
-  { id: 1, planCode: 'pro', name: 'Pro' },
-  { id: 2, planCode: 'business', name: 'Business' },
-  { id: 3, planCode: 'enterprise', name: 'Enterprise' },
-];
-
-const demoAddons = [
-  {
-    id: 1,
-    addonCode: 'ecard',
-    name: 'Ecard',
-    description: 'Electronic business card add-on',
-    billingUnit: 'account',
-    status: 'active',
-    sortOrder: 10,
-    prices: [
-      { planId: 1, currency: 'USD', unitPrice: 2, syncWithPlanTerm: true, status: 'active' },
-      { planId: 2, currency: 'USD', unitPrice: 1.8, syncWithPlanTerm: true, status: 'active' },
-      { planId: 3, currency: 'USD', unitPrice: 1.5, syncWithPlanTerm: true, status: 'active' },
-    ],
-  },
-  {
-    id: 2,
-    addonCode: 'call_center',
-    name: 'Call Center',
-    description: 'Call center capability add-on',
-    billingUnit: 'account',
-    status: 'active',
-    sortOrder: 20,
-    prices: [
-      { planId: 1, currency: 'USD', unitPrice: 5, syncWithPlanTerm: true, status: 'active' },
-      { planId: 2, currency: 'USD', unitPrice: 4.5, syncWithPlanTerm: true, status: 'active' },
-      { planId: 3, currency: 'USD', unitPrice: 4, syncWithPlanTerm: true, status: 'active' },
-    ],
-  },
 ];
 
 const emptyAddon = {
@@ -77,16 +41,49 @@ function priceForPlan(addon, planId) {
 }
 
 const AddonServices = forwardRef((props, ref) => {
-  const [addons, setAddons] = useState(demoAddons);
-  const [selectedId, setSelectedId] = useState(demoAddons[0]?.id || null);
-  const [draftAddon, setDraftAddon] = useState(demoAddons[0] || emptyAddon);
+  const [addons, setAddons] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState(null);
+  const [draftAddon, setDraftAddon] = useState(emptyAddon);
   const [query, setQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [mode, setMode] = useState('edit');
+  const [saving, setSaving] = useState(false);
 
   useImperativeHandle(ref, () => ({
     startAdd,
   }));
+
+  useEffect(() => {
+    loadAddons();
+    loadPlans();
+  }, []);
+
+  async function loadPlans() {
+    try {
+      const data = await apiClient.get('/billing/plans');
+      setPlans(data.plans || []);
+    } catch (err) {
+      console.error('Failed to load plans:', err);
+    }
+  }
+
+  async function loadAddons() {
+    try {
+      const data = await apiClient.get('/billing/addon-services');
+      const loaded = (data.addons || []).map(a => ({ ...a, prices: a.prices || [] }));
+      setAddons(loaded);
+      if (loaded.length > 0 && !selectedId) {
+        setSelectedId(loaded[0].id);
+        setDraftAddon({ ...loaded[0], prices: loaded[0].prices.map(p => ({ ...p })) });
+      }
+    } catch (err) {
+      console.error('Failed to load addons:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const selectedAddon = addons.find((addon) => addon.id === selectedId) || null;
   const primaryPrice = draftAddon.prices[0] || { currency: 'TWD', unitPrice: 0 };
@@ -109,7 +106,7 @@ const AddonServices = forwardRef((props, ref) => {
     setSelectedId(null);
     setDraftAddon({
       ...emptyAddon,
-      prices: demoPlans.map((plan) => ({
+      prices: plans.map((plan) => ({
         planId: plan.id,
         currency: 'TWD',
         unitPrice: 0,
@@ -125,14 +122,16 @@ const AddonServices = forwardRef((props, ref) => {
     setDraftAddon({ ...addon, prices: addon.prices.map((price) => ({ ...price })) });
   };
 
-  const toggleAddonStatus = (addonId, currentStatus, event) => {
+  const toggleAddonStatus = async (addonId, currentStatus, event) => {
     event.stopPropagation();
+    const addon = addons.find(a => a.id === addonId);
+    if (!addon) return;
     const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
-    setAddons((current) =>
-      current.map((addon) => (addon.id === addonId ? { ...addon, status: newStatus } : addon))
-    );
-    if (selectedId === addonId) {
-      setDraftAddon((current) => ({ ...current, status: newStatus }));
+    try {
+      await apiClient.put('/billing/addon-services', { ...addon, status: newStatus, prices: addon.prices || [] });
+      await loadAddons();
+    } catch (err) {
+      alert(err.message || '更新失敗');
     }
   };
 
@@ -163,7 +162,7 @@ const AddonServices = forwardRef((props, ref) => {
     setDraftAddon((current) => {
       const prices = current.prices.length
         ? current.prices
-        : demoPlans.map((plan) => priceForPlan(current, plan.id));
+        : plans.map((plan) => priceForPlan(current, plan.id));
       return {
         ...current,
         prices: prices.map((price) => ({ ...price, [field]: value })),
@@ -171,32 +170,44 @@ const AddonServices = forwardRef((props, ref) => {
     });
   };
 
-  const saveDraft = (event) => {
+  const saveDraft = async (event) => {
     event.preventDefault();
-    const nextAddon = {
-      ...draftAddon,
+    const payload = {
       addonCode: draftAddon.addonCode.trim().toLowerCase(),
       name: draftAddon.name.trim(),
       description: draftAddon.description.trim(),
+      billingUnit: draftAddon.billingUnit,
+      status: draftAddon.status,
+      sortOrder: draftAddon.sortOrder || 0,
+      prices: draftAddon.prices || [],
     };
-    if (mode === 'add') {
-      const created = { ...nextAddon, id: Date.now() };
-      setAddons((current) => [created, ...current]);
-      selectAddon(created);
-      return;
+    if (!payload.addonCode || !payload.name) return alert('請輸入服務代碼和名稱。');
+    setSaving(true);
+    try {
+      await apiClient.put('/billing/addon-services', payload);
+      await loadAddons();
+      setMode('edit');
+    } catch (err) {
+      alert(err.message || '儲存失敗');
+    } finally {
+      setSaving(false);
     }
-    setAddons((current) => current.map((addon) => (addon.id === nextAddon.id ? nextAddon : addon)));
   };
 
-  const handleDelete = (addonId, event) => {
-    event.stopPropagation(); // 阻止事件冒泡，避免触发选择addon
-    if (window.confirm('確定要刪除這個增值服務嗎？')) {
-      setAddons((current) => current.filter((addon) => addon.id !== addonId));
+  const handleDelete = async (addonId, event) => {
+    event.stopPropagation();
+    const addon = addons.find(a => a.id === addonId);
+    if (!addon) return;
+    if (!window.confirm('確定要刪除這個增值服務嗎？')) return;
+    try {
+      await apiClient.delete(`/billing/addon-services/${encodeURIComponent(addon.addonCode)}`);
+      await loadAddons();
       if (selectedId === addonId) {
         setSelectedId(null);
         setDraftAddon(emptyAddon);
-        setMode('edit');
       }
+    } catch (err) {
+      alert(err.message || '刪除失敗');
     }
   };
 
@@ -405,7 +416,7 @@ const AddonServices = forwardRef((props, ref) => {
                   <span>每個套餐可設定不同單價與幣種</span>
                 </div>
                 <div className="addon-price-list">
-                  {demoPlans.map((plan) => {
+                  {plans.map((plan) => {
                     const price = priceForPlan(draftAddon, plan.id);
                     return (
                       <div className="addon-price-row" key={plan.id}>
@@ -431,7 +442,7 @@ const AddonServices = forwardRef((props, ref) => {
 
               <menu className="form-actions addon-actions">
                 <button className="ghost-btn" type="button" onClick={() => selectedAddon && selectAddon(selectedAddon)}>取消</button>
-                <button className="primary-btn" type="submit">{mode === 'add' ? '建立服務' : '儲存修改'}</button>
+                <button className="primary-btn" type="submit" disabled={saving}>{saving ? '儲存中...' : (mode === 'add' ? '建立服務' : '儲存修改')}</button>
               </menu>
             </form>
           </section>
