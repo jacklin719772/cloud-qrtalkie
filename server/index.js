@@ -725,7 +725,7 @@ async function requireAdmin(request, response, next) {
       );
       const sipUser = sipRows[0];
       if (!sipUser) {
-        return response.status(401).json({ message: "账号已失效，请重新登录。" });
+        return response.status(401).json({ message: "帳號已失效，请重新登录。" });
       }
 
       const today = new Date();
@@ -1060,15 +1060,15 @@ app.post("/api/auth/login", async (request, response) => {
     const sipUser = sipRows[0];
 
     if (!sipUser) {
-      return response.status(401).json({ message: "登录账号或密码不正确。" });
+      return response.status(401).json({ message: "登录帳號或密码不正确。" });
     }
 
     if (!(await verifyPassword(password, sipUser.password_hash))) {
-      return response.status(401).json({ message: "登录账号或密码不正确。" });
+      return response.status(401).json({ message: "登录帳號或密码不正确。" });
     }
 
     if (sipUser.status !== 'active') {
-      return response.status(403).json({ message: "此 SIP 账号尚未启用或已被停用。" });
+      return response.status(403).json({ message: "此 SIP 帳號尚未启用或已被停用。" });
     }
 
     const today = new Date();
@@ -1438,7 +1438,7 @@ app.get("/api/me", requireAdmin, async (request, response) => {
       });
     } catch (error) {
       console.error(error);
-      return response.status(500).json({ message: "无法读取账号信息。" });
+      return response.status(500).json({ message: "無法讀取帳號信息。" });
     } finally {
       if (connection) connection.release();
     }
@@ -1507,7 +1507,7 @@ app.get("/api/me", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "无法读取租户设定。" });
+    return response.status(500).json({ message: "無法讀取租户设定。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1564,7 +1564,7 @@ app.get("/api/notifications", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "读取消息失败。" });
+    return response.status(500).json({ message: "讀取訊息失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1572,7 +1572,7 @@ app.get("/api/notifications", requireAdmin, async (request, response) => {
 
 app.post("/api/notifications/:id/read", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "消息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1587,11 +1587,11 @@ app.post("/api/notifications/:id/read", requireAdmin, async (request, response) 
        WHERE ${userField} = ? AND r.event_id = ? AND e.status = 'active' AND r.deleted_at IS NULL`,
       [request.admin.id, eventId],
     );
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到消息。" });
-    return response.json({ message: "消息已标记为已读。" });
+    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到訊息。" });
+    return response.json({ message: "訊息已标记为已读。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "标记消息失败。" });
+    return response.status(500).json({ message: "标记訊息失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1599,7 +1599,7 @@ app.post("/api/notifications/:id/read", requireAdmin, async (request, response) 
 
 app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "消息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1615,11 +1615,11 @@ app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, respons
        WHERE ${userField} = ? AND r.event_id = ? AND e.status = 'active' AND r.deleted_at IS NULL`,
       [request.admin.id, eventId],
     );
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到消息。" });
-    return response.json({ message: "消息已忽略。" });
+    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到訊息。" });
+    return response.json({ message: "訊息已忽略。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "忽略消息失败。" });
+    return response.status(500).json({ message: "忽略訊息失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1627,7 +1627,7 @@ app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, respons
 
 app.delete("/api/notifications/:id", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "消息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1645,11 +1645,11 @@ app.delete("/api/notifications/:id", requireAdmin, async (request, response) => 
          AND r.deleted_at IS NULL`,
       [request.admin.id, eventId],
     );
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到消息。" });
-    return response.json({ message: "消息已刪除。" });
+    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到訊息。" });
+    return response.json({ message: "訊息已刪除。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "删除消息失败。" });
+    return response.status(500).json({ message: "刪除訊息失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1673,7 +1673,7 @@ app.post("/api/notifications/read-all", requireAdmin, async (request, response) 
          AND r.dismissed_at IS NULL`,
       [request.admin.id]
     );
-    return response.json({ message: "所有消息已设为已读。", count: Number(result.affectedRows || 0) });
+    return response.json({ message: "所有訊息已设为已读。", count: Number(result.affectedRows || 0) });
   } catch (error) {
     console.error(error);
     return response.status(500).json({ message: "操作失败。" });
@@ -1875,7 +1875,7 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch tenant SIP accounts:", error);
-    return response.status(500).json({ message: "無法读取帳號管理列表。" });
+    return response.status(500).json({ message: "無法讀取帳號管理列表。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1922,7 +1922,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       sipUserId = request.admin.id;
       if (sipUserId !== paramId) {
         await connection.rollback();
-        return response.status(403).json({ message: "只能编辑自己的账号。" });
+        return response.status(403).json({ message: "只能编辑自己的帳號。" });
       }
     } else {
       const rows = await connection.query(
@@ -2268,7 +2268,7 @@ app.post("/api/tenant/sip-accounts/:id/send-provisioning-email", requireAdmin, a
   });
 });
 
-// GET /api/tenant/sip-accounts/:id/provisioning-url - 获取 provisioning 下载链接
+// GET /api/tenant/sip-accounts/:id/provisioning-url - 取得 provisioning 下载链接
 app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ success: false, message: "只有租戶管理員可以操作。" });
@@ -2609,7 +2609,7 @@ app.get("/api/tenant/web-accounts", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch tenant Web accounts:", error);
-    return response.status(500).json({ message: "無法读取 Web 帳號管理列表。" });
+    return response.status(500).json({ message: "無法讀取 Web 帳號管理列表。" });
   } finally {
     if (connection) connection.release();
   }
@@ -2810,7 +2810,7 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
     return response.json({ contactBooks: formattedRows });
   } catch (error) {
     console.error("Failed to fetch contact books:", error);
-    return response.status(500).json({ message: "获取通讯录列表失败" });
+    return response.status(500).json({ message: "取得通讯录列表失败" });
   } finally {
     if (connection) connection.release();
   }
@@ -2866,10 +2866,10 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       return response.status(502).json({ message: "Flexisip 通訊錄服務不可用，請稍後重試。" });
     }
 
-    // ── Step 2: 获取数据库连接 ──
+    // ── Step 2: 取得数据库连接 ──
     connection = await pool.getConnection();
 
-    // ── Step 3: 将 accountIds 中的账号添加为通讯录成员 ──
+    // ── Step 3: 将 accountIds 中的帳號添加为通讯录成员 ──
     const memberResults = { added: [], failed: [] };
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
@@ -2889,7 +2889,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       }
     }
 
-    // ── Step 4: 查询待分配账号的 Flexisip account_id ──
+    // ── Step 4: 查询待分配帳號的 Flexisip account_id ──
     const assignTargets = [];
     if (assignedAccountIds.length > 0) {
       const placeholders = assignedAccountIds.map(() => '?').join(',');
@@ -2904,7 +2904,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       }
     }
 
-    // ── Step 4: 在 Flexisip 分配通讯录给账号 ──
+    // ── Step 4: 在 Flexisip 分配通讯录给帳號 ──
     const failedAssignments = [];
     for (const target of assignTargets) {
       try {
@@ -3026,7 +3026,7 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
     });
   } catch (error) {
     console.error("Failed to fetch contact book available accounts:", error);
-    return response.status(500).json({ message: "读取通讯录可选帳號失败。" });
+    return response.status(500).json({ message: "讀取通讯录可选帳號失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3180,7 +3180,7 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch contact book details:", error);
-    return response.status(500).json({ message: "获取通讯录详情失败。" });
+    return response.status(500).json({ message: "取得通讯录详情失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3212,7 +3212,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
 
-    // 查找本地通讯录，获取 flexisip_contact_list_id
+    // 查找本地通讯录，取得 flexisip_contact_list_id
     const [book] = await connection.query(
       `SELECT id, flexisip_contact_list_id FROM tenant_contact_books WHERE id = ? AND tenant_id = ? FOR UPDATE`,
       [contactBookId, request.admin.tenantId]
@@ -3337,7 +3337,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
 
 app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以删除通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以刪除通讯录。" });
   }
 
   const contactBookId = Number(request.params.id);
@@ -3359,17 +3359,17 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
       return response.status(404).json({ message: "找不到指定的通讯录。" });
     }
 
-    // ── Flexisip sync: 删除远端通讯录 ──
+    // ── Flexisip sync: 刪除远端通讯录 ──
     if (book.flexisip_contact_list_id) {
       try {
         await deleteContactList(book.flexisip_contact_list_id);
       } catch (flexisipErr) {
-        // 404 表示远端已删除，可继续清理本地
+        // 404 表示远端已刪除，可继续清理本地
         if (flexisipErr.status !== 404) {
           connection.release();
           if (flexisipErr instanceof FlexisipContactBookError) {
             return response.status(502).json({
-              message: `Flexisip 通讯录删除失败：${flexisipErr.message}`,
+              message: `Flexisip 通讯录刪除失败：${flexisipErr.message}`,
               code: "FLEXISIP_DELETE_FAILED",
             });
           }
@@ -3388,11 +3388,11 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE FROM tenant_contact_books WHERE id = ?`, [contactBookId]);
 
     await connection.commit();
-    return response.json({ message: "通讯录已成功删除。" });
+    return response.json({ message: "通讯录已成功刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete contact book:", error);
-    return response.status(500).json({ message: "删除通讯录失败。" });
+    return response.status(500).json({ message: "刪除通讯录失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6997,7 +6997,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
   }
 });
 
-// GET /api/admin/sip-accounts - 获取帳號列表
+// GET /api/admin/sip-accounts - 取得帳號列表
 app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以查看 SIP 帳號。" });
@@ -7060,7 +7060,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     return response.json({ accounts });
   } catch (error) {
     console.error('Failed to fetch sip accounts:', error);
-    return response.status(500).json({ message: '無法读取 SIP 帳號列表' });
+    return response.status(500).json({ message: '無法讀取 SIP 帳號列表' });
   } finally {
     if (connection) connection.release();
   }
@@ -7120,7 +7120,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 
   try {
     await searchAccountBySip(sipAddress);
-    // 远端账号已存在
+    // 远端帳號已存在
     return response.status(409).json({
       message: "該 SIP 帳號已在通訊服務中存在。",
       code: "FLEXISIP_ACCOUNT_ALREADY_EXISTS",
@@ -7139,7 +7139,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     }
   }
 
-  // ── 步骤 5: 创建 Flexisip 账号 ──
+  // ── 步骤 5: 创建 Flexisip 帳號 ──
   // 测试已验证 createAccount 需要以下字段：
   //   username, sip (完整 SIP URI), password, algorithm ("SHA-256"), email, display_name
   flexisipCreatePayload = {
@@ -7193,7 +7193,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       });
     }
 
-    // 其他 422 校验错误：直接返回 Flexisip 的错误消息
+    // 其他 422 校验錯誤：直接返回 Flexisip 的錯誤訊息
     if (is422 && !flexisipAccountId) {
       const fieldErrors = Object.entries(errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ');
       return response.status(422).json({
@@ -7270,7 +7270,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       flexisip_account_id: flexisipAccountId,
     });
   } catch (dbErr) {
-    // ── 步骤 7: 补偿删除远端账号 ──
+    // ── 步骤 7: 补偿刪除远端帳號 ──
     if (connection) {
       try { await connection.rollback(); } catch {}
       connection.release();
@@ -7392,7 +7392,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: flexisipCreateAccount 失敗: status=${e?.status}, message=${e?.message}`);
       }
 
-      // 422: 区分 username taken vs 其他校验错误
+      // 422: 区分 username taken vs 其他校验錯誤
       if (!flexisipAccountId && createErr?.status === 422) {
         const errs422 = createErr?.responseBody?.errors || {};
         const isUsernameTaken = errs422.username && errs422.username.some(m => /already.*taken|has already/i.test(m));
@@ -7464,7 +7464,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: ❌ 本地 DB 保存失敗:`, dbErr?.message, dbErr?.code);
         await conn.rollback().catch(() => {});
         conn.release();
-        // 补偿删除
+        // 补偿刪除
         try { await flexisipDeleteAccount(flexisipAccountId); } catch {}
         results.push({ username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED", message: "本地保存失敗，已回滾。" });
         failed++;
@@ -7545,7 +7545,7 @@ app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, resp
     const actionText = isActivating ? '啟用' : '停用';
     let flexisipAccountId = account.flexisip_account_id;
 
-    // ── 本地 only 账号：只更新本地状态 ──
+    // ── 本地 only 帳號：只更新本地状态 ──
     if (account.sync_status === 'local_only' || (!flexisipAccountId && !account.sip_uri)) {
       connection.release();
       connection = await pool.getConnection();
@@ -7696,7 +7696,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       return response.json({ success: true, no_change: true, message: "沒有可儲存的修改。" });
     }
 
-    // ── Flexisip sync（非 local_only 账号，且 display_name/email/phone 有变化）──
+    // ── Flexisip sync（非 local_only 帳號，且 display_name/email/phone 有变化）──
     const needsFlexisipSync = account.sync_status !== 'local_only' && (
       changedFields.some(f => ['display_name', 'email', 'phone'].includes(f))
     );
@@ -7839,7 +7839,7 @@ app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, r
   }
 });
 
-// GET /api/admin/sip-accounts/:id/verify - 校验本地与 Flexisip 账号数据一致性
+// GET /api/admin/sip-accounts/:id/verify - 校验本地与 Flexisip 帳號数据一致性
 app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以進行此操作。" });
@@ -7873,7 +7873,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
       });
     }
 
-    // 定位远端账号
+    // 定位远端帳號
     let flexisipAccount = null;
     try {
       if (local.flexisip_account_id) {
@@ -7900,7 +7900,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
       });
     }
 
-    // 转换 BigInt 为 Number，避免 JSON 序列化错误
+    // 转换 BigInt 为 Number，避免 JSON 序列化錯誤
     const safeRemote = JSON.parse(JSON.stringify(flexisipAccount, (key, value) =>
       typeof value === 'bigint' ? Number(value) : value
     ));
@@ -8096,7 +8096,7 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
     const account = rows[0];
     connection.release();
 
-    // ── local_only 历史账号：只更新本地 ──
+    // ── local_only 历史帳號：只更新本地 ──
     if (account.sync_status === 'local_only' || (!account.flexisip_account_id && !account.sip_uri)) {
       connection = await pool.getConnection();
       const passwordHash = await hashPassword(password);
@@ -8169,7 +8169,7 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
   }
 });
 
-// DELETE /api/admin/sip-accounts/:id - 删除帳號（同步 Flexisip）
+// DELETE /api/admin/sip-accounts/:id - 刪除帳號（同步 Flexisip）
 app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以刪除帳號。" });
@@ -8195,12 +8195,12 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
     }
     const account = bigIntSafe(rows[0]);
 
-    // 原有业务校验：已分配租户不能删除
+    // 原有业务校验：已分配租户不能刪除
     if (account.tenant_id != null) {
       return response.status(409).json({ message: "已經分配給租戶的帳號不允許刪除。" });
     }
 
-    // ── local_only 历史账号：直接本地删除 ──
+    // ── local_only 历史帳號：直接本地刪除 ──
     if (account.sync_status === 'local_only' || (!account.flexisip_account_id && !account.sip_uri)) {
       connection = await pool.getConnection();
       await connection.beginTransaction();
@@ -8226,7 +8226,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
       } catch {}
     }
 
-    // ── 删除 Flexisip 远端账号 ──
+    // ── 刪除 Flexisip 远端帳號 ──
     let flexisipDeleted = false;
     if (flexisipAccountId) {
       try {
@@ -8234,7 +8234,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
         flexisipDeleted = true;
       } catch (flexisipErr) {
         if (flexisipErr?.status === 404) {
-          // 远端已不存在，视为删除成功
+          // 远端已不存在，视为刪除成功
           flexisipDeleted = true;
         } else {
           const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -8252,7 +8252,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
         }
       }
     }
-    // 没有远端 ID 的同步账号：视为远端已不存在
+    // 没有远端 ID 的同步帳號：视为远端已不存在
     if (!flexisipAccountId) flexisipDeleted = true;
 
     // ── 徹底刪除：釋放 accounts_tombstones 保留 ──
@@ -8268,7 +8268,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
       }
     }
 
-    // ── 本地删除 ──
+    // ── 本地刪除 ──
     connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -8282,7 +8282,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
       connection.release();
 
       if (flexisipDeleted && flexisipAccountId) {
-        // 远端已删除但本地删除失败，标记异常
+        // 远端已刪除但本地刪除失败，标记异常
         const now = new Date().toISOString().slice(0, 19).replace("T", " ");
         const errMsg = (dbErr?.message || String(dbErr)).substring(0, 500);
         const c4 = await pool.getConnection();
@@ -8360,7 +8360,7 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
     return response.json({ accounts });
   } catch (error) {
     console.error("Failed to fetch Web accounts:", error);
-    return response.status(500).json({ message: "無法读取 Web 帳號列表" });
+    return response.status(500).json({ message: "無法讀取 Web 帳號列表" });
   } finally {
     if (connection) connection.release();
   }
@@ -8551,7 +8551,7 @@ app.put("/api/admin/web-accounts/:id/reset-password", requireAdmin, async (reque
 
 app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以删除帳號。" });
+    return response.status(403).json({ message: "只有平台管理員可以刪除帳號。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8571,7 +8571,7 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
       return response.status(404).json({ message: "帳號不存在。" });
     }
     if (account.tenant_id != null) {
-      return response.status(409).json({ message: "已经分配给租戶的帳號不允許删除。" });
+      return response.status(409).json({ message: "已经分配给租戶的帳號不允許刪除。" });
     }
 
     const remoteAccountName = String(rows[0].username || "").trim();
@@ -8644,13 +8644,13 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
     await connection.query(`DELETE FROM web_users WHERE id = ?`, [accountId]);
     await connection.commit();
     return response.json({
-      message: "Web 帳號已成功删除。",
+      message: "Web 帳號已成功刪除。",
       data: remoteCleanup,
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete Web account:", error);
-    return response.status(500).json({ message: "删除帳號失败。" });
+    return response.status(500).json({ message: "刪除帳號失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -8709,7 +8709,7 @@ app.get("/api/admin/gate-devices", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch gate devices:", error);
-    return response.status(500).json({ message: "無法读取設備列表。" });
+    return response.status(500).json({ message: "無法讀取設備列表。" });
   } finally {
     if (connection) connection.release();
   }
@@ -8867,7 +8867,7 @@ app.post("/api/admin/gate-devices/:id/assign", requireAdmin, async (request, res
       return response.status(404).json({ message: "租戶不存在。" });
     }
 
-    // 获取租戶當前生效套餐的截止日期作为設備有效期
+    // 取得租戶當前生效套餐的截止日期作为設備有效期
     const [planExpiry] = await connection.query(
       `SELECT MAX(expires_at) AS latest_expiry
        FROM billing_orders
@@ -8967,7 +8967,7 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
 
 app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以删除設備。" });
+    return response.status(403).json({ message: "只有平台管理員可以刪除設備。" });
   }
 
   const deviceId = Number(request.params.id);
@@ -8987,7 +8987,7 @@ app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response
     }
     if (device.tenant_id != null) {
       await connection.rollback();
-      return response.status(409).json({ message: "已经分配给租戶的設備不允許删除。" });
+      return response.status(409).json({ message: "已经分配给租戶的設備不允許刪除。" });
     }
     await connection.query(`DELETE FROM gate_devices WHERE id = ?`, [deviceId]);
     await connection.commit();
@@ -9001,7 +9001,7 @@ app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response
   }
 });
 
-// GET /api/admin/billing-orders - 平台管理員获取所有訂單列表
+// GET /api/admin/billing-orders - 平台管理員取得所有訂單列表
 app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以查看所有訂單。" });
@@ -9164,7 +9164,7 @@ app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => 
     });
   } catch (error) {
     console.error("Failed to fetch all billing orders:", error);
-    return response.status(500).json({ message: "無法读取所有訂單列表。" });
+    return response.status(500).json({ message: "無法讀取所有訂單列表。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9959,7 +9959,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "读取訂單详情失败。" });
+    return response.status(500).json({ message: "讀取訂單详情失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9971,7 +9971,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
  * ==========================================
  */
 
-// GET /api/tenant/ecard-styles - 租戶侧获取已啟用的 Ecard 样式
+// GET /api/tenant/ecard-styles - 租戶侧取得已啟用的 Ecard 样式
 app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "平台管理員請使用樣式管理頁面。" });
@@ -9983,7 +9983,7 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    // 只读取启用的样式，按排序规则排列
+    // 只讀取启用的样式，按排序规则排列
     const styles = await connection.query(`
       SELECT 
         id, style_code, style_name, style_type, company_name_enabled, 
@@ -9997,7 +9997,7 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
       return response.json({ styles: [] });
     }
 
-    // 批量读取这些样式的背景图片
+    // 批量讀取这些样式的背景图片
     const styleIds = styles.map(s => s.id);
     const placeholders = styleIds.map(() => '?').join(',');
     const backgrounds = await connection.query(`
@@ -10037,7 +10037,7 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
     return response.json({ styles: formattedStyles });
   } catch (error) {
     console.error('Failed to fetch tenant ecard styles:', error);
-    return response.status(500).json({ message: '获取 Ecard 样式失败' });
+    return response.status(500).json({ message: '取得 Ecard 样式失败' });
   } finally {
     if (connection) connection.release();
   }
@@ -10113,7 +10113,7 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
     return response.json({ accounts });
   } catch (error) {
     console.error('Failed to fetch tenant ecard accounts:', error);
-    return response.status(500).json({ message: '获取名片帳號列表失败' });
+    return response.status(500).json({ message: '取得名片帳號列表失败' });
   } finally {
     if (connection) connection.release();
   }
@@ -10160,7 +10160,7 @@ app.get("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error('Failed to fetch ecard styles:', error);
-    return response.status(500).json({ message: '获取 Ecard 样式失败' });
+    return response.status(500).json({ message: '取得 Ecard 样式失败' });
   } finally {
     if (connection) connection.release();
   }
@@ -10215,7 +10215,7 @@ app.get("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
     });
   } catch (error) {
     console.error('Failed to fetch ecard style details:', error);
-    return response.status(500).json({ message: '获取样式详情失败' });
+    return response.status(500).json({ message: '取得样式详情失败' });
   } finally {
     if (connection) connection.release();
   }
@@ -10432,7 +10432,7 @@ app.put("/api/admin/ecard-styles/:id/status", requireAdmin, async (request, resp
 
 app.delete("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以删除 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平台管理員可以刪除 Ecard 样式。" });
   }
   const styleId = Number(request.params.id);
   if (!styleId) return response.status(400).json({ message: "無效的样式 ID。" });
@@ -10441,7 +10441,7 @@ app.delete("/api/admin/ecard-styles/:id", requireAdmin, async (request, response
   try {
     connection = await pool.getConnection();
     await connection.query(`DELETE FROM ecard_styles WHERE id = ?`, [styleId]);
-    return response.json({ message: "样式已成功删除。" });
+    return response.json({ message: "样式已成功刪除。" });
   } catch (error) {
     console.error('Failed to delete ecard style:', error);
     return response.status(500).json({ message: '刪除失敗' });
@@ -10546,7 +10546,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
        WHERE su.id = ? AND su.tenant_id = ?`,
       [sipUserId, request.admin.tenantId]
     );
-    if (!ec) return response.status(404).json({ message: "SIP 账号不存在" });
+    if (!ec) return response.status(404).json({ message: "SIP 帳號不存在" });
     return response.json({
       ecardDataJson: parseEcardPublicJson(ec.ecard_data_json || ec.card_data_json),
       thumbnailUrl: ec.thumbnail_url || null,
@@ -10556,7 +10556,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
       validTo: ec.valid_to || null,
       status: ec.status || null,
     });
-    return response.status(500).json({ message: "获取名片失败" });
+    return response.status(500).json({ message: "取得名片失败" });
   } finally {
     if (connection) connection.release();
   }
@@ -11155,10 +11155,10 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
  * ==========================================
  */
 
-// 读取隐私政策 (管理后台)
+// 讀取隐私政策 (管理后台)
 app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以读取系统配置。" });
+    return response.status(403).json({ message: "只有平台管理員可以讀取系统配置。" });
   }
   let connection;
   try {
@@ -11170,7 +11170,7 @@ app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get privacy policy:", error);
-    return response.status(500).json({ message: "读取隐私政策失败。" });
+    return response.status(500).json({ message: "讀取隐私政策失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11200,10 +11200,10 @@ app.put("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
   }
 });
 
-// 读取服务条款 (管理后台)
+// 讀取服务条款 (管理后台)
 app.get("/api/admin/settings/terms-of-service", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以读取系统配置。" });
+    return response.status(403).json({ message: "只有平台管理員可以讀取系统配置。" });
   }
   let connection;
   try {
@@ -11215,7 +11215,7 @@ app.get("/api/admin/settings/terms-of-service", requireAdmin, async (request, re
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get terms of service:", error);
-    return response.status(500).json({ message: "读取服务条款失败。" });
+    return response.status(500).json({ message: "讀取服务条款失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11245,7 +11245,7 @@ app.put("/api/admin/settings/terms-of-service", requireAdmin, async (request, re
   }
 });
 
-// 开放接口：读取隐私政策 (供 Landing 落地页免登录读取)
+// 开放接口：讀取隐私政策 (供 Landing 落地页免登录讀取)
 app.get("/api/public/settings/privacy-policy", async (request, response) => {
   let connection;
   try {
@@ -11257,13 +11257,13 @@ app.get("/api/public/settings/privacy-policy", async (request, response) => {
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get public privacy policy:", error);
-    return response.status(500).json({ message: "获取隐私政策失败，請稍後再試" });
+    return response.status(500).json({ message: "取得隐私政策失败，請稍後再試" });
   } finally {
     if (connection) connection.release();
   }
 });
 
-// 开放接口：读取服务条款 (供 Landing 落地页免登录读取)
+// 开放接口：讀取服务条款 (供 Landing 落地页免登录讀取)
 app.get("/api/public/settings/terms-of-service", async (request, response) => {
   let connection;
   try {
@@ -11275,13 +11275,13 @@ app.get("/api/public/settings/terms-of-service", async (request, response) => {
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get public terms of service:", error);
-    return response.status(500).json({ message: "获取服务条款失败，請稍後再試" });
+    return response.status(500).json({ message: "取得服务条款失败，請稍後再試" });
   } finally {
     if (connection) connection.release();
   }
 });
 
-// GET /api/call-centers - 租戶获取呼叫中心配置列表
+// GET /api/call-centers - 租戶取得呼叫中心配置列表
 app.get("/api/call-centers", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看呼叫中心配置。" });
@@ -11311,7 +11311,7 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
 
-    // 0. 获取该租戶的套餐有效期并检查是否过期，若过期则自动停用
+    // 0. 取得该租戶的套餐有效期并检查是否过期，若过期则自动停用
     const planRows = await connection.query(`
       SELECT DATE_FORMAT(MAX(expires_at), '%Y-%m-%d') as tenant_expires_at
       FROM billing_orders
@@ -11338,7 +11338,7 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
       `, [request.admin.tenantId]);
     }
 
-    // 1. 获取该租戶的整体狀態统计
+    // 1. 取得该租戶的整体狀態统计
     const statsRows = await connection.query(`
       SELECT
         COUNT(*) as total,
@@ -11349,11 +11349,11 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
       WHERE tenant_id = ?
     `, [request.admin.tenantId]);
 
-    // 2. 获取分页总数
+    // 2. 取得分页总数
     const countRows = await connection.query(`SELECT COUNT(*) AS total FROM call_centers ${whereSql}`, params);
     const total = Number(countRows[0]?.total || 0);
 
-    // 3. 获取当页数据
+    // 3. 取得当页数据
     const rows = await connection.query(`
       SELECT id, center_name, center_url, require_visitor_info, status, created_by_name, updated_at
       FROM call_centers ${whereSql}
@@ -11386,7 +11386,7 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
     return response.json({ code: 0, data: { list: formattedRows, total, stats: { total: Number(stats.total||0), active: Number(stats.active||0), disabled: Number(stats.disabled||0), visitorEnabled: Number(stats.visitorEnabled||0), expiringSoon: expiringSoonCount } } });
   } catch (error) {
     console.error("Failed to fetch call centers:", error);
-    return response.status(500).json({ code: -1, message: "获取呼叫中心列表失败。" });
+    return response.status(500).json({ code: -1, message: "取得呼叫中心列表失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11617,15 +11617,15 @@ app.put("/api/call-centers/:id/visitor-info", requireAdmin, async (request, resp
   }
 });
 
-// DELETE /api/call-centers - 批量/单条删除呼叫中心
+// DELETE /api/call-centers - 批量/单条刪除呼叫中心
 app.delete("/api/call-centers", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以删除呼叫中心。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以刪除呼叫中心。" });
   }
 
   const ids = Array.isArray(request.body?.ids) ? request.body.ids.map(Number).filter(id => id > 0) : [];
   if (ids.length === 0) {
-    return response.status(400).json({ code: -1, message: "請提供要删除的呼叫中心编号。" });
+    return response.status(400).json({ code: -1, message: "請提供要刪除的呼叫中心编号。" });
   }
 
   let connection;
@@ -11652,7 +11652,7 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
     const result = await connection.query(`DELETE FROM call_centers WHERE id IN (${validPlaceholders}) AND tenant_id = ?`, [...validIds, request.admin.tenantId]);
 
     await connection.commit();
-    return response.json({ code: 0, message: `成功删除 ${result.affectedRows} 个呼叫中心。` });
+    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 个呼叫中心。` });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete call centers:", error);
@@ -11662,7 +11662,7 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
   }
 });
 
-// GET /api/call-centers/:id - 获取呼叫中心详情
+// GET /api/call-centers/:id - 取得呼叫中心详情
 app.get("/api/call-centers/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看呼叫中心配置。" });
@@ -11748,7 +11748,7 @@ app.get("/api/call-centers/:id", requireAdmin, async (request, response) => {
 
   } catch (error) {
     console.error("Failed to fetch call center details:", error);
-    return response.status(500).json({ code: -1, message: "获取呼叫中心详情失败。" });
+    return response.status(500).json({ code: -1, message: "取得呼叫中心详情失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12136,7 +12136,7 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
   }
 });
 
-// GET /api/call-centers/:id/visitor-inquiries - 获取呼叫中心的访客记录
+// GET /api/call-centers/:id/visitor-inquiries - 取得呼叫中心的访客记录
 app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看访客记录。" });
@@ -12212,16 +12212,16 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
     return response.json({ code: 0, data: { list: formattedRows, total, centerName: cc.center_name } });
   } catch (error) {
     console.error("Failed to fetch visitor inquiries:", error.message, error.stack);
-    return response.status(500).json({ code: -1, message: error.message || "获取访客记录失败。" });
+    return response.status(500).json({ code: -1, message: error.message || "取得访客记录失败。" });
   } finally {
     if (connection) connection.release();
   }
 });
 
-// DELETE /api/call-centers/:callCenterId/visitor-inquiries - 批量/单条删除访客记录
+// DELETE /api/call-centers/:callCenterId/visitor-inquiries - 批量/单条刪除访客记录
 app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以删除访客记录。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以刪除访客记录。" });
   }
 
   const callCenterId = Number(request.params.callCenterId);
@@ -12229,7 +12229,7 @@ app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, as
 
   const ids = Array.isArray(request.body?.ids) ? request.body.ids.map(Number).filter(id => id > 0) : [];
   if (ids.length === 0) {
-    return response.status(400).json({ code: -1, message: "請提供要删除的访客记录编号。" });
+    return response.status(400).json({ code: -1, message: "請提供要刪除的访客记录编号。" });
   }
 
   let connection;
@@ -12244,7 +12244,7 @@ app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, as
       return response.status(404).json({ code: -1, message: "找不到指定的呼叫中心。" });
     }
 
-    // 删除记录，确保 tenant_id 和 call_center_id 匹配，防止越权删除
+    // 刪除记录，确保 tenant_id 和 call_center_id 匹配，防止越权刪除
     const placeholders = ids.map(() => "?").join(",");
     const result = await connection.query(
       `DELETE FROM call_center_visitor_inquiries WHERE id IN (${placeholders}) AND tenant_id = ? AND call_center_id = ?`,
@@ -12252,17 +12252,17 @@ app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, as
     );
 
     await connection.commit();
-    return response.json({ code: 0, message: `成功删除 ${result.affectedRows} 条访客记录。` });
+    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 条访客记录。` });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete visitor inquiries:", error);
-    return response.status(500).json({ code: -1, message: "删除访客记录失败。" });
+    return response.status(500).json({ code: -1, message: "刪除访客记录失败。" });
   } finally {
     if (connection) connection.release();
   }
 });
 
-// GET /api/access-communities - 获取租戶的社區列表及统计
+// GET /api/access-communities - 取得租戶的社區列表及统计
 app.get("/api/access-communities", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看社區列表。" });
@@ -17110,7 +17110,7 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
   }
 });
 
-// GET /api/admin/flexisip/remote-accounts-not-local - 获取 Flexisip 中不在本地数据库的账号列表
+// GET /api/admin/flexisip/remote-accounts-not-local - 取得 Flexisip 中不在本地数据库的帳號列表
 app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以查詢 Flexisip 遠端帳號。" });
@@ -17241,7 +17241,7 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
   }
 });
 
-// POST /api/admin/flexisip/import-remote-accounts - 批量导入 Flexisip 远端账号到本地
+// POST /api/admin/flexisip/import-remote-accounts - 批量导入 Flexisip 远端帳號到本地
 app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平台管理員可以導入 Flexisip 遠端帳號。" });
@@ -17337,7 +17337,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
 // POST /api/flexisip/accounts/tombstones/release - release a deleted Flexisip username reservation.
 app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的服务端用户名。" });
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已刪除的服务端用户名。" });
   }
 
   const username = sanitizeString(request.body?.username, 64);
@@ -17352,7 +17352,7 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
   }
   if (!reason) {
     return response.status(400).json({
-      message: "请填写释放已删除用户名的原因。",
+      message: "请填写释放已刪除用户名的原因。",
       code: "FLEXISIP_TOMBSTONE_REASON_REQUIRED",
     });
   }
@@ -17400,15 +17400,15 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
     return response.status(500).json({
       success: false,
       code: "FLEXISIP_TOMBSTONE_RELEASE_FAILED",
-      message: "释放已删除的服务端用户名失败。",
+      message: "释放已刪除的服务端用户名失败。",
     });
   }
 });
 
-// POST /api/flexisip/accounts/tombstones/batch-release - 批量释放已删除的 Flexisip 用户名
+// POST /api/flexisip/accounts/tombstones/batch-release - 批量释放已刪除的 Flexisip 用户名
 app.post("/api/flexisip/accounts/tombstones/batch-release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已删除的服务端用户名。" });
+    return response.status(403).json({ message: "只有平台超级管理员可以释放已刪除的服务端用户名。" });
   }
 
   const items = request.body?.items;
@@ -17708,7 +17708,7 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
     }));
   } catch (error) {
     console.error("Failed to fetch tenant dashboard:", error);
-    return response.status(500).json({ message: "读取租户概览失败。" });
+    return response.status(500).json({ message: "讀取租户概览失败。" });
   } finally {
     if (connection) connection.release();
   }
