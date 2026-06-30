@@ -19,8 +19,8 @@ const PLATFORM_TASKS = [
 ];
 
 const TENANT_TASKS = [
-  { id: 'has_subscription', label: '是否有已生效套餐', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'subscription' },
-  { id: 'pending_review_order', label: '有訂單待提交審核', notDoneLabel: '無訂單待提交審核', view: 'purchase-plan', api: '/billing/orders', key: 'orders', check: 'pending_review' },
+  { id: 'has_subscription', label: '是否有已生效套餐', view: 'domain', api: '/billing/orders', key: 'orders', check: 'subscription' },
+  { id: 'pending_review_order', label: '有訂單待提交審核', notDoneLabel: '無訂單待提交審核', view: 'domain', api: '/billing/orders', key: 'orders', check: 'pending_review' },
   { id: 'contact_books', label: '是否已建立通訊錄', view: 'contact-books', api: '/contact-books', key: 'contactBooks' },
   { id: 'ecards', label: '是否已創建電子名片', view: 'e-business-card', api: '/tenant/ecard-accounts', key: 'accounts' },
   { id: 'call_center', label: '是否已設置呼叫中心', view: 'call-center', api: '/call-centers', key: 'list' },
