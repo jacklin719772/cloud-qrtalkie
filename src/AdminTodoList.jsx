@@ -6,7 +6,7 @@ const PLATFORM_TASKS = [
   { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins', key: 'admins' },
   { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy', key: 'content' },
   { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service', key: 'content' },
-  { id: 'ecard_styles', label: '設置電子名片樣式', view: 'ecard-styles-management', api: '/admin/ecard-styles', key: 'styles' },
+  { id: 'ecard_styles', label: '設置電子名片樣式', view: 'e-business-card', api: '/admin/ecard-styles', key: 'styles' },
   { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account', key: 'account' },
   { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-method-settings', key: 'methods' },
   { id: 'discount_data', label: '設置折扣資料', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
