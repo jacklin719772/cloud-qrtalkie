@@ -61,7 +61,7 @@ const viewTitles = {
   plans: '套餐資料',
   'plans-add': '新增套餐',
   'payment-methods': '在線支付',
-  'discount-data': '折扣資料',
+  'discount-data': '優惠碼設置',
   addons: '增值服務',
   'terms-of-service': '服務條款',
   'privacy-policy': '隱私政策',
@@ -1064,13 +1064,13 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowDiscountDataHelp(false)}>
           <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>折扣資料 操作說明</h2>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>優惠碼設置 操作說明</h2>
               <button onClick={() => setShowDiscountDataHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127991; 折扣資料的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>折扣資料（優惠碼）管理讓平台管理員建立和管理折扣規則。租戶在購買套餐時可輸入折扣碼享受優惠。支援百分比折扣和固定金額減免兩種模式，並可設定有效期限和使用次數上限。</p>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127991; 優惠碼設置的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>優惠碼設置（優惠碼）管理讓平台管理員建立和管理折扣規則。租戶在購買套餐時可輸入折扣碼享受優惠。支援百分比折扣和固定金額減免兩種模式，並可設定有效期限和使用次數上限。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128260; 頁面佈局說明</h3>
@@ -1216,7 +1216,7 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128161; 重要前提</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#fbbf24" }}>&#9888; 優惠碼來源</strong> — 分配優惠碼前，必須先在「基礎數據 &gt; 折扣資料」中建立優惠碼。若優惠碼列表為空，請先前往折扣資料頁面新增。</li>
+                  <li><strong style={{ color: "#fbbf24" }}>&#9888; 優惠碼來源</strong> — 分配優惠碼前，必須先在「基礎數據 &gt; 優惠碼設置」中建立優惠碼。若優惠碼列表為空，請先前往優惠碼設置頁面新增。</li>
                   <li><strong style={{ color: "#fbbf24" }}>&#9888; 已使用不可撤銷</strong> — 租戶已在下單時使用的優惠碼將標記為「已使用」，無法撤銷。撤銷操作僅對「未使用」狀態的分配記錄有效。</li>
                 </ul>
               </div>

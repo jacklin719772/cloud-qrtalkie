@@ -39,7 +39,7 @@ const navItems = [
 const baseDataItems = [
   { id: 'plans', label: '套餐資料' },
   { id: 'addons', label: '增值服務' },
-  { id: 'discount-data', label: '折扣資料' },
+  { id: 'discount-data', label: '優惠碼設置' },
   { id: 'payment-methods', label: '在線支付' },
   { id: 'offline-account', label: '收款帳戶' },
   { id: 'e-business-card', label: '電子名片' },

@@ -9,7 +9,7 @@ const PLATFORM_TASKS = [
   { id: 'ecard_styles', label: '設置電子名片樣式', view: 'e-business-card', api: '/admin/ecard-styles', key: 'styles' },
   { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account', key: 'account' },
   { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-method-settings', key: 'methods' },
-  { id: 'discount_data', label: '設置折扣資料', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
+  { id: 'discount_data', label: '設置優惠碼', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
   { id: 'addon_services', label: '設置增值服務', view: 'addons', api: '/billing/addon-services', key: 'addons' },
   { id: 'plans', label: '設置套餐資料', view: 'plans', api: '/billing/plans', key: 'plans' },
   { id: 'devices', label: '設置門控設備', view: 'device-management', api: '/admin/gate-devices', key: 'devices' },
