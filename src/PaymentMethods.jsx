@@ -377,7 +377,7 @@ const PaymentMethods = forwardRef((props, ref) => {
           #payment-methods .tenant-field-grid label { color: #d1d5db; }
           #payment-methods .tenant-field-grid input,
           #payment-methods .tenant-field-grid select,
-          #payment-methods .tenant-field-grid textarea { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+          #payment-methods .tenant-field-grid textarea { background: #1a2332 !important; border-color: #374151 !important; color: #e5e7eb !important; }
           #payment-methods .tenant-field-grid input:focus,
           #payment-methods .tenant-field-grid select:focus,
           #payment-methods .tenant-field-grid textarea:focus { border-color: #3b82f6; }
