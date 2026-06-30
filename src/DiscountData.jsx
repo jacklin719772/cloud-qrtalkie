@@ -111,7 +111,7 @@ const DiscountData = forwardRef((props, ref) => {
         setMode('list');
       }
     } catch (error) {
-      showMessage('error', error.message || '無法讀取折扣資料。');
+      showMessage('error', error.message || '無法讀取優惠資料。');
     } finally {
       setIsLoading(false);
     }
@@ -167,16 +167,16 @@ const DiscountData = forwardRef((props, ref) => {
 
   const validateDraft = () => {
     const coupon = toApiCoupon(draftCoupon);
-    if (!coupon.couponCode) return '請輸入折扣代碼。';
-    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '折扣代碼只能使用英文大寫字母、數字、底線或連字符，且至少 2 個字元。';
-    if (coupons.some((item) => item.id !== draftCoupon.id && item.couponCode.trim().toUpperCase() === coupon.couponCode)) return '折扣代碼不可重複。';
+    if (!coupon.couponCode) return '請輸入優惠碼。';
+    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '優惠碼只能使用英文大寫字母、數字、底線或連字符，且至少 2 個字元。';
+    if (coupons.some((item) => item.id !== draftCoupon.id && item.couponCode.trim().toUpperCase() === coupon.couponCode)) return '優惠碼不可重複。';
     if (!coupon.displayName) return '請輸入顯示名稱。';
-    if (coupon.discountValue <= 0) return '折扣值必須大於 0。';
-    if (coupon.discountType === 'percent' && coupon.discountValue > 100) return '百分比折扣不可超過 100%。';
+    if (coupon.discountValue <= 0) return '優惠值必須大於 0。';
+    if (coupon.discountType === 'percent' && coupon.discountValue > 100) return '百分比優惠不可超過 100%。';
     if (coupon.discountType === 'fixed_amount' && !currencyOptions.some((option) => option.value === coupon.currency)) return '請選擇有效幣種。';
     if (!coupon.validUntil) return '請選擇到期日期。';
     if (coupon.validFrom && coupon.validUntil < coupon.validFrom) return '到期日期不可早於生效日期。';
-    if (!Number.isFinite(coupon.discountValue)) return '折扣值格式無效。';
+    if (!Number.isFinite(coupon.discountValue)) return '優惠值格式無效。';
     if (coupon.maxRedemptions !== '' && !Number.isFinite(coupon.maxRedemptions)) return '使用上限格式無效。';
     if (coupon.maxRedemptions !== '' && coupon.maxRedemptions < 0) return '使用上限不可小於 0。';
     return '';
@@ -196,9 +196,9 @@ const DiscountData = forwardRef((props, ref) => {
       const payload = toApiCoupon(draftCoupon);
       const result = await apiClient.put('/billing/coupon-settings', payload);
       await loadCoupons({ silent: true, preferredId: result.id || draftCoupon.id });
-      showMessage('success', result.message || '折扣資料已儲存。');
+      showMessage('success', result.message || '優惠資料已儲存。');
     } catch (error) {
-      showMessage('error', error.message || '無法儲存折扣資料。');
+      showMessage('error', error.message || '無法儲存優惠資料。');
     } finally {
       setIsSaving(false);
     }
@@ -206,16 +206,16 @@ const DiscountData = forwardRef((props, ref) => {
 
   const deleteDraft = async () => {
     if (!selectedCoupon?.id) return;
-    if (!window.confirm(`確定要刪除「${selectedCoupon.couponCode}」折扣嗎？`)) return;
+    if (!window.confirm(`確定要刪除「${selectedCoupon.couponCode}」優惠嗎？`)) return;
 
     setIsSaving(true);
     showMessage('', '');
     try {
       const result = await apiClient.delete(`/billing/coupon-settings/${encodeURIComponent(selectedCoupon.id)}`);
       await loadCoupons({ silent: true, preferredId: null });
-      showMessage('success', result.message || '折扣資料已刪除。');
+      showMessage('success', result.message || '優惠資料已刪除。');
     } catch (error) {
-      showMessage('error', error.message || '無法刪除折扣資料。');
+      showMessage('error', error.message || '無法刪除優惠資料。');
     } finally {
       setIsSaving(false);
     }
@@ -240,9 +240,9 @@ const DiscountData = forwardRef((props, ref) => {
       const payload = toApiCoupon(updatedCoupon);
       const result = await apiClient.put('/billing/coupon-settings', payload);
       await loadCoupons({ silent: true, preferredId: couponId });
-      showMessage('success', result.message || '折扣狀態已更新。');
+      showMessage('success', result.message || '優惠狀態已更新。');
     } catch (error) {
-      showMessage('error', error.message || '無法更新折扣狀態。');
+      showMessage('error', error.message || '無法更新優惠狀態。');
     } finally {
       setIsSaving(false);
     }
@@ -308,7 +308,7 @@ const DiscountData = forwardRef((props, ref) => {
       `}</style>
       <div className="discount-shell">
         <div className="discount-scroll-area">
-          <section className="discount-summary-grid" aria-label="折扣概覽">
+          <section className="discount-summary-grid" aria-label="優惠概覽">
             <div className="discount-summary-card">
               <TicketPercent size={20} aria-hidden="true" />
               <span>優惠碼總數</span>
@@ -347,8 +347,8 @@ const DiscountData = forwardRef((props, ref) => {
               </div>
 
               <div className="discount-list">
-                {isLoading && <p className="form-message">載入折扣資料中...</p>}
-                {!isLoading && filteredCoupons.length === 0 && <p className="form-message">沒有符合條件的折扣資料。</p>}
+                {isLoading && <p className="form-message">載入優惠資料中...</p>}
+                {!isLoading && filteredCoupons.length === 0 && <p className="form-message">沒有符合條件的優惠資料。</p>}
                 {!isLoading && filteredCoupons.map((coupon) => (
               <div
                     className={`discount-list-item ${selectedId === coupon.id ? 'active' : ''}`}
@@ -383,7 +383,7 @@ const DiscountData = forwardRef((props, ref) => {
             <form className="discount-detail-panel" onSubmit={saveDraft}>
               <div className="discount-detail-head">
                 <div className="discount-detail-title">
-                  <span>{mode === 'add' ? '新增折扣' : '折扣規則'}</span>
+                  <span>{mode === 'add' ? '新增優惠' : '優惠規則'}</span>
                   {detailTitle && <h3 style={{ fontSize: '14px', margin: 0 }}>{detailTitle}</h3>}
                 </div>
                 <em className={`discount-status ${draftCoupon.status}`}>{statusText(draftCoupon.status)}</em>
@@ -392,15 +392,15 @@ const DiscountData = forwardRef((props, ref) => {
               <div className="discount-preview">
                 <div>
                   <small>結算頁展示</small>
-                  <strong style={{ fontSize: '14px' }}>{draftCoupon.displayName || '折扣名稱'}</strong>
-                  <span style={{ fontSize: '14px' }}>{draftCoupon.couponCode || 'COUPON'}：{formatDiscount(draftCoupon)} 折扣</span>
+                  <strong style={{ fontSize: '14px' }}>{draftCoupon.displayName || '優惠名稱'}</strong>
+                  <span style={{ fontSize: '14px' }}>{draftCoupon.couponCode || 'COUPON'}：{formatDiscount(draftCoupon)} 優惠</span>
                 </div>
                 <BadgePercent size={28} aria-hidden="true" />
               </div>
 
               <div className="tenant-field-grid discount-field-grid">
                 <label>
-                  折扣代碼
+                  優惠碼
                   <input value={draftCoupon.couponCode} onChange={updateDraft('couponCode')} placeholder="SAVE20" disabled={isSaving} />
                 </label>
                 <label>
@@ -408,14 +408,14 @@ const DiscountData = forwardRef((props, ref) => {
                   <input value={draftCoupon.displayName} onChange={updateDraft('displayName')} placeholder="20% launch discount" disabled={isSaving} />
                 </label>
                 <label>
-                  折扣類型
+                  優惠類型
                   <select value={draftCoupon.discountType} onChange={updateDraft('discountType')} disabled={isSaving}>
-                    <option value="percent">百分比折扣</option>
+                    <option value="percent">百分比優惠</option>
                     <option value="fixed_amount">固定金額減免</option>
                   </select>
                 </label>
                 <label>
-                  折扣值
+                  優惠值
                   <input type="number" min="0" step="0.01" value={draftCoupon.discountValue} onChange={updateDraft('discountValue')} disabled={isSaving} />
                 </label>
                 <label>
@@ -460,7 +460,7 @@ const DiscountData = forwardRef((props, ref) => {
               <menu className="form-actions discount-actions">
                 {isEditing && <button className="ghost-btn danger" type="button" onClick={deleteDraft} disabled={isSaving}>刪除</button>}
                 <button className="ghost-btn" type="button" onClick={cancelEdit} disabled={isSaving}>取消</button>
-                <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '儲存中...' : mode === 'add' ? '建立折扣' : '儲存修改'}</button>
+                <button className="primary-btn" type="submit" disabled={isSaving}>{isSaving ? '儲存中...' : mode === 'add' ? '建立優惠' : '儲存修改'}</button>
               </menu>
             </form>
           </section>
