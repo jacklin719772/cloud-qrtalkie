@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../server/loadEnv.js";
 import net from "node:net";
 import path from "node:path";
 import { spawn, execSync } from "node:child_process";

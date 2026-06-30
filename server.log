@@ -1,9 +1,11 @@
-file:///opt/saas/node_modules/mariadb/promise.js:15
-import packageJson from './package.json' with { type: 'json' };
-                                         ^^^^
-
-SyntaxError: Unexpected token 'with'
-    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:152:18)
-    at ModuleLoader.moduleProvider (node:internal/modules/esm/loader:298:14)
-
-Node.js v18.19.1
+◇ injected env (26) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+◇ injected env (0) from env.freepbx.test // tip: ⌘ override existing { override: true }
+[Scheduler] Starting background tasks...
+[Scheduler] Background tasks started
+[WebRTC Presence] Polling started
+QRTalkie Cloud API listening on http://127.0.0.1:3001
+GeoIP database loaded (GeoLite2-City, build Tue Jun 09 2026 22:05:12 GMT+0000 (Coordinated Universal Time))
+【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数: 9
+Flexisip call log cleanup: deleted 0 logs, 0 devices, 0 events (retention: 30 days)
+[flexisip] GET http://account.qrtalkie.org/api/accounts/950001%40pbx.qrtalkie.org/search 
+[flexisip] GET /accounts/950001%40pbx.qrtalkie.org/search => status=404, body={"message":"SIP address not found"}

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "dotenv/config";
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "./loadEnv.js";
 import express from "express";
 import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/promises";
 import { readFileSync } from "node:fs";
@@ -8354,7 +8354,10 @@ app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) =
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    const rows = await connection.query(`SELECT id, tenant_id FROM web_users WHERE id = ? LIMIT 1`, [accountId]);
+    const rows = await connection.query(
+      `SELECT id, tenant_id, username, sip_domain FROM web_users WHERE id = ? LIMIT 1`,
+      [accountId],
+    );
     const account = rows[0];
     if (!account) {
       await connection.rollback();
@@ -8469,23 +8472,91 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
   let connection;
   try {
     connection = await pool.getConnection();
-    await connection.beginTransaction();
-
-    const rows = await connection.query(`SELECT id, tenant_id FROM web_users WHERE id = ? LIMIT 1`, [accountId]);
+    const rows = await connection.query(
+      `SELECT id, tenant_id, username, sip_domain FROM web_users WHERE id = ? LIMIT 1`,
+      [accountId],
+    );
     const account = rows[0];
     if (!account) {
-      await connection.rollback();
       return response.status(404).json({ message: "帳號不存在。" });
     }
     if (account.tenant_id != null) {
-      await connection.rollback();
       return response.status(409).json({ message: "已经分配给租戶的帳號不允許删除。" });
     }
 
-    await connection.query(`DELETE FROM web_users WHERE id = ?`, [accountId]);
+    const remoteAccountName = String(rows[0].username || "").trim();
+    const remoteSipDomain = String(rows[0].sip_domain || "").trim() || sipDomain;
+    const remoteSipUri = remoteAccountName && remoteSipDomain ? `${remoteAccountName}@${remoteSipDomain}` : "";
+    const remoteCleanup = {
+      freepbxDeleted: false,
+      flexisipDeleted: false,
+    };
 
+    if (remoteAccountName && /^\d+$/.test(remoteAccountName)) {
+      try {
+        const freepbxRecord = await freepbxFetchExtension(remoteAccountName).catch((error) => {
+          if (error?.status === 404) return null;
+          throw error;
+        });
+        if (freepbxRecord) {
+          const deleteResult = await freepbxDeleteExtension(remoteAccountName);
+          remoteCleanup.freepbxDeleted = Boolean(deleteResult?.status);
+          if (!remoteCleanup.freepbxDeleted) {
+            throw new Error(deleteResult?.message || "FreePBX extension delete failed");
+          }
+        } else {
+          remoteCleanup.freepbxDeleted = true;
+        }
+      } catch (error) {
+        console.error("Failed to delete FreePBX extension for Web account:", {
+          accountId,
+          username: remoteAccountName,
+          message: error?.message || String(error),
+          status: error?.status || null,
+        });
+        return response.status(502).json({
+          message: "FreePBX 帳號刪除失敗。",
+          code: "FREEPBX_EXTENSION_DELETE_FAILED",
+        });
+      }
+
+      try {
+        if (remoteSipUri) {
+          const flexisipResult = await deleteFlexisipAccountBySipUri(remoteSipUri);
+          remoteCleanup.flexisipDeleted = Boolean(flexisipResult?.deleted || flexisipResult?.matched);
+          if (flexisipResult?.matched && !remoteCleanup.flexisipDeleted) {
+            throw new Error("Flexisip account delete failed");
+          }
+        }
+        const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
+          success: false,
+          message: error?.message || "reload failed",
+        }));
+        if (!applyConfig?.success) {
+          throw new Error(applyConfig?.message || "FreePBX apply config failed");
+        }
+      } catch (error) {
+        console.error("Failed to delete Flexisip account for Web account:", {
+          accountId,
+          username: remoteAccountName,
+          sipUri: remoteSipUri,
+          message: error?.message || String(error),
+          status: error?.status || null,
+        });
+        return response.status(502).json({
+          message: "Flexisip 帳號刪除失敗。",
+          code: "FLEXISIP_DELETE_FAILED",
+        });
+      }
+    }
+
+    await connection.beginTransaction();
+    await connection.query(`DELETE FROM web_users WHERE id = ?`, [accountId]);
     await connection.commit();
-    return response.json({ message: "Web 帳號已成功删除。" });
+    return response.json({
+      message: "Web 帳號已成功删除。",
+      data: remoteCleanup,
+    });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete Web account:", error);
@@ -14252,12 +14323,13 @@ async function handleWebrtcAccountQuery(request, response) {
       },
     });
   } catch (error) {
+    const isFreepbxError = error instanceof FreepbxApiError;
     return response.status(500).json({
       success: false,
-      message: "WebRTC 帳號查詢失敗",
+      message: isFreepbxError ? (error?.message || "WebRTC 帳號查詢失敗") : "WebRTC 帳號查詢失敗",
       error: {
-        code: "FREEPBX_EXTENSION_QUERY_FAILED",
-        message: "WebRTC 帳號查詢失敗",
+        code: isFreepbxError ? (error?.code || "FREEPBX_EXTENSION_QUERY_FAILED") : "FREEPBX_EXTENSION_QUERY_FAILED",
+        message: isFreepbxError ? (error?.message || "WebRTC 帳號查詢失敗") : "WebRTC 帳號查詢失敗",
       },
     });
   }
@@ -14850,14 +14922,17 @@ async function handleWebrtcAccountConsistencyQuery(request, response) {
       },
     });
   } catch (error) {
+    const isFreepbxError = error instanceof FreepbxApiError;
     return response.status(500).json({
       success: false,
       message: "WebRTC 帳號一致性查詢失敗",
       error: {
         code: error?.code === "ASTERISK_RUNTIME_QUERY_FAILED"
           ? "ASTERISK_RUNTIME_QUERY_FAILED"
-          : "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED",
-        message: "WebRTC 帳號一致性查詢失敗",
+          : isFreepbxError
+            ? (error?.code || "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED")
+            : "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED",
+        message: isFreepbxError ? (error?.message || "WebRTC 帳號一致性查詢失敗") : "WebRTC 帳號一致性查詢失敗",
       },
     });
   }
@@ -14994,6 +15069,37 @@ function parseBackupScriptOutput(output) {
     filesMissing: Number(text.match(/Files missing:\s*(\d+)/)?.[1] || 0),
     warnings: Number(text.match(/Warnings:\s*(\d+)/)?.[1] || 0),
   };
+}
+
+async function deleteFlexisipAccountBySipUri(sipUri) {
+  const normalizedSipUri = String(sipUri || "").trim();
+  if (!normalizedSipUri) {
+    return { matched: false, deleted: false, flexisipAccountId: null };
+  }
+
+  let searchResult;
+  try {
+    searchResult = await searchAccountBySip(normalizedSipUri);
+  } catch (error) {
+    if (error?.status === 404) {
+      return { matched: false, deleted: false, flexisipAccountId: null };
+    }
+    throw error;
+  }
+  const flexisipAccountId = searchResult?.id || searchResult?.account?.id || searchResult?.userId || null;
+  if (!flexisipAccountId) {
+    return { matched: false, deleted: false, flexisipAccountId: null };
+  }
+
+  try {
+    await flexisipDeleteAccount(flexisipAccountId);
+    return { matched: true, deleted: true, flexisipAccountId };
+  } catch (error) {
+    if (error?.status === 404) {
+      return { matched: true, deleted: true, flexisipAccountId, remoteMissing: true };
+    }
+    throw error;
+  }
 }
 
 async function handleWebrtcAccountDelete(request, response) {
@@ -15160,6 +15266,27 @@ async function handleWebrtcAccountDelete(request, response) {
       const deletedExts = responseData.items.filter(i => i.status === 'deleted' || i.status === 'not_found').map(i => i.extension);
       if (deletedExts.length > 0) {
         try {
+          const flexisipDeleteResults = [];
+          for (const username of deletedExts) {
+            const sipUri = `${username}@${sipDomain}`;
+            try {
+              const result = await deleteFlexisipAccountBySipUri(sipUri);
+              if (result.matched) {
+                flexisipDeleteResults.push({ username, sipUri, ...result });
+              }
+            } catch (flexisipErr) {
+              console.error("Failed to cleanup Flexisip account after WebRTC delete:", {
+                username,
+                sipUri,
+                message: flexisipErr?.message || String(flexisipErr),
+                status: flexisipErr?.status || null,
+              });
+              return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+                code: "FLEXISIP_DELETE_FAILED",
+                message: "Flexisip 帳號刪除失敗",
+              }, 502);
+            }
+          }
           const dbConn = await pool.getConnection();
           try {
             await dbConn.query(
@@ -15167,6 +15294,7 @@ async function handleWebrtcAccountDelete(request, response) {
               [...deletedExts, webrtcDomain],
             );
             responseData.dbCleanedUp = deletedExts.length;
+            responseData.flexisipDeleted = flexisipDeleteResults.length;
           } finally {
             dbConn.release();
           }
@@ -15260,6 +15388,25 @@ async function handleWebrtcAccountDelete(request, response) {
       deleted: responseData.deleted.slice(),
       failed: responseData.failed.map((item) => item.extension),
     });
+
+    const flexisipDeleteResults = [];
+    for (const extension of uniqueRequested) {
+      try {
+        const result = await deleteFlexisipAccountBySipUri(`${extension}@${sipDomain}`);
+        if (result.matched) {
+          flexisipDeleteResults.push({ extension, ...result });
+        }
+      } catch (flexisipErr) {
+        markDeleteStepFailed(steps, "delete_freepbx_extensions", {
+          flexisipError: flexisipErr?.code || flexisipErr?.message || "error",
+        });
+        return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
+          code: "FLEXISIP_DELETE_FAILED",
+          message: "Flexisip 帳號刪除失敗",
+        }, 502);
+      }
+    }
+    responseData.flexisipDeleted = flexisipDeleteResults.length;
 
     markDeleteStepRunning(steps, "remove_endpoint_custom_overlays");
     const currentOverlayContent = await readFile(ASTERISK_PATHS.endpointCustomPostConf, "utf8").catch(() => "");
@@ -15922,7 +16069,20 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     markStepSuccess(steps, "validate_extension");
 
     markStepRunning(steps, "check_existing_extension");
-    const existing = await freepbxFetchExtension(extension);
+    let existing;
+    try {
+      existing = await freepbxFetchExtension(extension);
+    } catch (error) {
+      markStepFailed(steps, "check_existing_extension", {
+        errorCode: error?.code || "FREEPBX_EXTENSION_QUERY_FAILED",
+        errorMessage: error?.message || "WebRTC 帳號查詢失敗",
+      });
+      skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: error?.code || "FREEPBX_EXTENSION_QUERY_FAILED",
+        message: error?.message || "FreePBX extension query failed.",
+      }, 500);
+    }
     if (existing) {
       markStepFailed(steps, "check_existing_extension");
       skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
@@ -16380,8 +16540,8 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       });
       markStepFailed(steps, "finalize");
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
-        code: "WEBRTC_ACCOUNT_CREATE_FAILED",
-        message: "WebRTC 帳號建立失敗",
+        code: error.code || "WEBRTC_ACCOUNT_CREATE_FAILED",
+        message: error.message || "WebRTC 帳號建立失敗",
       }, 500);
     }
 

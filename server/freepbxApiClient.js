@@ -23,6 +23,11 @@ export class FreepbxApiError extends Error {
 }
 
 function getConfig() {
+  const hasBaseUrl = Boolean(String(process.env.FREEPBX_BASE_URL || "").trim());
+  const hasTokenPath = Boolean(String(process.env.FREEPBX_API_TOKEN_URL || "").trim());
+  const hasGqlPath = Boolean(String(process.env.FREEPBX_API_GQL_URL || "").trim());
+  const hasClientId = Boolean(String(process.env.FREEPBX_API_CLIENT_ID || "").trim());
+  const hasClientSecret = Boolean(String(process.env.FREEPBX_API_CLIENT_SECRET || "").trim());
   const timeoutMs = Number(process.env.FREEPBX_API_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   const rawScope = Object.prototype.hasOwnProperty.call(process.env, "FREEPBX_API_SCOPE")
     ? process.env.FREEPBX_API_SCOPE
@@ -35,7 +40,28 @@ function getConfig() {
     clientSecret: String(process.env.FREEPBX_API_CLIENT_SECRET || ""),
     scope: String(rawScope || "").trim(),
     timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
+    hasBaseUrl,
+    hasTokenPath,
+    hasGqlPath,
+    hasClientId,
+    hasClientSecret,
   };
+}
+
+function assertFreepbxApiConfig(config) {
+  const missing = [];
+  if (!config.hasBaseUrl) missing.push("FREEPBX_BASE_URL");
+  if (!config.hasTokenPath) missing.push("FREEPBX_API_TOKEN_URL");
+  if (!config.hasGqlPath) missing.push("FREEPBX_API_GQL_URL");
+  if (!config.hasClientId) missing.push("FREEPBX_API_CLIENT_ID");
+  if (!config.hasClientSecret) missing.push("FREEPBX_API_CLIENT_SECRET");
+
+  if (missing.length > 0) {
+    throw new FreepbxApiError("FreePBX API configuration is missing or not loaded.", {
+      code: "FREEPBX_API_CONFIG_MISSING",
+      responseBody: { missing },
+    });
+  }
 }
 
 function normalizePath(value) {
@@ -56,6 +82,17 @@ async function parseResponse(response) {
   } catch {
     return text;
   }
+}
+
+function hasGraphqlDataPayload(responseBody) {
+  return Boolean(
+    responseBody &&
+    typeof responseBody === "object" &&
+    !Array.isArray(responseBody) &&
+    Object.prototype.hasOwnProperty.call(responseBody, "data") &&
+    responseBody.data !== null &&
+    responseBody.data !== undefined,
+  );
 }
 
 function safeGraphqlErrors(errors) {
@@ -93,7 +130,8 @@ function normalizeTransactionId(value) {
 
 function isApplyConfigFailure(apiStatus) {
   const message = String(apiStatus?.message || "").toLowerCase();
-  return message.includes("failed") || message.includes("error");
+  const status = apiStatus?.status;
+  return status === false && (message.includes("failed") || message.includes("error"));
 }
 
 function isApplyConfigComplete(apiStatus) {
@@ -124,6 +162,7 @@ export function getFreepbxConfigForDryRun() {
 
 export async function getAccessToken() {
   const config = getConfig();
+  assertFreepbxApiConfig(config);
   if (!config.clientId || !config.clientSecret) {
     throw new FreepbxApiError("FreePBX API client credentials are not configured.", {
       code: "FREEPBX_API_CREDENTIALS_MISSING",
@@ -208,7 +247,8 @@ export async function graphql(query, variables = {}) {
     });
 
     const responseBody = await parseResponse(response);
-    if (!response.ok || responseBody?.errors) {
+    const hasData = hasGraphqlDataPayload(responseBody);
+    if ((!response.ok && !hasData) || responseBody?.errors) {
       throw new FreepbxApiError("FreePBX GraphQL request failed.", {
         status: response.status,
         code: "FREEPBX_GRAPHQL_REQUEST_FAILED",

@@ -99,6 +99,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const stepStatusColors = { pending: '#4b5563', running: '#60a5fa', success: '#22c55e', failed: '#ef4444', skipped: '#6b7280', rollback: '#f59e0b' };
 
   async function handleAddWebrtcAccount() {
+    if (isAdding) return;
     const ext = addExtension.trim();
     if (!ext) { setAddMessage({ type: 'error', text: '請輸入 WebRTC 分機號。' }); return; }
     if (!/^\d+$/.test(ext)) { setAddMessage({ type: 'error', text: 'WebRTC 分機號必須為純數字。' }); return; }
@@ -128,9 +129,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     } catch (err) {
       clearInterval(timer);
       const data = err.response?.data || err.data || {};
+      const errorCode = data.error?.code || data.code || err.code || '';
       setAddSteps(data.data?.steps || data.steps || []);
       setSimulatedStep(-1);
-      setAddMessage({ type: 'error', text: data.error?.message || data.message || err.message || '建立失敗' });
+      const errorText = data.error?.message || data.message || err.message || '建立失敗';
+      if (err.status === 409 || errorCode === 'FREEPBX_EXTENSION_ALREADY_EXISTS') {
+        setAddMessage({ type: 'error', text: data.error?.message || '該 WebRTC 帳號已存在，請更換帳號或查看現有配置。' });
+      } else {
+        setAddMessage({ type: 'error', text: errorText });
+      }
     } finally {
       setIsAdding(false);
     }
