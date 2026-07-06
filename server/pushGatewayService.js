@@ -1,0 +1,1843 @@
+import express from "express";
+import { createHash, createPrivateKey, randomUUID, sign } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import http2 from "node:http2";
+import { pool } from "./db.js";
+import { buildRoutePlan } from "./pushRouteService.js";
+import { buildLegacyDispatchResult } from "./legacyFlexisipRouteService.js";
+
+const DEFAULT_LIMIT = 50;
+const DEFAULT_PUSH_GATEWAY_SECRET_HEADER = "x-push-gateway-secret";
+
+function toBool(value, fallback = false) {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  return /^(1|true|yes|on)$/i.test(String(value).trim());
+}
+
+function trimText(value, maxLength = 255) {
+  const text = String(value ?? "").trim();
+  if (!maxLength || text.length <= maxLength) return text;
+  return text.slice(0, maxLength);
+}
+
+function safeJson(value) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "string") return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function safeTokenHint(value) {
+  const token = trimText(value, 2048);
+  if (!token) return "";
+  if (token.length <= 8) return `${token.slice(0, 2)}…${token.slice(-2)}`;
+  return `${token.slice(0, 4)}…${token.slice(-4)}`;
+}
+
+function hashText(value) {
+  return createHash("sha256").update(String(value ?? "")).digest("hex");
+}
+
+function base64UrlEncode(input) {
+  return Buffer.from(input).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function base64UrlEncodeBuffer(buffer) {
+  return Buffer.from(buffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function readJsonFile(filePath) {
+  const path = trimText(filePath, 1024);
+  if (!path) return null;
+  const text = await readFile(path, "utf8");
+  return JSON.parse(text);
+}
+
+function resolveApnsHost(config) {
+  const env = trimText(config.apns?.environment || process.env.APNS_ENV || "production", 32).toLowerCase();
+  if (env === "sandbox" || env === "development" || env === "dev") {
+    return "api.sandbox.push.apple.com";
+  }
+  return "api.push.apple.com";
+}
+
+async function buildApnsAuthToken(config) {
+  const keyPem = await readFile(trimText(config.apns.keyPath, 1024), "utf8");
+  const now = Math.floor(Date.now() / 1000);
+  const jwtHeader = { alg: "ES256", kid: trimText(config.apns.keyId, 64) };
+  const jwtPayload = { iss: trimText(config.apns.teamId, 64), iat: now };
+  const jwt = `${base64UrlEncode(JSON.stringify(jwtHeader))}.${base64UrlEncode(JSON.stringify(jwtPayload))}`;
+  const privateKey = createPrivateKey(keyPem);
+  const jwtSignature = sign("sha256", Buffer.from(jwt), privateKey);
+  return `${jwt}.${base64UrlEncodeBuffer(jwtSignature)}`;
+}
+
+async function sendApnsLiveNotification(context, config, providerName) {
+  const topic = providerName === "apns.voip"
+    ? (config.apns.voipBundleId || config.apns.bundleId || "")
+    : (config.apns.bundleId || "");
+  if (!topic) {
+    const error = new Error("APNS topic missing.");
+    error.code = "APNS_TOPIC_MISSING";
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const deviceToken = trimText(context.tokenValue, 4096);
+  if (!deviceToken) {
+    const error = new Error("APNS device token missing.");
+    error.code = "APNS_TOKEN_MISSING";
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const authToken = await buildApnsAuthToken(config);
+  const host = resolveApnsHost(config);
+  const path = `/3/device/${deviceToken}`;
+  const payload = providerName === "apns.voip"
+    ? {
+        aps: {
+          "content-available": 1,
+        },
+        event: context.event,
+        call_id: context.callId || "",
+        msgid: context.msgid || "",
+        from_uri: context.fromUri || "",
+        to_uri: context.toUri || "",
+        uid: context.uid || "",
+        sound: context.sound || "",
+      }
+    : {
+        aps: {
+          alert: context.event === "call" ? "Incoming call" : "New message",
+          badge: 1,
+          sound: context.sound || "default",
+          "content-available": 1,
+          "mutable-content": 1,
+        },
+        event: context.event,
+        call_id: context.callId || "",
+        msgid: context.msgid || "",
+        from_uri: context.fromUri || "",
+        to_uri: context.toUri || "",
+        uid: context.uid || "",
+        sound: context.sound || "",
+      };
+
+  const client = http2.connect(`https://${host}`);
+  const response = await new Promise((resolve, reject) => {
+    const req = client.request({
+      ":method": "POST",
+      ":path": path,
+      authorization: `bearer ${authToken}`,
+      "apns-topic": topic,
+      "apns-push-type": providerName === "apns.voip" ? "voip" : "alert",
+      "apns-priority": "10",
+    });
+
+    let body = "";
+    let responseHeaders = {};
+    req.setEncoding("utf8");
+    req.on("response", (headers) => {
+      responseHeaders = headers || {};
+    });
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => {
+      client.close();
+      resolve({
+        status: Number(responseHeaders[":status"] || 0),
+        apnsId: responseHeaders["apns-id"] ? String(responseHeaders["apns-id"]) : "",
+        body,
+      });
+    });
+    req.on("error", (error) => {
+      client.close();
+      reject(error);
+    });
+    req.end(JSON.stringify(payload));
+  });
+
+  return {
+    ok: response.status >= 200 && response.status < 300,
+    status: response.status >= 200 && response.status < 300 ? "success" : "failed",
+    provider: providerName,
+    providerResponse: {
+      delivery_mode: "live_test",
+      provider: providerName,
+      apns_host: host,
+      apns_topic: topic,
+      apns_push_type: providerName === "apns.voip" ? "voip" : "alert",
+      http_status: response.status,
+      apns_id_present: Boolean(response.apnsId),
+      response_body_present: Boolean(response.body),
+      response_body_length: response.body.length,
+    },
+  };
+}
+
+function parseServiceAccountJsonFile(filePath) {
+  return readJsonFile(filePath);
+}
+
+function base64UrlEncodeJson(value) {
+  return base64UrlEncode(JSON.stringify(value));
+}
+
+function signJwtEs256({ header, payload, privateKeyPem }) {
+  const unsigned = `${base64UrlEncodeJson(header)}.${base64UrlEncodeJson(payload)}`;
+  const signature = sign("sha256", Buffer.from(unsigned), createPrivateKey(privateKeyPem));
+  return `${unsigned}.${base64UrlEncodeBuffer(signature)}`;
+}
+
+async function getFcmAccessToken(config) {
+  const serviceAccount = await parseServiceAccountJsonFile(config.fcm.serviceAccountPath);
+  if (!serviceAccount || !serviceAccount.client_email || !serviceAccount.private_key || !serviceAccount.token_uri) {
+    const error = new Error("FCM service account configuration missing.");
+    error.code = "FCM_SERVICE_ACCOUNT_INVALID";
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const jwt = signJwtEs256({
+    header: { alg: "RS256", typ: "JWT" },
+    payload: {
+      iss: serviceAccount.client_email,
+      scope: "https://www.googleapis.com/auth/firebase.messaging",
+      aud: serviceAccount.token_uri,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    },
+    privateKeyPem: serviceAccount.private_key,
+  });
+
+  const body = new URLSearchParams({
+    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+    assertion: jwt,
+  }).toString();
+
+  const response = await fetch(serviceAccount.token_uri, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  const text = await response.text().catch(() => "");
+  if (!response.ok) {
+    const error = new Error("FCM OAuth token request failed.");
+    error.code = "FCM_TOKEN_REQUEST_FAILED";
+    error.statusCode = response.status || 500;
+    error.details = text ? text.slice(0, 512) : "";
+    throw error;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    parsed = {};
+  }
+
+  if (!parsed.access_token) {
+    const error = new Error("FCM OAuth token missing access token.");
+    error.code = "FCM_TOKEN_MISSING";
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return {
+    accessToken: parsed.access_token,
+    expiresIn: Number(parsed.expires_in || 3600),
+    tokenType: parsed.token_type || "Bearer",
+    scope: parsed.scope || "",
+  };
+}
+
+async function sendFcmLiveNotification(context, config) {
+  const serviceAccount = await parseServiceAccountJsonFile(config.fcm.serviceAccountPath);
+  if (!serviceAccount || !serviceAccount.project_id) {
+    const error = new Error("FCM project id missing.");
+    error.code = "FCM_PROJECT_ID_MISSING";
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const { accessToken } = await getFcmAccessToken(config);
+  const payload = {
+    message: {
+      token: context.tokenValue,
+      data: {
+        event: context.event,
+        call_id: context.callId || "",
+        msgid: context.msgid || "",
+        from_uri: context.fromUri || "",
+        to_uri: context.toUri || "",
+        uid: context.uid || "",
+        sound: context.sound || "",
+        sip_username: context.device?.sip_username || "",
+        sip_domain: context.device?.sip_domain || "",
+        package_name: context.device?.package_name || "",
+      },
+      android: {
+        priority: "HIGH",
+      },
+    },
+  };
+
+  const response = await fetch(`https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await response.text().catch(() => "");
+  return {
+    ok: response.ok,
+    status: response.ok ? "success" : "failed",
+    provider: "fcm",
+    providerResponse: {
+      delivery_mode: "live_test",
+      project_id: serviceAccount.project_id,
+      http_status: response.status,
+      response_body_present: Boolean(text),
+      response_body_length: text.length,
+      response_body: text ? text.slice(0, 512) : "",
+    },
+  };
+}
+
+function canLiveSendProvider(providerName, config) {
+  const provider = normalizeProvider(providerName);
+  if (!config.liveTest?.enabled) return false;
+  if (provider === "apns" || provider === "apns.voip") return Boolean(config.apns?.liveTestEnabled && config.apns?.enabled && config.apns?.keyPath && config.apns?.keyId && config.apns?.teamId);
+  if (provider === "fcm") return Boolean(config.fcm?.liveTestEnabled && config.fcm?.enabled && config.fcm?.serviceAccountPath);
+  if (provider === "jpush") return Boolean(config.jpush?.enabled && config.jpush?.appKey && config.jpush?.masterSecret && config.jpush?.apiUrl);
+  return false;
+}
+
+function normalizeProvider(value) {
+  const provider = trimText(value, 64).toLowerCase();
+  if (!provider) return "";
+  if (provider === "apple") return "apns";
+  if (provider === "firebase") return "fcm";
+  if (provider === "ios") return "apns";
+  if (provider === "android") return "fcm";
+  return provider;
+}
+
+function normalizeEventName(value) {
+  const event = trimText(value, 32).toLowerCase();
+  if (event === "call" || event === "message") return event;
+  return "";
+}
+
+function normalizePlatform(value, provider = "") {
+  const platform = trimText(value, 32).toLowerCase();
+  if (platform) return platform;
+  if (provider === "apns" || provider === "apns.dev") return "ios";
+  if (provider === "fcm") return "android";
+  return "other";
+}
+
+function normalizeUri(value) {
+  return trimText(value, 512);
+}
+
+function parseSipUri(value) {
+  const uri = normalizeUri(value);
+  const match = uri.match(/^sip:([^@;>]+)@([^;>]+)/i);
+  if (!match) return { username: "", domain: "" };
+  return { username: match[1] || "", domain: match[2] || "" };
+}
+
+function normalizeBodyPayload(rawBody) {
+  if (rawBody === undefined || rawBody === null) return {};
+  if (typeof rawBody === "object") return rawBody;
+  const text = String(rawBody || "").trim();
+  if (!text) return {};
+  if (text.startsWith("{") || text.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      // keep as raw text below
+    }
+  }
+  return { body: text };
+}
+
+function normalizeFlexisipPushInput(request) {
+  const body = normalizeBodyPayload(request.body);
+  const query = request.query || {};
+  const merged = { ...query, ...body };
+
+  const event = normalizeEventName(merged.event);
+  const type = normalizeProvider(merged.type);
+  const token = trimText(merged.token, 4096);
+  const appId = trimText(merged.app_id ?? merged.appId, 256);
+  const fromUri = normalizeUri(merged.from_uri ?? merged.fromUri);
+  const toUri = normalizeUri(merged.to_uri ?? merged.toUri);
+  const callId = trimText(merged.call_id ?? merged.callId, 255);
+  const msgid = trimText(merged.msgid ?? merged.msgId, 255);
+  const uid = trimText(merged.uid, 255);
+  const sound = trimText(merged.sound, 255);
+  const appRegion = normalizeAppRegion(merged.app_region ?? merged.appRegion);
+  const packageName = trimText(merged.package_name ?? merged.packageName, 255);
+  const manufacturer = trimText(merged.manufacturer ?? merged.device_manufacturer, 80);
+  const preferredPushProvider = normalizeProvider(merged.preferred_push_provider ?? merged.preferredPushProvider ?? "");
+  const hasGms = merged.has_gms === undefined ? null : toBool(merged.has_gms, false);
+  const deliver = merged.deliver === undefined ? false : toBool(merged.deliver, false);
+  const rawTextBody = typeof request.body === "string" ? request.body : normalizeUri(merged.body);
+  const bodyLength = rawTextBody ? String(rawTextBody).length : 0;
+
+  return {
+    event,
+    type,
+    token,
+    tokenHint: safeTokenHint(token),
+    appId,
+    fromUri,
+    toUri,
+    callId,
+    msgid,
+    uid,
+    sound,
+    appRegion,
+    packageName,
+    manufacturer,
+    preferredPushProvider,
+    hasGms,
+    deliver,
+    body: rawTextBody,
+    bodyLength,
+    raw: merged,
+  };
+}
+
+function getGatewayConfig() {
+  const secret = trimText(process.env.PUSH_GATEWAY_SECRET, 512);
+  return {
+    enabled: toBool(process.env.PUSH_GATEWAY_ENABLED, false),
+    liveTest: {
+      enabled: toBool(process.env.PUSH_GATEWAY_LIVE_TEST_ENABLED, false),
+    },
+    secret,
+    secretHeader: trimText(process.env.PUSH_GATEWAY_SECRET_HEADER, 80) || DEFAULT_PUSH_GATEWAY_SECRET_HEADER,
+    apns: {
+      enabled: toBool(process.env.APNS_ENABLED, false),
+      liveTestEnabled: toBool(process.env.APNS_LIVE_TEST_ENABLED, false),
+      environment: trimText(process.env.APNS_ENV, 32) || "production",
+      teamId: trimText(process.env.APNS_TEAM_ID, 64),
+      keyId: trimText(process.env.APNS_KEY_ID, 64),
+      bundleId: trimText(process.env.APNS_BUNDLE_ID, 255),
+      voipBundleId: trimText(process.env.APNS_VOIP_BUNDLE_ID, 255),
+      keyPath: trimText(process.env.APNS_KEY_PATH, 1024),
+    },
+    fcm: {
+      enabled: toBool(process.env.FCM_ENABLED, false),
+      liveTestEnabled: toBool(process.env.FCM_LIVE_TEST_ENABLED, false),
+      serviceAccountPath: trimText(process.env.FCM_SERVICE_ACCOUNT_PATH, 1024),
+    },
+    jpush: {
+      enabled: toBool(process.env.JPUSH_ENABLED, false),
+      appKey: trimText(process.env.JPUSH_APP_KEY, 255),
+      masterSecret: trimText(process.env.JPUSH_MASTER_SECRET, 255),
+      apiUrl: trimText(process.env.JPUSH_API_URL, 255) || "https://api.jpush.cn/v3/push",
+    },
+  };
+}
+
+function isGatewayRequestAuthorized(request) {
+  const config = getGatewayConfig();
+  if (!config.secret) return true;
+
+  const candidates = [
+    request.get(config.secretHeader),
+    request.get("authorization"),
+    request.query?.secret,
+    request.body?.secret,
+  ].filter(Boolean);
+
+  for (const value of candidates) {
+    const text = String(value).trim();
+    if (!text) continue;
+    if (text === config.secret) return true;
+    if (/^Bearer\s+/i.test(text) && text.slice(7).trim() === config.secret) return true;
+  }
+
+  return false;
+}
+
+function safeDeviceSummary(row) {
+  const token = String(row.token || "");
+  const fcmToken = String(row.fcm_token || "");
+  const jpushRegistrationId = String(row.jpush_registration_id || "");
+  const apnsToken = String(row.apns_token || "");
+  const voipToken = String(row.voip_token || "");
+  return {
+    id: row.id,
+    device_key: row.device_key || "",
+    device_id: row.device_id,
+    tenant_id: row.tenant_id || null,
+    sip_user_id: row.sip_user_id || null,
+    sip_username: row.sip_username,
+    sip_domain: row.sip_domain,
+    sip_instance: row.sip_instance || "",
+    platform: row.platform || "",
+    provider: row.provider || "",
+    app_region: row.app_region || "",
+    package_name: row.package_name || "",
+    manufacturer: row.manufacturer || "",
+    has_gms: Boolean(row.has_gms),
+    preferred_push_provider: row.preferred_push_provider || "",
+    token_present: Boolean(token),
+    token_length: token.length,
+    token_hint: safeTokenHint(token),
+    fcm_token_present: Boolean(fcmToken),
+    fcm_token_length: fcmToken.length,
+    fcm_token_hint: safeTokenHint(fcmToken),
+    jpush_registration_id_present: Boolean(jpushRegistrationId),
+    jpush_registration_id_length: jpushRegistrationId.length,
+    jpush_registration_id_hint: safeTokenHint(jpushRegistrationId),
+    apns_token_present: Boolean(apnsToken),
+    apns_token_length: apnsToken.length,
+    apns_token_hint: safeTokenHint(apnsToken),
+    voip_token_present: Boolean(voipToken),
+    voip_token_length: voipToken.length,
+    voip_token_hint: safeTokenHint(voipToken),
+    app_version: row.app_version || "",
+    device_model: row.device_model || "",
+    os_version: row.os_version || "",
+    last_seen_ip: row.last_seen_ip || "",
+    last_seen_country: row.last_seen_country || "",
+    enabled: Boolean(row.enabled),
+    last_seen_at: row.last_seen_at || null,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null,
+  };
+}
+
+function normalizeAppRegion(value) {
+  const region = trimText(value, 32).toLowerCase();
+  if (!region) return "";
+  if (region === "overseas" || region === "global" || region === "intl" || region === "international") return "overseas";
+  if (region === "china" || region === "cn" || region === "mainland") return "china";
+  return region;
+}
+
+function normalizeManufacturer(value) {
+  return trimText(value, 80);
+}
+
+function buildDeviceKey(payload = {}) {
+  const deviceId = trimText(payload.device_id || payload.deviceId || "", 255);
+  const sipInstance = trimText(payload.sip_instance || payload.sipInstance || "", 255);
+  const packageName = trimText(payload.package_name || payload.packageName || "", 255);
+
+  if (deviceId && packageName) return `device:${deviceId}|package:${packageName}`;
+  if (sipInstance && packageName) return `instance:${sipInstance}|package:${packageName}`;
+  if (deviceId) return `device:${deviceId}`;
+  if (sipInstance) return `instance:${sipInstance}`;
+
+  const sipUsername = trimText(payload.sip_username, 120);
+  const sipDomain = trimText(payload.sip_domain, 255);
+  const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
+  const token = trimText(payload.token, 4096);
+  return `fingerprint:${hashText([sipUsername, sipDomain, packageName, provider, token || "device"].join("|"))}`;
+}
+
+class BasePushProvider {
+  constructor(config = {}) {
+    this.config = config;
+  }
+
+  get providerName() {
+    return "base";
+  }
+
+  get platformName() {
+    return "unknown";
+  }
+
+  isConfigured() {
+    return true;
+  }
+
+  getConfigWarnings() {
+    return [];
+  }
+
+  buildRequestDescriptor(context) {
+    return {
+      provider: this.providerName,
+      platform: this.platformName,
+      event: context.event,
+      type: context.type,
+      app_id: context.appId,
+      from_uri: context.fromUri,
+      to_uri: context.toUri,
+      call_id: context.callId,
+      msgid: context.msgid,
+      uid: context.uid,
+      sound: context.sound,
+      body_length: context.bodyLength,
+      token_hint: context.tokenHint,
+      target_device_count: context.devices?.length || 0,
+      delivery_mode: "dry_run",
+    };
+  }
+
+  async send(context) {
+    const descriptor = this.buildRequestDescriptor(context);
+    return {
+      ok: true,
+      status: "dry_run",
+      provider: this.providerName,
+      providerResponse: descriptor,
+    };
+  }
+}
+
+class ApnsProvider extends BasePushProvider {
+  get providerName() {
+    return "apns";
+  }
+
+  get platformName() {
+    return "ios";
+  }
+
+  isConfigured() {
+    const { apns } = this.config;
+    return Boolean(apns.enabled && apns.teamId && apns.keyId && apns.keyPath && (apns.bundleId || apns.voipBundleId));
+  }
+
+  getConfigWarnings() {
+    const { apns } = this.config;
+    const warnings = [];
+    if (!apns.enabled) warnings.push("APNS_DISABLED");
+    if (!apns.teamId) warnings.push("APNS_TEAM_ID_MISSING");
+    if (!apns.keyId) warnings.push("APNS_KEY_ID_MISSING");
+    if (!apns.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
+    if (!apns.bundleId && !apns.voipBundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    return warnings;
+  }
+
+  buildRequestDescriptor(context) {
+    return {
+      ...super.buildRequestDescriptor(context),
+      push_kind: context.event === "call" ? "voip" : "remote",
+      push_type: context.event === "call" ? "PushKit" : "RemoteWithMutableContent",
+      bundle_id: context.event === "call"
+        ? (this.config.apns.voipBundleId || this.config.apns.bundleId || "")
+        : (this.config.apns.bundleId || ""),
+    };
+  }
+
+  async send(context) {
+    const descriptor = this.buildRequestDescriptor(context);
+    if (!context.liveTest || !this.isConfigured() || !context.tokenValue) {
+      return {
+        ok: true,
+        status: "skipped",
+        provider: this.providerName,
+        providerResponse: {
+          ...descriptor,
+          delivery_mode: "dry_run",
+          provider_ready: this.isConfigured(),
+          live_test_enabled: Boolean(context.liveTest),
+        },
+      };
+    }
+
+    const sendResult = await sendApnsLiveNotification(context, this.config, context.event === "call" ? "apns.voip" : "apns");
+    return {
+      ok: sendResult.ok,
+      status: sendResult.status,
+      provider: this.providerName,
+      providerResponse: {
+        ...descriptor,
+        ...sendResult.providerResponse,
+        delivery_mode: "live_test",
+        live_test_enabled: true,
+      },
+    };
+  }
+}
+
+class ApnsVoipProvider extends ApnsProvider {
+  get providerName() {
+    return "apns.voip";
+  }
+
+  buildRequestDescriptor(context) {
+    return {
+      ...super.buildRequestDescriptor(context),
+      push_kind: "voip",
+      push_type: "PushKit",
+      bundle_id: this.config.apns.voipBundleId || this.config.apns.bundleId || "",
+    };
+  }
+}
+
+class FcmProvider extends BasePushProvider {
+  get providerName() {
+    return "fcm";
+  }
+
+  get platformName() {
+    return "android";
+  }
+
+  isConfigured() {
+    const { fcm } = this.config;
+    return Boolean(fcm.enabled && fcm.serviceAccountPath);
+  }
+
+  getConfigWarnings() {
+    const { fcm } = this.config;
+    const warnings = [];
+    if (!fcm.enabled) warnings.push("FCM_DISABLED");
+    if (!fcm.serviceAccountPath) warnings.push("FCM_SERVICE_ACCOUNT_PATH_MISSING");
+    return warnings;
+  }
+
+  buildRequestDescriptor(context) {
+    return {
+      ...super.buildRequestDescriptor(context),
+      push_kind: context.event,
+      message_type: context.event === "call" ? "call" : "message",
+      delivery: "android_fcm",
+    };
+  }
+
+  async send(context) {
+    const descriptor = this.buildRequestDescriptor(context);
+    if (!context.liveTest || !this.isConfigured() || !context.tokenValue) {
+      return {
+        ok: true,
+        status: "skipped",
+        provider: this.providerName,
+        providerResponse: {
+          ...descriptor,
+          delivery_mode: "dry_run",
+          provider_ready: this.isConfigured(),
+          live_test_enabled: Boolean(context.liveTest),
+        },
+      };
+    }
+
+    const sendResult = await sendFcmLiveNotification(context, this.config);
+    return {
+      ok: sendResult.ok,
+      status: sendResult.status,
+      provider: this.providerName,
+      providerResponse: {
+        ...descriptor,
+        ...sendResult.providerResponse,
+        delivery_mode: "live_test",
+        live_test_enabled: true,
+      },
+    };
+  }
+}
+
+class HuaweiProvider extends BasePushProvider {
+  get providerName() { return "huawei"; }
+  get platformName() { return "android"; }
+}
+
+class XiaomiProvider extends BasePushProvider {
+  get providerName() { return "xiaomi"; }
+  get platformName() { return "android"; }
+}
+
+class OppoProvider extends BasePushProvider {
+  get providerName() { return "oppo"; }
+  get platformName() { return "android"; }
+}
+
+class VivoProvider extends BasePushProvider {
+  get providerName() { return "vivo"; }
+  get platformName() { return "android"; }
+}
+
+class HonorProvider extends BasePushProvider {
+  get providerName() { return "honor"; }
+  get platformName() { return "android"; }
+}
+
+class JPushProvider extends BasePushProvider {
+  get providerName() {
+    return "jpush";
+  }
+
+  get platformName() {
+    return "android";
+  }
+
+  isConfigured() {
+    const { jpush } = this.config;
+    return Boolean(jpush.enabled && jpush.appKey && jpush.masterSecret && jpush.apiUrl);
+  }
+
+  getConfigWarnings() {
+    const { jpush } = this.config;
+    const warnings = [];
+    if (!jpush.enabled) warnings.push("JPUSH_DISABLED");
+    if (!jpush.appKey) warnings.push("JPUSH_APP_KEY_MISSING");
+    if (!jpush.masterSecret) warnings.push("JPUSH_MASTER_SECRET_MISSING");
+    if (!jpush.apiUrl) warnings.push("JPUSH_API_URL_MISSING");
+    return warnings;
+  }
+
+  buildRequestDescriptor(context) {
+    const target = context.tokenValue ? { registration_id: [context.tokenValue] } : {};
+    return {
+      ...super.buildRequestDescriptor(context),
+      push_kind: context.event,
+      delivery: "jpush",
+      platform: "android",
+      audience: target,
+      notification: {
+        android: {
+          alert: context.event === "call" ? "Incoming call" : "New message",
+          priority: 2,
+          extras: {
+            event: context.event,
+            call_id: context.callId || "",
+            msgid: context.msgid || "",
+            from_uri: context.fromUri || "",
+            to_uri: context.toUri || "",
+            sip_username: context.device?.sip_username || "",
+            sip_domain: context.device?.sip_domain || "",
+            package_name: context.device?.package_name || "",
+            provider: context.device?.provider || "jpush",
+          },
+        },
+      },
+      message: {
+        msg_content: JSON.stringify({
+          event: context.event,
+          call_id: context.callId || "",
+          msgid: context.msgid || "",
+          from_uri: context.fromUri || "",
+          to_uri: context.toUri || "",
+          sip_username: context.device?.sip_username || "",
+          sip_domain: context.device?.sip_domain || "",
+          package_name: context.device?.package_name || "",
+          provider: context.device?.provider || "jpush",
+        }),
+        title: "QRTalkie Push",
+      },
+    };
+  }
+
+  async send(context) {
+    const descriptor = this.buildRequestDescriptor(context);
+    if (!context.liveTest || !this.isConfigured() || !context.tokenValue) {
+      return {
+        ok: true,
+        status: "dry_run",
+        provider: this.providerName,
+        providerResponse: {
+          ...descriptor,
+          delivery_mode: "dry_run",
+          provider_ready: this.isConfigured(),
+          live_test_enabled: Boolean(context.liveTest),
+        },
+      };
+    }
+
+    const auth = Buffer.from(`${this.config.jpush.appKey}:${this.config.jpush.masterSecret}`).toString("base64");
+    const payload = {
+      platform: "android",
+      audience: {
+        registration_id: [context.tokenValue],
+      },
+      notification: descriptor.notification,
+      message: descriptor.message,
+      options: {
+        apns_production: true,
+        time_to_live: 600,
+      },
+    };
+
+    const response = await fetch(this.config.jpush.apiUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    let responseText = "";
+    try {
+      responseText = await response.text();
+    } catch {
+      responseText = "";
+    }
+
+    return {
+      ok: response.ok,
+      status: response.ok ? "success" : "failed",
+      provider: this.providerName,
+      providerResponse: {
+        ...descriptor,
+        delivery_mode: "live_test",
+        http_status: response.status,
+        response_body_present: Boolean(responseText),
+        response_body_length: responseText.length,
+      },
+    };
+  }
+
+  async sendCallPush(context) {
+    return this.send({ ...context, event: "call" });
+  }
+
+  async sendMessagePush(context) {
+    return this.send({ ...context, event: "message" });
+  }
+}
+
+const CUSTOM_PROVIDER_CLASSES = new Map([
+  ["apns", ApnsProvider],
+  ["apns.dev", ApnsProvider],
+  ["fcm", FcmProvider],
+  ["huawei", HuaweiProvider],
+  ["xiaomi", XiaomiProvider],
+  ["oppo", OppoProvider],
+  ["vivo", VivoProvider],
+  ["honor", HonorProvider],
+  ["jpush", JPushProvider],
+]);
+
+function createProvider(providerName, event, config) {
+  const normalized = normalizeProvider(providerName);
+  if (normalized === "apns" || normalized === "apns.dev") {
+    return event === "call" ? new ApnsVoipProvider(config) : new ApnsProvider(config);
+  }
+
+  const ProviderClass = CUSTOM_PROVIDER_CLASSES.get(normalized) || BasePushProvider;
+  return new ProviderClass(config);
+}
+
+async function query(connection, sql, params = []) {
+  return connection.query(sql, params);
+}
+
+async function insertPushEvent(connection, row) {
+  const pushId = row.push_id || randomUUID();
+  await query(
+    connection,
+    `INSERT INTO push_events (
+       push_id, event, provider, sip_user, to_uri, call_id, msgid,
+       status, error_code, provider_response, payload_summary, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [
+      pushId,
+      row.event || "",
+      row.provider || "",
+      row.sip_user || "",
+      row.to_uri || "",
+      row.call_id || "",
+      row.msgid || "",
+      row.status || "received",
+      row.error_code || "",
+      row.provider_response || null,
+      row.payload_summary || null,
+    ],
+  );
+  return pushId;
+}
+
+async function updatePushEvent(connection, pushId, patch) {
+  const sets = [];
+  const params = [];
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    sets.push(`${key} = ?`);
+    params.push(value);
+  }
+
+  if (!sets.length) return;
+  params.push(pushId);
+  await query(connection, `UPDATE push_events SET ${sets.join(", ")}, updated_at = NOW() WHERE push_id = ?`, params);
+}
+
+async function upsertPushDevice(connection, payload) {
+  const token = trimText(payload.token, 4096);
+  const sipUsername = trimText(payload.sip_username, 120);
+  const sipDomain = trimText(payload.sip_domain, 255);
+  const sipInstance = trimText(payload.sip_instance, 255);
+  const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
+  const platform = normalizePlatform(payload.platform, provider);
+  const deviceId = trimText(payload.device_id || payload.deviceId || "", 255) || buildDeviceKey(payload).slice(0, 255);
+  const deviceKey = trimText(payload.device_key || payload.deviceKey || "", 512) || buildDeviceKey(payload);
+  const tenantId = payload.tenant_id ?? payload.tenantId ?? null;
+  const sipUserId = payload.sip_user_id ?? payload.sipUserId ?? null;
+  const appRegion = normalizeAppRegion(payload.app_region || payload.appRegion || "");
+  const packageName = trimText(payload.package_name || payload.packageName, 255);
+  const manufacturer = normalizeManufacturer(payload.manufacturer || payload.device_manufacturer || "");
+  const hasGms = payload.has_gms === undefined ? null : (toBool(payload.has_gms, false) ? 1 : 0);
+  const preferredPushProvider = normalizeProvider(payload.preferred_push_provider || payload.preferredPushProvider || "");
+  const fcmToken = trimText(payload.fcm_token || payload.fcmToken || "", 4096);
+  const jpushRegistrationId = trimText(payload.jpush_registration_id || payload.jpushRegistrationId || "", 4096);
+  const apnsToken = trimText(payload.apns_token || payload.apnsToken || "", 4096);
+  const voipToken = trimText(payload.voip_token || payload.voipToken || "", 4096);
+  const lastSeenIp = trimText(payload.last_seen_ip || payload.lastSeenIp || "", 80);
+  const lastSeenCountry = trimText(payload.last_seen_country || payload.lastSeenCountry || "", 80);
+  const enabled = payload.enabled === undefined ? true : toBool(payload.enabled, true);
+  const appVersion = trimText(payload.app_version || payload.appVersion, 120);
+  const deviceModel = trimText(payload.device_model || payload.deviceModel, 120);
+  const osVersion = trimText(payload.os_version || payload.osVersion, 120);
+
+  await query(
+    connection,
+    `INSERT INTO push_devices (
+       device_key, device_id, tenant_id, sip_user_id, sip_username, sip_domain, sip_instance,
+       app_region, package_name, manufacturer, has_gms, preferred_push_provider,
+       platform, provider, token, fcm_token, jpush_registration_id, apns_token, voip_token,
+       last_seen_ip, last_seen_country, app_version, device_model, os_version,
+       enabled, last_seen_at, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
+     ON DUPLICATE KEY UPDATE
+       device_id = VALUES(device_id),
+       tenant_id = VALUES(tenant_id),
+       sip_user_id = VALUES(sip_user_id),
+       sip_username = VALUES(sip_username),
+       sip_domain = VALUES(sip_domain),
+       sip_instance = VALUES(sip_instance),
+       app_region = VALUES(app_region),
+       package_name = VALUES(package_name),
+       manufacturer = VALUES(manufacturer),
+       has_gms = VALUES(has_gms),
+       preferred_push_provider = VALUES(preferred_push_provider),
+       platform = VALUES(platform),
+       provider = VALUES(provider),
+       token = VALUES(token),
+       fcm_token = VALUES(fcm_token),
+       jpush_registration_id = VALUES(jpush_registration_id),
+       apns_token = VALUES(apns_token),
+       voip_token = VALUES(voip_token),
+       last_seen_ip = VALUES(last_seen_ip),
+       last_seen_country = VALUES(last_seen_country),
+       app_version = VALUES(app_version),
+       device_model = VALUES(device_model),
+       os_version = VALUES(os_version),
+       enabled = VALUES(enabled),
+       last_seen_at = NOW(),
+       updated_at = NOW()`,
+    [
+      deviceKey,
+      deviceId,
+      tenantId,
+      sipUserId,
+      sipUsername,
+      sipDomain,
+      sipInstance,
+      appRegion,
+      packageName,
+      manufacturer,
+      hasGms,
+      preferredPushProvider,
+      platform,
+      provider,
+      token,
+      fcmToken,
+      jpushRegistrationId,
+      apnsToken,
+      voipToken,
+      lastSeenIp,
+      lastSeenCountry,
+      appVersion,
+      deviceModel,
+      osVersion,
+      enabled ? 1 : 0,
+    ],
+  );
+
+  const [rows] = await query(connection, "SELECT * FROM push_devices WHERE device_id = ? LIMIT 1", [deviceId]);
+  return rows ? rows[0] || rows : null;
+}
+
+async function disablePushDevice(connection, payload) {
+  const deviceId = trimText(payload.device_id || payload.deviceId || "", 255);
+  const deviceKey = trimText(payload.device_key || payload.deviceKey || "", 512);
+  const token = trimText(payload.token, 4096);
+  const sipUsername = trimText(payload.sip_username, 120);
+  const sipDomain = trimText(payload.sip_domain, 255);
+  const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
+  const packageName = trimText(payload.package_name || payload.packageName || "", 255);
+  const sipInstance = trimText(payload.sip_instance || payload.sipInstance || "", 255);
+
+  const clauses = [];
+  const params = [];
+
+  if (deviceKey) {
+    clauses.push("device_key = ?");
+    params.push(deviceKey);
+  }
+  if (deviceId) {
+    clauses.push("device_id = ?");
+    params.push(deviceId);
+  }
+  if (sipInstance) {
+    clauses.push("sip_instance = ?");
+    params.push(sipInstance);
+  }
+  if (packageName) {
+    clauses.push("package_name = ?");
+    params.push(packageName);
+  }
+  if (token) {
+    clauses.push("token = ?");
+    params.push(token);
+  }
+  if (sipUsername) {
+    clauses.push("sip_username = ?");
+    params.push(sipUsername);
+  }
+  if (sipDomain) {
+    clauses.push("sip_domain = ?");
+    params.push(sipDomain);
+  }
+  if (provider) {
+    clauses.push("provider = ?");
+    params.push(provider);
+  }
+
+  if (!clauses.length) return 0;
+
+  const result = await query(
+    connection,
+    `UPDATE push_devices
+        SET enabled = 0, updated_at = NOW(), last_seen_at = NOW()
+      WHERE ${clauses.join(" OR ")}`,
+    params,
+  );
+
+  return Number(result?.affectedRows || 0);
+}
+
+async function listPushDevices(connection, filters = {}) {
+  const clauses = [];
+  const params = [];
+
+  if (filters.tenant_id !== undefined && filters.tenant_id !== "") {
+    clauses.push("tenant_id = ?");
+    params.push(Number(filters.tenant_id));
+  }
+  if (filters.device_key) {
+    clauses.push("device_key = ?");
+    params.push(trimText(filters.device_key, 512));
+  }
+  if (filters.sip_user_id !== undefined && filters.sip_user_id !== "") {
+    clauses.push("sip_user_id = ?");
+    params.push(Number(filters.sip_user_id));
+  }
+  if (filters.sip_username) {
+    clauses.push("sip_username = ?");
+    params.push(trimText(filters.sip_username, 120));
+  }
+  if (filters.sip_domain) {
+    clauses.push("sip_domain = ?");
+    params.push(trimText(filters.sip_domain, 255));
+  }
+  if (filters.provider) {
+    clauses.push("provider = ?");
+    params.push(normalizeProvider(filters.provider));
+  }
+  if (filters.app_region) {
+    clauses.push("app_region = ?");
+    params.push(normalizeAppRegion(filters.app_region));
+  }
+  if (filters.platform) {
+    clauses.push("platform = ?");
+    params.push(normalizePlatform(filters.platform));
+  }
+  if (filters.package_name) {
+    clauses.push("package_name = ?");
+    params.push(trimText(filters.package_name, 255));
+  }
+  if (filters.preferred_push_provider) {
+    clauses.push("preferred_push_provider = ?");
+    params.push(normalizeProvider(filters.preferred_push_provider));
+  }
+  if (filters.manufacturer) {
+    clauses.push("manufacturer = ?");
+    params.push(trimText(filters.manufacturer, 80));
+  }
+  if (filters.enabled !== undefined && filters.enabled !== "") {
+    clauses.push("enabled = ?");
+    params.push(toBool(filters.enabled, true) ? 1 : 0);
+  }
+
+  const limit = Math.min(Math.max(Number(filters.limit || DEFAULT_LIMIT) || DEFAULT_LIMIT, 1), 500);
+  const offset = Math.max(Number(filters.offset || 0) || 0, 0);
+
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = await query(
+    connection,
+    `SELECT * FROM push_devices ${where} ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?`,
+    [...params, limit, offset],
+  );
+  return rows.map((row) => safeDeviceSummary(row));
+}
+
+function buildEventSummary(payload) {
+  return {
+    event: payload.event,
+    type: payload.type,
+    app_id: payload.appId,
+    app_region: payload.appRegion || "",
+    from_uri: payload.fromUri,
+    to_uri: payload.toUri,
+    call_id: payload.callId,
+    msgid: payload.msgid,
+    uid: payload.uid,
+    sound: payload.sound,
+    package_name: payload.packageName || "",
+    manufacturer: payload.manufacturer || "",
+    preferred_push_provider: payload.preferredPushProvider || "",
+    has_gms: payload.hasGms === null ? null : Boolean(payload.hasGms),
+    body_present: Boolean(payload.bodyLength),
+    body_length: payload.bodyLength,
+    token_present: Boolean(payload.token),
+    token_length: String(payload.token || "").length,
+    token_hint: payload.tokenHint,
+  };
+}
+
+function buildEnhancedDispatchResult({ planEntry, config }) {
+  const providerName = planEntry.selected_provider;
+  const providerWarnings = selectedPushProviderWarnings(providerName, config);
+  return {
+    device: safeDeviceSummary(planEntry.device),
+    route_type: "enhanced_route",
+    provider: providerName,
+    mode: "dry_run",
+    status: "skipped",
+    route: {
+      selected_provider: providerName,
+      route_reason: planEntry.route.route_reason,
+      token_type: planEntry.route.token_type,
+      token_value_present: planEntry.route.token_value_present,
+      should_send: planEntry.route.should_send,
+      provider_status: planEntry.route.provider_status,
+      app_region: planEntry.route.app_region,
+    },
+    providerResponse: {
+      device_id: planEntry.device.device_id,
+      package_name: planEntry.device.package_name || "",
+      app_region: planEntry.route.app_region,
+      route_reason: planEntry.route.route_reason,
+      selected_provider: planEntry.route.selected_provider,
+      provider_status: planEntry.route.provider_status,
+      token_type: planEntry.route.token_type,
+      token_value_present: planEntry.route.token_value_present,
+      token_hint: planEntry.route.token_hint,
+      should_send: planEntry.route.should_send,
+      delivery_mode: "dry_run",
+      config_warnings: providerWarnings,
+    },
+  };
+}
+
+async function resolveTargetDevices(connection, payload, filters = {}) {
+  const packageName = trimText(filters.package_name || filters.packageName || payload.package_name || payload.packageName || "", 255);
+  const sipInstance = trimText(filters.sip_instance || filters.sipInstance || payload.sip_instance || payload.sipInstance || "", 255);
+  const deviceKey = trimText(filters.device_key || filters.deviceKey || payload.device_key || payload.deviceKey || "", 512);
+  const applyPackageFilters = (rows) => rows.filter((row) => {
+    if (packageName && row.package_name && row.package_name !== packageName) return false;
+    if (sipInstance && row.sip_instance && row.sip_instance !== sipInstance) return false;
+    return true;
+  });
+
+  if (deviceKey) {
+    const rows = await query(
+      connection,
+      `SELECT * FROM push_devices WHERE device_key = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
+      [deviceKey],
+    );
+    if (rows.length > 0) return applyPackageFilters(rows);
+  }
+
+  if (payload.deviceId || payload.device_id || filters.device_id || filters.deviceId) {
+    const candidateKey = buildDeviceKey({
+      device_id: filters.device_id || filters.deviceId || payload.device_id || payload.deviceId || "",
+      package_name: packageName,
+      sip_instance: sipInstance,
+      provider: filters.provider || payload.provider || "",
+      token: payload.token || filters.token || "",
+      sip_username: payload.sip_username || filters.sip_username || "",
+      sip_domain: payload.sip_domain || filters.sip_domain || "",
+    });
+    const rows = await query(
+      connection,
+      `SELECT * FROM push_devices WHERE device_key = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
+      [candidateKey],
+    );
+    if (rows.length > 0) return applyPackageFilters(rows);
+  }
+
+  if (payload.token) {
+    const rows = await query(
+      connection,
+      `SELECT * FROM push_devices WHERE token = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
+      [payload.token],
+    );
+    if (rows.length > 0) return applyPackageFilters(rows);
+  }
+
+  const { username, domain } = parseSipUri(payload.toUri);
+  if (!username || !domain) return [];
+
+  const rows = await query(
+    connection,
+    `SELECT * FROM push_devices
+      WHERE sip_username = ? AND sip_domain = ? AND enabled = 1
+      ORDER BY updated_at DESC, id DESC`,
+    [username, domain],
+  );
+
+  if (packageName || sipInstance) {
+    const packageFiltered = applyPackageFilters(rows);
+    if (packageFiltered.length > 0) return packageFiltered;
+  }
+
+  return rows;
+}
+
+async function dispatchFlexisipEvent(connection, payload) {
+  const config = getGatewayConfig();
+  const event = normalizeEventName(payload.event);
+  if (!event) {
+    const error = new Error("Invalid push event.");
+    error.statusCode = 400;
+    error.code = "PUSH_EVENT_INVALID";
+    throw error;
+  }
+
+  const provider = normalizeProvider(payload.type || "");
+  const eventSummary = buildEventSummary(payload);
+  const pushId = randomUUID();
+  await insertPushEvent(connection, {
+    push_id: pushId,
+    event,
+    provider,
+    sip_user: parseSipUri(payload.toUri).username ? `${parseSipUri(payload.toUri).username}@${parseSipUri(payload.toUri).domain}` : "",
+    to_uri: payload.toUri || "",
+    call_id: payload.callId || "",
+    msgid: payload.msgid || "",
+    status: "received",
+    payload_summary: safeJson(eventSummary),
+  });
+
+  const legacyDispatch = buildLegacyDispatchResult(payload, config);
+  const legacyProvider = createProvider(legacyDispatch.route.provider, event, config);
+  const legacyLiveEnabled = Boolean(payload.deliver && canLiveSendProvider(legacyDispatch.route.provider, config) && legacyDispatch.route.should_send);
+  const legacyTokenValue = legacyDispatch.route.token_value_present ? (payload.token || "") : "";
+  let legacySendResult = {
+    ok: true,
+    status: "skipped",
+    provider: legacyProvider.providerName,
+    providerResponse: {
+      ...legacyDispatch.provider_response,
+      delivery_mode: "dry_run",
+    },
+  };
+  if (legacyLiveEnabled) {
+    try {
+      legacySendResult = await legacyProvider.send({
+        ...payload,
+        device: {
+          sip_username: parseSipUri(payload.toUri).username || "",
+          sip_domain: parseSipUri(payload.toUri).domain || "",
+          provider: legacyDispatch.route.provider || "",
+        },
+        devices: [],
+        tokenValue: legacyTokenValue,
+        tokenType: legacyDispatch.route.token_type,
+        liveTest: true,
+      });
+    } catch (error) {
+      legacySendResult = {
+        ok: false,
+        status: "failed",
+        provider: legacyProvider.providerName,
+        errorCode: error?.code || "PUSH_PROVIDER_SEND_FAILED",
+        providerResponse: {
+          delivery_mode: "live_test",
+          provider: legacyProvider.providerName,
+          error_code: error?.code || "PUSH_PROVIDER_SEND_FAILED",
+          error_message: trimText(error?.message || "Push provider send failed.", 255),
+        },
+      };
+    }
+  }
+
+  const devices = await resolveTargetDevices(connection, payload);
+  const routePlan = buildRoutePlan({ event, payload, devices, config });
+  const enhancedDispatches = routePlan.devices.map((planEntry) => buildEnhancedDispatchResult({ planEntry, config }));
+  const legacyResult = {
+    route_type: "legacy_route",
+    provider: legacyProvider.providerName,
+    mode: legacyLiveEnabled ? "live_test" : "dry_run",
+    status: legacySendResult.status,
+    error_code: legacySendResult.errorCode || legacySendResult.providerResponse?.error_code || "",
+    route: legacyDispatch.route,
+    providerResponse: {
+      ...legacyDispatch.provider_response,
+      ...legacySendResult.providerResponse,
+      delivery_mode: legacyLiveEnabled ? "live_test" : "dry_run",
+      route_type: "legacy_route",
+      token_present: Boolean(legacyTokenValue),
+      app_id_present: Boolean(legacyDispatch.route.app_id_present),
+      route_reason: legacyDispatch.route.route_reason,
+      error_code: legacySendResult.errorCode || legacySendResult.providerResponse?.error_code || "",
+      dry_run: !legacyLiveEnabled,
+    },
+  };
+  const results = [legacyResult, ...enhancedDispatches];
+  const routePlanSummary = {
+    legacy_route: {
+      route_type: legacyDispatch.route_type,
+      route_reason: legacyDispatch.route.route_reason,
+      provider: legacyDispatch.route.provider,
+      token_type: legacyDispatch.route.token_type,
+      token_value_present: legacyDispatch.route.token_value_present,
+      should_send: legacyDispatch.route.should_send,
+      warnings: legacyDispatch.route.warnings,
+      mode: legacyLiveEnabled ? "live_test" : "dry_run",
+      status: legacySendResult.status,
+      error_code: legacySendResult.errorCode || legacySendResult.providerResponse?.error_code || "",
+    },
+    enhanced_route: routePlan.devices.map((entry) => ({
+      device_id: entry.device.device_id,
+      device_key: entry.device.device_key || "",
+      package_name: entry.device.package_name || "",
+      app_region: entry.route.app_region,
+      selected_provider: entry.route.selected_provider,
+      route_reason: entry.route.route_reason,
+      token_type: entry.route.token_type,
+      token_value_present: entry.route.token_value_present,
+      should_send: entry.route.should_send,
+      provider_status: entry.route.provider_status,
+    })),
+  };
+
+  await updatePushEvent(connection, pushId, {
+    status: "processed",
+    error_code: "",
+    provider_response: safeJson({
+      mode: legacyLiveEnabled ? "live_test" : "dry_run",
+      event,
+      provider,
+      devicesCount: devices.length,
+      routePlan: routePlanSummary,
+      results,
+      gatewayEnabled: config.enabled,
+    }),
+  });
+
+  return {
+    pushId,
+    event,
+    provider,
+    devicesCount: devices.length,
+    mode: legacyLiveEnabled ? "live_test" : "dry_run",
+    status: "processed",
+    routePlan: routePlanSummary,
+    results,
+    gatewayEnabled: config.enabled,
+  };
+}
+
+function selectedPushProviderWarnings(providerName, config) {
+  const provider = normalizeProvider(providerName);
+  if (provider === "apns" || provider === "apns.voip") {
+    const warnings = [];
+    if (!config.apns?.enabled) warnings.push("APNS_DISABLED");
+    if (!config.apns?.teamId) warnings.push("APNS_TEAM_ID_MISSING");
+    if (!config.apns?.keyId) warnings.push("APNS_KEY_ID_MISSING");
+    if (!config.apns?.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
+    if (!config.apns?.bundleId && !config.apns?.voipBundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    return warnings;
+  }
+  if (provider === "fcm") {
+    const warnings = [];
+    if (!config.fcm?.enabled) warnings.push("FCM_DISABLED");
+    if (!config.fcm?.serviceAccountPath) warnings.push("FCM_SERVICE_ACCOUNT_PATH_MISSING");
+    return warnings;
+  }
+  if (provider === "jpush") {
+    const warnings = [];
+    if (!config.jpush?.enabled) warnings.push("JPUSH_DISABLED");
+    if (!config.jpush?.appKey) warnings.push("JPUSH_APP_KEY_MISSING");
+    if (!config.jpush?.masterSecret) warnings.push("JPUSH_MASTER_SECRET_MISSING");
+    if (!config.jpush?.apiUrl) warnings.push("JPUSH_API_URL_MISSING");
+    return warnings;
+  }
+  if (["huawei", "xiaomi", "oppo", "vivo", "honor"].includes(provider)) {
+    return ["PROVIDER_PLACEHOLDER"];
+  }
+  return [];
+}
+
+async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
+  const config = getGatewayConfig();
+  const event = normalizeEventName(payload.event);
+  if (!event) {
+    const error = new Error("Invalid push event.");
+    error.statusCode = 400;
+    error.code = "PUSH_EVENT_INVALID";
+    throw error;
+  }
+
+  const devices = await resolveTargetDevices(connection, payload, payload);
+  const routePlan = buildRoutePlan({ event, payload, devices, config });
+  const pushId = randomUUID();
+  await insertPushEvent(connection, {
+    push_id: pushId,
+    event,
+    provider: normalizeProvider(payload.type || payload.provider || payload.preferred_push_provider || ""),
+    sip_user: trimText(payload.sip_username || payload.sipUserName || "", 255),
+    to_uri: payload.toUri || payload.to_uri || "",
+    call_id: payload.callId || payload.call_id || "",
+    msgid: payload.msgid || payload.msgId || "",
+    status: "received",
+    payload_summary: safeJson({
+      event,
+      route_only: true,
+      deliver,
+      filters: {
+        sip_username: payload.sip_username || payload.sipUserName || "",
+        sip_domain: payload.sip_domain || payload.sipDomain || "",
+        app_region: payload.app_region || payload.appRegion || "",
+        package_name: payload.package_name || payload.packageName || "",
+      },
+    }),
+  });
+
+  const results = [];
+  for (const planEntry of routePlan.devices) {
+    const providerName = planEntry.selected_provider;
+    const provider = createProvider(providerName, event, config);
+    const route = planEntry.route;
+    const selectedDevice = planEntry.device;
+    const tokenValue = route.token_value_present
+      ? (selectedDevice[route.token_type] || selectedDevice.token || "")
+      : "";
+    const liveTestAllowed = canLiveSendProvider(providerName, config);
+    const liveTestEnabled = Boolean(deliver && route.should_send && liveTestAllowed);
+
+    let sendResult = {
+      ok: true,
+      status: "skipped",
+      provider: provider.providerName,
+      providerResponse: {
+        delivery_mode: "dry_run",
+      },
+    };
+
+    if (liveTestEnabled) {
+      try {
+        sendResult = await provider.send({
+          ...payload,
+          event,
+          device: selectedDevice,
+          devices,
+          tokenValue,
+          tokenType: route.token_type,
+          liveTest: true,
+        });
+      } catch (error) {
+        sendResult = {
+          ok: false,
+          status: "failed",
+          provider: provider.providerName,
+          errorCode: error?.code || "PUSH_PROVIDER_SEND_FAILED",
+          providerResponse: {
+            delivery_mode: "live_test",
+            provider: provider.providerName,
+            error_code: error?.code || "PUSH_PROVIDER_SEND_FAILED",
+            error_message: trimText(error?.message || "Push provider send failed.", 255),
+          },
+        };
+      }
+    }
+
+    const errorCode = sendResult.errorCode || sendResult.providerResponse?.error_code || "";
+
+    results.push({
+      device: safeDeviceSummary(selectedDevice),
+      route_type: "legacy_route",
+      route: {
+        selected_provider: providerName,
+        route_reason: route.route_reason,
+        token_type: route.token_type,
+        token_value_present: route.token_value_present,
+        should_send: route.should_send,
+        provider_status: route.provider_status,
+        app_region: route.app_region,
+      },
+      provider: provider.providerName,
+      status: sendResult.status,
+      mode: liveTestEnabled ? "live_test" : "dry_run",
+      error_code: errorCode,
+      providerResponse: {
+        ...sendResult.providerResponse,
+        config_warnings: selectedPushProviderWarnings(providerName, config),
+        dry_run: !liveTestEnabled,
+        route_type: "legacy_route",
+        token_present: Boolean(tokenValue),
+        app_id_present: Boolean(trimText(payload.app_id || payload.appId || "", 256)),
+        route_reason: route.route_reason,
+        error_code: errorCode,
+      },
+    });
+  }
+
+  await updatePushEvent(connection, pushId, {
+    status: "processed",
+    error_code: "",
+    provider_response: safeJson({
+      mode: results.some((entry) => entry.mode === "live_test") ? "live_test" : "dry_run",
+      event,
+      routePlan: routePlan.devices.map((entry) => ({
+        route_type: "legacy_route",
+        device_id: entry.device.device_id,
+        device_key: entry.device.device_key || "",
+        package_name: entry.device.package_name || "",
+        app_region: entry.route.app_region,
+        selected_provider: entry.route.selected_provider,
+        route_reason: entry.route.route_reason,
+        token_type: entry.route.token_type,
+        token_value_present: entry.route.token_value_present,
+        should_send: entry.route.should_send,
+        provider_status: entry.route.provider_status,
+      })),
+      results,
+      delivered: deliver,
+    }),
+  });
+
+  return {
+    pushId,
+    event,
+    mode: results.some((entry) => entry.mode === "live_test") ? "live_test" : "dry_run",
+    devicesCount: devices.length,
+    results,
+    delivered: results.some((entry) => entry.mode === "live_test"),
+  };
+}
+
+function readFlexisipRequest(request) {
+  const payload = normalizeFlexisipPushInput(request);
+  if (!payload.event) {
+    const error = new Error("Missing event.");
+    error.statusCode = 400;
+    error.code = "PUSH_EVENT_MISSING";
+    throw error;
+  }
+  if (!payload.type) {
+    const error = new Error("Missing type.");
+    error.statusCode = 400;
+    error.code = "PUSH_TYPE_MISSING";
+    throw error;
+  }
+  return payload;
+}
+
+export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
+  const pushTextParser = express.text({ type: ["text/plain", "application/octet-stream", "*/*"], limit: "1mb" });
+  const jsonParser = express.json({ limit: "1mb" });
+
+  app.post("/api/push/flexisip", pushTextParser, async (request, response) => {
+    if (!isGatewayRequestAuthorized(request)) {
+      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
+    }
+
+    const payload = readFlexisipRequest(request);
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const result = await dispatchFlexisipEvent(connection, payload);
+      return response.json({
+        success: true,
+        code: "PUSH_GATEWAY_EVENT_ACCEPTED",
+        message: "Push event accepted.",
+        data: {
+          pushId: result.pushId,
+          event: result.event,
+          provider: result.provider,
+          devicesCount: result.devicesCount,
+          mode: result.mode,
+          status: result.status,
+          gatewayEnabled: result.gatewayEnabled,
+          routePlan: result.routePlan,
+          results: result.results,
+        },
+      });
+    } catch (error) {
+      const statusCode = error?.statusCode || 500;
+      return response.status(statusCode).json({
+        success: false,
+        code: error?.code || "PUSH_GATEWAY_EVENT_FAILED",
+        message: error?.message || "Push gateway failed.",
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  app.post("/api/push/devices/register", jsonParser, async (request, response) => {
+    if (!isGatewayRequestAuthorized(request)) {
+      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
+    }
+
+    const payload = request.body || {};
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const device = await upsertPushDevice(connection, payload);
+      return response.json({
+        success: true,
+        code: "PUSH_DEVICE_REGISTERED",
+        message: "Push device saved.",
+        data: {
+          device: safeDeviceSummary(device),
+        },
+      });
+    } catch (error) {
+      return response.status(error?.statusCode || 500).json({
+        success: false,
+        code: error?.code || "PUSH_DEVICE_REGISTER_FAILED",
+        message: error?.message || "Push device registration failed.",
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  app.post("/api/push/devices/unregister", jsonParser, async (request, response) => {
+    if (!isGatewayRequestAuthorized(request)) {
+      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
+    }
+
+    const payload = request.body || {};
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const affectedRows = await disablePushDevice(connection, payload);
+      return response.json({
+        success: true,
+        code: "PUSH_DEVICE_UNREGISTERED",
+        message: "Push device disabled.",
+        data: {
+          affectedRows,
+        },
+      });
+    } catch (error) {
+      return response.status(error?.statusCode || 500).json({
+        success: false,
+        code: error?.code || "PUSH_DEVICE_UNREGISTER_FAILED",
+        message: error?.message || "Push device unregister failed.",
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  app.post("/api/push/test/send", jsonParser, async (request, response) => {
+    if (!isGatewayRequestAuthorized(request)) {
+      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
+    }
+
+    const payload = request.body || {};
+    const deliver = toBool(payload.deliver, false);
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const result = await dispatchTestPush(connection, payload, { deliver });
+      return response.json({
+        success: true,
+        code: "PUSH_TEST_SEND_OK",
+        message: "Push test processed.",
+        data: result,
+      });
+    } catch (error) {
+      return response.status(error?.statusCode || 500).json({
+        success: false,
+        code: error?.code || "PUSH_TEST_SEND_FAILED",
+        message: error?.message || "Push test send failed.",
+      });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  if (typeof requireAdmin === "function") {
+    app.get("/api/push/devices", requireAdmin, async (request, response) => {
+      let connection;
+      try {
+        connection = await pool.getConnection();
+        const devices = await listPushDevices(connection, request.query || {});
+        return response.json({
+          success: true,
+          code: "PUSH_DEVICE_LIST_OK",
+          data: {
+            devices,
+            count: devices.length,
+          },
+        });
+      } catch (error) {
+        return response.status(error?.statusCode || 500).json({
+          success: false,
+          code: error?.code || "PUSH_DEVICE_LIST_FAILED",
+          message: error?.message || "Push device listing failed.",
+        });
+      } finally {
+        if (connection) connection.release();
+      }
+    });
+  }
+}
+
+export {
+  ApnsProvider,
+  ApnsVoipProvider,
+  FcmProvider,
+  JPushProvider,
+  HuaweiProvider,
+  XiaomiProvider,
+  OppoProvider,
+  VivoProvider,
+  HonorProvider,
+  buildEventSummary,
+  createProvider,
+  dispatchFlexisipEvent,
+  getGatewayConfig,
+  isGatewayRequestAuthorized,
+  listPushDevices,
+  normalizeFlexisipPushInput,
+  normalizeProvider,
+  parseSipUri,
+  safeDeviceSummary,
+  upsertPushDevice,
+  disablePushDevice,
+};

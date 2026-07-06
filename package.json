@@ -12,7 +12,22 @@
     "db:migrate": "node scripts/migrate.js",
     "api:dev": "node server/index.js",
     "test:register": "node scripts/test-register-flow.js",
-    "check:smtp": "node scripts/check-smtp.js"
+    "check:smtp": "node scripts/check-smtp.js",
+    "test:push-gateway-call": "node scripts/test-push-gateway-call.js",
+    "test:push-gateway-message": "node scripts/test-push-gateway-message.js",
+    "test:push-route-overseas-fcm": "node scripts/test-push-route-overseas-fcm.js",
+    "test:push-route-china-jpush": "node scripts/test-push-route-china-jpush.js",
+    "test:jpush-send-call": "node scripts/test-jpush-send-call.js",
+    "test:jpush-send-message": "node scripts/test-jpush-send-message.js",
+    "test:legacy-route-apns-call": "node scripts/test-legacy-route-apns-call.js",
+    "test:legacy-route-apns-message": "node scripts/test-legacy-route-apns-message.js",
+    "test:legacy-route-fcm-call": "node scripts/test-legacy-route-fcm-call.js",
+    "test:legacy-route-fcm-message": "node scripts/test-legacy-route-fcm-message.js",
+    "test:enhanced-route-jpush-optional": "node scripts/test-enhanced-route-jpush-optional.js",
+    "test:live-legacy-apns-call": "node scripts/test-live-legacy-apns-call.js",
+    "test:live-legacy-apns-message": "node scripts/test-live-legacy-apns-message.js",
+    "test:live-legacy-fcm-call": "node scripts/test-live-legacy-fcm-call.js",
+    "test:live-legacy-fcm-message": "node scripts/test-live-legacy-fcm-message.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.1.1",

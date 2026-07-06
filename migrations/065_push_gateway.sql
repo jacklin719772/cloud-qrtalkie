@@ -1,0 +1,51 @@
+-- Migration: 065_push_gateway
+
+CREATE TABLE IF NOT EXISTS push_devices (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  device_id VARCHAR(255) NOT NULL,
+  sip_username VARCHAR(120) NOT NULL DEFAULT '',
+  sip_domain VARCHAR(255) NOT NULL DEFAULT '',
+  sip_instance VARCHAR(255) NOT NULL DEFAULT '',
+  platform VARCHAR(32) NOT NULL DEFAULT '',
+  provider VARCHAR(32) NOT NULL DEFAULT '',
+  token TEXT NULL,
+  app_version VARCHAR(120) NOT NULL DEFAULT '',
+  device_model VARCHAR(120) NOT NULL DEFAULT '',
+  os_version VARCHAR(120) NOT NULL DEFAULT '',
+  enabled TINYINT(1) NOT NULL DEFAULT 1,
+  last_seen_at DATETIME NULL DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_push_devices_device_id (device_id),
+  KEY idx_push_devices_sip_user (sip_username, sip_domain),
+  KEY idx_push_devices_provider (provider),
+  KEY idx_push_devices_enabled (enabled),
+  KEY idx_push_devices_last_seen (last_seen_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS push_events (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  push_id VARCHAR(64) NOT NULL,
+  event VARCHAR(32) NOT NULL DEFAULT '',
+  provider VARCHAR(32) NOT NULL DEFAULT '',
+  sip_user VARCHAR(255) NOT NULL DEFAULT '',
+  to_uri VARCHAR(512) NOT NULL DEFAULT '',
+  call_id VARCHAR(255) NOT NULL DEFAULT '',
+  msgid VARCHAR(255) NOT NULL DEFAULT '',
+  status VARCHAR(32) NOT NULL DEFAULT 'received',
+  error_code VARCHAR(64) NOT NULL DEFAULT '',
+  provider_response LONGTEXT NULL,
+  payload_summary LONGTEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_push_events_push_id (push_id),
+  KEY idx_push_events_event (event),
+  KEY idx_push_events_provider (provider),
+  KEY idx_push_events_sip_user (sip_user),
+  KEY idx_push_events_call_id (call_id),
+  KEY idx_push_events_msgid (msgid),
+  KEY idx_push_events_status (status),
+  KEY idx_push_events_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

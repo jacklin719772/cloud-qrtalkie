@@ -95,6 +95,7 @@ import {
   unassignContactListFromAccount,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
+import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 
 const app = express();
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -154,6 +155,7 @@ app.use("/api/payment-method-icons", express.static(paymentMethodIconsDir));
 app.use("/api/ecard-images", express.static(ecardImagesDir));
 app.use("/api/call-center-images", express.static(callCenterImagesDir));
 app.use("/visitor-assets", express.static(path.join(projectRoot, "public/visitor")));
+registerPushGatewayRoutes(app, { requireAdmin });
 
 // Serve JsSIP UMD bundle for visitor pages
 app.get("/visitor-assets/jssip.min.js", (_req, res) => {

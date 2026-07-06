@@ -1,0 +1,19 @@
+import "../server/loadEnv.js";
+import { buildLegacyDispatchResult } from "../server/legacyFlexisipRouteService.js";
+import { getGatewayConfig } from "../server/pushGatewayService.js";
+
+const payload = {
+  event: "message",
+  type: "apple",
+  token: "legacy-apns-message-token-test",
+  app_id: "ABCD1234.com.qrtalkie.app",
+  from_uri: "sip:alice@sip.qrtalkie.org",
+  to_uri: "sip:950001@sip.qrtalkie.org",
+  call_id: "",
+  msgid: "legacy-apns-message-001",
+  uid: "uuid-test",
+  sound: "msg.caf",
+  body: "hello",
+};
+
+console.log(JSON.stringify(buildLegacyDispatchResult(payload, getGatewayConfig()), null, 2));
