@@ -31,6 +31,12 @@ function normalizeLegacyProviderType(value) {
   return normalizeProvider(type);
 }
 
+function resolveLegacyApnsAuthMode(config = {}) {
+  const mode = trimText(config.apns?.authMode || process.env.APNS_AUTH_MODE || "p8", 16).toLowerCase();
+  if (mode === "pem" || mode === "p8") return mode;
+  return "invalid";
+}
+
 function buildLegacyRoutePlan(payload = {}, config = {}) {
   const event = normalizeEventName(payload.event);
   const type = normalizeLegacyProviderType(payload.type);
@@ -84,6 +90,7 @@ function buildLegacyRoutePlan(payload = {}, config = {}) {
     event,
     type,
     provider,
+    auth_mode: (provider === "apns" || provider === "apns.voip") ? resolveLegacyApnsAuthMode(config) : "",
     provider_status: providerStatus,
     route_reason: routeReason,
     token_type: "token",
@@ -124,6 +131,7 @@ function buildLegacyDispatchResult(payload = {}, config = {}) {
       event: route.event,
       type: route.type,
       provider: route.provider,
+      auth_mode: route.auth_mode,
       route_reason: route.route_reason,
       token_type: route.token_type,
       token_value_present: route.token_value_present,
@@ -132,6 +140,7 @@ function buildLegacyDispatchResult(payload = {}, config = {}) {
       warnings: route.warnings,
       should_send: route.should_send,
       provider_status: route.provider_status,
+      auth_mode: route.auth_mode,
       payload_summary: {
         from_uri: route.from_uri,
         to_uri: route.to_uri,

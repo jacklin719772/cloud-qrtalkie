@@ -65,6 +65,12 @@ function resolveApnsHost(config) {
   return "api.push.apple.com";
 }
 
+function resolveApnsAuthMode(config) {
+  const mode = trimText(config.apns?.authMode || process.env.APNS_AUTH_MODE || "p8", 16).toLowerCase();
+  if (mode === "pem" || mode === "p8") return mode;
+  return "invalid";
+}
+
 async function buildApnsAuthToken(config) {
   const keyPem = await readFile(trimText(config.apns.keyPath, 1024), "utf8");
   const now = Math.floor(Date.now() / 1000);
@@ -74,6 +80,25 @@ async function buildApnsAuthToken(config) {
   const privateKey = createPrivateKey(keyPem);
   const jwtSignature = sign("sha256", Buffer.from(jwt), privateKey);
   return `${jwt}.${base64UrlEncodeBuffer(jwtSignature)}`;
+}
+
+async function loadApnsPemCredentials(config, providerName) {
+  const certPath = providerName === "apns.voip"
+    ? trimText(config.apns.voipCertPath, 1024)
+    : trimText(config.apns.certPath, 1024);
+  if (!certPath) {
+    const error = new Error("APNS PEM certificate path missing.");
+    error.code = providerName === "apns.voip" ? "APNS_VOIP_CERT_PATH_MISSING" : "APNS_CERT_PATH_MISSING";
+    error.statusCode = 500;
+    throw error;
+  }
+
+  const pem = await readFile(certPath, "utf8");
+  return {
+    certPath,
+    cert: pem,
+    key: pem,
+  };
 }
 
 async function sendApnsLiveNotification(context, config, providerName) {
@@ -95,7 +120,6 @@ async function sendApnsLiveNotification(context, config, providerName) {
     throw error;
   }
 
-  const authToken = await buildApnsAuthToken(config);
   const host = resolveApnsHost(config);
   const path = `/3/device/${deviceToken}`;
   const payload = providerName === "apns.voip"
@@ -128,16 +152,35 @@ async function sendApnsLiveNotification(context, config, providerName) {
         sound: context.sound || "",
       };
 
-  const client = http2.connect(`https://${host}`);
-  const response = await new Promise((resolve, reject) => {
-    const req = client.request({
-      ":method": "POST",
-      ":path": path,
+  const authMode = resolveApnsAuthMode(config);
+  const usePemAuth = authMode === "pem";
+  let clientOptions = {};
+  let requestHeaders = {
+    ":method": "POST",
+    ":path": path,
+    "apns-topic": topic,
+    "apns-push-type": providerName === "apns.voip" ? "voip" : "alert",
+    "apns-priority": "10",
+  };
+
+  if (usePemAuth) {
+    const pem = await loadApnsPemCredentials(config, providerName);
+    clientOptions = {
+      cert: pem.cert,
+      key: pem.key,
+      rejectUnauthorized: true,
+    };
+  } else {
+    const authToken = await buildApnsAuthToken(config);
+    requestHeaders = {
+      ...requestHeaders,
       authorization: `bearer ${authToken}`,
-      "apns-topic": topic,
-      "apns-push-type": providerName === "apns.voip" ? "voip" : "alert",
-      "apns-priority": "10",
-    });
+    };
+  }
+
+  const client = http2.connect(`https://${host}`, clientOptions);
+  const response = await new Promise((resolve, reject) => {
+    const req = client.request(requestHeaders);
 
     let body = "";
     let responseHeaders = {};
@@ -170,6 +213,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
     providerResponse: {
       delivery_mode: "live_test",
       provider: providerName,
+      auth_mode: authMode,
       apns_host: host,
       apns_topic: topic,
       apns_push_type: providerName === "apns.voip" ? "voip" : "alert",
@@ -319,7 +363,13 @@ async function sendFcmLiveNotification(context, config) {
 function canLiveSendProvider(providerName, config) {
   const provider = normalizeProvider(providerName);
   if (!config.liveTest?.enabled) return false;
-  if (provider === "apns" || provider === "apns.voip") return Boolean(config.apns?.liveTestEnabled && config.apns?.enabled && config.apns?.keyPath && config.apns?.keyId && config.apns?.teamId);
+  if (provider === "apns" || provider === "apns.voip") {
+    if (!config.apns?.liveTestEnabled || !config.apns?.enabled) return false;
+    if (resolveApnsAuthMode(config) === "pem") {
+      return Boolean(provider === "apns.voip" ? config.apns?.voipCertPath : config.apns?.certPath);
+    }
+    return Boolean(config.apns?.keyPath && config.apns?.keyId && config.apns?.teamId);
+  }
   if (provider === "fcm") return Boolean(config.fcm?.liveTestEnabled && config.fcm?.enabled && config.fcm?.serviceAccountPath);
   if (provider === "jpush") return Boolean(config.jpush?.enabled && config.jpush?.appKey && config.jpush?.masterSecret && config.jpush?.apiUrl);
   return false;
@@ -437,6 +487,9 @@ function getGatewayConfig() {
       enabled: toBool(process.env.APNS_ENABLED, false),
       liveTestEnabled: toBool(process.env.APNS_LIVE_TEST_ENABLED, false),
       environment: trimText(process.env.APNS_ENV, 32) || "production",
+      authMode: trimText(process.env.APNS_AUTH_MODE, 16) || "p8",
+      certPath: trimText(process.env.APNS_CERT_PATH, 1024),
+      voipCertPath: trimText(process.env.APNS_VOIP_CERT_PATH, 1024),
       teamId: trimText(process.env.APNS_TEAM_ID, 64),
       keyId: trimText(process.env.APNS_KEY_ID, 64),
       bundleId: trimText(process.env.APNS_BUNDLE_ID, 255),
@@ -619,23 +672,39 @@ class ApnsProvider extends BasePushProvider {
 
   isConfigured() {
     const { apns } = this.config;
-    return Boolean(apns.enabled && apns.teamId && apns.keyId && apns.keyPath && (apns.bundleId || apns.voipBundleId));
+    if (!apns.enabled) return false;
+    const authMode = resolveApnsAuthMode(this.config);
+    if (authMode === "pem") {
+      return Boolean(apns.certPath && apns.voipCertPath && (apns.bundleId || apns.voipBundleId));
+    }
+    return Boolean(apns.teamId && apns.keyId && apns.keyPath && (apns.bundleId || apns.voipBundleId));
   }
 
   getConfigWarnings() {
     const { apns } = this.config;
     const warnings = [];
     if (!apns.enabled) warnings.push("APNS_DISABLED");
-    if (!apns.teamId) warnings.push("APNS_TEAM_ID_MISSING");
-    if (!apns.keyId) warnings.push("APNS_KEY_ID_MISSING");
-    if (!apns.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
-    if (!apns.bundleId && !apns.voipBundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    const authMode = resolveApnsAuthMode(this.config);
+    if (authMode === "invalid") warnings.push("APNS_AUTH_MODE_INVALID");
+    else warnings.push(`APNS_AUTH_MODE_${authMode.toUpperCase()}`);
+    if (!apns.liveTestEnabled) warnings.push("APNS_LIVE_TEST_DISABLED");
+    if (!apns.bundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    if (!apns.voipBundleId) warnings.push("APNS_VOIP_BUNDLE_ID_MISSING");
+    if (authMode === "pem") {
+      if (!apns.certPath) warnings.push("APNS_CERT_PATH_MISSING");
+      if (!apns.voipCertPath) warnings.push("APNS_VOIP_CERT_PATH_MISSING");
+    } else {
+      if (!apns.teamId) warnings.push("APNS_TEAM_ID_MISSING");
+      if (!apns.keyId) warnings.push("APNS_KEY_ID_MISSING");
+      if (!apns.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
+    }
     return warnings;
   }
 
   buildRequestDescriptor(context) {
     return {
       ...super.buildRequestDescriptor(context),
+      auth_mode: resolveApnsAuthMode(this.config),
       push_kind: context.event === "call" ? "voip" : "remote",
       push_type: context.event === "call" ? "PushKit" : "RemoteWithMutableContent",
       bundle_id: context.event === "call"
@@ -1418,6 +1487,7 @@ async function dispatchFlexisipEvent(connection, payload) {
       route_type: legacyDispatch.route_type,
       route_reason: legacyDispatch.route.route_reason,
       provider: legacyDispatch.route.provider,
+      auth_mode: legacyDispatch.route.auth_mode,
       token_type: legacyDispatch.route.token_type,
       token_value_present: legacyDispatch.route.token_value_present,
       should_send: legacyDispatch.route.should_send,
@@ -1472,10 +1542,20 @@ function selectedPushProviderWarnings(providerName, config) {
   if (provider === "apns" || provider === "apns.voip") {
     const warnings = [];
     if (!config.apns?.enabled) warnings.push("APNS_DISABLED");
-    if (!config.apns?.teamId) warnings.push("APNS_TEAM_ID_MISSING");
-    if (!config.apns?.keyId) warnings.push("APNS_KEY_ID_MISSING");
-    if (!config.apns?.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
-    if (!config.apns?.bundleId && !config.apns?.voipBundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    const authMode = resolveApnsAuthMode(config);
+    if (authMode === "invalid") warnings.push("APNS_AUTH_MODE_INVALID");
+    else warnings.push(`APNS_AUTH_MODE_${authMode.toUpperCase()}`);
+    if (!config.apns?.liveTestEnabled) warnings.push("APNS_LIVE_TEST_DISABLED");
+    if (!config.apns?.bundleId) warnings.push("APNS_BUNDLE_ID_MISSING");
+    if (!config.apns?.voipBundleId) warnings.push("APNS_VOIP_BUNDLE_ID_MISSING");
+    if (authMode === "pem") {
+      if (!config.apns?.certPath) warnings.push("APNS_CERT_PATH_MISSING");
+      if (!config.apns?.voipCertPath) warnings.push("APNS_VOIP_CERT_PATH_MISSING");
+    } else {
+      if (!config.apns?.teamId) warnings.push("APNS_TEAM_ID_MISSING");
+      if (!config.apns?.keyId) warnings.push("APNS_KEY_ID_MISSING");
+      if (!config.apns?.keyPath) warnings.push("APNS_KEY_PATH_MISSING");
+    }
     return warnings;
   }
   if (provider === "fcm") {
