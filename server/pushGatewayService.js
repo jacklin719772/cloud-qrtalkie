@@ -1082,7 +1082,7 @@ async function upsertPushDevice(connection, payload) {
        platform, provider, token, fcm_token, jpush_registration_id, apns_token, voip_token,
        last_seen_ip, last_seen_country, app_version, device_model, os_version,
        enabled, last_seen_at, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
      ON DUPLICATE KEY UPDATE
        device_id = VALUES(device_id),
        tenant_id = VALUES(tenant_id),
