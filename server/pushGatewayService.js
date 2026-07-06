@@ -995,7 +995,7 @@ const CUSTOM_PROVIDER_CLASSES = new Map([
 
 function createProvider(providerName, event, config) {
   const normalized = normalizeProvider(providerName);
-  if (normalized === "apns" || normalized === "apns.dev") {
+  if (normalized === "apns" || normalized === "apns.dev" || normalized === "apns.voip") {
     return event === "call" ? new ApnsVoipProvider(config) : new ApnsProvider(config);
   }
 
