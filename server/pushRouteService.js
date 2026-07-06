@@ -96,13 +96,26 @@ function inferAppRegion(device = {}) {
   return "overseas";
 }
 
+function resolveApnsAuthMode(config = {}) {
+  const mode = String(config.apns?.authMode || process.env.APNS_AUTH_MODE || "p8").trim().toLowerCase();
+  if (mode === "pem" || mode === "p8") return mode;
+  return "invalid";
+}
+
 function isProviderConfigured(providerName, config = {}) {
   const provider = normalizeProvider(providerName);
+  const authMode = resolveApnsAuthMode(config);
   if (provider === "apns") {
-    return Boolean(config.apns?.enabled && config.apns?.teamId && config.apns?.keyId && config.apns?.keyPath && (config.apns?.bundleId || config.apns?.voipBundleId));
+    if (authMode === "pem") {
+      return Boolean(config.apns?.enabled && config.apns?.certPath && config.apns?.bundleId);
+    }
+    return Boolean(config.apns?.enabled && config.apns?.teamId && config.apns?.keyId && config.apns?.keyPath && config.apns?.bundleId);
   }
   if (provider === "apns.voip") {
-    return Boolean(config.apns?.enabled && config.apns?.teamId && config.apns?.keyId && config.apns?.keyPath && (config.apns?.voipBundleId || config.apns?.bundleId));
+    if (authMode === "pem") {
+      return Boolean(config.apns?.enabled && config.apns?.voipCertPath && config.apns?.voipBundleId);
+    }
+    return Boolean(config.apns?.enabled && config.apns?.teamId && config.apns?.keyId && config.apns?.keyPath && config.apns?.voipBundleId);
   }
   if (provider === "fcm") {
     return Boolean(config.fcm?.enabled && config.fcm?.serviceAccountPath);
