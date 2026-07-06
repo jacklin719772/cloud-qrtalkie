@@ -538,11 +538,11 @@ function safeDeviceSummary(row) {
   const apnsToken = String(row.apns_token || "");
   const voipToken = String(row.voip_token || "");
   return {
-    id: row.id,
+    id: Number(row.id),
     device_key: row.device_key || "",
     device_id: row.device_id,
-    tenant_id: row.tenant_id || null,
-    sip_user_id: row.sip_user_id || null,
+    tenant_id: row.tenant_id != null ? Number(row.tenant_id) : null,
+    sip_user_id: row.sip_user_id != null ? Number(row.sip_user_id) : null,
     sip_username: row.sip_username,
     sip_domain: row.sip_domain,
     sip_instance: row.sip_instance || "",
