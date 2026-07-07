@@ -371,7 +371,7 @@ function canLiveSendProvider(providerName, config) {
     return Boolean(config.apns?.keyPath && config.apns?.keyId && config.apns?.teamId);
   }
   if (provider === "fcm") return Boolean(config.fcm?.liveTestEnabled && config.fcm?.enabled && config.fcm?.serviceAccountPath);
-  if (provider === "jpush") return Boolean(config.jpush?.enabled && config.jpush?.appKey && config.jpush?.masterSecret && config.jpush?.apiUrl);
+  if (provider === "jpush") return Boolean(config.jpush?.enabled && config.jpush?.liveTestEnabled && config.jpush?.appKey && config.jpush?.masterSecret && config.jpush?.apiUrl);
   return false;
 }
 
@@ -503,6 +503,7 @@ function getGatewayConfig() {
     },
     jpush: {
       enabled: toBool(process.env.JPUSH_ENABLED, false),
+      liveTestEnabled: toBool(process.env.JPUSH_LIVE_TEST_ENABLED, false),
       appKey: trimText(process.env.JPUSH_APP_KEY, 255),
       masterSecret: trimText(process.env.JPUSH_MASTER_SECRET, 255),
       apiUrl: trimText(process.env.JPUSH_API_URL, 255) || "https://api.jpush.cn/v3/push",
@@ -914,7 +915,8 @@ class JPushProvider extends BasePushProvider {
 
   async send(context) {
     const descriptor = this.buildRequestDescriptor(context);
-    if (!context.liveTest || !this.isConfigured() || !context.tokenValue) {
+    const liveAllowed = Boolean(context.liveTest && this.config.jpush?.liveTestEnabled && this.isConfigured() && context.tokenValue);
+    if (!liveAllowed) {
       return {
         ok: true,
         status: "dry_run",
@@ -924,10 +926,12 @@ class JPushProvider extends BasePushProvider {
           delivery_mode: "dry_run",
           provider_ready: this.isConfigured(),
           live_test_enabled: Boolean(context.liveTest),
+          jpush_live_test_enabled: Boolean(this.config.jpush?.liveTestEnabled),
         },
       };
     }
 
+    const sendno = context.sendno || `jpush-${Date.now()}`;
     const auth = Buffer.from(`${this.config.jpush.appKey}:${this.config.jpush.masterSecret}`).toString("base64");
     const payload = {
       platform: "android",
@@ -937,6 +941,7 @@ class JPushProvider extends BasePushProvider {
       notification: descriptor.notification,
       message: descriptor.message,
       options: {
+        sendno,
         apns_production: true,
         time_to_live: 600,
       },
@@ -958,16 +963,38 @@ class JPushProvider extends BasePushProvider {
       responseText = "";
     }
 
+    let parsed = null;
+    try {
+      parsed = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      parsed = null;
+    }
+
+    const apiErrorCode = parsed?.error?.code ?? parsed?.errorCode ?? parsed?.code ?? "";
+    const apiErrorMessage = parsed?.error?.message ?? parsed?.errorMessage ?? parsed?.message ?? "";
+    const msgId = parsed?.msg_id ?? parsed?.msgId ?? parsed?.message_id ?? "";
+    const returnedSendno = parsed?.sendno ?? parsed?.sendNo ?? sendno;
+
     return {
       ok: response.ok,
       status: response.ok ? "success" : "failed",
       provider: this.providerName,
+      errorCode: response.ok ? "" : (apiErrorCode ? `JPUSH_API_${String(apiErrorCode).toString().toUpperCase()}` : `JPUSH_HTTP_${response.status}`),
       providerResponse: {
         ...descriptor,
         delivery_mode: "live_test",
         http_status: response.status,
         response_body_present: Boolean(responseText),
         response_body_length: responseText.length,
+        msg_id: msgId,
+        sendno: returnedSendno,
+        error_code: apiErrorCode || (response.ok ? "" : `JPUSH_HTTP_${response.status}`),
+        error_message: apiErrorMessage || (response.ok ? "" : `HTTP ${response.status}`),
+        registration_id_hint: safeTokenHint(context.tokenValue),
+        payload_summary: {
+          ...descriptor,
+          audience: { registration_id: [safeTokenHint(context.tokenValue)] },
+        },
       },
     };
   }

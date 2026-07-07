@@ -19,6 +19,7 @@
     "test:push-route-china-jpush": "node scripts/test-push-route-china-jpush.js",
     "test:jpush-send-call": "node scripts/test-jpush-send-call.js",
     "test:jpush-send-message": "node scripts/test-jpush-send-message.js",
+    "test:live-jpush": "node scripts/test-live-jpush.js",
     "test:legacy-route-apns-call": "node scripts/test-legacy-route-apns-call.js",
     "test:legacy-route-apns-message": "node scripts/test-legacy-route-apns-message.js",
     "test:legacy-route-fcm-call": "node scripts/test-legacy-route-fcm-call.js",
