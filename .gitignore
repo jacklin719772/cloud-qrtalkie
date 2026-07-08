@@ -21,3 +21,8 @@ Thumbs.db
 # MaxMind GeoIP
 GeoIP.conf
 *.mmdb
+mobile/android/.gradle/
+mobile/android/.idea/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/local.properties

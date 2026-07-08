@@ -1,0 +1,125 @@
+plugins {
+    id 'com.android.application'
+    // huawei need
+    id 'com.huawei.agconnect'
+    // fcm need
+//    id 'com.google.gms.google-services'
+
+
+}
+
+android {
+    compileSdkVersion 33
+//    buildToolsVersion "33.0.2"
+
+    defaultConfig {
+        applicationId "com.qrtalkie"
+//        applicationId "uni.tianji"
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode 1
+        versionName "1.0"
+        multiDexEnabled true
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders = [
+                JPUSH_PKGNAME : applicationId,
+                // JPush 上注册的包名对应的 Appkey
+                JPUSH_APPKEY : "61bc9d80376352ae5f445219",
+
+                // 暂时填写默认值即可.
+                JPUSH_CHANNEL : "developer-default",
+
+                // meizu
+                MEIZU_APPKEY : "MZ-3bc771b4624d43c2a0e2a25ce605e7c1",
+                MEIZU_APPID : "MZ-145227",
+
+                // vivo
+                VIVO_APPKEY : "711f64a91b14bc5962381995ded1709a",
+                VIVO_APPID : "105522482",
+
+                // xiaomi
+                XIAOMI_APPKEY : "MI-5832023392753",
+                XIAOMI_APPID : "MI-2882303761520233753",
+
+                // honor
+                HONOR_APPID : "220320187",
+                
+                // oppo
+                OPPO_APPKEY : "OP-de47acb7b1914909bd48d9b92ea6cc8f",
+                OPPO_APPID : "OP-30679073",
+                OPPO_APPSECRET: "OP-51979c2c14994556902c63ff3b0d7620"
+
+        ]
+    }
+
+    signingConfigs {
+        release {
+            keyAlias 'android.keystore'
+            keyPassword '123456'
+            storeFile file('release.keystore')
+            storePassword '123456'
+        }
+
+        debug {
+            keyAlias 'android.keystore'
+            keyPassword '123456'
+            storeFile file('release.keystore')
+            storePassword '123456'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar','*.aar'], dir: 'libs')
+
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.6.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    testImplementation 'junit:junit:4.+'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    implementation 'com.android.support:multidex:1.0.1'
+
+    // jpush sdk
+    implementation 'cn.jiguang.sdk:jpush:6.1.0'
+
+    // huawei
+    implementation 'cn.jiguang.sdk.plugin:huawei:6.1.0'
+
+    // xiaomi
+    implementation 'cn.jiguang.sdk.plugin:xiaomi:6.1.0'
+
+    // oppo
+    implementation 'cn.jiguang.sdk.plugin:oppo:6.1.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'androidx.annotation:annotation:1.1.0'
+
+    // meizu
+    implementation 'cn.jiguang.sdk.plugin:meizu:6.1.0'
+
+    // vivo
+    implementation 'cn.jiguang.sdk.plugin:vivo:6.1.0'
+
+    // honor
+    implementation 'cn.jiguang.sdk.plugin:honor:6.1.0'
+
+    // fcm
+//    implementation 'cn.jiguang.sdk.plugin:fcm:6.1.0'
+
+
+}

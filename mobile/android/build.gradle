@@ -1,0 +1,59 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+//    ext.kotlin_version="1.4.0"
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+
+        // huawei need
+        maven {url 'https://developer.huawei.com/repo/'}
+        // honor need
+        maven { url 'https://developer.hihonor.com/repo' }
+
+        // fcm need
+        maven { url "https://maven.google.com" }
+
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/spring/' }
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:7.2.1"
+
+        // huawei need
+        classpath 'com.huawei.agconnect:agcp:1.9.1.301'
+        // fcm need
+        classpath 'com.google.gms:google-services:4.3.15'
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+
+//        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+
+    }
+
+}
+
+allprojects {
+    repositories {
+
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+
+        // huawei need
+        maven {url 'https://developer.huawei.com/repo/'}
+        // honor need
+        maven { url 'https://developer.hihonor.com/repo' }
+
+        // fcm need
+        maven { url "https://maven.google.com" }
+
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://maven.aliyun.com/repository/spring/' }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
