@@ -26,3 +26,8 @@ mobile/android/.idea/
 mobile/android/app/build/
 mobile/android/build/
 mobile/android/local.properties
+mobile/android/app/google-services.json
+mobile/android/app/agconnect-services.json
+mobile/android/app/agconnect-services.json.bak
+mobile/android/app/release.keystore
+mobile/android/app/release/
