@@ -38,6 +38,12 @@ function safeTokenHint(value) {
   return `${token.slice(0, 4)}…${token.slice(-4)}`;
 }
 
+function toSafeNumber(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function hashText(value) {
   return createHash("sha256").update(String(value ?? "")).digest("hex");
 }
@@ -533,27 +539,28 @@ function isGatewayRequestAuthorized(request) {
 }
 
 function safeDeviceSummary(row) {
-  const token = String(row.token || "");
-  const fcmToken = String(row.fcm_token || "");
-  const jpushRegistrationId = String(row.jpush_registration_id || "");
-  const apnsToken = String(row.apns_token || "");
-  const voipToken = String(row.voip_token || "");
+  const source = row || {};
+  const token = String(source.token || "");
+  const fcmToken = String(source.fcm_token || "");
+  const jpushRegistrationId = String(source.jpush_registration_id || "");
+  const apnsToken = String(source.apns_token || "");
+  const voipToken = String(source.voip_token || "");
   return {
-    id: Number(row.id),
-    device_key: row.device_key || "",
-    device_id: row.device_id,
-    tenant_id: row.tenant_id != null ? Number(row.tenant_id) : null,
-    sip_user_id: row.sip_user_id != null ? Number(row.sip_user_id) : null,
-    sip_username: row.sip_username,
-    sip_domain: row.sip_domain,
-    sip_instance: row.sip_instance || "",
-    platform: row.platform || "",
-    provider: row.provider || "",
-    app_region: row.app_region || "",
-    package_name: row.package_name || "",
-    manufacturer: row.manufacturer || "",
-    has_gms: Boolean(row.has_gms),
-    preferred_push_provider: row.preferred_push_provider || "",
+    id: toSafeNumber(source.id),
+    device_key: source.device_key || "",
+    device_id: source.device_id || "",
+    tenant_id: toSafeNumber(source.tenant_id),
+    sip_user_id: toSafeNumber(source.sip_user_id),
+    sip_username: source.sip_username || "",
+    sip_domain: source.sip_domain || "",
+    sip_instance: source.sip_instance || "",
+    platform: source.platform || "",
+    provider: source.provider || "",
+    app_region: source.app_region || "",
+    package_name: source.package_name || "",
+    manufacturer: source.manufacturer || "",
+    has_gms: Boolean(source.has_gms),
+    preferred_push_provider: source.preferred_push_provider || "",
     token_present: Boolean(token),
     token_length: token.length,
     token_hint: safeTokenHint(token),
@@ -569,15 +576,93 @@ function safeDeviceSummary(row) {
     voip_token_present: Boolean(voipToken),
     voip_token_length: voipToken.length,
     voip_token_hint: safeTokenHint(voipToken),
-    app_version: row.app_version || "",
-    device_model: row.device_model || "",
-    os_version: row.os_version || "",
-    last_seen_ip: row.last_seen_ip || "",
-    last_seen_country: row.last_seen_country || "",
-    enabled: Boolean(row.enabled),
-    last_seen_at: row.last_seen_at || null,
-    created_at: row.created_at || null,
-    updated_at: row.updated_at || null,
+    app_version: source.app_version || "",
+    device_model: source.device_model || "",
+    os_version: source.os_version || "",
+    last_seen_ip: source.last_seen_ip || "",
+    last_seen_country: source.last_seen_country || "",
+    enabled: Boolean(source.enabled),
+    last_seen_at: source.last_seen_at || null,
+    created_at: source.created_at || null,
+    updated_at: source.updated_at || null,
+  };
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function getPushDeviceStaleDays() {
+  const days = Number(process.env.PUSH_DEVICE_STALE_DAYS || 30);
+  return Number.isFinite(days) && days > 0 ? days : 30;
+}
+
+function getPushDeviceStaleCutoff() {
+  return Date.now() - getPushDeviceStaleDays() * 24 * 60 * 60 * 1000;
+}
+
+function isPushDeviceFresh(row) {
+  const lastSeen = parseDateValue(row?.last_seen_at);
+  if (!lastSeen) return false;
+  return lastSeen.getTime() >= getPushDeviceStaleCutoff();
+}
+
+function preferIncomingText(currentValue, incomingValue, { preserveEmpty = true } = {}) {
+  if (incomingValue === undefined || incomingValue === null) return currentValue;
+  const text = String(incomingValue).trim();
+  if (!text && preserveEmpty) return currentValue;
+  return text;
+}
+
+function preferIncomingNumber(currentValue, incomingValue) {
+  if (incomingValue === undefined || incomingValue === null || incomingValue === "") return currentValue;
+  const number = Number(incomingValue);
+  return Number.isFinite(number) ? number : currentValue;
+}
+
+function sqlValue(value, fallback = null) {
+  return value === undefined ? fallback : value;
+}
+
+function pickBestDeviceRow(rows = []) {
+  if (!Array.isArray(rows) || !rows.length) return null;
+  return rows[0] || null;
+}
+
+function isSuccessfulProviderResult(entry = {}) {
+  if (!entry || entry.mode !== "live_test") return false;
+  if (entry.status === "success") return true;
+  const httpStatus = Number(entry.providerResponse?.http_status);
+  return Number.isFinite(httpStatus) && httpStatus >= 200 && httpStatus < 300;
+}
+
+function getDeviceRegistrationHints(device = {}) {
+  return {
+    device_id_hint: safeTokenHint(device.device_id || ""),
+    device_key_hint: safeTokenHint(device.device_key || ""),
+    registration_id_hint: safeTokenHint(device.jpush_registration_id || device.token || ""),
+  };
+}
+
+function normalizeRegisterPayload(payload = {}) {
+  const jpushRegistrationId = trimText(
+    payload.jpush_registration_id ||
+      payload.jpushRegistrationId ||
+      payload.registration_id ||
+      payload.registrationId ||
+      "",
+    4096,
+  );
+  return {
+    ...payload,
+    token: trimText(payload.token || jpushRegistrationId || "", 4096),
+    jpush_registration_id: jpushRegistrationId,
+    fcm_token: trimText(payload.fcm_token || payload.fcmToken || "", 4096),
+    apns_token: trimText(payload.apns_token || payload.apnsToken || "", 4096),
+    voip_token: trimText(payload.voip_token || payload.voipToken || "", 4096),
+    clear_tokens: toBool(payload.clear_tokens || payload.clearTokens, false),
   };
 }
 
@@ -608,6 +693,78 @@ function buildDeviceKey(payload = {}) {
   const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
   const token = trimText(payload.token, 4096);
   return `fingerprint:${hashText([sipUsername, sipDomain, packageName, provider, token || "device"].join("|"))}`;
+}
+
+async function findExistingPushDevice(connection, payload = {}) {
+  const deviceKey = trimText(payload.device_key || payload.deviceKey || "", 512);
+  const deviceId = trimText(payload.device_id || payload.deviceId || "", 255);
+  const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
+  const token = trimText(payload.token || "", 4096);
+  const jpushRegistrationId = trimText(payload.jpush_registration_id || payload.jpushRegistrationId || "", 4096) || (provider === "jpush" ? token : "");
+  const fcmToken = trimText(payload.fcm_token || payload.fcmToken || "", 4096) || (provider === "fcm" ? token : "");
+  const apnsToken = trimText(payload.apns_token || payload.apnsToken || "", 4096) || (provider === "apns" ? token : "");
+  const voipToken = trimText(payload.voip_token || payload.voipToken || "", 4096) || (provider === "apns.voip" ? token : "");
+
+  const searchOrder = [
+    deviceKey ? ["device_key = ?", [deviceKey]] : null,
+    jpushRegistrationId ? ["jpush_registration_id = ?", [jpushRegistrationId]] : null,
+    fcmToken ? ["fcm_token = ?", [fcmToken]] : null,
+    apnsToken ? ["apns_token = ?", [apnsToken]] : null,
+    voipToken ? ["voip_token = ?", [voipToken]] : null,
+    token ? ["token = ?", [token]] : null,
+    deviceId ? ["device_id = ?", [deviceId]] : null,
+  ].filter(Boolean);
+
+  for (const [where, params] of searchOrder) {
+    const rows = await query(connection, `SELECT * FROM push_devices WHERE ${where} LIMIT 1`, params);
+    const row = pickBestDeviceRow(rows);
+    if (row) return row;
+  }
+
+  return null;
+}
+
+function buildPushDeviceRecord(existingRow, payload = {}) {
+  const clearTokens = toBool(payload.clear_tokens || payload.clearTokens, false);
+  const provider = normalizeProvider(payload.provider || payload.pn_provider || existingRow?.provider || "");
+  const token = trimText(payload.token || "", 4096);
+  const deviceKeyIncoming = trimText(payload.device_key || payload.deviceKey || "", 512) || buildDeviceKey(payload);
+  const deviceIdIncoming = trimText(payload.device_id || payload.deviceId || "", 255) || deviceKeyIncoming.slice(0, 255);
+  const jpushRegistrationIdIncoming = trimText(payload.jpush_registration_id || payload.jpushRegistrationId || "", 4096) || (provider === "jpush" ? token : "");
+  const fcmTokenIncoming = trimText(payload.fcm_token || payload.fcmToken || "", 4096) || (provider === "fcm" ? token : "");
+  const apnsTokenIncoming = trimText(payload.apns_token || payload.apnsToken || "", 4096) || (provider === "apns" ? token : "");
+  const voipTokenIncoming = trimText(payload.voip_token || payload.voipToken || "", 4096) || (provider === "apns.voip" ? token : "");
+  const base = existingRow ? { ...existingRow } : {};
+
+  return {
+    device_key: preferIncomingText(base.device_key || deviceKeyIncoming, deviceKeyIncoming),
+    device_id: preferIncomingText(base.device_id || deviceIdIncoming, deviceIdIncoming),
+    tenant_id: preferIncomingNumber(base.tenant_id, payload.tenant_id ?? payload.tenantId),
+    sip_user_id: preferIncomingNumber(base.sip_user_id, payload.sip_user_id ?? payload.sipUserId),
+    sip_username: preferIncomingText(base.sip_username || "", payload.sip_username ?? payload.sipUserName),
+    sip_domain: preferIncomingText(base.sip_domain || "", payload.sip_domain ?? payload.sipDomain),
+    sip_instance: preferIncomingText(base.sip_instance || "", payload.sip_instance ?? payload.sipInstance),
+    app_region: normalizeAppRegion(preferIncomingText(base.app_region || "", payload.app_region ?? payload.appRegion)),
+    package_name: preferIncomingText(base.package_name || "", payload.package_name ?? payload.packageName),
+    manufacturer: normalizeManufacturer(preferIncomingText(base.manufacturer || "", payload.manufacturer ?? payload.device_manufacturer)),
+    has_gms: payload.has_gms === undefined ? (base.has_gms === undefined ? null : (base.has_gms ? 1 : 0)) : (toBool(payload.has_gms, false) ? 1 : 0),
+    preferred_push_provider: normalizeProvider(preferIncomingText(base.preferred_push_provider || "", payload.preferred_push_provider ?? payload.preferredPushProvider)),
+    platform: normalizePlatform(preferIncomingText(base.platform || "", payload.platform), provider || base.provider || ""),
+    provider,
+    token: clearTokens ? token : (token || String(base.token || "")),
+    fcm_token: clearTokens ? fcmTokenIncoming : (fcmTokenIncoming || String(base.fcm_token || "")),
+    jpush_registration_id: clearTokens ? jpushRegistrationIdIncoming : (jpushRegistrationIdIncoming || String(base.jpush_registration_id || "")),
+    apns_token: clearTokens ? apnsTokenIncoming : (apnsTokenIncoming || String(base.apns_token || "")),
+    voip_token: clearTokens ? voipTokenIncoming : (voipTokenIncoming || String(base.voip_token || "")),
+    last_seen_ip: preferIncomingText(base.last_seen_ip || "", payload.last_seen_ip ?? payload.lastSeenIp),
+    last_seen_country: preferIncomingText(base.last_seen_country || "", payload.last_seen_country ?? payload.lastSeenCountry),
+    app_version: preferIncomingText(base.app_version || "", payload.app_version ?? payload.appVersion),
+    device_model: preferIncomingText(base.device_model || "", payload.device_model ?? payload.deviceModel),
+    os_version: preferIncomingText(base.os_version || "", payload.os_version ?? payload.osVersion),
+    enabled: payload.enabled === undefined ? true : toBool(payload.enabled, true),
+    last_seen_at: new Date(),
+    updated_at: new Date(),
+  };
 }
 
 class BasePushProvider {
@@ -931,7 +1088,6 @@ class JPushProvider extends BasePushProvider {
       };
     }
 
-    const sendno = context.sendno || `jpush-${Date.now()}`;
     const auth = Buffer.from(`${this.config.jpush.appKey}:${this.config.jpush.masterSecret}`).toString("base64");
     const payload = {
       platform: "android",
@@ -941,7 +1097,6 @@ class JPushProvider extends BasePushProvider {
       notification: descriptor.notification,
       message: descriptor.message,
       options: {
-        sendno,
         apns_production: true,
         time_to_live: 600,
       },
@@ -973,7 +1128,7 @@ class JPushProvider extends BasePushProvider {
     const apiErrorCode = parsed?.error?.code ?? parsed?.errorCode ?? parsed?.code ?? "";
     const apiErrorMessage = parsed?.error?.message ?? parsed?.errorMessage ?? parsed?.message ?? "";
     const msgId = parsed?.msg_id ?? parsed?.msgId ?? parsed?.message_id ?? "";
-    const returnedSendno = parsed?.sendno ?? parsed?.sendNo ?? sendno;
+    const returnedSendno = parsed?.sendno ?? parsed?.sendNo ?? "";
 
     return {
       ok: response.ok,
@@ -987,7 +1142,7 @@ class JPushProvider extends BasePushProvider {
         response_body_present: Boolean(responseText),
         response_body_length: responseText.length,
         msg_id: msgId,
-        sendno: returnedSendno,
+        ...(returnedSendno ? { sendno: returnedSendno } : {}),
         error_code: apiErrorCode || (response.ok ? "" : `JPUSH_HTTP_${response.status}`),
         error_message: apiErrorMessage || (response.ok ? "" : `HTTP ${response.status}`),
         registration_id_hint: safeTokenHint(context.tokenValue),
@@ -1075,99 +1230,97 @@ async function updatePushEvent(connection, pushId, patch) {
 }
 
 async function upsertPushDevice(connection, payload) {
-  const token = trimText(payload.token, 4096);
-  const sipUsername = trimText(payload.sip_username, 120);
-  const sipDomain = trimText(payload.sip_domain, 255);
-  const sipInstance = trimText(payload.sip_instance, 255);
-  const provider = normalizeProvider(payload.provider || payload.pn_provider || "");
-  const platform = normalizePlatform(payload.platform, provider);
-  const deviceId = trimText(payload.device_id || payload.deviceId || "", 255) || buildDeviceKey(payload).slice(0, 255);
-  const deviceKey = trimText(payload.device_key || payload.deviceKey || "", 512) || buildDeviceKey(payload);
-  const tenantId = payload.tenant_id ?? payload.tenantId ?? null;
-  const sipUserId = payload.sip_user_id ?? payload.sipUserId ?? null;
-  const appRegion = normalizeAppRegion(payload.app_region || payload.appRegion || "");
-  const packageName = trimText(payload.package_name || payload.packageName, 255);
-  const manufacturer = normalizeManufacturer(payload.manufacturer || payload.device_manufacturer || "");
-  const hasGms = payload.has_gms === undefined ? null : (toBool(payload.has_gms, false) ? 1 : 0);
-  const preferredPushProvider = normalizeProvider(payload.preferred_push_provider || payload.preferredPushProvider || "");
-  const fcmToken = trimText(payload.fcm_token || payload.fcmToken || "", 4096);
-  const jpushRegistrationId = trimText(payload.jpush_registration_id || payload.jpushRegistrationId || "", 4096);
-  const apnsToken = trimText(payload.apns_token || payload.apnsToken || "", 4096);
-  const voipToken = trimText(payload.voip_token || payload.voipToken || "", 4096);
-  const lastSeenIp = trimText(payload.last_seen_ip || payload.lastSeenIp || "", 80);
-  const lastSeenCountry = trimText(payload.last_seen_country || payload.lastSeenCountry || "", 80);
-  const enabled = payload.enabled === undefined ? true : toBool(payload.enabled, true);
-  const appVersion = trimText(payload.app_version || payload.appVersion, 120);
-  const deviceModel = trimText(payload.device_model || payload.deviceModel, 120);
-  const osVersion = trimText(payload.os_version || payload.osVersion, 120);
+  const normalizedPayload = normalizeRegisterPayload(payload);
+  const existingRow = await findExistingPushDevice(connection, normalizedPayload);
+  const merged = buildPushDeviceRecord(existingRow, normalizedPayload);
 
-  await query(
-    connection,
-    `INSERT INTO push_devices (
-       device_key, device_id, tenant_id, sip_user_id, sip_username, sip_domain, sip_instance,
-       app_region, package_name, manufacturer, has_gms, preferred_push_provider,
-       platform, provider, token, fcm_token, jpush_registration_id, apns_token, voip_token,
-       last_seen_ip, last_seen_country, app_version, device_model, os_version,
-       enabled, last_seen_at, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
-     ON DUPLICATE KEY UPDATE
-       device_id = VALUES(device_id),
-       tenant_id = VALUES(tenant_id),
-       sip_user_id = VALUES(sip_user_id),
-       sip_username = VALUES(sip_username),
-       sip_domain = VALUES(sip_domain),
-       sip_instance = VALUES(sip_instance),
-       app_region = VALUES(app_region),
-       package_name = VALUES(package_name),
-       manufacturer = VALUES(manufacturer),
-       has_gms = VALUES(has_gms),
-       preferred_push_provider = VALUES(preferred_push_provider),
-       platform = VALUES(platform),
-       provider = VALUES(provider),
-       token = VALUES(token),
-       fcm_token = VALUES(fcm_token),
-       jpush_registration_id = VALUES(jpush_registration_id),
-       apns_token = VALUES(apns_token),
-       voip_token = VALUES(voip_token),
-       last_seen_ip = VALUES(last_seen_ip),
-       last_seen_country = VALUES(last_seen_country),
-       app_version = VALUES(app_version),
-       device_model = VALUES(device_model),
-       os_version = VALUES(os_version),
-       enabled = VALUES(enabled),
-       last_seen_at = NOW(),
-       updated_at = NOW()`,
-    [
-      deviceKey,
-      deviceId,
-      tenantId,
-      sipUserId,
-      sipUsername,
-      sipDomain,
-      sipInstance,
-      appRegion,
-      packageName,
-      manufacturer,
-      hasGms,
-      preferredPushProvider,
-      platform,
-      provider,
-      token,
-      fcmToken,
-      jpushRegistrationId,
-      apnsToken,
-      voipToken,
-      lastSeenIp,
-      lastSeenCountry,
-      appVersion,
-      deviceModel,
-      osVersion,
-      enabled ? 1 : 0,
-    ],
-  );
+  if (existingRow?.id) {
+    await query(
+      connection,
+      `UPDATE push_devices
+         SET device_key = ?, device_id = ?, tenant_id = ?, sip_user_id = ?, sip_username = ?, sip_domain = ?, sip_instance = ?,
+             app_region = ?, package_name = ?, manufacturer = ?, has_gms = ?, preferred_push_provider = ?,
+             platform = ?, provider = ?, token = ?, fcm_token = ?, jpush_registration_id = ?, apns_token = ?, voip_token = ?,
+             last_seen_ip = ?, last_seen_country = ?, app_version = ?, device_model = ?, os_version = ?,
+             enabled = ?, last_seen_at = ?, updated_at = ?
+       WHERE id = ?`,
+      [
+        sqlValue(merged.device_key, ""),
+        sqlValue(merged.device_id, ""),
+        sqlValue(merged.tenant_id, null),
+        sqlValue(merged.sip_user_id, null),
+        sqlValue(merged.sip_username, ""),
+        sqlValue(merged.sip_domain, ""),
+        sqlValue(merged.sip_instance, ""),
+        sqlValue(merged.app_region, ""),
+        sqlValue(merged.package_name, ""),
+        sqlValue(merged.manufacturer, ""),
+        sqlValue(merged.has_gms, null),
+        sqlValue(merged.preferred_push_provider, ""),
+        sqlValue(merged.platform, ""),
+        sqlValue(merged.provider, ""),
+        sqlValue(merged.token, ""),
+        sqlValue(merged.fcm_token, null),
+        sqlValue(merged.jpush_registration_id, null),
+        sqlValue(merged.apns_token, null),
+        sqlValue(merged.voip_token, null),
+        sqlValue(merged.last_seen_ip, ""),
+        sqlValue(merged.last_seen_country, ""),
+        sqlValue(merged.app_version, ""),
+        sqlValue(merged.device_model, ""),
+        sqlValue(merged.os_version, ""),
+        sqlValue(merged.enabled ? 1 : 0, 1),
+        sqlValue(merged.last_seen_at, new Date()),
+        sqlValue(merged.updated_at, new Date()),
+        existingRow.id,
+      ],
+    );
+  } else {
+    await query(
+      connection,
+      `INSERT INTO push_devices (
+         device_key, device_id, tenant_id, sip_user_id, sip_username, sip_domain, sip_instance,
+         app_region, package_name, manufacturer, has_gms, preferred_push_provider,
+         platform, provider, token, fcm_token, jpush_registration_id, apns_token, voip_token,
+         last_seen_ip, last_seen_country, app_version, device_model, os_version,
+         enabled, last_seen_at, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        sqlValue(merged.device_key, ""),
+        sqlValue(merged.device_id, ""),
+        sqlValue(merged.tenant_id, null),
+        sqlValue(merged.sip_user_id, null),
+        sqlValue(merged.sip_username, ""),
+        sqlValue(merged.sip_domain, ""),
+        sqlValue(merged.sip_instance, ""),
+        sqlValue(merged.app_region, ""),
+        sqlValue(merged.package_name, ""),
+        sqlValue(merged.manufacturer, ""),
+        sqlValue(merged.has_gms, null),
+        sqlValue(merged.preferred_push_provider, ""),
+        sqlValue(merged.platform, ""),
+        sqlValue(merged.provider, ""),
+        sqlValue(merged.token, ""),
+        sqlValue(merged.fcm_token, null),
+        sqlValue(merged.jpush_registration_id, null),
+        sqlValue(merged.apns_token, null),
+        sqlValue(merged.voip_token, null),
+        sqlValue(merged.last_seen_ip, ""),
+        sqlValue(merged.last_seen_country, ""),
+        sqlValue(merged.app_version, ""),
+        sqlValue(merged.device_model, ""),
+        sqlValue(merged.os_version, ""),
+        sqlValue(merged.enabled ? 1 : 0, 1),
+        sqlValue(merged.last_seen_at, new Date()),
+      ],
+    );
+  }
 
-  const [rows] = await query(connection, "SELECT * FROM push_devices WHERE device_id = ? LIMIT 1", [deviceId]);
-  return rows ? rows[0] || rows : null;
+  const rows = await query(connection, "SELECT * FROM push_devices WHERE device_key = ? LIMIT 1", [merged.device_key]);
+  return {
+    device: pickBestDeviceRow(rows) || existingRow || null,
+    createdOrUpdated: existingRow ? "updated" : "created",
+  };
 }
 
 async function disablePushDevice(connection, payload) {
@@ -1357,19 +1510,41 @@ async function resolveTargetDevices(connection, payload, filters = {}) {
   const packageName = trimText(filters.package_name || filters.packageName || payload.package_name || payload.packageName || "", 255);
   const sipInstance = trimText(filters.sip_instance || filters.sipInstance || payload.sip_instance || payload.sipInstance || "", 255);
   const deviceKey = trimText(filters.device_key || filters.deviceKey || payload.device_key || payload.deviceKey || "", 512);
+  const toUri = payload.toUri || payload.to_uri || filters.toUri || filters.to_uri || "";
+  const payloadSipUsername = trimText(payload.sip_username || payload.sipUserName || filters.sip_username || filters.sipUserName || "", 120);
+  const payloadSipDomain = trimText(payload.sip_domain || payload.sipDomain || filters.sip_domain || filters.sipDomain || "", 255);
+  const warnings = [];
+  const debugEnabled = toBool(process.env.PUSH_DEVICE_QUERY_DEBUG, false);
+
   const applyPackageFilters = (rows) => rows.filter((row) => {
     if (packageName && row.package_name && row.package_name !== packageName) return false;
     if (sipInstance && row.sip_instance && row.sip_instance !== sipInstance) return false;
     return true;
   });
 
+  const applyFreshFilters = (rows) => rows.filter((row) => isPushDeviceFresh(row));
+  const normalizeEnabled = (rows) => rows.filter((row) => toBool(row.enabled, false) || row.enabled === 1 || row.enabled === true);
+
+  const loadRows = async (where, params) => {
+    const rows = await query(connection, `SELECT * FROM push_devices WHERE ${where} ORDER BY updated_at DESC, id DESC`, params);
+    return Array.isArray(rows) ? rows : [];
+  };
+
+  const pickActiveRows = async (where, params) => {
+    const rows = normalizeEnabled(await loadRows(where, params));
+    if (!rows.length) return null;
+    const packageFiltered = applyPackageFilters(rows);
+    if (!packageFiltered.length) return { rows: [], stale: false };
+    const freshRows = applyFreshFilters(packageFiltered);
+    if (packageFiltered.length > freshRows.length) warnings.push("DEVICE_REGISTRATION_STALE");
+    if (!freshRows.length) return { rows: [], stale: true };
+    return { rows: [freshRows[0]], stale: packageFiltered.length > freshRows.length || freshRows.length > 1 };
+  };
+
   if (deviceKey) {
-    const rows = await query(
-      connection,
-      `SELECT * FROM push_devices WHERE device_key = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
-      [deviceKey],
-    );
-    if (rows.length > 0) return applyPackageFilters(rows);
+    if (debugEnabled) console.log(JSON.stringify({ stage: "device_key", deviceKey }, null, 2));
+    const result = await pickActiveRows("device_key = ?", [deviceKey]);
+    if (result) return { devices: result.rows, warnings };
   }
 
   if (payload.deviceId || payload.device_id || filters.device_id || filters.deviceId) {
@@ -1382,40 +1557,32 @@ async function resolveTargetDevices(connection, payload, filters = {}) {
       sip_username: payload.sip_username || filters.sip_username || "",
       sip_domain: payload.sip_domain || filters.sip_domain || "",
     });
-    const rows = await query(
-      connection,
-      `SELECT * FROM push_devices WHERE device_key = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
-      [candidateKey],
-    );
-    if (rows.length > 0) return applyPackageFilters(rows);
+    if (debugEnabled) console.log(JSON.stringify({ stage: "device_id", candidateKey }, null, 2));
+    const result = await pickActiveRows("device_key = ?", [candidateKey]);
+    if (result) return { devices: result.rows, warnings };
   }
 
-  if (payload.token) {
-    const rows = await query(
-      connection,
-      `SELECT * FROM push_devices WHERE token = ? AND enabled = 1 ORDER BY updated_at DESC, id DESC`,
-      [payload.token],
-    );
-    if (rows.length > 0) return applyPackageFilters(rows);
+  const tokens = [payload.token, payload.jpush_registration_id, payload.fcm_token, payload.apns_token, payload.voip_token].filter((v) => String(v || "").trim());
+  for (const token of tokens) {
+    if (debugEnabled) console.log(JSON.stringify({ stage: "token", token_hint: safeTokenHint(token) }, null, 2));
+    const result = await pickActiveRows("token = ?", [token]);
+    if (result) return { devices: result.rows, warnings };
   }
 
-  const { username, domain } = parseSipUri(payload.toUri);
-  if (!username || !domain) return [];
+  const parsedSipUri = parseSipUri(toUri);
+  const username = payloadSipUsername || parsedSipUri.username;
+  const domain = payloadSipDomain || parsedSipUri.domain;
+  if (debugEnabled) console.log(JSON.stringify({ stage: "sip_lookup", toUri, payloadSipUsername, payloadSipDomain, parsedSipUri, username, domain }, null, 2));
+  if (!username || !domain) return { devices: [], warnings };
 
-  const rows = await query(
-    connection,
-    `SELECT * FROM push_devices
-      WHERE sip_username = ? AND sip_domain = ? AND enabled = 1
-      ORDER BY updated_at DESC, id DESC`,
-    [username, domain],
-  );
-
-  if (packageName || sipInstance) {
-    const packageFiltered = applyPackageFilters(rows);
-    if (packageFiltered.length > 0) return packageFiltered;
-  }
-
-  return rows;
+  const rows = normalizeEnabled(await loadRows("sip_username = ? AND sip_domain = ?", [username, domain]));
+  if (debugEnabled) console.log(JSON.stringify({ stage: "sip_rows", count: rows.length, sample: rows[0] ? safeDeviceSummary(rows[0]) : null }, null, 2));
+  const filtered = applyPackageFilters(rows);
+  if (debugEnabled) console.log(JSON.stringify({ stage: "sip_filtered", count: filtered.length }, null, 2));
+  const fresh = applyFreshFilters(filtered);
+  if (debugEnabled) console.log(JSON.stringify({ stage: "sip_fresh", count: fresh.length }, null, 2));
+  if (filtered.length > fresh.length) warnings.push("DEVICE_REGISTRATION_STALE");
+  return { devices: fresh, warnings };
 }
 
 async function dispatchFlexisipEvent(connection, payload) {
@@ -1486,7 +1653,8 @@ async function dispatchFlexisipEvent(connection, payload) {
     }
   }
 
-  const devices = await resolveTargetDevices(connection, payload);
+  const targetDevices = await resolveTargetDevices(connection, payload);
+  const devices = targetDevices.devices || [];
   const routePlan = buildRoutePlan({ event, payload, devices, config });
   const enhancedDispatches = routePlan.devices.map((planEntry) => buildEnhancedDispatchResult({ planEntry, config }));
   const legacyResult = {
@@ -1510,6 +1678,12 @@ async function dispatchFlexisipEvent(connection, payload) {
   };
   const results = [legacyResult, ...enhancedDispatches];
   const routePlanSummary = {
+    warnings: Array.from(new Set([
+      ...(targetDevices.warnings || []),
+      ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready").map(() => "JPUSH_PROVIDER_NOT_READY"),
+      ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready" || !entry.route.should_send).map(() => "FALLBACK_TO_LEGACY_ROUTE"),
+      ...(routePlan.devices.length === 0 ? ["FALLBACK_TO_LEGACY_ROUTE"] : []),
+    ])),
     legacy_route: {
       route_type: legacyDispatch.route_type,
       route_reason: legacyDispatch.route.route_reason,
@@ -1615,7 +1789,8 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
     throw error;
   }
 
-  const devices = await resolveTargetDevices(connection, payload, payload);
+  const targetDevices = await resolveTargetDevices(connection, payload, payload);
+  const devices = targetDevices.devices || [];
   const routePlan = buildRoutePlan({ event, payload, devices, config });
   const pushId = randomUUID();
   await insertPushEvent(connection, {
@@ -1725,6 +1900,12 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
     provider_response: safeJson({
       mode: results.some((entry) => entry.mode === "live_test") ? "live_test" : "dry_run",
       event,
+      warnings: Array.from(new Set([
+        ...(targetDevices.warnings || []),
+        ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready").map(() => "JPUSH_PROVIDER_NOT_READY"),
+        ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready" || !entry.route.should_send).map(() => "FALLBACK_TO_LEGACY_ROUTE"),
+        ...(routePlan.devices.length === 0 ? ["FALLBACK_TO_LEGACY_ROUTE"] : []),
+      ])),
       routePlan: routePlan.devices.map((entry) => ({
         route_type: "legacy_route",
         device_id: entry.device.device_id,
@@ -1739,7 +1920,7 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
         provider_status: entry.route.provider_status,
       })),
       results,
-      delivered: deliver,
+      delivered: results.some((entry) => isSuccessfulProviderResult(entry)),
     }),
   });
 
@@ -1748,8 +1929,14 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
     event,
     mode: results.some((entry) => entry.mode === "live_test") ? "live_test" : "dry_run",
     devicesCount: devices.length,
+    warnings: Array.from(new Set([
+      ...(targetDevices.warnings || []),
+      ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready").map(() => "JPUSH_PROVIDER_NOT_READY"),
+      ...routePlan.devices.filter((entry) => entry.route.route_reason === "provider_not_ready" || !entry.route.should_send).map(() => "FALLBACK_TO_LEGACY_ROUTE"),
+      ...(routePlan.devices.length === 0 ? ["FALLBACK_TO_LEGACY_ROUTE"] : []),
+    ])),
     results,
-    delivered: results.some((entry) => entry.mode === "live_test"),
+    delivered: results.some((entry) => isSuccessfulProviderResult(entry)),
   };
 }
 
@@ -1821,20 +2008,25 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
     let connection;
     try {
       connection = await pool.getConnection();
-      const device = await upsertPushDevice(connection, payload);
+      const result = await upsertPushDevice(connection, payload);
       return response.json({
         success: true,
         code: "PUSH_DEVICE_REGISTERED",
         message: "Push device saved.",
         data: {
-          device: safeDeviceSummary(device),
+          created_or_updated: result.createdOrUpdated,
+          ...getDeviceRegistrationHints(result.device || {}),
+          enabled: true,
+          last_seen_at: result.device?.last_seen_at || null,
+          device: safeDeviceSummary(result.device || {}),
         },
       });
     } catch (error) {
       return response.status(error?.statusCode || 500).json({
         success: false,
         code: error?.code || "PUSH_DEVICE_REGISTER_FAILED",
-        message: error?.message || "Push device registration failed.",
+        message: "Failed to register push device.",
+        detail: trimText(error?.message || error?.code || "Push device registration failed.", 255),
       });
     } finally {
       if (connection) connection.release();
@@ -1846,19 +2038,22 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
       return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
     }
 
-    const payload = request.body || {};
-    let connection;
-    try {
-      connection = await pool.getConnection();
-      const affectedRows = await disablePushDevice(connection, payload);
-      return response.json({
-        success: true,
-        code: "PUSH_DEVICE_UNREGISTERED",
-        message: "Push device disabled.",
-        data: {
-          affectedRows,
-        },
-      });
+      const payload = request.body || {};
+      let connection;
+      try {
+        connection = await pool.getConnection();
+        const affectedRows = await disablePushDevice(connection, payload);
+        return response.json({
+          success: true,
+          code: "PUSH_DEVICE_UNREGISTERED",
+          message: "Push device disabled.",
+          data: {
+            affectedRows,
+            enabled: false,
+            device_key_hint: safeTokenHint(payload.device_key || payload.deviceKey || ""),
+            device_id_hint: safeTokenHint(payload.device_id || payload.deviceId || ""),
+          },
+        });
     } catch (error) {
       return response.status(error?.statusCode || 500).json({
         success: false,
