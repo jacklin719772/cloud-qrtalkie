@@ -1,6 +1,7 @@
 package com.qrtalkie;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -48,6 +49,19 @@ public class MyPushMessageService extends JPushMessageReceiver {
         String content = msg.notificationContent != null ? msg.notificationContent : "";
 
         int myNotifyId = ++sNotifyId;
+
+        // 创建通知频道 (Android 8.0+ 必须)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                "MyChannelId",
+                "來電通知",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            channel.setDescription("來電和訊息通知");
+            channel.enableVibration(true);
+            NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null) nm.createNotificationChannel(channel);
+        }
 
         RemoteViews remoteViews = new RemoteViews(context.getPackageName(), R.layout.customer_notification);
         remoteViews.setTextViewText(R.id.title, title);
