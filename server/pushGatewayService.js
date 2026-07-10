@@ -1104,18 +1104,21 @@ class JPushProvider extends BasePushProvider {
     }
 
     const auth = Buffer.from(`${this.config.jpush.appKey}:${this.config.jpush.masterSecret}`).toString("base64");
+    const payloadMode = context.jpush_payload_mode || "notification";
     const payload = {
       platform: "android",
       audience: {
         registration_id: [context.tokenValue],
       },
-      notification: descriptor.notification,
       message: descriptor.message,
       options: {
         apns_production: true,
-        time_to_live: 600,
+        time_to_live: payloadMode === "custom_message" ? 86400 : 600,
       },
     };
+    if (payloadMode !== "custom_message") {
+      payload.notification = descriptor.notification;
+    }
 
     const response = await fetch(this.config.jpush.apiUrl, {
       method: "POST",
@@ -1861,6 +1864,7 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
           tokenValue,
           tokenType: route.token_type,
           liveTest: true,
+          jpush_payload_mode: payload.jpush_payload_mode || "",
           callId: payload.callId || payload.call_id || "",
           fromUri: payload.fromUri || payload.from_uri || "",
           toUri: payload.toUri || payload.to_uri || "",
