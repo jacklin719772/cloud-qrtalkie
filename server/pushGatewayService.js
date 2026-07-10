@@ -1030,6 +1030,40 @@ class JPushProvider extends BasePushProvider {
 
   buildRequestDescriptor(context) {
     const target = context.tokenValue ? { registration_id: [context.tokenValue] } : {};
+    const callId = context.callId || context.call_id || "";
+    const msgid = context.msgid || context.msg_id || context.messageId || context.message_id || "";
+    const fromUri = context.fromUri || context.from_uri || "";
+    const toUri = context.toUri || context.to_uri || "";
+    const sipUsername = context.device?.sip_username || context.sip_username || "";
+    const sipDomain = context.device?.sip_domain || context.sip_domain || "";
+    const packageName = context.device?.package_name || context.package_name || "";
+    const provider = context.device?.provider || context.provider || "jpush";
+
+    const extras = {
+      event: context.event,
+      call_id: callId,
+      msgid,
+      from_uri: fromUri,
+      to_uri: toUri,
+      sip_username: sipUsername,
+      sip_domain: sipDomain,
+      package_name: packageName,
+      provider,
+      push_channel: "jpush",
+    };
+
+    const msgContent = {
+      event: context.event,
+      call_id: callId,
+      msgid,
+      from_uri: fromUri,
+      to_uri: toUri,
+      sip_username: sipUsername,
+      sip_domain: sipDomain,
+      package_name: packageName,
+      provider,
+    };
+
     return {
       ...super.buildRequestDescriptor(context),
       push_kind: context.event,
@@ -1038,33 +1072,14 @@ class JPushProvider extends BasePushProvider {
       audience: target,
       notification: {
         android: {
-          alert: context.event === "call" ? "Incoming call" : "New message",
+          alert: context.event === "call" ? "Incoming call" : (context.body || "New message"),
+          title: context.event === "call" ? "來電" : "新訊息",
           priority: 2,
-          extras: {
-            event: context.event,
-            call_id: context.callId || "",
-            msgid: context.msgid || "",
-            from_uri: context.fromUri || "",
-            to_uri: context.toUri || "",
-            sip_username: context.device?.sip_username || "",
-            sip_domain: context.device?.sip_domain || "",
-            package_name: context.device?.package_name || "",
-            provider: context.device?.provider || "jpush",
-          },
+          extras,
         },
       },
       message: {
-        msg_content: JSON.stringify({
-          event: context.event,
-          call_id: context.callId || "",
-          msgid: context.msgid || "",
-          from_uri: context.fromUri || "",
-          to_uri: context.toUri || "",
-          sip_username: context.device?.sip_username || "",
-          sip_domain: context.device?.sip_domain || "",
-          package_name: context.device?.package_name || "",
-          provider: context.device?.provider || "jpush",
-        }),
+        msg_content: JSON.stringify(msgContent),
         title: "QRTalkie Push",
       },
     };
@@ -1846,6 +1861,10 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
           tokenValue,
           tokenType: route.token_type,
           liveTest: true,
+          callId: payload.callId || payload.call_id || "",
+          fromUri: payload.fromUri || payload.from_uri || "",
+          toUri: payload.toUri || payload.to_uri || "",
+          msgid: payload.msgid || payload.msgId || payload.msg_id || payload.messageId || payload.message_id || "",
         });
       } catch (error) {
         sendResult = {
