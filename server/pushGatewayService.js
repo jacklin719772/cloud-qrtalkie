@@ -1038,6 +1038,8 @@ class JPushProvider extends BasePushProvider {
     const sipDomain = context.device?.sip_domain || context.sip_domain || "";
     const packageName = context.device?.package_name || context.package_name || "";
     const provider = context.device?.provider || context.provider || "jpush";
+    const payloadMode = context.jpush_payload_mode || "notification";
+    const isCustomMessage = payloadMode === "custom_message";
 
     const extras = {
       event: context.event,
@@ -1064,25 +1066,31 @@ class JPushProvider extends BasePushProvider {
       provider,
     };
 
-    return {
+    const descriptor = {
       ...super.buildRequestDescriptor(context),
       push_kind: context.event,
       delivery: "jpush",
       platform: "android",
       audience: target,
-      notification: {
+      jpush_payload_mode: payloadMode,
+      message: {
+        msg_content: JSON.stringify(msgContent),
+        title: "QRTalkie Push",
+      },
+    };
+
+    if (!isCustomMessage) {
+      descriptor.notification = {
         android: {
           alert: context.event === "call" ? "Incoming call" : (context.body || "New message"),
           title: context.event === "call" ? "來電" : "新訊息",
           priority: 2,
           extras,
         },
-      },
-      message: {
-        msg_content: JSON.stringify(msgContent),
-        title: "QRTalkie Push",
-      },
-    };
+      };
+    }
+
+    return descriptor;
   }
 
   async send(context) {
@@ -1166,6 +1174,8 @@ class JPushProvider extends BasePushProvider {
         registration_id_hint: safeTokenHint(context.tokenValue),
         payload_summary: {
           ...descriptor,
+          delivery_mode: "live_test",
+          jpush_payload_mode: (context.jpush_payload_mode || "notification"),
           audience: { registration_id: [safeTokenHint(context.tokenValue)] },
         },
       },
