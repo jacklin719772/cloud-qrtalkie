@@ -441,7 +441,9 @@ function normalizeFlexisipPushInput(request) {
   const type = normalizeProvider(merged.type);
   const token = trimText(merged.token, 4096);
   const appId = trimText(merged.app_id ?? merged.appId, 256);
-  const fromUri = normalizeUri(merged.from_uri ?? merged.fromUri);
+  const fromUri = normalizeUri(merged.from_uri ?? merged.fromUri ?? merged["from-uri"]);
+  const fromName = trimText(merged.from_name ?? merged.fromName ?? merged["from-name"], 255);
+  const fromTag = trimText(merged.from_tag ?? merged.fromTag ?? merged["from-tag"], 255);
   const toUri = normalizeUri(merged.to_uri ?? merged.toUri);
   const callId = trimText(merged.call_id ?? merged.callId, 255);
   const msgid = trimText(merged.msgid ?? merged.msgId, 255);
@@ -463,6 +465,8 @@ function normalizeFlexisipPushInput(request) {
     tokenHint: safeTokenHint(token),
     appId,
     fromUri,
+    fromName,
+    fromTag,
     toUri,
     callId,
     msgid,
@@ -2000,6 +2004,27 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
     }
 
     const payload = readFlexisipRequest(request);
+
+    // Log Flexisip external-push callback with all parameters
+    console.log(JSON.stringify({
+      src: "flexisip-external-push",
+      event: payload.event,
+      type: payload.type,
+      token_hint: payload.tokenHint,
+      app_id: payload.appId,
+      from_uri: payload.fromUri,
+      from_name: payload.fromName || "",
+      from_tag: payload.fromTag || "",
+      to_uri: payload.toUri,
+      call_id: payload.callId,
+      msgid: payload.msgid,
+      uid: payload.uid,
+      sound: payload.sound,
+      body_length: payload.bodyLength || 0,
+      deliver: payload.deliver,
+      timestamp: new Date().toISOString(),
+    }));
+
     let connection;
     try {
       connection = await pool.getConnection();
