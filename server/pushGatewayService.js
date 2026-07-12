@@ -1042,7 +1042,7 @@ class JPushProvider extends BasePushProvider {
     const sipDomain = context.device?.sip_domain || context.sip_domain || "";
     const packageName = context.device?.package_name || context.package_name || "";
     const provider = context.device?.provider || context.provider || "jpush";
-    const payloadMode = context.jpush_payload_mode || "notification";
+    const payloadMode = context.jpush_payload_mode || "custom_message";
     const isCustomMessage = payloadMode === "custom_message";
 
     const extras = {
@@ -1116,7 +1116,7 @@ class JPushProvider extends BasePushProvider {
     }
 
     const auth = Buffer.from(`${this.config.jpush.appKey}:${this.config.jpush.masterSecret}`).toString("base64");
-    const payloadMode = context.jpush_payload_mode || "notification";
+    const payloadMode = context.jpush_payload_mode || "custom_message";
     const payload = {
       platform: "android",
       audience: {
