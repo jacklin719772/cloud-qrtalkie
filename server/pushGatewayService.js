@@ -454,7 +454,7 @@ function normalizeFlexisipPushInput(request) {
   const manufacturer = trimText(merged.manufacturer ?? merged.device_manufacturer, 80);
   const preferredPushProvider = normalizeProvider(merged.preferred_push_provider ?? merged.preferredPushProvider ?? "");
   const hasGms = merged.has_gms === undefined ? null : toBool(merged.has_gms, false);
-  const deliver = merged.deliver === undefined ? false : toBool(merged.deliver, false);
+  const deliver = merged.deliver === undefined ? true : toBool(merged.deliver, false);
   const rawTextBody = typeof request.body === "string" ? request.body : normalizeUri(merged.body);
   const bodyLength = rawTextBody ? String(rawTextBody).length : 0;
 

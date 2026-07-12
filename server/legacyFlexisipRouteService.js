@@ -2,11 +2,20 @@ import { isProviderConfigured, normalizeProvider } from "./pushRouteService.js";
 
 const APPLE_LIKE_TYPES = new Set(["apple", "apns", "apns.dev", "apns.voip"]);
 const FCM_LIKE_TYPES = new Set(["fcm", "firebase"]);
+const JPUSH_LIKE_TYPES = new Set(["jpush"]);
 
 function trimText(value, maxLength = 255) {
   const text = String(value ?? "").trim();
   if (!maxLength || text.length <= maxLength) return text;
   return text.slice(0, maxLength);
+}
+
+function isJpushRegistrationId(token) {
+  if (!token) return false;
+  const t = String(token).trim();
+  // JPush registration IDs: short hex strings, typically 11-30 chars, no colons
+  if (t.length >= 11 && t.length <= 40 && /^[a-fA-F0-9]+$/.test(t)) return true;
+  return false;
 }
 
 function safeTokenHint(value) {
@@ -65,12 +74,30 @@ function buildLegacyRoutePlan(payload = {}, config = {}) {
     provider = event === "call" ? "apns.voip" : "apns";
     routeReason = event === "call" ? "legacy_apple_call_apns_voip" : "legacy_apple_message_apns";
     providerStatus = isProviderConfigured(provider, config) ? "configured" : "not_configured";
+  } else if (JPUSH_LIKE_TYPES.has(type)) {
+    provider = "jpush";
+    routeReason = event === "call" ? "legacy_jpush_call" : "legacy_jpush_message";
+    providerStatus = isProviderConfigured("jpush", config) ? "configured" : "not_configured";
   } else if (FCM_LIKE_TYPES.has(type)) {
-    provider = "fcm";
-    routeReason = event === "call" ? "legacy_fcm_call" : "legacy_fcm_message";
-    providerStatus = isProviderConfigured(provider, config) ? "configured" : "not_configured";
+    // If token matches JPush registration ID format, route to JPush instead
+    if (isJpushRegistrationId(token)) {
+      provider = "jpush";
+      routeReason = "token_detected_jpush";
+      providerStatus = isProviderConfigured("jpush", config) ? "configured" : "not_configured";
+    } else {
+      provider = "fcm";
+      routeReason = event === "call" ? "legacy_fcm_call" : "legacy_fcm_message";
+      providerStatus = isProviderConfigured("fcm", config) ? "configured" : "not_configured";
+    }
   } else {
-    routeReason = "unknown_provider_type";
+    // Unknown type — try token format detection as fallback
+    if (isJpushRegistrationId(token)) {
+      provider = "jpush";
+      routeReason = "token_detected_jpush_unknown_type";
+      providerStatus = isProviderConfigured("jpush", config) ? "configured" : "not_configured";
+    } else {
+      routeReason = "unknown_provider_type";
+    }
   }
 
   const tokenPresent = Boolean(token);
@@ -158,6 +185,7 @@ function buildLegacyDispatchResult(payload = {}, config = {}) {
 export {
   buildLegacyDispatchResult,
   buildLegacyRoutePlan,
+  isJpushRegistrationId,
   normalizeEventName,
   normalizeLegacyProviderType,
 };
