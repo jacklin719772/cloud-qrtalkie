@@ -1114,7 +1114,7 @@ app.post("/api/auth/login", async (request, response) => {
 });
 
 // POST /api/auth/sip-provision - App 端获取 provisioning 下载链接
-// 输入: { username, domain }  无需密码（provision URL 本身就是一次性密钥，安全模型等同扫码登录）
+// 输入: { username, domain }  App 已通过 SIP REGISTER 在 Flexisip 验证密码，此处无需重复验证
 app.post("/api/auth/sip-provision", async (request, response) => {
   const username = String(request.body.username || "").trim().toLowerCase();
   const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
@@ -1123,10 +1123,8 @@ app.post("/api/auth/sip-provision", async (request, response) => {
     return response.status(400).json({ success: false, message: "請輸入用戶名。" });
   }
 
-  const sip = `${username}@${domain}`;
-
   try {
-    const account = await searchAccountBySip(sip);
+    const account = await searchAccountBySip(`${username}@${domain}`);
     if (!account) {
       return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
     }
@@ -1165,7 +1163,7 @@ app.post("/api/auth/sip-provision", async (request, response) => {
     if (error instanceof FlexisipAccountManagerError && error.status === 404) {
       return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
     }
-    console.error(`[auth/sip-provision] sip=${sip} failed:`, error?.message || error);
+    console.error(`[auth/sip-provision] username=${username}@${domain} failed:`, error?.message || error);
     return response.status(502).json({ success: false, message: "獲取 provisioning 鏈接失敗，請稍後重試。" });
   }
 });
