@@ -1113,6 +1113,63 @@ app.post("/api/auth/login", async (request, response) => {
   }
 });
 
+// POST /api/auth/sip-provision - App 端获取 provisioning 下载链接
+// 输入: { username, domain }  无需密码（provision URL 本身就是一次性密钥，安全模型等同扫码登录）
+app.post("/api/auth/sip-provision", async (request, response) => {
+  const username = String(request.body.username || "").trim().toLowerCase();
+  const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
+
+  if (!username) {
+    return response.status(400).json({ success: false, message: "請輸入用戶名。" });
+  }
+
+  const sip = `${username}@${domain}`;
+
+  try {
+    const account = await searchAccountBySip(sip);
+    if (!account) {
+      return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
+    }
+
+    const accountId = account.id || account.account?.id;
+    if (!accountId) {
+      return response.status(502).json({ success: false, message: "Flexisip 返回格式異常。" });
+    }
+
+    const provResult = await flexisipGetProvisionLink(accountId);
+    const host = (process.env.FLEXISIP_ACCOUNT_MANAGER_BASE_URL || "http://account.qrtalkie.org/api")
+      .replace(/\/api\/?$/, "").replace(/^https?:\/\//, "");
+
+    const provisionUrl = provResult?.provisioning_url
+      || provResult?.provisioningUrl
+      || provResult?.provision_url
+      || provResult?.provisionUrl
+      || provResult?.url
+      || (provResult?.provisioning_token ? `https://${host}/provisioning/${provResult.provisioning_token}` : null)
+      || null;
+
+    if (!provisionUrl) {
+      return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 鏈接。" });
+    }
+
+    return response.json({
+      success: true,
+      data: {
+        provisionUrl,
+        expireAt: provResult?.provisioning_token_expire_at || provResult?.expire_at || provResult?.expireAt || null,
+        username,
+        domain,
+      },
+    });
+  } catch (error) {
+    if (error instanceof FlexisipAccountManagerError && error.status === 404) {
+      return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
+    }
+    console.error(`[auth/sip-provision] sip=${sip} failed:`, error?.message || error);
+    return response.status(502).json({ success: false, message: "獲取 provisioning 鏈接失敗，請稍後重試。" });
+  }
+});
+
 app.post("/api/auth/forgot-password", async (request, response) => {
   const email = normalizeEmail(request.body.email);
   if (!isValidEmail(email)) {
