@@ -1264,6 +1264,7 @@ async function updatePushEvent(connection, pushId, patch) {
 async function upsertPushDevice(connection, payload) {
   const normalizedPayload = normalizeRegisterPayload(payload);
   const existingRow = await findExistingPushDevice(connection, normalizedPayload);
+  console.log(JSON.stringify({ src: "upsertPushDevice", existing_provider: existingRow?.preferred_push_provider || "", incoming_provider: normalizedPayload.preferred_push_provider || "", incoming_provider_raw: payload.preferred_push_provider || "", sip_username: normalizedPayload.sip_username || "", has_existing: Boolean(existingRow?.id) }));
   const merged = buildPushDeviceRecord(existingRow, normalizedPayload);
 
   if (existingRow?.id) {
