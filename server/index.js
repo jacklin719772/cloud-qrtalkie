@@ -1168,6 +1168,95 @@ app.post("/api/auth/sip-provision", async (request, response) => {
   }
 });
 
+// POST /api/auth/change-password - App 端修改密码并同步到 Flexisip
+app.post("/api/auth/change-password", async (request, response) => {
+  const username = String(request.body.username || "").trim().toLowerCase();
+  const oldPassword = String(request.body.oldPassword || "").trim();
+  const newPassword = String(request.body.newPassword || "").trim();
+  const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
+
+  if (!username || !oldPassword || !newPassword) {
+    return response.status(400).json({ success: false, message: "請填寫所有欄位。" });
+  }
+  if (newPassword.length < 6) {
+    return response.status(400).json({ success: false, message: "新密碼長度至少 6 位。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // 1. 先查 sip_users 表
+    const sipRows = await connection.query(
+      `SELECT u.id, u.password_hash, u.flexisip_account_id
+       FROM sip_users u
+       WHERE u.username = ? AND u.sip_domain = ? AND u.status = 'active'
+       LIMIT 1`,
+      [username, domain],
+    );
+    const sipUser = sipRows[0];
+
+    if (sipUser) {
+      // SaaS 平台管理的账号：验证旧密码后更新
+      if (!(await verifyPassword(oldPassword, sipUser.password_hash))) {
+        return response.status(401).json({ success: false, message: "舊密碼不正確。" });
+      }
+
+      const newHash = await hashPassword(newPassword);
+      await connection.query(`UPDATE sip_users SET password_hash = ? WHERE id = ?`, [newHash, sipUser.id]);
+
+      if (sipUser.flexisip_account_id) {
+        try {
+          await flexisipUpdateAccount(sipUser.flexisip_account_id, {
+            password: newPassword,
+            algorithm: "SHA-256",
+          });
+          console.log(`[auth/change-password] synced to Flexisip accountId=${sipUser.flexisip_account_id}`);
+        } catch (err) {
+          console.error(`[auth/change-password] Flexisip sync failed:`, err?.message || err);
+        }
+      }
+
+      return response.json({ success: true, message: "密碼已更新。" });
+    }
+
+    // 2. sip_users 中没有 → 查 Flexisip Account Manager
+    const sip = `${username}@${domain}`;
+    let flexisipAccount;
+    try {
+      flexisipAccount = await searchAccountBySip(sip);
+    } catch (err) {
+      if (!(err instanceof FlexisipAccountManagerError && err.status === 404)) {
+        throw err;
+      }
+    }
+
+    if (!flexisipAccount) {
+      return response.status(404).json({ success: false, message: "找不到該帳號。" });
+    }
+
+    const accountId = flexisipAccount.id || flexisipAccount.account?.id;
+    if (!accountId) {
+      return response.status(502).json({ success: false, message: "Flexisip 返回格式異常。" });
+    }
+
+    // Flexisip 直建账号：无法验证旧密码，直接更新
+    await flexisipUpdateAccount(accountId, {
+      username,
+      password: newPassword,
+      algorithm: "SHA-256",
+    });
+    console.log(`[auth/change-password] Flexisip-direct account updated: ${sip}`);
+
+    return response.json({ success: true, message: "密碼已更新。" });
+  } catch (error) {
+    console.error(`[auth/change-password] username=${username}@${domain} failed:`, error?.message || error);
+    return response.status(500).json({ success: false, message: "密碼更新失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.post("/api/auth/forgot-password", async (request, response) => {
   const email = normalizeEmail(request.body.email);
   if (!isValidEmail(email)) {
