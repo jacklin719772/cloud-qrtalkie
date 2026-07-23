@@ -1,10 +1,20 @@
 ﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "./loadEnv.js";
+// Global crash protection: prevent silent death on unhandled errors
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[FATAL] Unhandled Rejection at:", promise, "reason:", reason);
+  setTimeout(function() { process.exit(1); }, 1000);
+});
+process.on("uncaughtException", (error) => {
+  console.error("[FATAL] Uncaught Exception:", error?.message || error);
+  if (error?.stack) console.error(error.stack);
+  setTimeout(function() { process.exit(1); }, 1000);
+});
 import express from "express";
 import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/promises";
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
@@ -96,6 +106,8 @@ import {
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
+import { getOrCreateSession, getMessages, sendMessage, deleteSession } from "./aiBotService.js";
+import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 
 const app = express();
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -781,7 +793,36 @@ async function requireAdmin(request, response, next) {
     if (connection) connection.release();
   }
 }
+async function requireSipUser(request, response, next) {
+  const token = getBearerToken(request);
+  if (!token) return response.status(401).json({ message: "Please login again." });
 
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT s.id AS session_id, s.expires_at, s.user_type, s.sip_user_id FROM admin_sessions s WHERE s.token_hash = ? LIMIT 1",
+      [hashToken(token)],
+    );
+
+    const session = rows[0];
+    if (!session || new Date(session.expires_at).getTime() < Date.now()) {
+      return response.status(401).json({ message: "Session expired." });
+    }
+
+    if (session.user_type !== "admin" && session.user_type !== "sip") {
+      return response.status(403).json({ message: "Access denied." });
+    }
+
+    request.admin = { id: session.sip_user_id };
+    next();
+  } catch (error) {
+    console.error("[requireSipUser] error:", error?.message || error);
+    return response.status(500).json({ message: "Auth verification failed." });
+  } finally {
+    if (connection) connection.release();
+  }
+}
 // ==========================================
 // Notification sync for ALL user types
 // ==========================================
@@ -1115,6 +1156,48 @@ app.post("/api/auth/login", async (request, response) => {
 
 // POST /api/auth/sip-provision - App 端获取 provisioning 下载链接
 // 输入: { username, domain }  App 已通过 SIP REGISTER 在 Flexisip 验证密码，此处无需重复验证
+// POST /api/auth/ai-login - AI Assistant token (no tenant/entitlement check)
+app.post("/api/auth/ai-login", async (request, response) => {
+  const username = (request.body.username || "").trim();
+  const password = String(request.body.password || "");
+
+  if (!username || !password) {
+    return response.status(400).json({ message: "Please enter account and password." });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const rows = await connection.query(
+      "SELECT id, username, password_hash, status FROM sip_users WHERE username = ? LIMIT 1",
+      [username],
+    );
+    const user = rows[0];
+
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      return response.status(401).json({ message: "Invalid account or password." });
+    }
+
+    if (user.status !== "active") {
+      return response.status(403).json({ message: "Account not activated." });
+    }
+
+    const { token, tokenHash } = createSessionToken();
+    const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
+
+    await connection.query(
+      "INSERT INTO admin_sessions (admin_user_id, user_type, sip_user_id, token_hash, expires_at) VALUES (NULL, 'sip', ?, ?, ?)",
+      [Number(user.id), tokenHash, expiresAt],
+    );
+
+    return response.json({ token, userType: "sip" });
+  } catch (error) {
+    console.error("[ai-login] error:", error?.message || error);
+    return response.status(502).json({ message: "Service unavailable." });
+  }
+});
+
 app.post("/api/auth/sip-provision", async (request, response) => {
   const username = String(request.body.username || "").trim().toLowerCase();
   const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
@@ -1150,21 +1233,67 @@ app.post("/api/auth/sip-provision", async (request, response) => {
       return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 鏈接。" });
     }
 
+    // Download provisioning XML and save to a local file (tokens are one-time-use)
+    // Return a server-hosted URL so the app can use core.provisioningUri (same as QR login)
+    let provisionXml = null;
+    try {
+      const xmlResponse = await fetch(provisionUrl);
+      if (xmlResponse.ok) {
+        provisionXml = await xmlResponse.text();
+      }
+    } catch (xmlError) {
+      console.error("[auth/sip-provision] Failed to download XML: " + (xmlError.message || xmlError));
+    }
+
+    if (!provisionXml) {
+      return response.status(502).json({ success: false, message: "無法下載 provisioning 配置文件。" });
+    }
+
+    // Save to a static file and return its URL
+    const provDir = "/tmp/provisioning";
+    if (!existsSync(provDir)) mkdirSync(provDir, { recursive: true });
+    const fileId = randomBytes(12).toString("hex");
+    const fileName = username + "_" + fileId + ".xml";
+    const filePath = path.join(provDir, fileName);
+    writeFileSync(filePath, provisionXml, "utf8");
+
+    // Schedule cleanup after 10 minutes
+    setTimeout(function() { try { unlinkSync(filePath); } catch(e) {} }, 600000);
+
+    const appProvisionUrl = "https://cloud.qrtalkie.org/api/provisioning/" + fileName;
+
     return response.json({
       success: true,
       data: {
-        provisionUrl,
-        expireAt: provResult?.provisioning_token_expire_at || provResult?.expire_at || provResult?.expireAt || null,
+        provisionUrl: appProvisionUrl,
         username,
         domain,
       },
     });
+    
   } catch (error) {
     if (error instanceof FlexisipAccountManagerError && error.status === 404) {
       return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
     }
     console.error(`[auth/sip-provision] username=${username}@${domain} failed:`, error?.message || error);
     return response.status(502).json({ success: false, message: "獲取 provisioning 鏈接失敗，請稍後重試。" });
+  }
+});
+
+
+// GET /api/provisioning/:file - Serve downloaded provisioning XML files
+app.get("/api/provisioning/:file", (request, response) => {
+  const file = String(request.params.file || "").replace(/[^a-zA-Z0-9_.-]/g, "");
+  const filePath = "/tmp/provisioning/" + file;
+  try {
+    if (existsSync(filePath)) {
+      response.setHeader("Content-Type", "application/xml");
+      response.sendFile(filePath);
+    } else {
+      response.status(404).type("text/plain").send("Not found");
+    }
+  } catch (e) {
+    response.status(404).type("text/plain").send("Not found");
   }
 });
 
@@ -17855,6 +17984,272 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
   } catch (error) {
     console.error("Failed to fetch tenant dashboard:", error);
     return response.status(500).json({ message: "讀取租户概览失败。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/chatroom/ephemeral-policy — 设置/更新聊天室阅后即焚策略
+app.post("/api/chatroom/ephemeral-policy", async (request, response) => {
+  const chatroomSipUri = sanitizeString(String(request.body?.chatroomSipUri || ""), 512);
+  const senderUsername = sanitizeString(String(request.body?.senderUsername || ""), 120);
+  const enabled = request.body?.enabled ? 1 : 0;
+  const lifetimeSeconds = parseNonNegativeInteger(request.body?.lifetimeSeconds, 60);
+  const setByUsername = sanitizeString(String(request.body?.setByUsername || senderUsername), 120);
+
+  if (!chatroomSipUri || !senderUsername) {
+    return response.status(400).json({ message: "缺少必要参数。" });
+  }
+  if (lifetimeSeconds < 1 || lifetimeSeconds > 604800) {
+    if (enabled) {
+      return response.status(400).json({ message: "lifetimeSeconds 必须在 1-604800 之间。" });
+    }
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      `INSERT INTO chatroom_ephemeral_policy (chatroom_sip_uri, sender_username, enabled, lifetime_seconds, set_by_username, policy_version, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, NOW())
+       ON DUPLICATE KEY UPDATE
+         enabled = VALUES(enabled),
+         lifetime_seconds = VALUES(lifetime_seconds),
+         set_by_username = VALUES(set_by_username),
+         policy_version = policy_version + 1,
+         updated_at = NOW()`,
+      [chatroomSipUri, senderUsername, enabled, lifetimeSeconds, setByUsername],
+    );
+
+    const [row] = await connection.query(
+      "SELECT policy_version, updated_at FROM chatroom_ephemeral_policy WHERE chatroom_sip_uri = ? AND sender_username = ?",
+      [chatroomSipUri, senderUsername],
+    );
+
+    return response.json({
+      chatroomSipUri,
+      senderUsername,
+      enabled: enabled === 1,
+      lifetimeSeconds,
+      setByUsername,
+      policyVersion: row.policy_version,
+      updatedAt: row.updated_at,
+    });
+  } catch (error) {
+    console.error("Failed to save ephemeral policy:", error);
+    return response.status(500).json({ message: "保存阅后即焚策略失败。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/chatroom/ephemeral-policy — 查询聊天室策略
+app.get("/api/chatroom/ephemeral-policy", async (request, response) => {
+  const chatroomSipUri = sanitizeString(String(request.query?.chatroom || ""), 512);
+  const senderUsername = sanitizeString(String(request.query?.sender || ""), 120);
+  if (!chatroomSipUri || !senderUsername) {
+    return response.status(400).json({ message: "缺少 chatroom 或 sender 参数。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [row] = await connection.query(
+      "SELECT * FROM chatroom_ephemeral_policy WHERE chatroom_sip_uri = ? AND sender_username = ?",
+      [chatroomSipUri, senderUsername],
+    );
+
+    if (!row) {
+      return response.json({ chatroomSipUri, senderUsername, enabled: false, lifetimeSeconds: 60, policyVersion: 0 });
+    }
+
+    return response.json({
+      chatroomSipUri: row.chatroom_sip_uri,
+      senderUsername: row.sender_username,
+      enabled: row.enabled === 1,
+      lifetimeSeconds: row.lifetime_seconds,
+      setByUsername: row.set_by_username,
+      policyVersion: row.policy_version,
+      updatedAt: row.updated_at,
+    });
+  } catch (error) {
+    console.error("Failed to fetch ephemeral policy:", error);
+    return response.status(500).json({ message: "查询阅后即焚策略失败。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/chatroom/policies — 批量同步策略
+app.get("/api/chatroom/policies", async (request, response) => {
+  const chatroomSipUri = sanitizeString(String(request.query?.chatroom || ""), 512);
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    let rows;
+    if (chatroomSipUri) {
+      rows = await connection.query(
+        "SELECT * FROM chatroom_ephemeral_policy WHERE chatroom_sip_uri = ? ORDER BY sender_username",
+        [chatroomSipUri],
+      );
+    } else {
+      rows = await connection.query(
+        "SELECT * FROM chatroom_ephemeral_policy ORDER BY updated_at DESC LIMIT 200",
+      );
+    }
+
+    const policies = rows.map(row => ({
+      chatroomSipUri: row.chatroom_sip_uri,
+      senderUsername: row.sender_username,
+      enabled: row.enabled === 1,
+      lifetimeSeconds: row.lifetime_seconds,
+      setByUsername: row.set_by_username,
+      policyVersion: row.policy_version,
+      updatedAt: row.updated_at,
+    }));
+
+    return response.json({ policies });
+  } catch (error) {
+    console.error("Failed to fetch ephemeral policies:", error);
+    return response.status(500).json({ message: "批量查询策略失败。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ── AI Chat Bot API ──────────────────────────────────────────────
+
+// POST /api/ai/chat/session — 创建或获取默认 AI 会话
+app.post("/api/ai/chat/session", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const session = await getOrCreateSession(sipUserId, connection);
+    return response.json({
+      sessionId: Number(session.id),
+      title: session.title,
+      status: session.status,
+      createdAt: session.created_at,
+    });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to create AI session:", error);
+    return response.status(500).json({ message: "创建会话失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/chat/sessions/:id/messages — 获取历史消息
+app.get("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const messages = await getMessages(sessionId, sipUserId, connection);
+    if (messages === null) {
+      return response.status(404).json({ message: "会话不存在" });
+    }
+    return response.json({ messages });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to fetch AI messages:", error);
+    return response.status(500).json({ message: "获取消息失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/chat/sessions/:id/messages — 发送消息并获取 AI 回复
+app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  const content = sanitizeString(String(request.body?.content || ""), 2000);
+
+  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+  if (!content) return response.status(400).json({ message: "消息不能为空" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const result = await sendMessage(sessionId, sipUserId, content, connection);
+
+    if (result.error) {
+      const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404
+        : result.error === "AI_EMPTY_MESSAGE" ? 400 : 500;
+      return response.status(statusCode).json({ ok: false, error: result.error, message: result.message });
+    }
+
+    return response.json({ ok: true, message: result.message });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to send AI message:", error);
+    return response.status(500).json({ message: "发送消息失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/chat/sessions/:id/messages — 清空会话消息
+app.delete("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const [session] = await connection.query(
+      `SELECT id FROM ai_bot_sessions WHERE id = ? AND owner_sip_user_id = ? LIMIT 1`,
+      [sessionId, sipUserId]
+    );
+    if (!session) return response.status(404).json({ message: "会话不存在" });
+
+    await connection.query(`DELETE FROM ai_bot_messages WHERE session_id = ?`, [sessionId]);
+    return response.json({ ok: true, sessionId: Number(session.id), cleared: true });
+  } catch (error) {
+    if (error instanceof AiError) return response.status(error.statusCode).json(error.toJSON());
+    console.error("Failed to clear AI messages:", error);
+    return response.status(500).json({ message: "清空消息失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/chat/sessions/:id — 删除会话
+app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const deleted = await deleteSession(sessionId, sipUserId, connection);
+    if (!deleted) return response.status(404).json({ message: "会话不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to delete AI session:", error);
+    return response.status(500).json({ message: "删除会话失败" });
   } finally {
     if (connection) connection.release();
   }
