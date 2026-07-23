@@ -3,7 +3,7 @@ import { createHash, createPrivateKey, randomUUID, sign } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import http2 from "node:http2";
 import { pool } from "./db.js";
-import { buildRoutePlan } from "./pushRouteService.js";
+import { buildRoutePlan, normalizePlatform, normalizePreferredPushProvider } from "./pushRouteService.js";
 import { buildLegacyDispatchResult } from "./legacyFlexisipRouteService.js";
 
 const DEFAULT_LIMIT = 50;
@@ -131,19 +131,26 @@ async function sendApnsLiveNotification(context, config, providerName) {
   const payload = providerName === "apns.voip"
     ? {
         aps: {
+          alert: context.fromUri
+            ? { title: "Incoming Call", body: context.fromUri.replace("sip:", "").split("@")[0] }
+            : "Incoming Call",
           "content-available": 1,
+          sound: context.sound || "",
+          "loc-key": context.msgid || "IC_MSG",
+          "loc-args": context.fromUri ? [context.fromUri] : [],
+          "call-id": context.callId || "",
+          uuid: (context.uid || "").replace(/^"|"$/g, ""),
+          "send-time": new Date().toISOString().replace("T", " ").slice(0, 19),
         },
-        event: context.event,
-        call_id: context.callId || "",
-        msgid: context.msgid || "",
-        from_uri: context.fromUri || "",
-        to_uri: context.toUri || "",
-        uid: context.uid || "",
-        sound: context.sound || "",
+        "from-uri": context.fromUri || "",
+        "display-name": context.fromName || "",
+        "pn_ttl": 90,
+        "customPayload": {},
       }
     : {
         aps: {
-          alert: context.event === "call" ? "Incoming call" : "New message",
+          alert: (context.event === "call" ? "Incoming call" : "New message")
+            + (context.fromUri ? (" - " + context.fromUri) : ""),
           badge: 1,
           sound: context.sound || "default",
           "content-available": 1,
@@ -158,6 +165,9 @@ async function sendApnsLiveNotification(context, config, providerName) {
         sound: context.sound || "",
       };
 
+  const pushType = providerName === "apns.voip" ? "voip" : "alert";
+  const tokenMasked = deviceToken.length > 12 ? `${deviceToken.slice(0, 6)}…${deviceToken.slice(-6)}` : deviceToken;
+
   const authMode = resolveApnsAuthMode(config);
   const usePemAuth = authMode === "pem";
   let clientOptions = {};
@@ -165,8 +175,9 @@ async function sendApnsLiveNotification(context, config, providerName) {
     ":method": "POST",
     ":path": path,
     "apns-topic": topic,
-    "apns-push-type": providerName === "apns.voip" ? "voip" : "alert",
+    "apns-push-type": pushType,
     "apns-priority": "10",
+    "apns-expiration": String(Math.floor(Date.now() / 1000) + 90),
   };
 
   if (usePemAuth) {
@@ -184,37 +195,142 @@ async function sendApnsLiveNotification(context, config, providerName) {
     };
   }
 
+  const safeMeta = {
+    tokenMasked,
+    topic,
+    pushType,
+    endpoint: host,
+    event: context.event,
+    callId: context.callId || "",
+    fromUri: context.fromUri || "",
+    toUri: context.toUri || "",
+  };
+
+  const timeoutMs = Number(process.env.APNS_REQUEST_TIMEOUT_MS) || 10000;
+
   const client = http2.connect(`https://${host}`, clientOptions);
+  let statusCode = null;
+  let apnsId = "";
+  let apnsUniqueId = "";
+  let responseHeaders = {};
+  const chunks = [];
+
   const response = await new Promise((resolve, reject) => {
+    let settled = false;
+
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { client.close(); } catch {}
+      resolve(result);
+    };
+
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { client.destroy(); } catch {}
+      reject(err);
+    };
+
+    const timer = setTimeout(() => {
+      const err = new Error("APNS_HTTP2_TIMEOUT");
+      err.code = "APNS_HTTP2_TIMEOUT";
+      err.timeoutMs = timeoutMs;
+      err.stage = "client_timeout";
+      err.safeMeta = safeMeta;
+      fail(err);
+    }, timeoutMs);
+
+    client.on("error", (err) => {
+      err.stage = "client_error";
+      err.safeMeta = safeMeta;
+      fail(err);
+    });
+
+    client.on("timeout", () => {
+      const err = new Error("APNS_HTTP2_CLIENT_TIMEOUT");
+      err.code = "APNS_HTTP2_CLIENT_TIMEOUT";
+      err.stage = "client_timeout";
+      err.safeMeta = safeMeta;
+      fail(err);
+    });
+
     const req = client.request(requestHeaders);
 
-    let body = "";
-    let responseHeaders = {};
     req.setEncoding("utf8");
+
     req.on("response", (headers) => {
       responseHeaders = headers || {};
+      statusCode = Number(responseHeaders[":status"] || 0);
+      apnsId = responseHeaders["apns-id"] ? String(responseHeaders["apns-id"]) : "";
+      apnsUniqueId = responseHeaders["apns-unique-id"] ? String(responseHeaders["apns-unique-id"]) : "";
     });
+
     req.on("data", (chunk) => {
-      body += chunk;
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
     });
+
     req.on("end", () => {
-      client.close();
-      resolve({
-        status: Number(responseHeaders[":status"] || 0),
-        apnsId: responseHeaders["apns-id"] ? String(responseHeaders["apns-id"]) : "",
-        body,
-      });
+      const responseBody = Buffer.concat(chunks).toString("utf8");
+      finish({ statusCode, apnsId, apnsUniqueId, responseBody });
     });
-    req.on("error", (error) => {
-      client.close();
-      reject(error);
+
+    req.on("error", (err) => {
+      err.stage = "request_error";
+      err.statusCode = statusCode;
+      err.safeMeta = safeMeta;
+      fail(err);
     });
+
+    req.on("timeout", () => {
+      const err = new Error("APNS_HTTP2_REQUEST_TIMEOUT");
+      err.code = "APNS_HTTP2_REQUEST_TIMEOUT";
+      err.stage = "request_timeout";
+      err.safeMeta = safeMeta;
+      fail(err);
+    });
+
     req.end(JSON.stringify(payload));
   });
 
+  const responseBody = response.responseBody || "";
+  const isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+
+  let parsedReason = null;
+  if (!isSuccess && responseBody) {
+    try { const j = JSON.parse(responseBody); parsedReason = j.reason || null; } catch {}
+  }
+
+  const logPayload = {
+    src: isSuccess ? "apns-send-success" : "apns-send-failed",
+    statusCode: response.statusCode,
+    apnsId: response.apnsId || "",
+    apnsUniqueId: response.apnsUniqueId || null,
+    responseBody: responseBody || "(empty)",
+    parsedReason,
+    topic,
+    pushType,
+    priority: "10",
+    endpoint: host,
+    tokenMasked,
+    event: context.event,
+    callId: context.callId || "",
+    fromUri: context.fromUri || "",
+    toUri: context.toUri || "",
+    timestamp: new Date().toISOString(),
+  };
+
+  if (isSuccess) {
+    console.log(JSON.stringify(logPayload));
+  } else {
+    console.error(JSON.stringify(logPayload));
+  }
+
   return {
-    ok: response.status >= 200 && response.status < 300,
-    status: response.status >= 200 && response.status < 300 ? "success" : "failed",
+    ok: isSuccess,
+    status: isSuccess ? "success" : "failed",
     provider: providerName,
     providerResponse: {
       delivery_mode: "live_test",
@@ -222,11 +338,15 @@ async function sendApnsLiveNotification(context, config, providerName) {
       auth_mode: authMode,
       apns_host: host,
       apns_topic: topic,
-      apns_push_type: providerName === "apns.voip" ? "voip" : "alert",
-      http_status: response.status,
+      apns_push_type: pushType,
+      http_status: response.statusCode,
       apns_id_present: Boolean(response.apnsId),
-      response_body_present: Boolean(response.body),
-      response_body_length: response.body.length,
+      apns_unique_id_present: Boolean(response.apnsUniqueId),
+      response_body_present: Boolean(responseBody),
+      response_body_length: responseBody.length,
+      response_body_text: trimText(responseBody, 500),
+      parsed_reason: parsedReason || "",
+      token_masked: tokenMasked,
     },
   };
 }
@@ -418,7 +538,7 @@ function parseSipUri(value) {
 
 function normalizeBodyPayload(rawBody) {
   if (rawBody === undefined || rawBody === null) return {};
-  if (typeof rawBody === "object") return rawBody;
+  if (typeof rawBody === "object" && !Buffer.isBuffer(rawBody)) return rawBody;
   const text = String(rawBody || "").trim();
   if (!text) return {};
   if (text.startsWith("{") || text.startsWith("[")) {
@@ -427,6 +547,19 @@ function normalizeBodyPayload(rawBody) {
       if (parsed && typeof parsed === "object") return parsed;
     } catch {
       // keep as raw text below
+    }
+  }
+  // Try urlencoded (key=value&key=value)
+  if (text.includes("=") && text.includes("&")) {
+    try {
+      const params = new URLSearchParams(text);
+      const obj = {};
+      for (const [key, value] of params) {
+        obj[key] = value;
+      }
+      if (Object.keys(obj).length > 0) return obj;
+    } catch {
+      // keep as raw text
     }
   }
   return { body: text };
@@ -1643,13 +1776,134 @@ async function dispatchFlexisipEvent(connection, payload) {
     payload_summary: safeJson(eventSummary),
   });
 
+  // Query push_devices first for device-first routing decision
+  const targetDevices = await resolveTargetDevices(connection, payload);
+  const devices = targetDevices.devices || [];
+  const routePlan = buildRoutePlan({ event, payload, devices, config });
+
+  // Device-first routing for Android: prefer push_devices over flexisip token
+  let deviceFirstSendResult = null;
+  let deviceFirstProviderName = "";
+  let deviceFirstRouteReason = "";
+
+  const androidDeviceEntry = devices.length > 0 ? routePlan.devices.find((entry) => {
+    const platform = normalizePlatform(entry.device.platform, entry.device.provider);
+    return platform === "android";
+  }) : null;
+
+  if (androidDeviceEntry) {
+    const device = androidDeviceEntry.device;
+    const preferred = normalizePreferredPushProvider(device.preferred_push_provider || "");
+    const jpushId = device.jpush_registration_id || "";
+
+    let selectedProvider = "";
+    let sendToken = "";
+    let routeReason = "";
+
+    if (preferred === "jpush" && jpushId) {
+      selectedProvider = "jpush";
+      sendToken = jpushId;
+      routeReason = "device_first_preferred_jpush";
+    } else if (preferred === "fcm") {
+      selectedProvider = "fcm";
+      sendToken = payload.token || "";
+      routeReason = "device_first_preferred_fcm";
+    } else if (!preferred) {
+      if (androidDeviceEntry.route.app_region === "china" && jpushId) {
+        selectedProvider = "jpush";
+        sendToken = jpushId;
+        routeReason = "device_first_region_china_jpush";
+      } else if (androidDeviceEntry.route.app_region !== "china") {
+        selectedProvider = "fcm";
+        sendToken = payload.token || "";
+        routeReason = "device_first_region_overseas_fcm";
+      }
+    }
+
+    if (selectedProvider && sendToken && canLiveSendProvider(selectedProvider, config)) {
+      const deviceProvider = createProvider(selectedProvider, event, config);
+      try {
+        deviceFirstSendResult = await deviceProvider.send({
+          ...payload,
+          device: {
+            sip_username: device.sip_username || "",
+            sip_domain: device.sip_domain || "",
+            provider: selectedProvider,
+          },
+          devices: [device],
+          tokenValue: sendToken,
+          tokenType: selectedProvider === "jpush" ? "jpush_registration_id" : "token",
+          liveTest: true,
+        });
+        deviceFirstProviderName = selectedProvider;
+        deviceFirstRouteReason = routeReason;
+        console.log(JSON.stringify({
+          src: "flexisip-device-first-send",
+          event,
+          selectedProvider,
+          routeReason,
+          tokenHint: sendToken && sendToken.length > 12 ? `${sendToken.slice(0, 6)}…${sendToken.slice(-6)}` : (sendToken || "(empty)"),
+          deviceId: device.device_id || "",
+          sipUser: device.sip_username || "",
+          status: deviceFirstSendResult.status,
+          timestamp: new Date().toISOString(),
+        }));
+      } catch (error) {
+        deviceFirstSendResult = {
+          ok: false,
+          status: "failed",
+          provider: selectedProvider,
+          errorCode: error?.code || "PUSH_DEVICE_FIRST_FAILED",
+          providerResponse: {
+            delivery_mode: "live_test",
+            provider: selectedProvider,
+            error_code: error?.code || "PUSH_DEVICE_FIRST_FAILED",
+            error_message: trimText(error?.message || "Device-first send failed.", 255),
+          },
+        };
+        deviceFirstProviderName = selectedProvider;
+        deviceFirstRouteReason = routeReason;
+        console.error(JSON.stringify({
+          src: "flexisip-device-first-failed",
+          event,
+          selectedProvider,
+          routeReason,
+          error: error?.message || "Unknown error",
+          timestamp: new Date().toISOString(),
+        }));
+      }
+    }
+  }
+
+  // Legacy route (fallback when device-first didn't send or for non-Android)
   const legacyDispatch = buildLegacyDispatchResult(payload, config);
   const legacyProvider = createProvider(legacyDispatch.route.provider, event, config);
-  const legacyLiveEnabled = Boolean(payload.deliver && canLiveSendProvider(legacyDispatch.route.provider, config) && legacyDispatch.route.should_send);
-  const legacyTokenValue = legacyDispatch.route.token_value_present ? (payload.token || "") : "";
+  const legacyLiveEnabled = Boolean(
+    payload.deliver &&
+    canLiveSendProvider(legacyDispatch.route.provider, config) &&
+    legacyDispatch.route.should_send &&
+    !deviceFirstSendResult
+  );
+  const legacyTokenValue = legacyDispatch.route.token_value || payload.token || "";
+  console.log(JSON.stringify({
+    src: "flexisip-dispatch-debug",
+    event,
+    provider: legacyDispatch.route.provider,
+    deliver: payload.deliver,
+    canLiveSend: canLiveSendProvider(legacyDispatch.route.provider, config),
+    should_send: legacyDispatch.route.should_send,
+    legacyLiveEnabled,
+    deviceFirstSent: Boolean(deviceFirstSendResult),
+    tokenValuePresent: Boolean(legacyTokenValue),
+    tokenValueHint: legacyTokenValue && legacyTokenValue.length > 12 ? `${legacyTokenValue.slice(0, 6)}…${legacyTokenValue.slice(-6)}` : (legacyTokenValue || "(empty)"),
+    route_reason: legacyDispatch.route.route_reason,
+    auth_mode: legacyDispatch.route.auth_mode,
+    provider_status: legacyDispatch.route.provider_status,
+    timestamp: new Date().toISOString(),
+  }));
   let legacySendResult = {
     ok: true,
-    status: "skipped",
+    status: deviceFirstSendResult ? "suppressed_by_device_first" : "skipped",
     provider: legacyProvider.providerName,
     providerResponse: {
       ...legacyDispatch.provider_response,
@@ -1686,9 +1940,6 @@ async function dispatchFlexisipEvent(connection, payload) {
     }
   }
 
-  const targetDevices = await resolveTargetDevices(connection, payload);
-  const devices = targetDevices.devices || [];
-  const routePlan = buildRoutePlan({ event, payload, devices, config });
   const enhancedDispatches = routePlan.devices.map((planEntry) => buildEnhancedDispatchResult({ planEntry, config }));
   const legacyResult = {
     route_type: "legacy_route",
@@ -1709,7 +1960,27 @@ async function dispatchFlexisipEvent(connection, payload) {
       dry_run: !legacyLiveEnabled,
     },
   };
-  const results = [legacyResult, ...enhancedDispatches];
+  const deviceFirstResult = deviceFirstSendResult ? {
+    route_type: "device_first",
+    provider: deviceFirstProviderName,
+    mode: "live_test",
+    status: deviceFirstSendResult.status,
+    error_code: deviceFirstSendResult.errorCode || "",
+    route: {
+      route_reason: deviceFirstRouteReason,
+      selected_provider: deviceFirstProviderName,
+      token_value_present: true,
+      should_send: true,
+    },
+    providerResponse: {
+      delivery_mode: "live_test",
+      route_type: "device_first",
+      provider: deviceFirstProviderName,
+      route_reason: deviceFirstRouteReason,
+      ...deviceFirstSendResult.providerResponse,
+    },
+  } : null;
+  const results = [deviceFirstResult, legacyResult, ...enhancedDispatches].filter(Boolean);
   const routePlanSummary = {
     warnings: Array.from(new Set([
       ...(targetDevices.warnings || []),
@@ -1979,80 +2250,136 @@ async function dispatchTestPush(connection, payload, { deliver = false } = {}) {
 }
 
 function readFlexisipRequest(request) {
-  const payload = normalizeFlexisipPushInput(request);
-  if (!payload.event) {
-    const error = new Error("Missing event.");
-    error.statusCode = 400;
-    error.code = "PUSH_EVENT_MISSING";
-    throw error;
-  }
-  if (!payload.type) {
-    const error = new Error("Missing type.");
-    error.statusCode = 400;
-    error.code = "PUSH_TYPE_MISSING";
-    throw error;
-  }
-  return payload;
+  const body = normalizeBodyPayload(request.body);
+  const query = request.query || {};
+  const merged = { ...query, ...body };
+
+  // Field aliases
+  const event = normalizeEventName(merged.event);
+  const type = normalizeProvider(merged.type);
+  const token = trimText(merged.token, 4096);
+  const appId = trimText(merged.app_id ?? merged.appId ?? merged["app-id"], 256);
+  const fromUri = normalizeUri(merged.from_uri ?? merged.fromUri ?? merged["from-uri"]);
+  const fromName = trimText(merged.from_name ?? merged.fromName ?? merged["from-name"], 255);
+  const fromTag = trimText(merged.from_tag ?? merged.fromTag ?? merged["from-tag"], 255);
+  const toUri = normalizeUri(merged.to_uri ?? merged.toUri ?? merged["to-uri"]);
+  const callId = trimText(merged.call_id ?? merged.callId ?? merged.callid, 255);
+  const msgid = trimText(merged.msgid ?? merged.msgId, 255);
+  const uid = trimText(merged.uid, 255);
+  const sound = trimText(merged.sound, 255);
+
+  return {
+    event,
+    type,
+    token,
+    tokenMasked: (token && token.length > 12) ? `${token.slice(0, 6)}…${token.slice(-6)}` : (token || ""),
+    tokenHint: safeTokenHint(token),
+    appId,
+    fromUri,
+    fromName,
+    fromTag,
+    toUri,
+    callId,
+    msgid,
+    uid,
+    sound,
+    deliver: merged.deliver === undefined ? true : toBool(merged.deliver, false),
+    raw: merged,
+  };
 }
 
 export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
-  const pushTextParser = express.text({ type: ["text/plain", "application/octet-stream", "*/*"], limit: "1mb" });
+  const pushTextParser = express.text({ type: ["text/plain", "application/octet-stream", "application/x-www-form-urlencoded", "*/*"], limit: "1mb" });
   const jsonParser = express.json({ limit: "1mb" });
 
   app.post("/api/push/flexisip", pushTextParser, async (request, response) => {
     if (!isGatewayRequestAuthorized(request)) {
-      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
+      response.status(401).type("text/plain").send("Unauthorized");
+      return;
     }
 
-    const payload = readFlexisipRequest(request);
+    let payload;
+    try {
+      payload = readFlexisipRequest(request);
+    } catch (parseError) {
+      console.error(JSON.stringify({
+        src: "flexisip-external-push",
+        status: "parse_error",
+        error: parseError.message,
+        timestamp: new Date().toISOString(),
+      }));
+      response.status(400).type("text/plain").send("Bad request");
+      return;
+    }
 
-    // Log Flexisip external-push callback with all parameters
+    const rawBody = typeof request.body === "string" ? request.body : "";
+    const rawBodyPreview = rawBody ? rawBody.slice(0, 300) : "";
+
     console.log(JSON.stringify({
       src: "flexisip-external-push",
+      status: "received",
+      method: request.method,
+      path: request.path,
+      contentType: request.get("content-type") || "",
+      queryKeys: Object.keys(request.query || {}),
+      bodyType: typeof request.body,
+      bodyKeys: typeof request.body === "object" && request.body && !Buffer.isBuffer(request.body) ? Object.keys(request.body) : [],
+      rawBodyPreview: rawBodyPreview || "(empty)",
       event: payload.event,
       type: payload.type,
-      token_hint: payload.tokenHint,
-      app_id: payload.appId,
-      from_uri: payload.fromUri,
-      from_name: payload.fromName || "",
-      from_tag: payload.fromTag || "",
-      to_uri: payload.toUri,
-      call_id: payload.callId,
-      msgid: payload.msgid,
-      uid: payload.uid,
-      sound: payload.sound,
-      body_length: payload.bodyLength || 0,
-      deliver: payload.deliver,
+      appId: payload.appId,
+      callId: payload.callId,
+      fromUri: payload.fromUri,
+      toUri: payload.toUri,
+      tokenMasked: payload.tokenMasked,
       timestamp: new Date().toISOString(),
     }));
 
+    if (!payload.event) {
+      console.error(JSON.stringify({
+        src: "flexisip-external-push",
+        status: "missing_event",
+        queryKeys: Object.keys(request.query || {}),
+        rawBodyPreview: rawBodyPreview || "(empty)",
+        timestamp: new Date().toISOString(),
+      }));
+      response.status(400).type("text/plain").send("Missing event");
+      return;
+    }
+
+    // Dry-run mode: skip downstream push (APNs/FCM/JPush)
+    const dryRun = toBool(process.env.FLEXISIP_PUSH_DRY_RUN, false);
+    if (dryRun) {
+      console.log(JSON.stringify({
+        src: "flexisip-external-push",
+        status: "dry_run_skip_downstream",
+        event: payload.event,
+        type: payload.type,
+        tokenMasked: payload.tokenMasked,
+        appId: payload.appId,
+        callId: payload.callId,
+        fromUri: payload.fromUri,
+        toUri: payload.toUri,
+        timestamp: new Date().toISOString(),
+      }));
+      response.status(200).type("text/plain").send("OK");
+      return;
+    }
+
+    // Live mode: dispatch to downstream providers
     let connection;
     try {
       connection = await pool.getConnection();
       const result = await dispatchFlexisipEvent(connection, payload);
-      return response.json({
-        success: true,
-        code: "PUSH_GATEWAY_EVENT_ACCEPTED",
-        message: "Push event accepted.",
-        data: {
-          pushId: result.pushId,
-          event: result.event,
-          provider: result.provider,
-          devicesCount: result.devicesCount,
-          mode: result.mode,
-          status: result.status,
-          gatewayEnabled: result.gatewayEnabled,
-          routePlan: result.routePlan,
-          results: result.results,
-        },
-      });
+      response.status(200).type("text/plain").send("OK");
     } catch (error) {
-      const statusCode = error?.statusCode || 500;
-      return response.status(statusCode).json({
-        success: false,
-        code: error?.code || "PUSH_GATEWAY_EVENT_FAILED",
-        message: error?.message || "Push gateway failed.",
-      });
+      console.error(JSON.stringify({
+        src: "flexisip-external-push",
+        status: "dispatch_error",
+        error: error.message,
+        timestamp: new Date().toISOString(),
+      }));
+      response.status(200).type("text/plain").send("OK");
     } finally {
       if (connection) connection.release();
     }
