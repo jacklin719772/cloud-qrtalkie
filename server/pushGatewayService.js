@@ -517,13 +517,7 @@ function normalizeEventName(value) {
   return "";
 }
 
-function normalizePlatform(value, provider = "") {
-  const platform = trimText(value, 32).toLowerCase();
-  if (platform) return platform;
-  if (provider === "apns" || provider === "apns.dev") return "ios";
-  if (provider === "fcm") return "android";
-  return "other";
-}
+
 
 function normalizeUri(value) {
   return trimText(value, 512);
