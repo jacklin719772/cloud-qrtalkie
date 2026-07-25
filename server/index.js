@@ -815,6 +815,11 @@ async function requireSipUser(request, response, next) {
     }
 
     request.admin = { id: session.sip_user_id };
+    // Sliding expiration: extend session expiry on each API call
+    connection.query(
+      "UPDATE admin_sessions SET expires_at = DATE_ADD(NOW(), INTERVAL 12 HOUR) WHERE id = ?",
+      [session.session_id],
+    ).catch(() => {}); // fire-and-forget, don't block the request
     next();
   } catch (error) {
     console.error("[requireSipUser] error:", error?.message || error);
@@ -1182,6 +1187,12 @@ app.post("/api/auth/ai-login", async (request, response) => {
     if (user.status !== "active") {
       return response.status(403).json({ message: "Account not activated." });
     }
+
+    // Delete old sessions for this SIP user before creating new one
+    await connection.query(
+      "DELETE FROM admin_sessions WHERE sip_user_id = ?",
+      [Number(user.id)],
+    );
 
     const { token, tokenHash } = createSessionToken();
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
