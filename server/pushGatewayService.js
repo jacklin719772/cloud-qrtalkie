@@ -2356,7 +2356,7 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
         toUri: payload.toUri,
         timestamp: new Date().toISOString(),
       }));
-      response.status(200).type("text/plain").send("OK");
+      response.status(200).end();
       return;
     }
 
@@ -2365,7 +2365,7 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
     try {
       connection = await pool.getConnection();
       const result = await dispatchFlexisipEvent(connection, payload);
-      response.status(200).type("text/plain").send("OK");
+      response.status(200).end();
     } catch (error) {
       console.error(JSON.stringify({
         src: "flexisip-external-push",
@@ -2373,7 +2373,7 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
         error: error.message,
         timestamp: new Date().toISOString(),
       }));
-      response.status(200).type("text/plain").send("OK");
+      response.status(200).end();
     } finally {
       if (connection) connection.release();
     }
