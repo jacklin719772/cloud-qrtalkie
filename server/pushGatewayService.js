@@ -1236,6 +1236,7 @@ class JPushProvider extends BasePushProvider {
           channel_id: "incoming_call_v2",
           priority: 2,
           category: "call",
+          alert_type: -1,             // DEFAULT_ALL: sound + vibrate + lights
           extras,
         },
       };
@@ -1243,6 +1244,11 @@ class JPushProvider extends BasePushProvider {
         ...descriptor.options,
         classification: 1,           // system message = highest priority
         notification_3rd_ver: "v1",  // SDK auto-hides when app is alive
+        third_party_channel: {
+          huawei: {
+            importance: "HIGH",
+          },
+        },
       };
     }
 
