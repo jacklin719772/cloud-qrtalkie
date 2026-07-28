@@ -1221,6 +1221,31 @@ class JPushProvider extends BasePushProvider {
       };
     }
 
+    // For call events, always include Android notification payload
+    // so vendor channels can render a heads-up notification when app is killed.
+    // notification_3rd_ver: "v1" ensures JPush SDK suppresses this notification
+    // when the app is alive (avoids duplicate with CallStyle).
+    if (context.event === "call") {
+      const callerName = (context.fromName || "").trim()
+        || (fromUri ? fromUri.replace(/^sip:/, "").split("@")[0] : "")
+        || "Unknown";
+      descriptor.notification = {
+        android: {
+          alert: callerName,
+          title: "來電",
+          channel_id: "incoming_call_v2",
+          priority: 2,
+          category: "call",
+          extras,
+        },
+      };
+      descriptor.options = {
+        ...descriptor.options,
+        classification: 1,           // system message = highest priority
+        notification_3rd_ver: "v1",  // SDK auto-hides when app is alive
+      };
+    }
+
     return descriptor;
   }
 
@@ -1251,11 +1276,12 @@ class JPushProvider extends BasePushProvider {
       },
       message: descriptor.message,
       options: {
+        ...descriptor.options,
         apns_production: true,
         time_to_live: payloadMode === "custom_message" ? 86400 : 600,
       },
     };
-    if (payloadMode !== "custom_message") {
+    if (descriptor.notification) {
       payload.notification = descriptor.notification;
     }
 
