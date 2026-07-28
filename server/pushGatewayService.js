@@ -1246,6 +1246,7 @@ class JPushProvider extends BasePushProvider {
         third_party_channel: {
           huawei: {
             importance: "HIGH",
+            category: "VOIP",
           },
         },
       };
