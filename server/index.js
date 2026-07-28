@@ -167,6 +167,7 @@ app.use("/api/payment-method-icons", express.static(paymentMethodIconsDir));
 app.use("/api/ecard-images", express.static(ecardImagesDir));
 app.use("/api/call-center-images", express.static(callCenterImagesDir));
 app.use("/visitor-assets", express.static(path.join(projectRoot, "public/visitor")));
+app.use("/privacy-terms", express.static(path.join(projectRoot, "public/privacy-terms")));
 registerPushGatewayRoutes(app, { requireAdmin });
 
 // Serve JsSIP UMD bundle for visitor pages
