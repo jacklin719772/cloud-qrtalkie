@@ -1243,7 +1243,6 @@ class JPushProvider extends BasePushProvider {
       descriptor.options = {
         ...descriptor.options,
         classification: 1,           // system message = highest priority
-        notification_3rd_ver: "v1",  // SDK auto-hides when app is alive
         third_party_channel: {
           huawei: {
             importance: "HIGH",
