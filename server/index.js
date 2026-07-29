@@ -560,6 +560,17 @@ function parseNonNegativeInteger(value, fallback = 0) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+function parseVersionCode(version) {
+  // 从 "v10.0.1+0a31c27" 或 "10.0.2" 中提取主次修订号，计算可比整数
+  const cleaned = String(version || "").replace(/^v/i, "").replace(/\+.*$/, "");
+  const parts = cleaned.split(".");
+  let code = 0;
+  for (let i = 0; i < 3; i++) {
+    code = code * 1000 + (parseInt(parts[i], 10) || 0);
+  }
+  return code;
+}
+
 async function removePaymentProofFile(proofUrl) {
   if (!proofUrl || !String(proofUrl).startsWith("/payment-proofs/")) return;
   const fileName = path.basename(String(proofUrl));
@@ -18262,6 +18273,179 @@ app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response
     }
     console.error("Failed to delete AI session:", error);
     return response.status(500).json({ message: "删除会话失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
+// Linphone SDK 可能构造多种 URL 格式，统一处理
+async function handleVersionCheck(request, response) {
+  const currentVersion = sanitizeString(String(request.query.version || ""), 50);
+  const platform = sanitizeString(String(request.query.platform || "android"), 20);
+
+  if (!currentVersion) {
+    return response.json({ update: false, message: "缺少 version 参数" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [latest] = await connection.query(
+      `SELECT version, version_code, download_url, file_size, sha256, release_notes
+       FROM app_releases
+       WHERE platform = ? AND status = 'published' AND released_at IS NOT NULL
+       ORDER BY version_code DESC LIMIT 1`,
+      [platform]
+    );
+
+    if (!latest) {
+      return response.json({ update: false, message: "暂无已发布的版本" });
+    }
+
+    const currentCode = parseVersionCode(currentVersion);
+    if (latest.version_code > currentCode) {
+      return response.json({
+        update: true,
+        version: latest.version,
+        versionCode: latest.version_code,
+        url: latest.download_url,
+        fileSize: latest.file_size,
+        sha256: latest.sha256,
+        notes: latest.release_notes || "",
+      });
+    }
+
+    return response.json({ update: false, message: "已是最新版本" });
+  } catch (error) {
+    console.error("Version check failed:", error);
+    return response.status(500).json({ update: false, message: "版本检查失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+app.get("/api/public/releases/check", handleVersionCheck);
+app.get("/api/public/releases/check.php", handleVersionCheck);
+app.get("/api/public/releases", handleVersionCheck);
+
+// GET /api/admin/releases - 管理后台获取版本发布列表
+app.get("/api/admin/releases", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT id, platform, version, version_code, download_url, file_size, sha256,
+              release_notes, status, released_at, created_at, updated_at
+       FROM app_releases
+       ORDER BY version_code DESC`
+    );
+    return response.json({ code: 0, data: rows });
+  } catch (error) {
+    console.error("Failed to fetch releases:", error);
+    return response.status(500).json({ code: -1, message: "获取版本列表失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/admin/releases - 创建新版本发布
+app.post("/api/admin/releases", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+  }
+
+  const { platform, version, versionCode, downloadUrl, fileSize, sha256, releaseNotes, status } = request.body || {};
+  const p = sanitizeString(platform || "android", 32);
+  const v = sanitizeString(version, 32);
+  const vc = parseNonNegativeInteger(versionCode, 0);
+  const url = sanitizeString(downloadUrl, 500);
+  const notes = sanitizeString(releaseNotes || "", 5000);
+  const s = sanitizeString(status || "draft", 16);
+
+  if (!v || !url) {
+    return response.status(400).json({ code: -1, message: "版本号和下载地址为必填项" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const result = await connection.query(
+      `INSERT INTO app_releases (platform, version, version_code, download_url, file_size, sha256, release_notes, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [p, v, vc, url, fileSize || null, sha256 || null, notes || null, s]
+    );
+    return response.json({ code: 0, data: { id: Number(result.insertId) }, message: "版本发布创建成功" });
+  } catch (error) {
+    console.error("Failed to create release:", error);
+    return response.status(500).json({ code: -1, message: "创建版本发布失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// PUT /api/admin/releases/:id - 更新版本发布
+app.put("/api/admin/releases/:id", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+  }
+
+  const id = parseNonNegativeInteger(request.params.id);
+  if (!id) return response.status(400).json({ code: -1, message: "无效的版本 ID" });
+
+  const { version, versionCode, downloadUrl, fileSize, sha256, releaseNotes, status, releasedAt } = request.body || {};
+  const updates = [];
+  const params = [];
+
+  if (version !== undefined) { updates.push("version = ?"); params.push(sanitizeString(version, 32)); }
+  if (versionCode !== undefined) { updates.push("version_code = ?"); params.push(parseNonNegativeInteger(versionCode, 0)); }
+  if (downloadUrl !== undefined) { updates.push("download_url = ?"); params.push(sanitizeString(downloadUrl, 500)); }
+  if (fileSize !== undefined) { updates.push("file_size = ?"); params.push(fileSize ? Number(fileSize) : null); }
+  if (sha256 !== undefined) { updates.push("sha256 = ?"); params.push(sanitizeString(sha256, 64)); }
+  if (releaseNotes !== undefined) { updates.push("release_notes = ?"); params.push(sanitizeString(releaseNotes, 5000)); }
+  if (status !== undefined) { updates.push("status = ?"); params.push(sanitizeString(status, 16)); }
+  if (releasedAt !== undefined) { updates.push("released_at = ?"); params.push(releasedAt || null); }
+
+  if (updates.length === 0) {
+    return response.status(400).json({ code: -1, message: "没有需要更新的字段" });
+  }
+
+  params.push(id);
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(`UPDATE app_releases SET ${updates.join(", ")} WHERE id = ?`, params);
+    return response.json({ code: 0, message: "版本发布更新成功" });
+  } catch (error) {
+    console.error("Failed to update release:", error);
+    return response.status(500).json({ code: -1, message: "更新版本发布失败" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/admin/releases/:id - 删除版本发布
+app.delete("/api/admin/releases/:id", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+  }
+
+  const id = parseNonNegativeInteger(request.params.id);
+  if (!id) return response.status(400).json({ code: -1, message: "无效的版本 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query("DELETE FROM app_releases WHERE id = ?", [id]);
+    return response.json({ code: 0, message: "版本发布已删除" });
+  } catch (error) {
+    console.error("Failed to delete release:", error);
+    return response.status(500).json({ code: -1, message: "删除版本发布失败" });
   } finally {
     if (connection) connection.release();
   }
