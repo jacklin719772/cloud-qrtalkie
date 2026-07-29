@@ -18279,20 +18279,18 @@ app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response
 });
 
 // GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
-// Linphone SDK 可能构造多种 URL 格式，统一处理
+// Linphone SDK 版本检查
+// SDK 请求格式: GET {version_check_url_root}/{platform}/RELEASE
+// SDK 期望响应格式: {version}\t{url}  （TAB 分隔的纯文本）
+// SDK 内部自行比较版本号，无新版本时返回空文本即可
 async function handleVersionCheck(request, response) {
-  const currentVersion = sanitizeString(String(request.query.version || ""), 50);
-  const platform = sanitizeString(String(request.query.platform || "android"), 20);
-
-  if (!currentVersion) {
-    return response.json({ update: false, message: "缺少 version 参数" });
-  }
+  const platform = sanitizeString(String(request.params.platform || "android"), 20);
 
   let connection;
   try {
     connection = await pool.getConnection();
     const [latest] = await connection.query(
-      `SELECT version, version_code, download_url, file_size, sha256, release_notes
+      `SELECT version, download_url
        FROM app_releases
        WHERE platform = ? AND status = 'published' AND released_at IS NOT NULL
        ORDER BY version_code DESC LIMIT 1`,
@@ -18300,22 +18298,41 @@ async function handleVersionCheck(request, response) {
     );
 
     if (!latest) {
-      return response.json({ update: false, message: "暂无已发布的版本" });
+      return response.type("text/plain").send("");
     }
 
+    // SDK 期望 TAB 分隔: version\turl
+    return response.type("text/plain").send(`${latest.version}\t${latest.download_url}`);
+  } catch (error) {
+    console.error("Version check failed:", error);
+    return response.type("text/plain").send("");
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+// SDK 实际请求的 URL 格式: /releases/{platform}/RELEASE
+app.get("/releases/:platform/RELEASE", handleVersionCheck);
+// 兼容旧版查询参数格式
+app.get("/api/public/releases/check", async (request, response) => {
+  const currentVersion = sanitizeString(String(request.query.version || ""), 50);
+  const platform = sanitizeString(String(request.query.platform || "android"), 20);
+  if (!currentVersion) {
+    return response.json({ update: false, message: "缺少 version 参数" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [latest] = await connection.query(
+      `SELECT version, version_code, download_url, file_size, sha256, release_notes
+       FROM app_releases WHERE platform = ? AND status = 'published' AND released_at IS NOT NULL
+       ORDER BY version_code DESC LIMIT 1`, [platform]
+    );
+    if (!latest) return response.json({ update: false, message: "暂无已发布的版本" });
     const currentCode = parseVersionCode(currentVersion);
     if (latest.version_code > currentCode) {
-      return response.json({
-        update: true,
-        version: latest.version,
-        versionCode: latest.version_code,
-        url: latest.download_url,
-        fileSize: latest.file_size,
-        sha256: latest.sha256,
-        notes: latest.release_notes || "",
-      });
+      return response.json({ update: true, version: latest.version, versionCode: latest.version_code, url: latest.download_url, fileSize: latest.file_size, sha256: latest.sha256, notes: latest.release_notes || "" });
     }
-
     return response.json({ update: false, message: "已是最新版本" });
   } catch (error) {
     console.error("Version check failed:", error);
@@ -18323,11 +18340,7 @@ async function handleVersionCheck(request, response) {
   } finally {
     if (connection) connection.release();
   }
-}
-
-app.get("/api/public/releases/check", handleVersionCheck);
-app.get("/api/public/releases/check.php", handleVersionCheck);
-app.get("/api/public/releases", handleVersionCheck);
+});
 
 // GET /api/admin/releases - 管理后台获取版本发布列表
 app.get("/api/admin/releases", requireAdmin, async (request, response) => {
