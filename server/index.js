@@ -8432,6 +8432,12 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
         password,
         algorithm: "SHA-256",
       });
+      // updateAccount may reset activation status; restore based on local status
+      try {
+        await flexisipActivateAccount(flexisipAccountId);
+      } catch (activateErr) {
+        console.error(`Failed to re-activate Flexisip account after password reset (id=${flexisipAccountId}):`, activateErr?.message);
+      }
     } catch (flexisipErr) {
       const now = new Date().toISOString().slice(0, 19).replace("T", " ");
       const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);

@@ -222,7 +222,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
           </>
         )}
 
-        {isSuperAdmin && (<>
+        {isSuperAdmin && (
           <button
             className={`nav-item ${currentView === 'platform-admin-management' ? 'active' : ''}`}
             type="button"
@@ -241,7 +241,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <Download className="nav-icon" size={20} aria-hidden="true" />
             {!isCollapsed && <span>App 版本管理</span>}
           </button>
-        </>)}
+        )}
 
         <button
           className="nav-item logout-item"
