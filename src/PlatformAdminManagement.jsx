@@ -2,6 +2,10 @@ import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'rea
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
 
+function RequiredMark() {
+  return <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>;
+}
+
 const roleLabels = {
   super_admin: '超级管理员',
   admin: '管理员',
@@ -147,18 +151,18 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
         .pam-table tr:hover td { background: #1a2332; }
         .pam-table tr:hover td:last-child { background: #1a2332; }
         .pam-badge { display: inline-flex; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-        .pam-badge.active { background: #dcfce7; color: #15803d; }
-        .pam-badge.disabled { background: #fee2e2; color: #dc2626; }
-        .pam-action-btn { padding: 4px 12px; border-radius: 6px; border: 1px solid #d8e2ef; background: #fff; color: #475569; font-size: 12px; cursor: pointer; margin-right: 4px; }
-        .pam-action-btn:hover { background: #f1f5f9; }
-        .pam-action-btn.danger { color: #dc2626; border-color: #fecaca; }
-        .pam-action-btn.danger:hover { background: #fef2f2; }
+        .pam-badge.active { background: #0d2818; color: #22c55e; }
+        .pam-badge.disabled { background: #3b1111; color: #ef4444; }
+        .pam-action-btn { padding: 4px 12px; border-radius: 8px; border: 1px solid #4b5563; background: #374151; color: #d1d5db; font-size: 12px; cursor: pointer; margin-right: 4px; }
+        .pam-action-btn:hover { background: #4b5563; color: #f3f4f6; }
+        .pam-action-btn.danger { color: #fca5a5; border-color: #7f1d1d; }
+        .pam-action-btn.danger:hover { background: #3b1111; }
       `}</style>
 
       <div style={{ marginBottom: '16px' }}></div>
 
       {message.text && (
-        <div style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px', background: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>
+        <div style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px', background: message.type === 'error' ? '#3b1111' : '#0d2818', color: message.type === 'error' ? '#ef4444' : '#22c55e' }}>
           {message.text}
         </div>
       )}
@@ -212,45 +216,45 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
       </div>
 
       {dialogMode && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, background: 'rgba(15,23,42,0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={e => { if (e.target === e.currentTarget) closeDialog(); }}>
-          <form onSubmit={handleSave} style={{ width: 'min(480px, 100%)', background: '#fff', borderRadius: '12px', boxShadow: '0 24px 80px rgba(15,23,42,0.22)', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>{dialogMode === 'add' ? '新增管理员' : dialogMode === 'resetPassword' ? '重置密码' : '编辑管理员'}</h3>
-              <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#94a3b8' }}>&#10005;</button>
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }}>
+          <form onSubmit={handleSave} style={{ backgroundColor: '#111827', borderRadius: '10px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f3f4f6' }}>{dialogMode === 'add' ? '新增管理員' : dialogMode === 'resetPassword' ? '重設密碼' : '編輯管理員'}</h3>
+              <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>&#10005;</button>
             </div>
-            <div style={{ padding: '20px', display: 'grid', gap: '14px' }}>
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {dialogMode === 'resetPassword' ? (
                 <>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    <span>新密码 <span style={{ color: '#dc2626' }}>*</span></span>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字符" style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} autoComplete="new-password" />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(至少 6 個字元)</span></span>
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字符" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    <span>确认密码 <span style={{ color: '#dc2626' }}>*</span></span>
-                    <input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次输入密码" style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} autoComplete="new-password" />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 <RequiredMark /></span>
+                    <input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次輸入密碼" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
                   </label>
                 </>
               ) : (
                 <>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    <span>邮箱 <span style={{ color: '#dc2626' }}>*</span></span>
-                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱 <RequiredMark /></span>
+                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    <span>密码 {dialogMode === 'add' && <span style={{ color: '#dc2626' }}>*</span>}</span>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={dialogMode === 'edit' ? '留空则不修改' : '至少 6 位字符'} style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} autoComplete="new-password" />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {dialogMode === 'add' && <RequiredMark />} {dialogMode === 'edit' && <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(留空則不修改)</span>}</span>
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={dialogMode === 'edit' ? '留空則不修改' : '至少 6 位字符'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    显示名称
-                    <input type="text" value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                    <input type="text" value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    电话
-                    <input type="tel" value={form.phoneNumber} onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))} style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none' }} />
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>電話</span>
+                    <input type="tel" value={form.phoneNumber} onChange={e => setForm(f => ({ ...f, phoneNumber: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 500, color: '#475569' }}>
-                    角色
-                    <select value={form.platformRole} onChange={e => setForm(f => ({ ...f, platformRole: e.target.value }))} style={{ padding: '10px', border: '1px solid #d8e2ef', borderRadius: '8px', fontSize: '14px', outline: 'none', background: '#fff' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>角色</span>
+                    <select value={form.platformRole} onChange={e => setForm(f => ({ ...f, platformRole: e.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '14px' }}>
                       {Object.entries(roleLabels).filter(([k]) => k !== 'super_admin').map(([k, v]) => (
                         <option key={k} value={k}>{v}</option>
                       ))}
@@ -258,11 +262,11 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
                   </label>
                 </>
               )}
-              {message.text && <p style={{ margin: 0, fontSize: '13px', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>{message.text}</p>}
+              {message.text && <p style={{ margin: 0, fontSize: '14px', color: message.type === 'error' ? '#ef4444' : '#22c55e', lineHeight: 1.6 }}>{message.text}</p>}
             </div>
-            <div style={{ padding: '14px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button type="button" onClick={closeDialog} disabled={saving} style={{ padding: '8px 16px', border: '1px solid #d8e2ef', borderRadius: '8px', background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '13px' }}>取消</button>
-              <button type="submit" disabled={saving} style={{ padding: '8px 20px', border: '0', borderRadius: '8px', background: 'linear-gradient(90deg, #2563eb, #06b6d4)', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>{saving ? '保存中...' : '保存'}</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" disabled={saving} onClick={closeDialog} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button className="primary-btn" type="submit" disabled={saving}>{saving ? '儲存中...' : '確認'}</button>
             </div>
           </form>
         </div>,
