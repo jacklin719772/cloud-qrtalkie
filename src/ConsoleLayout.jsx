@@ -654,6 +654,7 @@ export default function ConsoleLayout({ onLogout }) {
       );
     }
     if (currentView === 'app-releases') {
+      if (identity?.admin?.accountType === 'tenant') return null;
       return (
         <button className="primary-btn" type="button" onClick={() => appReleasesRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
           + 新建版本
@@ -803,7 +804,7 @@ export default function ConsoleLayout({ onLogout }) {
           )}
           {currentView === 'access-control' && <AccessControl ref={accessControlRef} />}
           {currentView === 'platform-admin-management' && <PlatformAdminManagement ref={platformAdminRef} />}
-          {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} />}
+          {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} accountType={identity?.admin?.accountType} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}

@@ -18522,8 +18522,8 @@ app.get("/api/public/releases/check", async (request, response) => {
 
 // GET /api/admin/releases - 管理后台获取版本发布列表
 app.get("/api/admin/releases", requireAdmin, async (request, response) => {
-  if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+  if (!['platform', 'tenant'].includes(request.admin.accountType)) {
+    return response.status(403).json({ code: -1, message: "仅管理员可查看版本发布" });
   }
 
   let connection;

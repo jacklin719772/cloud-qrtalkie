@@ -222,6 +222,19 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
           </>
         )}
 
+        {!isAdminPlatform && !isSipUser && (
+          <button
+            className={`nav-item ${currentView === 'app-releases' ? 'active' : ''}`}
+            type="button"
+            title={isCollapsed ? 'App 版本管理' : undefined}
+            aria-label="App 版本管理"
+            onClick={() => onViewChange('app-releases')}
+          >
+            <Download className="nav-icon" size={20} aria-hidden="true" />
+            {!isCollapsed && <span>App 版本管理</span>}
+          </button>
+        )}
+
         {isSuperAdmin && (<>
           <button
             className={`nav-item ${currentView === 'platform-admin-management' ? 'active' : ''}`}

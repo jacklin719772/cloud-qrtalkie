@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import apiClient from './apiClient';
 
-const AppReleases = forwardRef((props, ref) => {
+const AppReleases = forwardRef(({ accountType }, ref) => {
+  const isTenant = accountType === 'tenant';
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -34,6 +35,8 @@ const AppReleases = forwardRef((props, ref) => {
   useEffect(() => {
     fetchReleases();
   }, []);
+
+  const displayReleases = isTenant ? releases.filter(r => r.status === 'published') : releases;
 
   const fetchReleases = async () => {
     setLoading(true);
@@ -298,7 +301,7 @@ const AppReleases = forwardRef((props, ref) => {
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
       <div className="rel-toolbar">
-        <span style={{ fontSize: 13, color: '#9ca3af' }}>共 {releases.length} 个版本</span>
+        <span style={{ fontSize: 13, color: '#9ca3af' }}>共 {displayReleases.length} 个版本</span>
       </div>
 
       <div className="rel-card">
@@ -310,21 +313,22 @@ const AppReleases = forwardRef((props, ref) => {
               <th>大小</th>
               <th>状态</th>
               <th>发布时间</th>
-              <th>操作</th>
+              {!isTenant && <th>操作</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
-            ) : releases.length === 0 ? (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
-            ) : releases.map(r => (
+              <tr><td colSpan={isTenant ? 5 : 6} style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
+            ) : displayReleases.length === 0 ? (
+              <tr><td colSpan={isTenant ? 5 : 6} style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
+            ) : displayReleases.map(r => (
               <tr key={r.id}>
                 <td><strong style={{ color: '#f3f4f6' }}>v{r.version}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({r.version_code})</span></td>
                 <td>{r.platform}</td>
                 <td>{formatBytes(r.file_size)}</td>
                 <td><span className={`rel-badge ${r.status === 'published' ? 'rel-badge-published' : 'rel-badge-draft'}`}>{r.status === 'published' ? '已发布' : '草稿'}</span></td>
                 <td style={{ fontSize: 12, color: '#9ca3af' }}>{formatDate(r.released_at)}</td>
+                {!isTenant && (
                 <td>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => showQr(r.download_url, r.version)}>二维码</button>
@@ -336,6 +340,7 @@ const AppReleases = forwardRef((props, ref) => {
                     <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#7f1d1d', color: '#fca5a5', borderColor: '#991b1b' }} onClick={() => handleDelete(r.id)}>删除</button>
                   </div>
                 </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -343,7 +348,7 @@ const AppReleases = forwardRef((props, ref) => {
       </div>
 
       {/* 编辑/新建弹窗 */}
-      {showForm && createPortal(
+      {!isTenant && showForm && createPortal(
         <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }} onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}>
           <form onSubmit={handleSave} style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
