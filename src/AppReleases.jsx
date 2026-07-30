@@ -313,14 +313,14 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
               <th>大小</th>
               <th>状态</th>
               <th>发布时间</th>
-              {!isTenant && <th>操作</th>}
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={isTenant ? 5 : 6} style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
             ) : displayReleases.length === 0 ? (
-              <tr><td colSpan={isTenant ? 5 : 6} style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
             ) : displayReleases.map(r => (
               <tr key={r.id}>
                 <td><strong style={{ color: '#f3f4f6' }}>v{r.version}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({r.version_code})</span></td>
@@ -338,6 +338,14 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
                     )}
                     <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleEdit(r)}>编辑</button>
                     <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#7f1d1d', color: '#fca5a5', borderColor: '#991b1b' }} onClick={() => handleDelete(r.id)}>删除</button>
+                  </div>
+                </td>
+                )}
+                {isTenant && (
+                <td>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => showQr(r.download_url, r.version)}>二维码</button>
+                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => copyUrl(r.download_url)}>复制链接</button>
                   </div>
                 </td>
                 )}
