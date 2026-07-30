@@ -146,6 +146,7 @@ export default function ConsoleLayout({ onLogout }) {
   const tenantAccountManagementRef = useRef(null);
   const domainRef = useRef(null);
   const platformAdminRef = useRef(null);
+  const appReleasesRef = useRef(null);
   const platformDashboardRef = useRef(null);
 
   const openCreateUserDialog = () => createUserDialogRef.current?.showModal();
@@ -652,6 +653,13 @@ export default function ConsoleLayout({ onLogout }) {
         </div>
       );
     }
+    if (currentView === 'app-releases') {
+      return (
+        <button className="primary-btn" type="button" onClick={() => appReleasesRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
+          + 新建版本
+        </button>
+      );
+    }
     if (currentView === 'access-control') {
       const actionBaseStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', height: '44px', minHeight: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap' };
       return (
@@ -729,7 +737,7 @@ export default function ConsoleLayout({ onLogout }) {
         userType={userType}
       />
 
-      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
+      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
         <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}) }}>
           <h1 id="page-title">{
             currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平台概覽' :
@@ -795,7 +803,7 @@ export default function ConsoleLayout({ onLogout }) {
           )}
           {currentView === 'access-control' && <AccessControl ref={accessControlRef} />}
           {currentView === 'platform-admin-management' && <PlatformAdminManagement ref={platformAdminRef} />}
-          {currentView === 'app-releases' && <AppReleases />}
+          {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}
