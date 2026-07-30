@@ -39,6 +39,7 @@ import AccessControl from './AccessControl';
 import OrderDetail from './OrderDetail';
 import MyAccount from './MyAccount';
 import PlatformAdminManagement from './PlatformAdminManagement';
+import AppReleases from './AppReleases';
 import PlatformDashboard from './PlatformDashboard';
 import TenantDashboard from './TenantDashboard';
 const viewTitles = {
@@ -72,6 +73,7 @@ const viewTitles = {
   'access-control': '門禁系統配置',
   'order-detail': '訂單詳情',
   'platform-admin-management': '管理員設置',
+  'app-releases': 'App 版本管理',
   'dashboard-platform': 'QRTalkie Cloud 平台概覽',
   'analytics': '統計分析',
 };
@@ -793,6 +795,7 @@ export default function ConsoleLayout({ onLogout }) {
           )}
           {currentView === 'access-control' && <AccessControl ref={accessControlRef} />}
           {currentView === 'platform-admin-management' && <PlatformAdminManagement ref={platformAdminRef} />}
+          {currentView === 'app-releases' && <AppReleases />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}

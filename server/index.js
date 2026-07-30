@@ -14166,6 +14166,72 @@ app.post("/api/upload/community-image", requireAdmin, async (request, response) 
 // Serve uploaded community images
 app.use("/api/community-images", express.static(path.join(projectRoot, "assets/community-images")));
 
+// POST /api/admin/releases/upload - 上傳 APK 文件
+app.post("/api/admin/releases/upload", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ code: -1, message: "仅平台管理员可上传 APK。" });
+  }
+
+  const downloadDir = path.join(projectRoot, "public/download");
+  try { await mkdir(downloadDir, { recursive: true }); } catch {}
+
+  const chunks = [];
+  let boundary = null;
+  const ct = request.get("content-type") || "";
+  const bm = ct.match(/boundary=(.+)/);
+  if (bm) boundary = bm[1];
+
+  if (!boundary) {
+    return response.status(400).json({ code: -1, message: "无效的上传请求。" });
+  }
+
+  request.on("data", chunk => chunks.push(chunk));
+  request.on("end", async () => {
+    try {
+      let filename = `qrtalkie-v${Date.now()}.apk`;
+      const body = Buffer.concat(chunks);
+      const str = body.toString("binary");
+      const parts = str.split("--" + boundary);
+      for (const part of parts) {
+        if (!part.includes("filename=")) continue;
+        const fnMatch = part.match(/filename="([^"]+)"/);
+        if (fnMatch) {
+          const ext = path.extname(fnMatch[1]).toLowerCase();
+          if (ext !== ".apk") {
+            return response.status(400).json({ code: -1, message: "仅支持 .apk 文件。" });
+          }
+          // 提取原始版本号作为文件名一部分
+          const baseName = path.basename(fnMatch[1], ext).replace(/[^a-zA-Z0-9._-]/g, "_");
+          filename = `${baseName}-${Date.now()}.apk`;
+        }
+        const headerEnd = part.indexOf("\r\n\r\n");
+        if (headerEnd < 0) continue;
+        let fileData = part.substring(headerEnd + 4);
+        if (fileData.endsWith("\r\n")) fileData = fileData.slice(0, -2);
+        const fileBuffer = Buffer.from(fileData, "binary");
+        const savePath = path.join(downloadDir, filename);
+        await writeFile(savePath, fileBuffer);
+        const sha256 = createHash("sha256").update(fileBuffer).digest("hex");
+        const url = `/download/${filename}`;
+        return response.json({
+          code: 0,
+          data: {
+            url,
+            fullUrl: `https://cloud.qrtalkie.org${url}`,
+            filename,
+            fileSize: fileBuffer.length,
+            sha256,
+          },
+        });
+      }
+      return response.status(400).json({ code: -1, message: "未检测到上传文件。" });
+    } catch (err) {
+      console.error("APK upload error:", err);
+      return response.status(500).json({ code: -1, message: "上传失败。" });
+    }
+  });
+});
+
 
 // ==========================================
 // Platform Admin Management API (super_admin only)
