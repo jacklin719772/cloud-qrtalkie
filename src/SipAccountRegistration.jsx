@@ -88,6 +88,13 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // AI 授权弹窗
+  const [aiEntitlementAccount, setAiEntitlementAccount] = useState(null);
+  const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
+  const [aiEntitlementLoading, setAiEntitlementLoading] = useState(false);
+  const [aiEntitlementSaving, setAiEntitlementSaving] = useState(false);
+  const [aiEntitlementMessage, setAiEntitlementMessage] = useState({ type: '', text: '' });
+
   function getNextNumericUsername() {
     const maxUsername = accounts.reduce((max, account) => {
       const username = String(account.username || '').trim();
@@ -744,6 +751,30 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
 
+    if (action === 'ai_entitlement') {
+      setAiEntitlementAccount(account);
+      setAiEntitlementForm({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
+      setAiEntitlementMessage({ type: '', text: '' });
+      setAiEntitlementLoading(true);
+      try {
+        const result = await apiClient.get(`/admin/sip-accounts/${account.id}/ai-entitlement`);
+        if (result && result.sip_user_id) {
+          setAiEntitlementForm({
+            enabled: result.enabled === 1 || result.enabled === true,
+            daily_limit: result.daily_limit ?? 50,
+            monthly_limit: result.monthly_limit ?? '',
+            expires_at: result.expires_at ? result.expires_at.substring(0, 10) : '',
+            notes: result.notes || '',
+          });
+        }
+      } catch (err) {
+        // 沒有授權記錄，使用預設值
+      } finally {
+        setAiEntitlementLoading(false);
+      }
+      return;
+    }
+
     alert(`觸發操作: ${action} - 帳號: ${account.username}`);
   };
 
@@ -776,6 +807,42 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setResetMessage({ type: 'error', text: err.message || '密碼重設失敗。' });
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleAiEntitlementSubmit = async (e) => {
+    e.preventDefault();
+    setAiEntitlementSaving(true);
+    setAiEntitlementMessage({ type: '', text: '' });
+    try {
+      await apiClient.put(`/admin/sip-accounts/${aiEntitlementAccount.id}/ai-entitlement`, {
+        enabled: aiEntitlementForm.enabled,
+        daily_limit: aiEntitlementForm.daily_limit,
+        monthly_limit: aiEntitlementForm.monthly_limit || null,
+        expires_at: aiEntitlementForm.expires_at || null,
+        notes: aiEntitlementForm.notes,
+      });
+      setAiEntitlementMessage({ type: 'success', text: 'AI 授權設定成功！' });
+      setTimeout(() => setAiEntitlementAccount(null), 1200);
+    } catch (err) {
+      setAiEntitlementMessage({ type: 'error', text: err.message || 'AI 授權儲存失敗。' });
+    } finally {
+      setAiEntitlementSaving(false);
+    }
+  };
+
+  const handleAiEntitlementDelete = async () => {
+    if (!window.confirm(`確定要取消「${aiEntitlementAccount.username}」的 AI 授權嗎？`)) return;
+    setAiEntitlementSaving(true);
+    setAiEntitlementMessage({ type: '', text: '' });
+    try {
+      await apiClient.delete(`/admin/sip-accounts/${aiEntitlementAccount.id}/ai-entitlement`);
+      setAiEntitlementMessage({ type: 'success', text: 'AI 授權已取消！' });
+      setTimeout(() => setAiEntitlementAccount(null), 1200);
+    } catch (err) {
+      setAiEntitlementMessage({ type: 'error', text: err.message || '取消 AI 授權失敗。' });
+    } finally {
+      setAiEntitlementSaving(false);
     }
   };
 
@@ -1894,6 +1961,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                               <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', acc)}>刪除</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', acc)}>重設密碼</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('verify', acc)}>帳號校驗</button>
+                              <button type="button" className="dropdown-item" onClick={() => handleAction('ai_entitlement', acc)}>AI授權</button>
                               {acc.tenantName && (
                                 <button type="button" className="dropdown-item" onClick={() => handleAction('unassign', acc)}>取消分配</button>
                               )}
@@ -1922,6 +1990,95 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         </div>
       </div>
       </section>
+
+      {/* AI 授權彈窗 */}
+      {aiEntitlementAccount && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100002 }}>
+          <form onSubmit={handleAiEntitlementSubmit} style={{ backgroundColor: '#111827', borderRadius: '10px', width: '460px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f3f4f6' }}>AI 授權 — {aiEntitlementAccount.username}</h3>
+              <button type="button" onClick={() => setAiEntitlementAccount(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>&#10005;</button>
+            </div>
+            {aiEntitlementLoading ? (
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
+            ) : (
+              <>
+                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af', minWidth: '80px' }}>啟用狀態</span>
+                    <button
+                      type="button"
+                      onClick={() => setAiEntitlementForm(f => ({ ...f, enabled: !f.enabled }))}
+                      style={{
+                        width: '48px', height: '26px', borderRadius: '13px', border: 'none', cursor: 'pointer',
+                        backgroundColor: aiEntitlementForm.enabled ? '#22c55e' : '#374151',
+                        position: 'relative', transition: 'background-color 0.2s',
+                      }}
+                    >
+                      <span style={{
+                        position: 'absolute', top: '3px', left: aiEntitlementForm.enabled ? '25px' : '3px',
+                        width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
+                        transition: 'left 0.2s',
+                      }} />
+                    </button>
+                    <span style={{ fontSize: '13px', color: aiEntitlementForm.enabled ? '#22c55e' : '#9ca3af' }}>
+                      {aiEntitlementForm.enabled ? '已啟用' : '已停用'}
+                    </span>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>每日限額</span>
+                    <input type="number" min="0" step="1" value={aiEntitlementForm.daily_limit}
+                      onChange={e => setAiEntitlementForm(f => ({ ...f, daily_limit: Number(e.target.value) }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>每月限額 <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(留空表示不限)</span></span>
+                    <input type="number" min="0" step="1" value={aiEntitlementForm.monthly_limit}
+                      onChange={e => setAiEntitlementForm(f => ({ ...f, monthly_limit: e.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>過期時間 <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(留空表示永久)</span></span>
+                    <input type="date" value={aiEntitlementForm.expires_at}
+                      onChange={e => setAiEntitlementForm(f => ({ ...f, expires_at: e.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>備註</span>
+                    <input type="text" maxLength="255" value={aiEntitlementForm.notes}
+                      onChange={e => setAiEntitlementForm(f => ({ ...f, notes: e.target.value }))}
+                      placeholder="授權備註（可選）"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }}
+                      onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  </label>
+                  {aiEntitlementMessage.text && (
+                    <p style={{ margin: 0, fontSize: '14px', color: aiEntitlementMessage.type === 'error' ? '#ef4444' : '#22c55e', lineHeight: 1.6 }}>{aiEntitlementMessage.text}</p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                  <button type="button" disabled={aiEntitlementSaving} onClick={handleAiEntitlementDelete}
+                    style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid #dc2626', fontSize: '13px', cursor: 'pointer' }}>
+                    取消授權
+                  </button>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="button" disabled={aiEntitlementSaving} onClick={() => setAiEntitlementAccount(null)}
+                      style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>
+                      取消
+                    </button>
+                    <button className="primary-btn" type="submit" disabled={aiEntitlementSaving}>
+                      {aiEntitlementSaving ? '儲存中...' : '確認'}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </form>
+        </div>,
+        document.body
+      )}
 
       {/* 重設密碼彈窗 */}
       {batchAddOpen && createPortal(

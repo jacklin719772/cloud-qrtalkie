@@ -8474,6 +8474,111 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
   }
 });
 
+// ── AI 授权管理 ──
+
+// GET /api/admin/sip-accounts/:id/ai-entitlement - 查詢 AI 授權
+app.get("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+  }
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [row] = await connection.query(
+      `SELECT id, sip_user_id, enabled, daily_limit, monthly_limit, used_today, used_this_month,
+              expires_at, notes, granted_at
+       FROM ai_bot_account_entitlements WHERE sip_user_id = ? LIMIT 1`,
+      [accountId],
+    );
+    connection.release();
+    return response.json(row || null);
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("Failed to get AI entitlement:", error?.message);
+    return response.status(500).json({ message: "查詢 AI 授權失敗。" });
+  }
+});
+
+// PUT /api/admin/sip-accounts/:id/ai-entitlement - 新增/修改 AI 授權
+app.put("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+  }
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+  const { enabled, daily_limit, monthly_limit, expires_at, notes } = request.body || {};
+  if (enabled === undefined) {
+    return response.status(400).json({ message: "請提供 enabled 欄位。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    // 先確認 sip_user 存在
+    const [sipUser] = await connection.query(`SELECT id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
+    if (sipUser.length === 0) {
+      connection.release();
+      return response.status(404).json({ message: "帳號不存在。" });
+    }
+    await connection.query(
+      `INSERT INTO ai_bot_account_entitlements (sip_user_id, enabled, daily_limit, monthly_limit, expires_at, notes, granted_by_admin_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         enabled = VALUES(enabled),
+         daily_limit = VALUES(daily_limit),
+         monthly_limit = VALUES(monthly_limit),
+         expires_at = VALUES(expires_at),
+         notes = VALUES(notes),
+         granted_by_admin_id = VALUES(granted_by_admin_id)`,
+      [
+        accountId,
+        enabled ? 1 : 0,
+        daily_limit ?? 50,
+        monthly_limit ?? null,
+        expires_at || null,
+        notes || '',
+        request.admin.id,
+      ],
+    );
+    connection.release();
+    return response.json({ message: "AI 授權設定成功。" });
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("Failed to save AI entitlement:", error?.message);
+    return response.status(500).json({ message: "AI 授權儲存失敗。" });
+  }
+});
+
+// DELETE /api/admin/sip-accounts/:id/ai-entitlement - 取消 AI 授權
+app.delete("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+  }
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      `DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ?`,
+      [accountId],
+    );
+    connection.release();
+    return response.json({ message: "AI 授權已取消。" });
+  } catch (error) {
+    if (connection) { try { connection.release(); } catch {} }
+    console.error("Failed to delete AI entitlement:", error?.message);
+    return response.status(500).json({ message: "取消 AI 授權失敗。" });
+  }
+});
+
 // DELETE /api/admin/sip-accounts/:id - 刪除帳號（同步 Flexisip）
 app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
