@@ -55,7 +55,7 @@ async function scanExpiringSipAccounts(connection) {
   for (const row of rows) {
     const daysLeft = Math.ceil((new Date(row.service_expires_at) - new Date()) / 86400000);
     const dedupeKey = `tenant:${row.tenant_id}:sip:${row.id}:expiring`;
-    const body = `SIP 帳號 ${row.username} 将在 ${daysLeft} 天後過期（${String(row.service_expires_at).slice(0, 10)}），请及时續訂。`;
+    const body = `SIP 帳號 ${row.username} 將在 ${daysLeft} 天後過期（${String(row.service_expires_at).slice(0, 10)}），請及時續訂。`;
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
@@ -98,7 +98,7 @@ async function scanExpiredSipAccounts(connection) {
     );
 
     const dedupeKey = `tenant:${row.tenant_id}:sip:${row.sip_user_id}:expired`;
-    const body = `SIP 帳號 ${row.username} 已过期，系統已自動将其停用。`;
+    const body = `SIP 帳號 ${row.username} 已過期，系統已自動將其停用。`;
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
@@ -137,7 +137,7 @@ async function scanExpiringPlans(connection) {
   for (const row of rows) {
     const daysLeft = Math.ceil((new Date(row.expires_at) - new Date()) / 86400000);
     const dedupeKey = `tenant:${row.tenant_id}:plan:${row.order_id}:expiring`;
-    const body = `${row.plan_name || '套餐'} 将在 ${daysLeft} 天后到期（${String(row.expires_at).slice(0, 10)}），请及时續訂。`;
+    const body = `${row.plan_name || '套餐'} 將在 ${daysLeft} 天后到期（${String(row.expires_at).slice(0, 10)}），請及時續訂。`;
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
@@ -177,7 +177,7 @@ async function scanExpiringEcards(connection) {
   for (const row of rows) {
     const daysLeft = Math.ceil((new Date(row.expires_at) - new Date()) / 86400000);
     const dedupeKey = `tenant:${row.tenant_id}:ecard:${row.ecard_id}:expiring`;
-    const body = `電子名片 ${row.display_name || row.username} 将在 ${daysLeft} 天後過期（${String(row.expires_at).slice(0, 10)}），请及时續訂。`;
+    const body = `電子名片 ${row.display_name || row.username} 將在 ${daysLeft} 天後過期（${String(row.expires_at).slice(0, 10)}），請及時續訂。`;
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)

@@ -70,10 +70,10 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
   },
   {
     key: "write_endpoint_custom_overlay",
-    label: "補齊 WebRTC Runtime 參數",
-    running: "正在寫入 WebRTC Runtime 補充參數",
-    success: "WebRTC Runtime 補充參數寫入成功",
-    failed: "WebRTC Runtime 補充參數寫入失敗",
+    label: "補齊 WebRTC Runtime 引數",
+    running: "正在寫入 WebRTC Runtime 補充引數",
+    success: "WebRTC Runtime 補充引數寫入成功",
+    failed: "WebRTC Runtime 補充引數寫入失敗",
   },
   {
     key: "second_fwconsole_reload",
@@ -85,9 +85,9 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
   {
     key: "verify_runtime_endpoint",
     label: "驗證 WebRTC Runtime 狀態",
-    running: "正在驗證 Asterisk Runtime 中的 WebRTC 參數",
-    success: "WebRTC Runtime 參數驗證通過",
-    failed: "WebRTC Runtime 參數驗證失敗",
+    running: "正在驗證 Asterisk Runtime 中的 WebRTC 引數",
+    success: "WebRTC Runtime 引數驗證通過",
+    failed: "WebRTC Runtime 引數驗證失敗",
   },
   {
     key: "verify_baseline_endpoints",
@@ -110,7 +110,7 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
     label: "回滾 WebRTC Runtime 補充配置",
     running: "正在回滾 WebRTC Runtime 補充配置",
     success: "WebRTC Runtime 補充配置已回滾",
-    failed: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份文件",
+    failed: "WebRTC Runtime 補充配置回滾失敗，請人工檢查備份檔案",
     skipped: "未觸發回滾",
     rollback: "WebRTC Runtime 補充配置已回滾",
   },

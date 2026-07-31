@@ -7,7 +7,7 @@ import { ensureAiAllowed, incrementUsage } from "./aiEntitlementService.js";
 const MAX_CONTEXT_MESSAGES = 10;
 const MAX_USER_MESSAGE_LENGTH = 2000;
 
-const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手。你可以回答各类问题，对 QRTalkie 相关问题（账号设置、SIP 注册、推送通知、阅后即焚、环境检测、权限设置等）尤为专业。请用简洁友好的中文回答。`;
+const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手。你可以回答各類問題，對 QRTalkie 相關問題（賬號設定、SIP 註冊、推送通知、閱後即焚、環境檢測、許可權設定等）尤為專業。請用簡潔友好的中文回答。`;
 
 export async function getOrCreateSession(sipUserId, connection) {
     const rows = await connection.query(
@@ -54,7 +54,7 @@ export async function getMessages(sessionId, sipUserId, connection) {
 
 export async function sendMessage(sessionId, sipUserId, content, connection) {
     if (!content || String(content).trim().length === 0) {
-        return { error: "AI_EMPTY_MESSAGE", message: "消息不能为空" };
+        return { error: "AI_EMPTY_MESSAGE", message: "訊息不能為空" };
     }
     const trimmed = String(content).trim().slice(0, MAX_USER_MESSAGE_LENGTH);
 
@@ -63,7 +63,7 @@ export async function sendMessage(sessionId, sipUserId, content, connection) {
         `SELECT id FROM ai_bot_sessions WHERE id = ? AND owner_sip_user_id = ? LIMIT 1`,
         [sessionId, sipUserId]
     );
-    if (!session) return { error: "AI_SESSION_NOT_FOUND", message: "会话不存在" };
+    if (!session) return { error: "AI_SESSION_NOT_FOUND", message: "會話不存在" };
 
     // Save user message
     await connection.query(

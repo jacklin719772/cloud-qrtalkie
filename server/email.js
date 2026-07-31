@@ -45,7 +45,7 @@ async function sendMail({ to, subject, text }) {
 export async function queuePasswordResetEmail(connection, { email, resetUrl }) {
   const subject = "QRTalkie Cloud 密碼重設";
   const body = [
-    "請點擊以下連結重設您的密碼：",
+    "請點選以下連結重設您的密碼：",
     "",
     resetUrl,
     "",
@@ -95,7 +95,7 @@ export async function queuePasswordResetEmail(connection, { email, resetUrl }) {
 export async function queueVerificationEmail(connection, { email, verificationUrl }) {
   const subject = "QRTalkie Cloud 電子郵件驗證";
   const body = [
-    "請點擊以下連結完成帳號驗證：",
+    "請點選以下連結完成帳號驗證：",
     "",
     verificationUrl,
     "",

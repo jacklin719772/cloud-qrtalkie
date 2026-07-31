@@ -180,7 +180,7 @@ app.get("/visitor-assets/jssip.min.js", (_req, res) => {
 app.post("/api/access/room-call-session", async (request, response) => {
   const roomId = Number(request.body?.roomId);
   const lockId = sanitizeString(String(request.body?.lockId || ''), 120);
-  if (!roomId || !lockId) return response.status(400).json({ success: false, message: "缺少參數" });
+  if (!roomId || !lockId) return response.status(400).json({ success: false, message: "缺少引數" });
 
   const voiceEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL || "").toLowerCase() === "true";
   const videoEnabled = String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VIDEO_CALL || "").toLowerCase() === "true";
@@ -202,7 +202,7 @@ app.post("/api/access/room-call-session", async (request, response) => {
 
     // Verify device exists
     const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
-    if (!device) return response.status(404).json({ success: false, message: "設備不存在" });
+    if (!device) return response.status(404).json({ success: false, message: "裝置不存在" });
 
     // Get room with SIP account
     const [room] = await connection.query(
@@ -276,7 +276,7 @@ app.get("/api/access/room-sip-status", async (request, response) => {
   try {
     connection = await pool.getConnection();
     const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
-    if (!device) return response.status(404).json({ success: false, message: "設備不存在" });
+    if (!device) return response.status(404).json({ success: false, message: "裝置不存在" });
 
     const [room] = await connection.query(
       `SELECT s.username AS sip_account FROM access_rooms r
@@ -309,7 +309,7 @@ app.get("/access/visitor", async (request, response) => {
   const entranceType = request.query.type || '';
   const lockId = sanitizeString(String(request.query.lockId || ''), 120);
   if (!lockId || !['01','02'].includes(entranceType)) {
-    return response.status(400).send("<h2 style='text-align:center;margin-top:20vh;'>400 Bad Request</h2><p style='text-align:center;'>無效的訪問鏈接。</p>");
+    return response.status(400).send("<h2 style='text-align:center;margin-top:20vh;'>400 Bad Request</h2><p style='text-align:center;'>無效的訪問連結。</p>");
   }
 
   let connection;
@@ -322,7 +322,7 @@ app.get("/access/visitor", async (request, response) => {
       [lockId]
     );
     if (!device) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>設備不存在。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>裝置不存在。</p>");
     }
 
     // Find entrance bound to this device
@@ -340,7 +340,7 @@ app.get("/access/visitor", async (request, response) => {
       );
     }
     if (!entrance) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該設備尚未綁定入口。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該裝置尚未繫結入口。</p>");
     }
 
     // Get community from entrance
@@ -352,7 +352,7 @@ app.get("/access/visitor", async (request, response) => {
       if (bld) communityId = bld.community_id;
     }
     if (!communityId) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>所屬社區不存在。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>所屬社群不存在。</p>");
     }
 
     const [community] = await connection.query(
@@ -362,7 +362,7 @@ app.get("/access/visitor", async (request, response) => {
       [communityId]
     );
     if (!community) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該社區不存在或已停用。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該社群不存在或已停用。</p>");
     }
 
     // Get authorized rooms for this entrance
@@ -402,14 +402,14 @@ app.get("/access/visitor", async (request, response) => {
     const tenantName = tenant?.name || '';
 
     const data = {
-      name: (community.visitor_title || community.name) + '訪客服務平台',
+      name: (community.visitor_title || community.name) + '訪客服務平臺',
       tenantName: tenantName,
       communityName: community.name,
       address: community.address || '',
       logoUrl: community.logo_url || '',
       bannerUrl: community.banner_url || '',
       showTips: community.show_tips == null ? true : !!community.show_tips,
-      tipsText: community.tips_text || '溫馨提示：如遇門禁問題或需要幫助，請聯繫對應樓宇或房間服務人員。',
+      tipsText: community.tips_text || '溫馨提示：如遇門禁問題或需要幫助，請聯絡對應樓宇或房間服務人員。',
       buildings: buildings.map(b => ({ id: Number(b.id), name: b.name })),
       rooms: rooms.map(r => ({
         id: Number(r.id), buildingId: Number(r.building_id),
@@ -459,7 +459,7 @@ app.get("/access/:slug", async (request, response) => {
       [slug]
     );
     if (!community) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該社區不存在或已停用。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該社群不存在或已停用。</p>");
     }
 
     // If entrance-specific access, get authorized room IDs
@@ -505,14 +505,14 @@ app.get("/access/:slug", async (request, response) => {
     const tenantName = tenant?.name || '';
 
     const data = {
-      name: (community.visitor_title || community.name) + '訪客服務平台',
+      name: (community.visitor_title || community.name) + '訪客服務平臺',
       tenantName: tenantName,
       communityName: community.name,
       address: community.address || '',
       logoUrl: community.logo_url || '',
       bannerUrl: community.banner_url || '',
       showTips: community.show_tips == null ? true : !!community.show_tips,
-      tipsText: community.tips_text || '溫馨提示：如遇門禁問題或需要幫助，請聯繫對應樓宇或房間服務人員。',
+      tipsText: community.tips_text || '溫馨提示：如遇門禁問題或需要幫助，請聯絡對應樓宇或房間服務人員。',
       buildings: buildings.map(b => ({ id: Number(b.id), name: b.name })),
       rooms: rooms.map(r => ({
         id: Number(r.id), buildingId: Number(r.building_id),
@@ -626,7 +626,7 @@ async function savePaymentMethodIcon(dataUrl, methodCode) {
   const mimeType = match[1];
   const buffer = Buffer.from(match[2], "base64");
   if (buffer.length > 512 * 1024) {
-    const error = new Error("鍦栨妾旀涓嶅彲瓒呴亷 512KB銆?");
+    const error = new Error("鍦栨妾旀涓嶅彲瓚呴亷 512KB銆?");
     error.statusCode = 400;
     throw error;
   }
@@ -717,7 +717,7 @@ function getBearerToken(request) {
 
 async function requireAdmin(request, response, next) {
   const token = getBearerToken(request);
-  if (!token) return response.status(401).json({ message: "请重新登录。" });
+  if (!token) return response.status(401).json({ message: "請重新登入。" });
 
   let connection;
   try {
@@ -736,7 +736,7 @@ async function requireAdmin(request, response, next) {
 
     const session = rows[0];
     if (!session || new Date(session.expires_at).getTime() < Date.now()) {
-      return response.status(401).json({ message: "请重新登录。" });
+      return response.status(401).json({ message: "請重新登入。" });
     }
 
     if (session.user_type === "sip" && session.sip_user_id) {
@@ -752,14 +752,14 @@ async function requireAdmin(request, response, next) {
       );
       const sipUser = sipRows[0];
       if (!sipUser) {
-        return response.status(401).json({ message: "帳號已失效，请重新登录。" });
+        return response.status(401).json({ message: "帳號已失效，請重新登入。" });
       }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const expiresAt = sipUser.service_expires_at ? new Date(sipUser.service_expires_at) : null;
       if (!expiresAt || expiresAt < today) {
-        return response.status(403).json({ message: "此帳號的服務已過期，請聯繫管理員續訂。" });
+        return response.status(403).json({ message: "此帳號的服務已過期，請聯絡管理員續訂。" });
       }
 
       request.admin = {
@@ -779,11 +779,11 @@ async function requireAdmin(request, response, next) {
     }
 
     if (!session.admin_id || session.admin_id === 0) {
-      return response.status(401).json({ message: "请重新登录。" });
+      return response.status(401).json({ message: "請重新登入。" });
     }
 
     if (session.status !== 'active') {
-      return response.status(401).json({ message: "请重新登录。" });
+      return response.status(401).json({ message: "請重新登入。" });
     }
 
     request.admin = {
@@ -801,7 +801,7 @@ async function requireAdmin(request, response, next) {
     return next();
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "身份验证失败。" });
+    return response.status(500).json({ message: "身份驗證失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -857,7 +857,7 @@ async function syncTenantNotifications(connection, admin) {
   const noPlanKey = `tenant:${tenantId}:no_plan_purchased`;
   if (orderCount === 0) {
     await connection.query(
-      "INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'tenant', ?, 'no_plan_purchased', 'system', ?, '請購買套餐', '當前帳號尚未訂購任何套餐，請在【我的套餐】中购买套餐。', 'warning', 'active', 'domain') ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
+      "INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'tenant', ?, 'no_plan_purchased', 'system', ?, '請購買套餐', '當前帳號尚未訂購任何套餐，請在【我的套餐】中購買套餐。', 'warning', 'active', 'domain') ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
       [tenantId, tenantId, noPlanKey]
     );
   } else {
@@ -871,7 +871,7 @@ async function syncTenantNotifications(connection, admin) {
     const key = `order:${o.id}:payment_required`;
     unpaidKeys.push(key);
     await connection.query("INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'billing_order', ?, 'payment_required', 'system', ?, '訂單待支付', ?, 'warning', 'active', 'domain') ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
-      [tenantId, o.id, key, `订单 ${o.order_no || o.id} 尚未完成支付，请在"我的套餐"中处理。`]
+      [tenantId, o.id, key, `訂單 ${o.order_no || o.id} 尚未完成支付，請在"我的套餐"中處理。`]
     );
   }
   if (unpaidKeys.length > 0) {
@@ -887,7 +887,7 @@ async function syncTenantNotifications(connection, admin) {
     const key = `order:${o.id}:review_submission_required`;
     puKeys.push(key);
     await connection.query("INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'billing_order', ?, 'review_submission_required', 'system', ?, '訂單待提交審核', ?, 'warning', 'active', 'domain') ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
-      [tenantId, o.id, key, `订单 ${o.order_no || o.id} 已支付，請提交審核。`]
+      [tenantId, o.id, key, `訂單 ${o.order_no || o.id} 已支付，請提交審核。`]
     );
   }
   if (puKeys.length > 0) {
@@ -915,7 +915,7 @@ async function syncPlatformNotifications(connection) {
     const key = `platform:order:${o.id}:pending_review`;
     prKeys.push(key);
     await connection.query("INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'billing_order', ?, 'order_pending_review', 'tenant_admin', ?, '訂單待審核', ?, 'warning', 'active', NULL) ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
-      [o.tenant_id, o.id, key, `租户 ${o.tenant_name} 的订单 ${o.order_no || o.id} 已提交审核。`]
+      [o.tenant_id, o.id, key, `租戶 ${o.tenant_name} 的訂單 ${o.order_no || o.id} 已提交稽核。`]
     );
   }
   if (prKeys.length > 0) {
@@ -931,7 +931,7 @@ async function syncPlatformNotifications(connection) {
     const key = `platform:order:${o.id}:proof_uploaded`;
     ppKeys.push(key);
     await connection.query("INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status, target_view) VALUES (?, 'billing_order', ?, 'proof_uploaded', 'tenant_admin', ?, '付款憑證已上傳', ?, 'info', 'active', NULL) ON DUPLICATE KEY UPDATE title=VALUES(title), body=VALUES(body), status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
-      [o.tenant_id, o.id, key, `租户 ${o.tenant_name} 的订单 ${o.order_no || o.id} 已上傳付款憑證，請審核。`]
+      [o.tenant_id, o.id, key, `租戶 ${o.tenant_name} 的訂單 ${o.order_no || o.id} 已上傳付款憑證，請審核。`]
     );
   }
   if (ppKeys.length > 0) {
@@ -999,7 +999,7 @@ app.post("/api/auth/register", async (request, response) => {
       }
       // 未验证状态：返回特殊代码，前端引导用户重发验证邮件
       return response.status(409).json({
-        message: "此電子郵件已註冊但尚未驗證，是否重新發送驗證郵件？",
+        message: "此電子郵件已註冊但尚未驗證，是否重新傳送驗證郵件？",
         code: "EMAIL_UNVERIFIED",
         email,
       });
@@ -1121,22 +1121,22 @@ app.post("/api/auth/login", async (request, response) => {
     const sipUser = sipRows[0];
 
     if (!sipUser) {
-      return response.status(401).json({ message: "登录帳號或密码不正确。" });
+      return response.status(401).json({ message: "登入帳號或密碼不正確。" });
     }
 
     if (!(await verifyPassword(password, sipUser.password_hash))) {
-      return response.status(401).json({ message: "登录帳號或密码不正确。" });
+      return response.status(401).json({ message: "登入帳號或密碼不正確。" });
     }
 
     if (sipUser.status !== 'active') {
-      return response.status(403).json({ message: "此 SIP 帳號尚未启用或已被停用。" });
+      return response.status(403).json({ message: "此 SIP 帳號尚未啟用或已被停用。" });
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const serviceExpires = sipUser.service_expires_at ? new Date(sipUser.service_expires_at) : null;
     if (!serviceExpires || serviceExpires < today) {
-      return response.status(403).json({ message: "此帳號的服務已過期，請聯繫管理員續訂。" });
+      return response.status(403).json({ message: "此帳號的服務已過期，請聯絡管理員續訂。" });
     }
 
     const { token, tokenHash } = createSessionToken();
@@ -1227,7 +1227,7 @@ app.post("/api/auth/sip-provision", async (request, response) => {
   const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
 
   if (!username) {
-    return response.status(400).json({ success: false, message: "請輸入用戶名。" });
+    return response.status(400).json({ success: false, message: "請輸入使用者名稱。" });
   }
 
   try {
@@ -1254,7 +1254,7 @@ app.post("/api/auth/sip-provision", async (request, response) => {
       || null;
 
     if (!provisionUrl) {
-      return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 鏈接。" });
+      return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 連結。" });
     }
 
     // Download provisioning XML and save to a local file (tokens are one-time-use)
@@ -1270,7 +1270,7 @@ app.post("/api/auth/sip-provision", async (request, response) => {
     }
 
     if (!provisionXml) {
-      return response.status(502).json({ success: false, message: "無法下載 provisioning 配置文件。" });
+      return response.status(502).json({ success: false, message: "無法下載 provisioning 配置檔案。" });
     }
 
     // Save to a static file and return its URL
@@ -1300,7 +1300,7 @@ app.post("/api/auth/sip-provision", async (request, response) => {
       return response.status(404).json({ success: false, message: "找不到該 SIP 帳號。" });
     }
     console.error(`[auth/sip-provision] username=${username}@${domain} failed:`, error?.message || error);
-    return response.status(502).json({ success: false, message: "獲取 provisioning 鏈接失敗，請稍後重試。" });
+    return response.status(502).json({ success: false, message: "獲取 provisioning 連結失敗，請稍後重試。" });
   }
 });
 
@@ -1442,13 +1442,13 @@ app.post("/api/auth/forgot-password", async (request, response) => {
     const delivery = await queuePasswordResetEmail(connection, { email, resetUrl });
 
     if (!delivery.sent) {
-      return response.status(500).json({ message: "重置郵件發送失敗，請稍後再試。" });
+      return response.status(500).json({ message: "重置郵件傳送失敗，請稍後再試。" });
     }
 
-    return response.json({ message: "已發送密碼重置連結，請檢查您的郵箱。" });
+    return response.json({ message: "已傳送密碼重置連結，請檢查您的郵箱。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "無法發送重置郵件，請稍後再試。" });
+    return response.status(500).json({ message: "無法傳送重置郵件，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1610,12 +1610,12 @@ app.post("/api/auth/resend-verification", async (request, response) => {
     await queueVerificationEmail(connection, { email, verificationUrl });
 
     return response.json({
-      message: "驗證郵件已重新發送，請檢查您的郵箱。",
+      message: "驗證郵件已重新傳送，請檢查您的郵箱。",
       devVerificationUrl: verificationUrl,
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "重新發送驗證郵件失敗，請稍後再試。" });
+    return response.status(500).json({ message: "重新傳送驗證郵件失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1737,7 +1737,7 @@ app.get("/api/me", requireAdmin, async (request, response) => {
       });
     } catch (error) {
       console.error(error);
-      return response.status(500).json({ message: "無法讀取帳號信息。" });
+      return response.status(500).json({ message: "無法讀取帳號資訊。" });
     } finally {
       if (connection) connection.release();
     }
@@ -1776,7 +1776,7 @@ app.get("/api/me", requireAdmin, async (request, response) => {
       [request.admin.tenantId, request.admin.id],
     );
     const row = rows[0];
-    if (!row) return response.status(404).json({ message: "找不到租户资料。" });
+    if (!row) return response.status(404).json({ message: "找不到租戶資料。" });
 
     return response.json({
       userType: "admin",
@@ -1806,7 +1806,7 @@ app.get("/api/me", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "無法讀取租户设定。" });
+    return response.status(500).json({ message: "無法讀取租戶設定。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1863,7 +1863,7 @@ app.get("/api/notifications", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "讀取訊息失败。" });
+    return response.status(500).json({ message: "讀取訊息失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1871,7 +1871,7 @@ app.get("/api/notifications", requireAdmin, async (request, response) => {
 
 app.post("/api/notifications/:id/read", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息編號無效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1887,10 +1887,10 @@ app.post("/api/notifications/:id/read", requireAdmin, async (request, response) 
       [request.admin.id, eventId],
     );
     if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "找不到訊息。" });
-    return response.json({ message: "訊息已标记为已读。" });
+    return response.json({ message: "訊息已標記為已讀。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "标记訊息失败。" });
+    return response.status(500).json({ message: "標記訊息失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1898,7 +1898,7 @@ app.post("/api/notifications/:id/read", requireAdmin, async (request, response) 
 
 app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息編號無效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1918,7 +1918,7 @@ app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, respons
     return response.json({ message: "訊息已忽略。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "忽略訊息失败。" });
+    return response.status(500).json({ message: "忽略訊息失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1926,7 +1926,7 @@ app.post("/api/notifications/:id/dismiss", requireAdmin, async (request, respons
 
 app.delete("/api/notifications/:id", requireAdmin, async (request, response) => {
   const eventId = Number(request.params.id);
-  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息编号无效。" });
+  if (!Number.isInteger(eventId) || eventId <= 0) return response.status(400).json({ message: "訊息編號無效。" });
 
   const isSip = request.admin.accountType === "sip_user";
   const userField = isSip ? "r.sip_user_id" : "r.admin_user_id";
@@ -1948,7 +1948,7 @@ app.delete("/api/notifications/:id", requireAdmin, async (request, response) => 
     return response.json({ message: "訊息已刪除。" });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "刪除訊息失败。" });
+    return response.status(500).json({ message: "刪除訊息失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1972,10 +1972,10 @@ app.post("/api/notifications/read-all", requireAdmin, async (request, response) 
          AND r.dismissed_at IS NULL`,
       [request.admin.id]
     );
-    return response.json({ message: "所有訊息已设为已读。", count: Number(result.affectedRows || 0) });
+    return response.json({ message: "所有訊息已設為已讀。", count: Number(result.affectedRows || 0) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "操作失败。" });
+    return response.status(500).json({ message: "操作失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -1985,7 +1985,7 @@ app.post("/api/notifications/read-all", requireAdmin, async (request, response) 
 // GET /api/tenant/payments - 獲取租戶付款記錄
 app.get("/api/tenant/payments", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看付款記錄。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視付款記錄。" });
   }
   let connection;
   try {
@@ -2030,7 +2030,7 @@ app.get("/api/tenant/payments", requireAdmin, async (request, response) => {
 
 app.get("/api/tenant/sip-accounts/:id/config-status", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視。" });
   }
   const accountId = Number(request.params.id);
   if (!accountId) return response.status(400).json({ message: "無效的帳號 ID。" });
@@ -2067,7 +2067,7 @@ app.get("/api/tenant/sip-accounts/:id/config-status", requireAdmin, async (reque
 
 app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看帳號管理。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視帳號管理。" });
   }
 
   const query = sanitizeString(request.query?.q, 120);
@@ -2182,13 +2182,13 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
 
 app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, next) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以维护帳號。" });
+    return response.status(403).json({ message: "只有租戶管理員可以維護帳號。" });
   }
 
   const paramId = Number(request.params.id);
   if (!Number.isInteger(paramId) || paramId <= 0) {
     if (request.params.id === "contact-book") return next();
-    return response.status(400).json({ message: "帳號编号无效。" });
+    return response.status(400).json({ message: "帳號編號無效。" });
   }
 
   const isSelfService = request.admin.accountType === "sip_user";
@@ -2203,10 +2203,10 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
   }
   if (password || confirmPassword) {
     if (password.length < 6) {
-      return response.status(400).json({ message: "密码至少需要 6 个字符。" });
+      return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
     }
     if (password !== confirmPassword) {
-      return response.status(400).json({ message: "两次输入的密码不一致。" });
+      return response.status(400).json({ message: "兩次輸入的密碼不一致。" });
     }
   }
 
@@ -2221,7 +2221,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       sipUserId = request.admin.id;
       if (sipUserId !== paramId) {
         await connection.rollback();
-        return response.status(403).json({ message: "只能编辑自己的帳號。" });
+        return response.status(403).json({ message: "只能編輯自己的帳號。" });
       }
     } else {
       const rows = await connection.query(
@@ -2240,7 +2240,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       }
       if (assignedAccount.service_expires_at && new Date(assignedAccount.service_expires_at).getTime() < new Date().setHours(0, 0, 0, 0)) {
         await connection.rollback();
-        return response.status(409).json({ message: "已過期帳號不能编辑。" });
+        return response.status(409).json({ message: "已過期帳號不能編輯。" });
       }
       sipUserId = assignedAccount.sip_user_id;
     }
@@ -2374,17 +2374,17 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
 
 app.put("/api/tenant/sip-accounts/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以维护帳號。" });
+    return response.status(403).json({ message: "只有租戶管理員可以維護帳號。" });
   }
 
   const assignedAccountId = Number(request.params.id);
   if (!Number.isInteger(assignedAccountId) || assignedAccountId <= 0) {
-    return response.status(400).json({ message: "帳號编号无效。" });
+    return response.status(400).json({ message: "帳號編號無效。" });
   }
 
   const status = sanitizeString(request.body?.status, 20);
   if (!['active', 'disabled'].includes(status)) {
-    return response.status(400).json({ message: "帳號狀態无效。" });
+    return response.status(400).json({ message: "帳號狀態無效。" });
   }
 
   let connection;
@@ -2408,7 +2408,7 @@ app.put("/api/tenant/sip-accounts/:id/status", requireAdmin, async (request, res
     }
     if (assignedAccount.service_expires_at && new Date(assignedAccount.service_expires_at).getTime() < new Date().setHours(0, 0, 0, 0)) {
       await connection.rollback();
-      return response.status(409).json({ message: "已過期帳號不能启用或停用。" });
+      return response.status(409).json({ message: "已過期帳號不能啟用或停用。" });
     }
 
     await connection.query(
@@ -2523,31 +2523,31 @@ async function sendTenantSipAccountFlexisipEmail(request, response, options) {
       if (!Number.isNaN(expiresAt.getTime())) {
         expiresAt.setHours(0, 0, 0, 0);
         if (expiresAt.getTime() < today.getTime()) {
-          return response.status(409).json({ success: false, message: "已過期帳號不能發送郵件。" });
+          return response.status(409).json({ success: false, message: "已過期帳號不能傳送郵件。" });
         }
       }
     }
 
     if (!account.flexisipAccountId) {
-      return response.status(400).json({ success: false, message: "該帳號尚未同步到 Flexisip，無法發送郵件" });
+      return response.status(400).json({ success: false, message: "該帳號尚未同步到 Flexisip，無法傳送郵件" });
     }
 
     try {
       await options.sendEmail(account.flexisipAccountId);
       console.log(`[flexisip-email] action=${options.action} tenant=${request.admin.tenantId} accountId=${account.accountId} sipUserId=${account.sipUserId} flexisipAccountId=${account.flexisipAccountId} status=queued`);
-      return response.json({ success: true, message: "郵件發送請求已提交" });
+      return response.json({ success: true, message: "郵件傳送請求已提交" });
     } catch (error) {
       const isFlexisipError = error instanceof FlexisipAccountManagerError;
       const safeMessage =
         isFlexisipError && error.status === 404
-          ? "Flexisip 帳號不存在，無法發送郵件"
-          : "發送失敗，請稍後重試";
+          ? "Flexisip 帳號不存在，無法傳送郵件"
+          : "傳送失敗，請稍後重試";
       console.error(`[flexisip-email] action=${options.action} tenant=${request.admin.tenantId} accountId=${account.accountId} sipUserId=${account.sipUserId} flexisipAccountId=${account.flexisipAccountId} failed:`, error?.message || error);
       return response.status(isFlexisipError && error.status === 404 ? 404 : 502).json({ success: false, message: safeMessage });
     }
   } catch (error) {
     console.error(`[flexisip-email] action=${options.action} unexpected error:`, error);
-    return response.status(500).json({ success: false, message: "發送失敗，請稍後重試" });
+    return response.status(500).json({ success: false, message: "傳送失敗，請稍後重試" });
   } finally {
     if (connection) connection.release();
   }
@@ -2608,7 +2608,7 @@ app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (re
       }
 
       if (!provisionUrl) {
-        return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 鏈接。" });
+        return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 連結。" });
       }
 
       return response.json({
@@ -2625,7 +2625,7 @@ app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (re
         success: false,
         message: isFlexisipError && error.status === 404
           ? "Flexisip 帳號不存在"
-          : "獲取 provisioning 鏈接失敗，請稍後重試",
+          : "獲取 provisioning 連結失敗，請稍後重試",
       });
     }
   } catch (error) {
@@ -2638,20 +2638,20 @@ app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (re
 
 app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以配置通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以配置通訊錄。" });
   }
 
   const assignedAccountIds = Array.isArray(request.body?.accountIds)
     ? Array.from(new Set(request.body.accountIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)))
     : [];
   if (assignedAccountIds.length === 0) {
-    return response.status(400).json({ message: "請選擇要配置通讯录的帳號。" });
+    return response.status(400).json({ message: "請選擇要配置通訊錄的帳號。" });
   }
 
   const rawContactBookId = request.body?.contactBookId;
   const contactBookId = rawContactBookId === "" || rawContactBookId == null ? null : Number(rawContactBookId);
   if (contactBookId != null && (!Number.isInteger(contactBookId) || contactBookId <= 0)) {
-    return response.status(400).json({ message: "通讯录编号无效。" });
+    return response.status(400).json({ message: "通訊錄編號無效。" });
   }
 
   let connection;
@@ -2672,7 +2672,7 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
       );
       if (!book) {
         await connection.rollback();
-        return response.status(404).json({ message: "找不到指定的通讯录。" });
+        return response.status(404).json({ message: "找不到指定的通訊錄。" });
       }
       contactBookName = book.name || "";
     }
@@ -2689,7 +2689,7 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
 
     if (rows.length !== assignedAccountIds.length) {
       await connection.rollback();
-      return response.status(404).json({ message: "部分帳號不存在，請刷新後重試。" });
+      return response.status(404).json({ message: "部分帳號不存在，請重新整理後重試。" });
     }
 
     const today = new Date().setHours(0, 0, 0, 0);
@@ -2699,7 +2699,7 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
     ));
     if (invalidAccount) {
       await connection.rollback();
-      return response.status(409).json({ message: "只能为启用中且未过期的帳號配置通讯录。" });
+      return response.status(409).json({ message: "只能為啟用中且未過期的帳號配置通訊錄。" });
     }
 
     const sipUserIds = rows.map((account) => Number(account.sip_user_id));
@@ -2740,14 +2740,14 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
 
     await connection.commit();
     return response.json({
-      message: "通讯录配置已保存。",
+      message: "通訊錄配置已儲存。",
       accountIds: assignedAccountIds,
       account: { contactBookId, contactBookName },
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to batch configure contact book:", error);
-    return response.status(500).json({ message: "批量配置通讯录失败。" });
+    return response.status(500).json({ message: "批次配置通訊錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -2755,18 +2755,18 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
 
 app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以配置通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以配置通訊錄。" });
   }
 
   const assignedAccountId = Number(request.params.id);
   if (!Number.isInteger(assignedAccountId) || assignedAccountId <= 0) {
-    return response.status(400).json({ message: "帳號编号无效。" });
+    return response.status(400).json({ message: "帳號編號無效。" });
   }
 
   const rawContactBookId = request.body?.contactBookId;
   const contactBookId = rawContactBookId === "" || rawContactBookId == null ? null : Number(rawContactBookId);
   if (contactBookId != null && (!Number.isInteger(contactBookId) || contactBookId <= 0)) {
-    return response.status(400).json({ message: "通讯录编号无效。" });
+    return response.status(400).json({ message: "通訊錄編號無效。" });
   }
 
   let connection;
@@ -2790,11 +2790,11 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
     }
     if (assignedAccount.account_status !== 'active') {
       await connection.rollback();
-      return response.status(409).json({ message: "只有启用中的帳號可以配置通讯录。" });
+      return response.status(409).json({ message: "只有啟用中的帳號可以配置通訊錄。" });
     }
     if (assignedAccount.service_expires_at && new Date(assignedAccount.service_expires_at).getTime() < new Date().setHours(0, 0, 0, 0)) {
       await connection.rollback();
-      return response.status(409).json({ message: "已過期帳號不能配置通讯录。" });
+      return response.status(409).json({ message: "已過期帳號不能配置通訊錄。" });
     }
 
     let contactBookName = "";
@@ -2810,7 +2810,7 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
       );
       if (!book) {
         await connection.rollback();
-        return response.status(404).json({ message: "找不到指定的通讯录。" });
+        return response.status(404).json({ message: "找不到指定的通訊錄。" });
       }
       contactBookName = book.name || "";
     }
@@ -2850,7 +2850,7 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
 
     await connection.commit();
     return response.json({
-      message: "通讯录配置已保存。",
+      message: "通訊錄配置已儲存。",
       account: {
         id: assignedAccountId,
         contactBookId,
@@ -2860,7 +2860,7 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to configure contact book:", error);
-    return response.status(500).json({ message: "配置通讯录失败。" });
+    return response.status(500).json({ message: "配置通訊錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -2868,7 +2868,7 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
 
 app.get("/api/tenant/web-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看 Web 帳號管理。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視 Web 帳號管理。" });
   }
 
   let connection;
@@ -2916,12 +2916,12 @@ app.get("/api/tenant/web-accounts", requireAdmin, async (request, response) => {
 
 app.put("/api/tenant/web-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以维护 Web 帳號。" });
+    return response.status(403).json({ message: "只有租戶管理員可以維護 Web 帳號。" });
   }
 
   const assignedAccountId = Number(request.params.id);
   if (!Number.isInteger(assignedAccountId) || assignedAccountId <= 0) {
-    return response.status(400).json({ message: "帳號编号无效。" });
+    return response.status(400).json({ message: "帳號編號無效。" });
   }
 
   const displayName = sanitizeString(request.body?.displayName, 120);
@@ -2931,14 +2931,14 @@ app.put("/api/tenant/web-accounts/:id", requireAdmin, async (request, response) 
   const confirmPassword = String(request.body?.confirmPassword || "");
 
   if (email && !isValidEmail(email)) {
-    return response.status(400).json({ message: "請輸入有效的电子郵箱。" });
+    return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
   }
   if (password || confirmPassword) {
     if (password.length < 6) {
-      return response.status(400).json({ message: "密碼至少需要 6 个字符。" });
+      return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
     }
     if (password !== confirmPassword) {
-      return response.status(400).json({ message: "两次输入的密碼不一致。" });
+      return response.status(400).json({ message: "兩次輸入的密碼不一致。" });
     }
   }
 
@@ -2963,7 +2963,7 @@ app.put("/api/tenant/web-accounts/:id", requireAdmin, async (request, response) 
     }
     if (assignedAccount.service_expires_at && new Date(assignedAccount.service_expires_at).getTime() < new Date().setHours(0, 0, 0, 0)) {
       await connection.rollback();
-      return response.status(409).json({ message: "已過期帳號不能编辑。" });
+      return response.status(409).json({ message: "已過期帳號不能編輯。" });
     }
 
     let userUpdateSql = `UPDATE web_users SET display_name = ?, email = ?, phone_number = ?`;
@@ -3008,17 +3008,17 @@ app.put("/api/tenant/web-accounts/:id", requireAdmin, async (request, response) 
 
 app.put("/api/tenant/web-accounts/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以维护 Web 帳號。" });
+    return response.status(403).json({ message: "只有租戶管理員可以維護 Web 帳號。" });
   }
 
   const assignedAccountId = Number(request.params.id);
   if (!Number.isInteger(assignedAccountId) || assignedAccountId <= 0) {
-    return response.status(400).json({ message: "帳號编号无效。" });
+    return response.status(400).json({ message: "帳號編號無效。" });
   }
 
   const status = sanitizeString(request.body?.status, 20);
   if (!['active', 'disabled'].includes(status)) {
-    return response.status(400).json({ message: "帳號狀態无效。" });
+    return response.status(400).json({ message: "帳號狀態無效。" });
   }
 
   let connection;
@@ -3042,7 +3042,7 @@ app.put("/api/tenant/web-accounts/:id/status", requireAdmin, async (request, res
     }
     if (assignedAccount.service_expires_at && new Date(assignedAccount.service_expires_at).getTime() < new Date().setHours(0, 0, 0, 0)) {
       await connection.rollback();
-      return response.status(409).json({ message: "已過期帳號不能启用或停用。" });
+      return response.status(409).json({ message: "已過期帳號不能啟用或停用。" });
     }
 
     await connection.query(
@@ -3073,7 +3073,7 @@ app.put("/api/tenant/web-accounts/:id/status", requireAdmin, async (request, res
 
 app.get("/api/contact-books", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以查看通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視通訊錄。" });
   }
 
   let connection;
@@ -3109,7 +3109,7 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
     return response.json({ contactBooks: formattedRows });
   } catch (error) {
     console.error("Failed to fetch contact books:", error);
-    return response.status(500).json({ message: "取得通讯录列表失败" });
+    return response.status(500).json({ message: "取得通訊錄列表失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -3117,7 +3117,7 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
 
 app.post("/api/contact-books", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以创建通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以建立通訊錄。" });
   }
 
   const payload = request.body || {};
@@ -3128,7 +3128,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     ? Array.from(new Set(payload.assignedAccountIds.map(Number).filter(id => Number.isInteger(id) && id > 0)))
     : [];
 
-  if (!name) return response.status(400).json({ message: "請輸入通讯录名稱。" });
+  if (!name) return response.status(400).json({ message: "請輸入通訊錄名稱。" });
 
   let connection;
   try {
@@ -3158,7 +3158,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
       console.error("Failed to create Flexisip contact list:", flexisipErr.message);
       if (flexisipErr instanceof FlexisipContactBookError) {
         return response.status(502).json({
-          message: `Flexisip 通訊錄創建失敗：${flexisipErr.message}`,
+          message: `Flexisip 通訊錄建立失敗：${flexisipErr.message}`,
           code: "FLEXISIP_CREATE_FAILED",
         });
       }
@@ -3216,7 +3216,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     if (failedAssignments.length > 0) {
       connection.release();
       return response.status(502).json({
-        message: `Flexisip 通訊錄分配失敗（${failedAssignments.join('、')}），通訊錄已創建但部分分配失敗，請在編輯頁面重新分配。`,
+        message: `Flexisip 通訊錄分配失敗（${failedAssignments.join('、')}），通訊錄已建立但部分分配失敗，請在編輯頁面重新分配。`,
         code: "FLEXISIP_ASSIGN_PARTIAL",
         flexisipContactListId,
       });
@@ -3275,14 +3275,14 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
 
     await connection.commit();
     return response.status(201).json({
-      message: "通讯录创建成功",
+      message: "通訊錄建立成功",
       id: contactBookId,
       flexisipContactListId: flexisipContactListId || null,
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to create contact book:", error);
-    return response.status(500).json({ message: "创建通讯录失败。" });
+    return response.status(500).json({ message: "建立通訊錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3290,7 +3290,7 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
 
 app.get("/api/contact-books/available-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看通讯录可选帳號。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視通訊錄可選帳號。" });
   }
 
   let connection;
@@ -3325,7 +3325,7 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
     });
   } catch (error) {
     console.error("Failed to fetch contact book available accounts:", error);
-    return response.status(500).json({ message: "讀取通讯录可选帳號失败。" });
+    return response.status(500).json({ message: "讀取通訊錄可選帳號失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3333,7 +3333,7 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
 
 app.get("/api/contact-books/validate", requireAdmin, async (request, response) => {
   if (request.admin.accountType === "platform") {
-    return response.status(403).json({ message: "只有租户管理员可以执行数据校验。" });
+    return response.status(403).json({ message: "只有租戶管理員可以執行資料校驗。" });
   }
 
   try {
@@ -3377,9 +3377,9 @@ app.get("/api/contact-books/validate", requireAdmin, async (request, response) =
         });
         flexisipMap.delete(b.flexisip_contact_list_id);
       } else if (!b.flexisip_contact_list_id) {
-        results.push({ name: b.name, status: "local_only", localId: Number(b.id), note: "本地通讯录未关联 Flexisip" });
+        results.push({ name: b.name, status: "local_only", localId: Number(b.id), note: "本地通訊錄未關聯 Flexisip" });
       } else {
-        results.push({ name: b.name, status: "missing_on_flexisip", localId: Number(b.id), flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通讯录" });
+        results.push({ name: b.name, status: "missing_on_flexisip", localId: Number(b.id), flexisipId: b.flexisip_contact_list_id, note: "Flexisip 上不存在此通訊錄" });
       }
     }
 
@@ -3388,17 +3388,17 @@ app.get("/api/contact-books/validate", requireAdmin, async (request, response) =
     return response.json({ success: true, allOk, flexisipError, total: results.length, results });
   } catch (error) {
     console.error("Failed to validate contact books:", error);
-    return response.status(500).json({ message: "数据校验失败。" });
+    return response.status(500).json({ message: "資料校驗失敗。" });
   }
 });
 app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以查看通讯录详情。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視通訊錄詳情。" });
   }
 
   const contactBookId = Number(request.params.id);
   if (!Number.isInteger(contactBookId) || contactBookId <= 0) {
-    return response.status(400).json({ message: "無效的通讯录ID。" });
+    return response.status(400).json({ message: "無效的通訊錄ID。" });
   }
 
   let connection;
@@ -3412,7 +3412,7 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
     );
 
     if (!book) {
-      return response.status(404).json({ message: "找不到指定的通讯录。" });
+      return response.status(404).json({ message: "找不到指定的通訊錄。" });
     }
 
     const entries = await connection.query(
@@ -3479,7 +3479,7 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch contact book details:", error);
-    return response.status(500).json({ message: "取得通讯录详情失败。" });
+    return response.status(500).json({ message: "取得通訊錄詳情失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3487,12 +3487,12 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
 
 app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以编辑通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以編輯通訊錄。" });
   }
 
   const contactBookId = Number(request.params.id);
   if (!Number.isInteger(contactBookId) || contactBookId <= 0) {
-    return response.status(400).json({ message: "無效的通讯录ID。" });
+    return response.status(400).json({ message: "無效的通訊錄ID。" });
   }
 
   const payload = request.body || {};
@@ -3505,7 +3505,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
     ? Array.from(new Set(payload.assignedAccountIds.map(Number).filter(id => Number.isInteger(id) && id > 0)))
     : [];
 
-  if (!name) return response.status(400).json({ message: "請輸入通讯录名稱。" });
+  if (!name) return response.status(400).json({ message: "請輸入通訊錄名稱。" });
 
   let connection;
   try {
@@ -3518,7 +3518,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
     );
     if (!book) {
       connection.release();
-      return response.status(404).json({ message: "找不到指定的通讯录。" });
+      return response.status(404).json({ message: "找不到指定的通訊錄。" });
     }
 
     // ── Flexisip sync: 更新通讯录名称和描述 ──
@@ -3530,11 +3530,11 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
         connection.release();
         if (flexisipErr instanceof FlexisipContactBookError) {
           return response.status(502).json({
-            message: `Flexisip 通讯录更新失败：${flexisipErr.message}`,
+            message: `Flexisip 通訊錄更新失敗：${flexisipErr.message}`,
             code: "FLEXISIP_UPDATE_FAILED",
           });
         }
-        return response.status(502).json({ message: "Flexisip 通讯录服务不可用。" });
+        return response.status(502).json({ message: "Flexisip 通訊錄服務不可用。" });
       }
     }
 
@@ -3624,11 +3624,11 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
       }
     }
 
-    return response.json({ message: "通讯录已保存。" });
+    return response.json({ message: "通訊錄已儲存。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to update contact book:", error);
-    return response.status(500).json({ message: "保存通讯录失败。" });
+    return response.status(500).json({ message: "儲存通訊錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3636,12 +3636,12 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
 
 app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "只有租戶管理員可以刪除通讯录。" });
+    return response.status(403).json({ message: "只有租戶管理員可以刪除通訊錄。" });
   }
 
   const contactBookId = Number(request.params.id);
   if (!Number.isInteger(contactBookId) || contactBookId <= 0) {
-    return response.status(400).json({ message: "無效的通讯录ID。" });
+    return response.status(400).json({ message: "無效的通訊錄ID。" });
   }
 
   let connection;
@@ -3655,7 +3655,7 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
 
     if (!book) {
       connection.release();
-      return response.status(404).json({ message: "找不到指定的通讯录。" });
+      return response.status(404).json({ message: "找不到指定的通訊錄。" });
     }
 
     // ── Flexisip sync: 刪除远端通讯录 ──
@@ -3668,11 +3668,11 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
           connection.release();
           if (flexisipErr instanceof FlexisipContactBookError) {
             return response.status(502).json({
-              message: `Flexisip 通讯录刪除失败：${flexisipErr.message}`,
+              message: `Flexisip 通訊錄刪除失敗：${flexisipErr.message}`,
               code: "FLEXISIP_DELETE_FAILED",
             });
           }
-          return response.status(502).json({ message: "Flexisip 通讯录服务不可用。" });
+          return response.status(502).json({ message: "Flexisip 通訊錄服務不可用。" });
         }
       }
     }
@@ -3687,11 +3687,11 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE FROM tenant_contact_books WHERE id = ?`, [contactBookId]);
 
     await connection.commit();
-    return response.json({ message: "通讯录已成功刪除。" });
+    return response.json({ message: "通訊錄已成功刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete contact book:", error);
-    return response.status(500).json({ message: "刪除通讯录失败。" });
+    return response.status(500).json({ message: "刪除通訊錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -3749,7 +3749,7 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
 // GET /api/admin/tenants/with-active-sip - 獲取有有效 SIP 帳號的租戶列表 (must be before /:id)
 app.get("/api/admin/tenants/with-active-sip", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視。" });
   }
   let connection;
   try {
@@ -3842,7 +3842,7 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
 // PUT /api/admin/tenants/:id/status - 鏇存柊绉熸埗鐙€鎱?
 app.put("/api/admin/tenants/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ュ煼琛屾鎿嶄綔銆?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ュ煼琛屾錼嶄綔銆?" });
   }
 
   const tenantId = Number(request.params.id);
@@ -3850,7 +3850,7 @@ app.put("/api/admin/tenants/:id/status", requireAdmin, async (request, response)
 
   if (!tenantId) return response.status(400).json({ message: "鐒℃晥鐨勭鎴?ID銆?" });
   if (!['active', "inactive", 'disabled'].includes(status)) {
-    return response.status(400).json({ message: "鐒℃晥鐨勭媭鎱嬪€笺€?" });
+    return response.status(400).json({ message: "鐒℃晥鐨勭嬃鎱嬪€箋€?" });
   }
 
   // 灏囧墠绔彲鑳藉偝渚嗙殑 inactive 绲变竴鏄犲皠鐐鸿硣鏂欏韩鐨?disabled
@@ -3890,7 +3890,7 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   console.log("[createTenant] Route matched, admin:", request.admin?.accountType, "tenantId:", request.params?.id);
   if (request.admin.accountType !== 'platform') {
     console.log("[createTenant] Rejected: not platform admin");
-    return response.status(403).json({ message: "只有平台管理員可以執行此操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以執行此操作。" });
   }
 
   const tenantId = Number(request.params.id);
@@ -3980,7 +3980,7 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
 // DELETE /api/admin/tenants/:id - 寰瑰簳鍒櫎绉熸埗鍙婂叾鎵€鏈夐棞鑱硣鏂?
 app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ュ煼琛屾鎿嶄綔銆?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ュ煼琛屾錼嶄綔銆?" });
   }
 
   const tenantId = Number(request.params.id);
@@ -4008,7 +4008,7 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     const paymentRows = await connection.query(`SELECT id FROM billing_payments WHERE tenant_id = ? LIMIT 1`, [tenantId]);
     if (paymentRows.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "該租戶已有支付記錄，為保障財務數據完整性，無法刪除。" });
+      return response.status(409).json({ message: "該租戶已有支付記錄，為保障財務資料完整性，無法刪除。" });
     }
 
     // 3. 鍒櫎闂滆伅鐨?Token 鑸?Session (鑱〃鍒櫎)
@@ -4046,7 +4046,7 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
 
 app.get("/api/admin/tenant-coupons", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ユ煡鐪嬩紭鎯犵爜鍒嗛厤璧勬枡銆?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ユ煡鐪嬩紭鎯犵爜鍒嗛厤璧勬枡銆?" });
   }
 
   const page = Math.max(1, Number.parseInt(request.query.page || "1", 10));
@@ -4150,7 +4150,7 @@ app.get("/api/admin/tenant-coupons", requireAdmin, async (request, response) => 
 
 app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以分配優惠碼。" });
+    return response.status(403).json({ message: "只有平臺管理員可以分配優惠碼。" });
   }
 
   const tenantId = Number(request.body?.tenantId || 0);
@@ -4206,7 +4206,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
         ? `${couponInfo.currency || 'USD'} ${Number(couponInfo.discount_value || 0).toFixed(2)}`
         : `${Number(couponInfo.discount_value || 0)}%`;
       const couponTitle = `優惠碼已分配：${couponInfo.coupon_code}`;
-      const couponBody = `平台已為您分配優惠碼「${couponInfo.display_name || couponInfo.coupon_code}」（${discountText} 折扣），購買套餐時輸入 ${couponInfo.coupon_code} 即可享受優惠。`;
+      const couponBody = `平臺已為您分配優惠碼「${couponInfo.display_name || couponInfo.coupon_code}」（${discountText} 折扣），購買套餐時輸入 ${couponInfo.coupon_code} 即可享受優惠。`;
 
       const dedupeKey = `coupon_assigned_${assignmentId}`;
       const notifResult = await connection.query(
@@ -4246,7 +4246,7 @@ app.post("/api/admin/tenant-coupons", requireAdmin, async (request, response) =>
 
 app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以撤銷優惠碼。" });
+    return response.status(403).json({ message: "只有平臺管理員可以撤銷優惠碼。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
@@ -4303,7 +4303,7 @@ app.post("/api/admin/tenant-coupons/:id/revoke", requireAdmin, async (request, r
 
 app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以啟用優惠碼。" });
+    return response.status(403).json({ message: "只有平臺管理員可以啟用優惠碼。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
@@ -4366,7 +4366,7 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
 
 app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以刪除優惠碼分配記錄。" });
+    return response.status(403).json({ message: "只有平臺管理員可以刪除優惠碼分配記錄。" });
   }
 
   const assignmentId = Number(request.params.id || 0);
@@ -4394,7 +4394,7 @@ app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, respon
     }
     if (assignment.status === "used" || assignment.used_order_id) {
       await connection.rollback();
-      return response.status(409).json({ message: "宸蹭娇鐢ㄤ紭鎯犵爜涓嶈兘鍒犻櫎銆?" });
+      return response.status(409).json({ message: "宸蹭嬌鐢ㄤ紭鎯犵爜涓嶈兘鍒犻櫎銆?" });
     }
     if (assignment.status !== "revoked") {
       await connection.rollback();
@@ -4436,7 +4436,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
 
     const row = rows[0];
     if (!row) {
-      return response.status(404).json({ message: "鎵句笉鍒扮窔涓嬫敹娆捐硣瑷娿€?" });
+      return response.status(404).json({ message: "鎵句笉鍒扮窔涓嬫敹嬈捐硣璦娿€?" });
     }
 
     return response.json({
@@ -4458,7 +4458,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栫窔涓嬫敹娆捐硣瑷婂け鏁椼€?" });
+    return response.status(500).json({ message: "璁€鍙栫窔涓嬫敹嬈捐硣璦婂け鏁椼€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -4466,7 +4466,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
 
 app.put("/api/billing/offline-payment-account", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以管理收款帳戶。" });
+    return response.status(403).json({ message: "只有平臺管理員可以管理收款帳戶。" });
   }
 
   const payload = request.body || {};
@@ -4487,7 +4487,7 @@ app.put("/api/billing/offline-payment-account", requireAdmin, async (request, re
   if (!payeeName) return response.status(400).json({ message: "請輸入收款單位。" });
   if (!bankName) return response.status(400).json({ message: "請輸入開戶銀行。" });
   if (!bankAccountNo) return response.status(400).json({ message: "請輸入銀行帳號。" });
-  if (!/^[A-Z]{3}$/.test(currency)) return response.status(400).json({ message: "幣別需為 3 位英文代碼。" });
+  if (!/^[A-Z]{3}$/.test(currency)) return response.status(400).json({ message: "幣別需為 3 位英文程式碼。" });
   if (contactEmail && !isValidEmail(contactEmail)) return response.status(400).json({ message: "請輸入有效的聯絡信箱。" });
 
   let connection;
@@ -4609,7 +4609,7 @@ app.get("/api/billing/addon-services", requireAdmin, async (request, response) =
 // PUT /api/billing/addon-services - 创建或更新增值服務
 app.put("/api/billing/addon-services", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以管理增值服務。" });
+    return response.status(403).json({ message: "只有平臺管理員可以管理增值服務。" });
   }
 
   const addon = request.body || {};
@@ -4620,8 +4620,8 @@ app.put("/api/billing/addon-services", requireAdmin, async (request, response) =
   const status = ['active', 'disabled'].includes(addon.status) ? addon.status : 'active';
   const sortOrder = Math.max(0, Number(addon.sortOrder || 0));
 
-  if (!addonCode || !name) return response.status(400).json({ message: "請輸入服務代碼和名稱。" });
-  if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(addonCode)) return response.status(400).json({ message: "服務代碼格式無效。" });
+  if (!addonCode || !name) return response.status(400).json({ message: "請輸入服務程式碼和名稱。" });
+  if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(addonCode)) return response.status(400).json({ message: "服務程式碼格式無效。" });
 
   let connection;
   try {
@@ -4673,11 +4673,11 @@ app.put("/api/billing/addon-services", requireAdmin, async (request, response) =
 // DELETE /api/billing/addon-services/:addonCode - 刪除增值服務
 app.delete("/api/billing/addon-services/:addonCode", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以管理增值服務。" });
+    return response.status(403).json({ message: "只有平臺管理員可以管理增值服務。" });
   }
 
   const addonCode = String(request.params.addonCode || '').trim();
-  if (!addonCode) return response.status(400).json({ message: "請指定服務代碼。" });
+  if (!addonCode) return response.status(400).json({ message: "請指定服務程式碼。" });
 
   let connection;
   try {
@@ -4754,7 +4754,7 @@ async function savePlanData(connection, payload, planId = null) {
     status, sortOrder, priceTiers, addonServices
   } = payload;
 
-  if (!planCode) throw { statusCode: 400, message: "請輸入套餐代碼。" };
+  if (!planCode) throw { statusCode: 400, message: "請輸入套餐程式碼。" };
   if (!name) throw { statusCode: 400, message: "請輸入套餐名稱。" };
 
   if (planId) {
@@ -4801,7 +4801,7 @@ async function savePlanData(connection, payload, planId = null) {
 
 app.post("/api/billing/plans", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゅ椁愯祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
   }
   let connection;
   try {
@@ -4809,12 +4809,12 @@ app.post("/api/billing/plans", requireAdmin, async (request, response) => {
     await connection.beginTransaction();
     const planId = await savePlanData(connection, request.body);
     await connection.commit();
-    return response.status(201).json({ message: "套餐已創建。", id: planId });
+    return response.status(201).json({ message: "套餐已建立。", id: planId });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐代碼已存在。" });
-    return response.status(error.statusCode || 500).json({ message: error.message || "創建套餐失敗。" });
+    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐程式碼已存在。" });
+    return response.status(error.statusCode || 500).json({ message: error.message || "建立套餐失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -4822,10 +4822,10 @@ app.post("/api/billing/plans", requireAdmin, async (request, response) => {
 
 app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゅ椁愯祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
   }
   const planId = Number(request.params.id);
-  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫椁?ID銆?" });
+  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫槨?ID銆?" });
 
   let connection;
   try {
@@ -4837,7 +4837,7 @@ app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐代碼已存在。" });
+    if (error?.code === 'ER_DUP_ENTRY') return response.status(409).json({ message: "套餐程式碼已存在。" });
     return response.status(error.statusCode || 500).json({ message: error.message || "更新套餐失敗。" });
   } finally {
     if (connection) connection.release();
@@ -4846,10 +4846,10 @@ app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
 
 app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゅ椁愯祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
   }
   const planId = Number(request.params.id);
-  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫椁?ID銆?" });
+  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫槨?ID銆?" });
 
   let connection;
   try {
@@ -4859,7 +4859,7 @@ app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => 
     const refs = await connection.query(`SELECT id FROM billing_order_items WHERE plan_id = ? LIMIT 1`, [planId]);
     if (refs.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ゅ椁愬凡琚鍗曚娇鐢紝鏃犳硶鍒犻櫎銆傛偍鍙互灏嗗叾鐘舵€佹敼涓哄仠鐢ㄣ€?" });
+      return response.status(409).json({ message: "姝ゅ槨愬凡琚鍗曚嬌鐢紝鏃犳硶鍒犻櫎銆傛偍鍙互灝嗗叾鐘舵€佹敼涓哄仠鐢ㄣ€?" });
     }
 
     await connection.query(`DELETE FROM billing_plan_addons WHERE plan_id = ?`, [planId]);
@@ -4868,7 +4868,7 @@ app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => 
 
     if (result.affectedRows === 0) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌鍒犻櫎鐨勫椁愩€?" });
+      return response.status(404).json({ message: "鎵句笉鍒拌鍒犻櫎鐨勫槨愩€?" });
     }
 
     await connection.commit();
@@ -4906,7 +4906,7 @@ app.get("/api/billing/terms", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "讀取購買周期失敗。" });
+    return response.status(500).json({ message: "讀取購買週期失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -4964,7 +4964,7 @@ app.get("/api/billing/purchase-options", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栧椁愯硣鏂欏け鏁椼€?" });
+    return response.status(500).json({ message: "璁€鍙栧槨愯硣鏂欏け鏁椼€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -4994,7 +4994,7 @@ app.get("/api/billing/coupons/validate", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "椹楄瓑鍎儬纰煎け鏁椼€?" });
+    return response.status(500).json({ message: "椹楄瓑鍎儬紕煎け鏁椼€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5086,7 +5086,7 @@ app.get("/api/billing/available-coupons", requireAdmin, async (request, response
     return response.json({ coupons: rows.map(mapAvailableTenantCoupon) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璇诲彇鍙敤浼樻儬鐮佸け璐ャ€?" });
+    return response.status(500).json({ message: "璇誨彇鍙敤浼樻儬鐮佸け璐ャ€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5117,7 +5117,7 @@ function mapCoupon(row) {
 
 app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
   }
 
   let connection;
@@ -5136,7 +5136,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
     return response.json({ coupons: rows.map(mapCoupon) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "鏃犳硶璇诲彇鎶樻墸璧勬枡銆?" });
+    return response.status(500).json({ message: "鏃犳硶璇誨彇鎶樻墸璧勬枡銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5144,7 +5144,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 
 app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
   }
 
   const payload = request.body || {};
@@ -5160,12 +5160,12 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
   const maxRedemptions = Number.isFinite(rawMaxRedemptions) && rawMaxRedemptions > 0 ? Math.floor(rawMaxRedemptions) : null;
   const status = sanitizeString(payload.status, 20);
 
-  if (!couponCode) return response.status(400).json({ message: "璇疯緭鍏ユ姌鎵ｄ唬鐮併€?" });
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "鎶樻墸浠ｇ爜鍙兘浣跨敤鑻辨枃澶у啓瀛楁瘝銆佹暟瀛椼€佸簳绾挎垨杩炲瓧绗︼紝涓旇嚦灏?2 涓瓧绗︺€?" });
+  if (!couponCode) return response.status(400).json({ message: "璇瘋緭鍏ユ姌鎵ｄ唬鐮併€?" });
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "鎶樻墸浠ｇ爜鍙兘浣跨敤鑻辨枃澶у啟瀛楁瘝銆佹暟瀛椼€佸簳綰挎垨榪炲瓧絎︼紝涓旇嚦灝?2 涓瓧絎︺€?" });
   if (!displayName) return response.status(400).json({ message: "請輸入顯示名稱。" });
-  if (!["percent", "fixed_amount"].includes(discountType)) return response.status(400).json({ message: "請選擇折扣類型。" });
-  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "鎶樻墸鍊煎繀椤诲ぇ浜?0銆?" });
-  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "鐧惧垎姣旀姌鎵ｄ笉鍙秴杩?100%銆?" });
+  if (!["percent", "fixed_amount"].includes(discountType)) return response.status(400).json({ message: "請選擇折扣型別。" });
+  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "鎶樻墸鍊煎繀欏誨ぇ浜?0銆?" });
+  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "鐧懼垎姣旀姌鎵ｄ笉鍙秴榪?100%銆?" });
   if (discountType === "fixed_amount" && !couponCurrencyCodes.has(currency)) return response.status(400).json({ message: "璇烽€夋嫨鏈夋晥甯佺銆?" });
   if (!validUntil) return response.status(400).json({ message: "璇烽€夋嫨鍒版湡鏃ユ湡銆?" });
   if (payload.validFrom && !validFrom) return response.status(400).json({ message: "鐢熸晥鏃ユ湡鏍煎紡鏃犳晥銆?" });
@@ -5222,7 +5222,7 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
     return response.json({ message: "鎶樻墸璧勬枡宸蹭繚瀛樸€?", id: savedId });
   } catch (error) {
     console.error(error);
-    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "鎶樻墸浠ｇ爜宸插瓨鍦紝璇锋洿鎹㈠悗鍐嶄繚瀛樸€?" });
+    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "鎶樻墸浠ｇ爜宸插瓨鍦紝璇鋒洿鎹㈠悗鍐嶄繚瀛樸€?" });
     return response.status(500).json({ message: "鏃犳硶淇濆瓨鎶樻墸璧勬枡銆?" });
   } finally {
     if (connection) connection.release();
@@ -5231,7 +5231,7 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 
 app.delete("/api/billing/coupon-settings/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
   }
 
   const couponId = Number(request.params.id || 0);
@@ -5246,7 +5246,7 @@ app.delete("/api/billing/coupon-settings/:id", requireAdmin, async (request, res
   } catch (error) {
     console.error(error);
     if (error?.code === "ER_ROW_IS_REFERENCED_2") {
-      return response.status(409).json({ message: "姝ゆ姌鎵ｅ凡琚鍗曚娇鐢紝涓嶈兘鍒犻櫎锛涘彲鏀逛负鍋滅敤銆?" });
+      return response.status(409).json({ message: "姝ゆ姌鎵ｅ凡琚鍗曚嬌鐢紝涓嶈兘鍒犻櫎錛涘彲鏀逛負鍋滅敤銆?" });
     }
     return response.status(500).json({ message: "鏃犳硶鍒犻櫎鎶樻墸璧勬枡銆?" });
   } finally {
@@ -5279,7 +5279,7 @@ app.get("/api/billing/payment-methods", requireAdmin, async (request, response) 
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栦粯娆炬柟寮忓け鏁椼€?" });
+    return response.status(500).json({ message: "璁€鍙栦粯嬈炬柟寮忓け鏁椼€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5287,7 +5287,7 @@ app.get("/api/billing/payment-methods", requireAdmin, async (request, response) 
 
 app.get("/api/billing/payment-method-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ョ董璀蜂粯娆炬柟寮忋€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
   }
 
   let connection;
@@ -5313,7 +5313,7 @@ app.get("/api/billing/payment-method-settings", requireAdmin, async (request, re
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栦粯娆炬柟寮忚ō瀹氬け鏁椼€?" });
+    return response.status(500).json({ message: "璁€鍙栦粯嬈炬柟寮忚ō瀹氬け鏁椼€?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5321,7 +5321,7 @@ app.get("/api/billing/payment-method-settings", requireAdmin, async (request, re
 
 app.put("/api/billing/payment-method-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ョ董璀蜂粯娆炬柟寮忋€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
   }
 
   const methods = Array.isArray(request.body?.methods) ? request.body.methods.slice(0, 50) : [];
@@ -5342,14 +5342,14 @@ app.put("/api/billing/payment-method-settings", requireAdmin, async (request, re
     const status = sanitizeString(method.status, 20);
     const sortOrder = Math.max(0, Number(method.sortOrder || 0));
 
-    if (!methodCode) return response.status(400).json({ message: "請輸入方式代碼。" });
+    if (!methodCode) return response.status(400).json({ message: "請輸入方式程式碼。" });
     if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) {
-      return response.status(400).json({ message: "鏂瑰紡浠ｇ⒓鍙兘浣跨敤鑻辨枃瀛楁瘝銆佹暩瀛椼€佸簳绶氭垨閫ｅ瓧铏燂紝涓旇嚦灏?2 鍊嬪瓧鍏冦€?" });
+      return response.status(400).json({ message: "鏂瑰紡浠ｇ⒓鍙兘浣跨敤鑻辨枃瀛楁瘝銆佹暩瀛椼€佸簳綬氭垨閫ｅ瓧鉶燂紝涓旇嚦灝?2 鍊嬪瓧鍏冦€?" });
     }
     if (seenCodes.has(methodCode)) return response.status(400).json({ message: "鏂瑰紡浠ｇ⒓涓嶅彲閲嶈銆?" });
     seenCodes.add(methodCode);
-    if (!displayName) return response.status(400).json({ message: "璜嬭几鍏ラ’绀哄悕绋便€?" });
-    if (!["online", "offline"].includes(methodType)) return response.status(400).json({ message: "請選擇付款類型。" });
+    if (!displayName) return response.status(400).json({ message: "璜嬭幾鍏ラ’紺哄悕紼便€?" });
+    if (!["online", "offline"].includes(methodType)) return response.status(400).json({ message: "請選擇付款型別。" });
     if (!['active', 'disabled'].includes(status)) return response.status(400).json({ message: "請選擇啟用狀態。" });
     if (iconUrl && !iconUrl.startsWith("/payment-method-icons/")) return response.status(400).json({ message: "浠樻鏂瑰紡鍦栨璺緫鐒℃晥銆?" });
     if (iconDataUrl) {
@@ -5435,7 +5435,7 @@ app.put("/api/billing/payment-method-settings", requireAdmin, async (request, re
 
 app.delete("/api/billing/payment-method-settings/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁骞冲彴绠＄悊鍝″彲浠ョ董璀蜂粯娆炬柟寮忋€?" });
+    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
   }
 
   const methodId = Number(request.params.id || 0);
@@ -5452,7 +5452,7 @@ app.delete("/api/billing/payment-method-settings/:id", requireAdmin, async (requ
     const total = Number(countRows[0]?.total || 0);
     if (total <= 1) {
       await connection.rollback();
-      return response.status(400).json({ message: "鑷冲皯闇€淇濈暀涓€鍊嬩粯娆炬柟寮忋€?" });
+      return response.status(400).json({ message: "鑷衝皯闇€淇濈暀涓€鍊嬩粯嬈炬柟寮忋€?" });
     }
 
     const result = await connection.query(`DELETE FROM billing_payment_methods WHERE id = ?`, [methodId]);
@@ -5955,13 +5955,13 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
 
     await connection.commit();
     return response.status(201).json({
-      message: paymentMethod === "offline" ? "瑷傚柈宸蹭繚瀛橈紝璜嬬窔涓嬩粯娆惧緦涓婂偝浠樻鎲戣瓑鎴湒銆?" : "瑷傚柈宸插缓绔嬨€?",
+      message: paymentMethod === "offline" ? "璦傚柈宸蹭繚瀛橈紝璜嬬窔涓嬩粯嬈懼緦涓婂偝浠樻鎲戣瓑鎴湒銆?" : "璦傚柈宸插緩絝嬨€?",
       order: { id: orderId, orderNo, currency, payableAmount },
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "寤虹珛瑷傚柈澶辨晽銆?" });
+    return response.status(500).json({ message: "寤虹珛璦傚柈澶辨晽銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -5969,7 +5969,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
 
 app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "瑷傚柈绶ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
 
   let connection;
   try {
@@ -6117,7 +6117,7 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
 app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "瑷傚柈绶ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
 
   const payload = request.body || {};
   const paymentMethod = sanitizeString(payload.paymentMethod, 20);
@@ -6283,11 +6283,11 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
     await connection.commit();
     await removePaymentProofFile(staleProofUrl);
-    return response.json({ message: "瑷傚柈宸叉洿鏂帮紝鍘熶粯娆惧嚟璇佸凡娓呯┖锛岃閲嶆柊涓婁紶浠樻鍑瘉銆?", order: { id: orderId, currency: draft.currency, payableAmount: draft.payableAmount } });
+    return response.json({ message: "璦傚柈宸叉洿鏂幫紝鍘熶粯嬈懼嚟璇佸凡娓呯┖錛岃閲嶆柊涓婁紶浠樻鍑瘉銆?", order: { id: orderId, currency: draft.currency, payableAmount: draft.payableAmount } });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "淇敼瑷傚柈澶辨晽銆?" });
+    return response.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "淇敼璦傚柈澶辨晽銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -6295,7 +6295,7 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
 app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, response) => {
   const sourceOrderId = Number(request.params.id);
-  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "璁㈠崟缂栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
 
   const payload = request.body || {};
   const requestedPaymentMethod = sanitizeString(payload.paymentMethod, 20);
@@ -6338,7 +6338,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
     );
     if (itemRows.length === 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "鍘熻鍗曟病鏈夊彲澶嶅埗鐨勬槑缁嗐€?" });
+      return response.status(409).json({ message: "鍘熻鍗曟病鏈夊彲澶嶅埗鐨勬槑緇嗐€?" });
     }
 
     const paymentMethod = ["online", "offline"].includes(requestedPaymentMethod) ? requestedPaymentMethod : source.payment_method;
@@ -6352,7 +6352,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
       coupon = await loadTenantCouponForOrder(connection, request.admin.tenantId, { tenantCouponId: requestedTenantCouponId, couponCode: requestedCouponCode, forUpdate: true });
       if (!coupon) {
         await connection.rollback();
-        return response.status(404).json({ message: "此租户不存在该优惠码或已被使用。" });
+        return response.status(404).json({ message: "此租戶不存在該優惠碼或已被使用。" });
       }
       if (coupon.discount_type === "percent") discountAmount = Number(source.subtotal_amount || 0) * (Number(coupon.discount_value) / 100);
       if (coupon.discount_type === "fixed_amount") discountAmount = Math.min(Number(source.subtotal_amount || 0), Number(coupon.discount_value));
@@ -6427,7 +6427,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
            order_id, tenant_id, item_type, plan_id, addon_id, coupon_id, item_code, item_name,
            description, account_quantity, quantity, months, currency, unit_price, discount_amount, line_amount, sort_order
          )
-         VALUES (?, ?, 'discount', NULL, NULL, ?, ?, '优惠折扣', NULL, NULL, 1, 1, ?, 0, ?, ?, 90)`,
+         VALUES (?, ?, 'discount', NULL, NULL, ?, ?, '優惠折扣', NULL, NULL, 1, 1, ?, 0, ?, ?, 90)`,
         [orderId, request.admin.tenantId, Number(coupon.id), coupon.coupon_code, source.currency || "USD", discountAmount, -discountAmount],
       );
       await connection.query(
@@ -6473,7 +6473,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
 
     await connection.commit();
     return response.status(201).json({
-      message: paymentMethod === "offline" ? "閲嶆柊璐拱璁㈠崟宸蹭繚瀛樸€?" : "閲嶆柊璐拱璁㈠崟宸插缓绔嬨€?",
+      message: paymentMethod === "offline" ? "閲嶆柊璐拱璁㈠崟宸蹭繚瀛樸€?" : "閲嶆柊璐拱璁㈠崟宸插緩絝嬨€?",
       order: {
         id: orderId,
         orderNo,
@@ -6485,7 +6485,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "閲嶆柊璐拱璁㈠崟鐢熸垚澶辫触銆?" });
+    return response.status(500).json({ message: "閲嶆柊璐拱璁㈠崟鐢熸垚澶辮觸銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -6493,7 +6493,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
 
 app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response) => {
   const sourceOrderId = Number(request.params.id);
-  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "訂單编号无效。" });
+  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   const payload = request.body || {};
   const requestedPaymentMethod = sanitizeString(payload.paymentMethod, 20);
@@ -6537,7 +6537,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     }
     if (source.order_status !== "review_approved") {
       await connection.rollback();
-      return response.status(409).json({ message: "只有已生效或已過期的訂單可以进行訂單续订。" });
+      return response.status(409).json({ message: "只有已生效或已過期的訂單可以進行訂單續訂。" });
     }
 
     const entitlementRows = await connection.query(
@@ -6558,7 +6558,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     );
     if (entitlementRows.length === 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "原訂單没有可续订的帳號权益，请聯繫平台管理員处理。" });
+      return response.status(409).json({ message: "原訂單沒有可續訂的帳號權益，請聯絡平臺管理員處理。" });
     }
 
     const itemRows = await connection.query(
@@ -6574,7 +6574,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     );
     if (itemRows.length === 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "原訂單没有可续订的明细。" });
+      return response.status(409).json({ message: "原訂單沒有可續訂的明細。" });
     }
 
     const paymentMethod = ["online", "offline"].includes(requestedPaymentMethod) ? requestedPaymentMethod : source.payment_method;
@@ -6590,7 +6590,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const sourcePlanItem = itemRows.find((item) => item.item_type === "plan");
     if (!sourcePlanItem) {
       await connection.rollback();
-      return response.status(409).json({ message: "原訂單缺少套餐明细，不能续订。" });
+      return response.status(409).json({ message: "原訂單缺少套餐明細，不能續訂。" });
     }
     const sourceQuantity = Math.max(1, Number(sourcePlanItem.quantity || 1));
     const sourceAccountCount = Number(sourcePlanItem.account_quantity || entitlementRows.length || 0);
@@ -6598,16 +6598,16 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const requestedAccountCount = accountsPerQuantity * requestedQuantity;
     if (requestedAccountCount > entitlementRows.length) {
       await connection.rollback();
-      return response.status(409).json({ message: "当前续订暂不支持增加帳號數量，請使用重新购买或等待增量续订功能。" });
+      return response.status(409).json({ message: "當前續訂暫不支援增加帳號數量，請使用重新購買或等待增量續訂功能。" });
     }
     if (requestedRetainedSipUserIds.length > requestedAccountCount) {
       await connection.rollback();
-      return response.status(400).json({ message: `本次续订最多保留 ${requestedAccountCount} 个帳號，请调整保留帳號选择。` });
+      return response.status(400).json({ message: `本次續訂最多保留 ${requestedAccountCount} 個帳號，請調整保留帳號選擇。` });
     }
     const retainedEntitlements = entitlementRows.filter((item) => requestedRetainedSipUserIds.includes(Number(item.sip_user_id)));
     if (retainedEntitlements.length !== requestedRetainedSipUserIds.length) {
       await connection.rollback();
-      return response.status(400).json({ message: "保留帳號中包含不属于原訂單的帳號，请刷新后重试。" });
+      return response.status(400).json({ message: "保留帳號中包含不屬於原訂單的帳號，請重新整理後重試。" });
     }
 
     const renewalItems = [];
@@ -6772,7 +6772,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
 
     await connection.commit();
     return response.status(201).json({
-      message: paymentMethod === "offline" ? "訂單续订已保存。" : "訂單续订已建立。",
+      message: paymentMethod === "offline" ? "訂單續訂已儲存。" : "訂單續訂已建立。",
       order: {
         id: orderId,
         orderNo,
@@ -6786,7 +6786,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "訂單续订生成失败。" });
+    return response.status(500).json({ message: "訂單續訂生成失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6794,7 +6794,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
 
 app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟缂栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
 
   const payload = request.body || {};
   const actualAmount = Number(payload.actualAmount);
@@ -6806,11 +6806,11 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) return response.status(400).json({ message: "請選擇有效的付款日期。" });
 
   const match = proofImageDataUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/);
-  if (!match) return response.status(400).json({ message: "璇蜂笂浼犳垨绮樿创 PNG銆丣PG銆乄EBP 鏍煎紡鐨勪粯娆惧嚟璇佹埅鍥俱€?" });
+  if (!match) return response.status(400).json({ message: "璇蜂笂浼犳垨綺樿創 PNG銆丣PG銆乄EBP 鏍煎紡鐨勪粯嬈懼嚟璇佹埅鍥俱€?" });
 
   const ext = match[1] === "jpeg" ? "jpg" : match[1];
   const buffer = Buffer.from(match[2], "base64");
-  if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024) return response.status(400).json({ message: "浠樻鍑瘉鍥剧墖澶у皬闇€灏忎簬 8MB銆?" });
+  if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024) return response.status(400).json({ message: "浠樻鍑瘉鍥劇墖澶у皬闇€灝忎簬 8MB銆?" });
 
   let connection;
   try {
@@ -6831,11 +6831,11 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
     }
     if (order.payment_method !== "offline") {
       await connection.rollback();
-      return response.status(409).json({ message: "鍙湁绾夸笅鏀粯璁㈠崟鍙互涓婁紶浠樻鍑瘉銆?" });
+      return response.status(409).json({ message: "鍙湁綰誇笅鏀粯璁㈠崟鍙互涓婁紶浠樻鍑瘉銆?" });
     }
     if (!["pending_payment", "payment_submitted", "pending_review"].includes(order.order_status)) {
       await connection.rollback();
-      return response.status(409).json({ message: "褰撳墠璁㈠崟鐘舵€佷笉鑳戒笂浼犱粯娆惧嚟璇併€?" });
+      return response.status(409).json({ message: "褰撳墠璁㈠崟鐘舵€佷笉鑳戒笂浼犱粯嬈懼嚟璇併€?" });
     }
 
     const proofDir = path.resolve("assets/payment-proofs");
@@ -6937,7 +6937,7 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
 
     await connection.commit();
     return response.json({
-      message: "浠樻鍑瘉宸蹭繚瀛橈紝骞跺凡鍏宠仈鍒拌璁㈠崟銆?",
+      message: "浠樻鍑瘉宸蹭繚瀛橈紝騫跺凡鍏寵仈鍒拌璁㈠崟銆?",
       payment: {
         proofUrl,
         actualAmount,
@@ -6948,7 +6948,7 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "浠樻鍑瘉淇濆瓨澶辫触銆?" });
+    return response.status(500).json({ message: "浠樻鍑瘉淇濆瓨澶辮觸銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -6956,10 +6956,10 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
 
 app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟缂栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
 
   const action = sanitizeString(request.body?.action, 20);
-  if (!["submit", "revoke"].includes(action)) return response.status(400).json({ message: "鎿嶄綔绫诲瀷鏃犳晥銆?" });
+  if (!["submit", "revoke"].includes(action)) return response.status(400).json({ message: "錼嶄綔綾誨瀷鏃犳晥銆?" });
 
   let connection;
   try {
@@ -6984,15 +6984,15 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
     if (action === "submit") {
       if (order.order_status === "review_approved") {
         await connection.rollback();
-        return response.status(409).json({ message: "审核通过的訂單不允許再次提交审核。" });
+        return response.status(409).json({ message: "稽核通過的訂單不允許再次提交稽核。" });
       }
       if (order.payment_status !== 'paid') {
         await connection.rollback();
-        return response.status(409).json({ message: "訂單尚未完成支付，請先上传付款凭证或完成支付。" });
+        return response.status(409).json({ message: "訂單尚未完成支付，請先上傳付款憑證或完成支付。" });
       }
       if (!["payment_submitted", "review_rejected"].includes(order.order_status)) {
         await connection.rollback();
-        return response.status(409).json({ message: "只有已支付未提交或审核未通过的訂單可以提交审核。" });
+        return response.status(409).json({ message: "只有已支付未提交或稽核未通過的訂單可以提交稽核。" });
       }
       nextOrderStatus = "pending_review";
       reason = order.order_status === "review_rejected" ? "resubmit_review" : "submit_review";
@@ -7041,7 +7041,7 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
       const dedupeKey = "platform:order:" + orderId + ":pending_review";
       await connection.query(
         "INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, sender_id, dedupe_key, title, body, severity, status) VALUES (?, 'billing_order', ?, 'order_pending_review', 'tenant_admin', ?, ?, ?, ?, 'warning', 'active') ON DUPLICATE KEY UPDATE status='active', resolved_at=NULL, updated_at=CURRENT_TIMESTAMP",
-        [request.admin.tenantId, orderId, request.admin.id, dedupeKey, "訂單待審核", "租户 " + tn + " 的订单 " + (order.order_no || "") + " 已提交审核。"]
+        [request.admin.tenantId, orderId, request.admin.id, dedupeKey, "訂單待審核", "租戶 " + tn + " 的訂單 " + (order.order_no || "") + " 已提交稽核。"]
       );
       const platformAdmins = await connection.query("SELECT id FROM admin_users WHERE account_type='platform' AND status='active'");
       const [newEvent] = await connection.query("SELECT id FROM notification_events WHERE dedupe_key = ?", [dedupeKey]);
@@ -7055,14 +7055,14 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "璁㈠崟瀹℃牳鎻愪氦鎿嶄綔澶辫触銆?" });
+    return response.status(500).json({ message: "璁㈠崟瀹℃牳鎻愪氦錼嶄綔澶辮觸銆?" });
   } finally {
     if (connection) connection.release();
   }
 });
 app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "瑷傚柈绶ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
 
   let connection;
   try {
@@ -7088,11 +7088,11 @@ app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) =>
 
     await connection.query(`DELETE FROM billing_orders WHERE id = ? AND tenant_id = ?`, [orderId, request.admin.tenantId]);
     await connection.commit();
-    return response.json({ message: "瑷傚柈宸插埅闄ゃ€?" });
+    return response.json({ message: "璦傚柈宸插埅闄ゃ€?" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鍒櫎瑷傚柈澶辨晽銆?" });
+    return response.status(500).json({ message: "鍒櫎璦傚柈澶辨晽銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -7152,7 +7152,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
   const confirmPassword = String(request.body.confirmPassword || "");
 
   if (!isValidEmail(newEmail)) return response.status(400).json({ message: "請輸入有效的新登入信箱。" });
-  if (newPassword !== confirmPassword) return response.status(400).json({ message: "鍏╂杓稿叆鐨勬柊瀵嗙⒓涓嶄竴鑷淬€?" });
+  if (newPassword !== confirmPassword) return response.status(400).json({ message: "鍏╂杓稿靉鐨勬柊瀵嗙⒓涓嶄竴鑷淬€?" });
   const passwordError = validatePassword(newPassword);
   if (passwordError) return response.status(400).json({ message: passwordError });
 
@@ -7171,7 +7171,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     const admin = admins[0];
     if (!admin || !(await verifyPassword(oldPassword, admin.password_hash))) {
       await connection.rollback();
-      return response.status(401).json({ message: "鑸婂瘑纰间笉姝ｇ⒑銆?" });
+      return response.status(401).json({ message: "鑸婂瘑紕間笉姝ｇ⒑銆?" });
     }
 
     const existing = await connection.query(
@@ -7180,7 +7180,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     );
     if (existing.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊绠卞凡琚娇鐢ㄣ€?" });
+      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊綆卞凡琚嬌鐢ㄣ€?" });
     }
 
     const recentCodes = await connection.query(
@@ -7193,12 +7193,12 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     );
     if (recentCodes[0] && Date.now() - new Date(recentCodes[0].created_at).getTime() < 60 * 1000) {
       await connection.rollback();
-      return response.status(429).json({ message: "璜嬬瓑寰?60 绉掑緦鍐嶅偝閫佹柊鐨勯璀夌⒓銆?" });
+      return response.status(429).json({ message: "璜嬬瓑寰?60 縐掑緦鍐嶅偝閫佹柊鐨勯璀夌⒓銆?" });
     }
     const sentInTenMinutes = recentCodes.filter((code) => Date.now() - new Date(code.created_at).getTime() < 10 * 60 * 1000);
     if (sentInTenMinutes.length >= 5) {
       await connection.rollback();
-      return response.status(429).json({ message: "椹楄瓑纰煎偝閫佹鏁搁亷澶氾紝璜嬬◢寰屽啀瑭︺€?" });
+      return response.status(429).json({ message: "椹楄瓑紕煎偝閫佹鏁擱亷澶氾紝璜嬬◢寰屽啀瑭︺€?" });
     }
 
     const code = createNumericCode();
@@ -7214,7 +7214,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     await queueLoginEmailChangeCode(connection, { email: newEmail, code });
     await connection.commit();
 
-    return response.json({ message: "椹楄瓑纰煎凡鍌抽€佽嚦鏂扮殑鐧诲叆淇＄銆?" });
+    return response.json({ message: "椹楄瓑紕煎凡鍌抽€佽嚦鏂扮殑鐧誨靉淇＄銆?" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
@@ -7229,7 +7229,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
   const code = String(request.body.code || "").trim();
 
   if (!isValidEmail(newEmail) || !/^\d{6}$/.test(code)) {
-    return response.status(400).json({ message: "璜嬭几鍏ユ柊淇＄鑸?6 浣嶆暩瀛楅璀夌⒓銆?" });
+    return response.status(400).json({ message: "璜嬭幾鍏ユ柊淇＄鑸?6 浣嶆暩瀛楅璀夌⒓銆?" });
   }
 
   let connection;
@@ -7248,11 +7248,11 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     const change = rows[0];
     if (!change || new Date(change.expires_at).getTime() < Date.now()) {
       await connection.rollback();
-      return response.status(400).json({ message: "椹楄瓑纰肩劇鏁堟垨宸查亷鏈熴€?" });
+      return response.status(400).json({ message: "椹楄瓑紕肩劇鏁堟垨宸查亷鏈熴€?" });
     }
     if (Number(change.attempt_count) >= 5) {
       await connection.rollback();
-      return response.status(429).json({ message: "鍢楄│娆℃暩閬庡锛岃珛閲嶆柊鍙栧緱椹楄瓑纰笺€?" });
+      return response.status(429).json({ message: "鍢楄│嬈℃暩閬庡錛岃珛閲嶆柊鍙栧緱椹楄瓑紕箋€?" });
     }
 
     if (change.code_hash !== hashToken(code)) {
@@ -7261,7 +7261,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
         [Number(change.id)],
       );
       await connection.commit();
-      return response.status(400).json({ message: "椹楄瓑纰间笉姝ｇ⒑銆?" });
+      return response.status(400).json({ message: "椹楄瓑紕間笉姝ｇ⒑銆?" });
     }
 
     const existing = await connection.query(
@@ -7270,7 +7270,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     );
     if (existing.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊绠卞凡琚娇鐢ㄣ€?" });
+      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊綆卞凡琚嬌鐢ㄣ€?" });
     }
 
     await connection.query(
@@ -7286,11 +7286,11 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     await connection.query(`DELETE FROM admin_sessions WHERE admin_user_id = ?`, [request.admin.id]);
 
     await connection.commit();
-    return response.json({ message: "鐧诲叆淇＄鑸囧瘑纰煎凡鏇存柊锛岃珛閲嶆柊鐧诲叆銆?" });
+    return response.json({ message: "鐧誨靉淇＄鑸囧瘑紕煎凡鏇存柊錛岃珛閲嶆柊鐧誨靉銆?" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鏇存柊鐧诲叆淇＄銆?" });
+    return response.status(500).json({ message: "鐒℃硶鏇存柊鐧誨靉淇＄銆?" });
   } finally {
     if (connection) connection.release();
   }
@@ -7299,7 +7299,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
 // GET /api/admin/sip-accounts - 取得帳號列表
 app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看 SIP 帳號。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視 SIP 帳號。" });
   }
   let connection;
   try {
@@ -7355,7 +7355,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       expiresAt: r.service_expires_at || null
     }));
 
-    console.log('【后端 DEBUG】GET /api/admin/sip-accounts 从数据库查询到的条数:', accounts.length);
+    console.log('【後端 DEBUG】GET /api/admin/sip-accounts 從資料庫查詢到的條數:', accounts.length);
     return response.json({ accounts });
   } catch (error) {
     console.error('Failed to fetch sip accounts:', error);
@@ -7368,7 +7368,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 // POST /api/admin/sip-accounts - 新增 SIP 帳號（整合 Flexisip Account Manager）
 app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號登記。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號登記。" });
   }
 
   const payload = request.body || {};
@@ -7383,10 +7383,10 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 
   // ── 步骤 1-2: 参数校验 ──
   if (!username || !domain || !password) {
-    return response.status(400).json({ message: "缺少必填參數。" });
+    return response.status(400).json({ message: "缺少必填引數。" });
   }
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(username)) {
-    return response.status(400).json({ message: "用戶名格式無效。" });
+    return response.status(400).json({ message: "使用者名稱格式無效。" });
   }
   if (password.length < 6) {
     return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
@@ -7402,7 +7402,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     );
     if (existing.length > 0) {
       connection.release();
-      return response.status(409).json({ message: "該用戶名已存在。" });
+      return response.status(409).json({ message: "該使用者名稱已存在。" });
     }
     connection.release();
   } catch (err) {
@@ -7468,7 +7468,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     if (!flexisipAccountId) {
       console.error("Flexisip createAccount returned no id:", JSON.stringify(flexisipResult).substring(0, 200));
       return response.status(502).json({
-        message: "遠端帳號創建成功但無法獲取 ID，請聯繫管理員。",
+        message: "遠端帳號建立成功但無法獲取 ID，請聯絡管理員。",
         code: "FLEXISIP_ACCOUNT_ID_MISSING",
       });
     }
@@ -7485,7 +7485,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 
     if (isUsernameTaken && !flexisipAccountId) {
       return response.status(409).json({
-        message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
+        message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新建立？",
         code: "FLEXISIP_USERNAME_TOMBSTONED",
         username,
         domain,
@@ -7496,7 +7496,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     if (is422 && !flexisipAccountId) {
       const fieldErrors = Object.entries(errors).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ');
       return response.status(422).json({
-        message: fieldErrors || createErr?.message || "遠端帳號創建失敗，請檢查輸入資料。",
+        message: fieldErrors || createErr?.message || "遠端帳號建立失敗，請檢查輸入資料。",
         code: "FLEXISIP_VALIDATION_ERROR",
       });
     }
@@ -7504,7 +7504,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     // 如果依然沒有 flexisipAccountId（create 失敗且未恢復），回傳錯誤
     if (!flexisipAccountId) {
       return response.status(502).json({
-        message: createErr?.status === 422 ? "該帳號已被佔用且無法恢復。" : "遠端通訊帳號創建失敗。",
+        message: createErr?.status === 422 ? "該帳號已被佔用且無法恢復。" : "遠端通訊帳號建立失敗。",
         code: createErr?.status === 422 ? "FLEXISIP_USERNAME_TAKEN" : "FLEXISIP_CREATE_FAILED",
       });
     }
@@ -7514,7 +7514,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     try { await flexisipDeleteAccount(flexisipAccountId); } catch (cleanupErr) {
       console.error("FLEXISIP ACTIVATE FAILED - cleanup also failed. id:", flexisipAccountId, "sipUri:", sipUri, "cleanupErr:", cleanupErr?.message);
       return response.status(502).json({
-        message: "遠端帳號創建後啟用失敗，且清理失敗，請聯繫管理員。",
+        message: "遠端帳號建立後啟用失敗，且清理失敗，請聯絡管理員。",
         code: "FLEXISIP_ACTIVATE_FAILED_CLEANUP_FAILED",
       });
     }
@@ -7592,7 +7592,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
           "error:", cleanupErr?.message || cleanupErr,
         );
         return response.status(500).json({
-          message: "帳號儲存失敗，遠端帳號清理失敗，請聯繫管理員。",
+          message: "帳號儲存失敗，遠端帳號清理失敗，請聯絡管理員。",
           code: "LOCAL_DB_SAVE_FAILED_FLEXISIP_CLEANUP_FAILED",
         });
       }
@@ -7605,7 +7605,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 // POST /api/admin/sip-accounts/batch - 批量新增 SIP 帳號（同步 Flexisip）
 app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行批量操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行批次操作。" });
   }
 
   const payload = request.body || {};
@@ -7623,7 +7623,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
     return response.status(400).json({ message: "數量必須為 1-200 之間的正整數。" });
   }
   if (!domain || !password) {
-    return response.status(400).json({ message: "缺少必填參數。" });
+    return response.status(400).json({ message: "缺少必填引數。" });
   }
   if (password.length < 6) {
     return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
@@ -7658,14 +7658,14 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       // 远端存在性检查
       let remoteExists = false;
       try {
-        console.log(`[batch] ${realUsername}: 搜索遠端 searchAccountBySip(${realUsername}@${domain})...`);
+        console.log(`[batch] ${realUsername}: 搜尋遠端 searchAccountBySip(${realUsername}@${domain})...`);
         await searchAccountBySip(`${realUsername}@${domain}`);
         remoteExists = true; // 未抛异常 = 远端已存在
         console.log(`[batch] ${realUsername}: 遠端已存在`);
       } catch (e) {
-        console.log(`[batch] ${realUsername}: 遠端搜索結果 - status=${e?.status}, message=${e?.message}`);
+        console.log(`[batch] ${realUsername}: 遠端搜尋結果 - status=${e?.status}, message=${e?.message}`);
         if (e?.status !== 404) throw e;
-        console.log(`[batch] ${realUsername}: 遠端不存在 (404)，繼續創建`);
+        console.log(`[batch] ${realUsername}: 遠端不存在 (404)，繼續建立`);
       }
       if (remoteExists) {
         results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_ACCOUNT_ALREADY_EXISTS", message: "遠端帳號已存在。" });
@@ -7674,7 +7674,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       }
 
       // Flexisip create (含 422 軟刪除恢復)
-      console.log(`[batch] ${realUsername}: 調用 flexisipCreateAccount, payload:`, {
+      console.log(`[batch] ${realUsername}: 呼叫 flexisipCreateAccount, payload:`, {
         username: realUsername, sip: sipUri, password: '***', algorithm: "SHA-256",
         display_name: realUsername, email: `${realUsername}@${domain}`,
       });
@@ -7700,7 +7700,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
           results.push({
             username: realUsername, sipUri, success: false,
             errorCode: "FLEXISIP_USERNAME_TOMBSTONED",
-            message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新創建？",
+            message: "該 SIP 帳號已被刪除保留，是否徹底釋放後重新建立？",
           });
         } else {
           const fieldErrors = Object.entries(errs422).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join('; ');
@@ -7708,7 +7708,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
           results.push({
             username: realUsername, sipUri, success: false,
             errorCode: "FLEXISIP_VALIDATION_ERROR",
-            message: fieldErrors || (createErr?.message || '服務端校验失败').substring(0, 200),
+            message: fieldErrors || (createErr?.message || '服務端校驗失敗').substring(0, 200),
           });
         }
         failed++;
@@ -7727,8 +7727,8 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       }
       if (!flexisipAccountId) {
         const errMsg = createErr
-          ? (createErr?.message || '服務端創建失敗').substring(0, 200)
-          : "Flexisip 創建成功但無法獲取 ID。";
+          ? (createErr?.message || '服務端建立失敗').substring(0, 200)
+          : "Flexisip 建立成功但無法獲取 ID。";
         console.log(`[batch] ${realUsername}: ❌ 無法獲取 flexisipAccountId`);
         results.push({ username: realUsername, sipUri, success: false, errorCode: "FLEXISIP_CREATE_FAILED", message: errMsg });
         failed++;
@@ -7743,7 +7743,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       // 本地保存
       conn = await pool.getConnection();
       try {
-        console.log(`[batch] ${realUsername}: 保存到本地 DB...`);
+        console.log(`[batch] ${realUsername}: 儲存到本地 DB...`);
         await conn.beginTransaction();
         const passwordHash = await hashPassword(password);
         const now = new Date().toISOString().slice(0, 19).replace("T", " ");
@@ -7755,23 +7755,23 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         );
         await conn.commit();
         conn.release();
-        console.log(`[batch] ${realUsername}: ✅ 本地保存成功 (localId=${Number(userRes.insertId)})`);
+        console.log(`[batch] ${realUsername}: ✅ 本地儲存成功 (localId=${Number(userRes.insertId)})`);
         createdLocalIds.push({ id: Number(userRes.insertId), username: realUsername, flexisipAccountId, sipUri });
         results.push({ username: realUsername, sipUri, success: true, localId: Number(userRes.insertId), flexisipAccountId: String(flexisipAccountId) });
         created++;
       } catch (dbErr) {
-        console.log(`[batch] ${realUsername}: ❌ 本地 DB 保存失敗:`, dbErr?.message, dbErr?.code);
+        console.log(`[batch] ${realUsername}: ❌ 本地 DB 儲存失敗:`, dbErr?.message, dbErr?.code);
         await conn.rollback().catch(() => {});
         conn.release();
         // 补偿刪除
         try { await flexisipDeleteAccount(flexisipAccountId); } catch {}
-        results.push({ username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED", message: "本地保存失敗，已回滾。" });
+        results.push({ username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED", message: "本地儲存失敗，已回滾。" });
         failed++;
       }
     } catch (err) {
       console.log(`[batch] ${realUsername}: ❌ 異常:`, err?.message, err?.code, err?.status, err?.responseBody);
       if (flexisipAccountId) { try { await flexisipDeleteAccount(flexisipAccountId); } catch {} }
-      results.push({ username: realUsername, sipUri, success: false, errorCode: err?.code || "FLEXISIP_CREATE_FAILED", message: (err?.message || '創建失敗').substring(0, 200) });
+      results.push({ username: realUsername, sipUri, success: false, errorCode: err?.code || "FLEXISIP_CREATE_FAILED", message: (err?.message || '建立失敗').substring(0, 200) });
       failed++;
     }
   }
@@ -7814,7 +7814,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
 // PUT /api/admin/sip-accounts/:id/status - 啟用/停用 SIP 帳號（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以變更帳號狀態。" });
+    return response.status(403).json({ message: "只有平臺管理員可以變更帳號狀態。" });
   }
 
   const accountId = Number(request.params.id);
@@ -7933,7 +7933,7 @@ app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, resp
 // PUT /api/admin/sip-accounts/:id - 編輯帳號（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號登記。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號登記。" });
   }
 
   const accountId = Number(request.params.id);
@@ -7972,7 +7972,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
     const reqDomain = String(payload.domain || payload.sip_domain || '').trim().toLowerCase();
     if (reqUsername && reqUsername !== account.username) {
       connection.release();
-      return response.status(400).json({ message: "不允許修改 SIP 用戶名。", code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED" });
+      return response.status(400).json({ message: "不允許修改 SIP 使用者名稱。", code: "SIP_IDENTITY_CHANGE_NOT_SUPPORTED" });
     }
     if (reqDomain && reqDomain !== (account.sip_domain || '').toLowerCase()) {
       connection.release();
@@ -8112,7 +8112,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 // POST /api/admin/sip-accounts/:id/unassign - 取消分配
 app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8141,7 +8141,7 @@ app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, r
 // GET /api/admin/sip-accounts/:id/verify - 校验本地与 Flexisip 帳號数据一致性
 app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行此操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行此操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8168,7 +8168,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
       return response.json({
         consistent: false, status: 'local_only',
         localData: { id: local.id, username: local.username, displayName: local.display_name, email: local.email, phone: local.phone_number, role: local.role, status: local.status },
-        differences: [{ field: 'account', label: '遠端帳號', localValue: '僅本地存在', remoteValue: '未同步', syncable: false, reason: '該帳號僅存在於本地數據庫，未與 Flexisip 同步。' }],
+        differences: [{ field: 'account', label: '遠端帳號', localValue: '僅本地存在', remoteValue: '未同步', syncable: false, reason: '該帳號僅存在於本地資料庫，未與 Flexisip 同步。' }],
       });
     }
 
@@ -8188,7 +8188,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
           differences: [{ field: 'account', label: '遠端帳號', localValue: '存在', remoteValue: '不存在', syncable: false, reason: 'Flexisip 遠端帳號不存在。' }],
         });
       }
-      return response.status(502).json({ message: `無法連接服務端進行校驗：${err?.message || '未知錯誤'}` });
+      return response.status(502).json({ message: `無法連線服務端進行校驗：${err?.message || '未知錯誤'}` });
     }
 
     if (!flexisipAccount) {
@@ -8208,7 +8208,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
     const differences = [];
     // Username — 不可同步
     if ((local.username || '') !== (safeRemote.username || '')) {
-      differences.push({ field: 'username', label: '用戶名', localValue: local.username || '—', remoteValue: safeRemote.username || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
+      differences.push({ field: 'username', label: '使用者名稱', localValue: local.username || '—', remoteValue: safeRemote.username || '—', syncable: false, reason: 'SIP 身份欄位不可自動同步。' });
     }
     // Domain — 不可同步
     const remoteDomain = (safeRemote.domain || safeRemote.sip || '').replace(/^sip:/, '').split('@').pop() || '';
@@ -8258,7 +8258,7 @@ app.get("/api/admin/sip-accounts/:id/verify", requireAdmin, async (request, resp
 // POST /api/admin/sip-accounts/:id/sync-to-flexisip - 用本地數據同步 Flexisip
 app.post("/api/admin/sip-accounts/:id/sync-to-flexisip", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行此操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行此操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8368,7 +8368,7 @@ app.post("/api/admin/sip-accounts/:id/sync-to-flexisip", requireAdmin, async (re
 // PUT /api/admin/sip-accounts/:id/reset-password - 重置密碼（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8479,7 +8479,7 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
 // GET /api/admin/sip-accounts/:id/ai-entitlement - 查詢 AI 授權
 app.get("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
   const accountId = Number(request.params.id);
   if (!Number.isInteger(accountId) || accountId <= 0) {
@@ -8506,7 +8506,7 @@ app.get("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (reque
 // PUT /api/admin/sip-accounts/:id/ai-entitlement - 新增/修改 AI 授權
 app.put("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
   const accountId = Number(request.params.id);
   if (!Number.isInteger(accountId) || accountId <= 0) {
@@ -8557,7 +8557,7 @@ app.put("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (reque
 // DELETE /api/admin/sip-accounts/:id/ai-entitlement - 取消 AI 授權
 app.delete("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以進行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
   const accountId = Number(request.params.id);
   if (!Number.isInteger(accountId) || accountId <= 0) {
@@ -8582,7 +8582,7 @@ app.delete("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (re
 // DELETE /api/admin/sip-accounts/:id - 刪除帳號（同步 Flexisip）
 app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以刪除帳號。" });
+    return response.status(403).json({ message: "只有平臺管理員可以刪除帳號。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8778,7 +8778,7 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
 
 app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行 Web 帳號登记。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行 Web 帳號登記。" });
   }
 
   const payload = request.body || {};
@@ -8791,9 +8791,9 @@ app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   const phone = sanitizeString(payload.phone, 40);
   const email = sanitizeString(payload.email, 255);
 
-  if (!username || !domain || !password) return response.status(400).json({ message: "缺少必填参数。" });
-  if (password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 个字符。" });
-  if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的电子郵箱。" });
+  if (!username || !domain || !password) return response.status(400).json({ message: "缺少必填引數。" });
+  if (password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+  if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
 
   let connection;
   try {
@@ -8803,7 +8803,7 @@ app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
     const existing = await connection.query(`SELECT id FROM web_users WHERE username = ? AND sip_domain = ? LIMIT 1`, [username, domain]);
     if (existing.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "该用户名已存在。" });
+      return response.status(409).json({ message: "該使用者名稱已存在。" });
     }
 
     const passwordHash = await hashPassword(password);
@@ -8817,7 +8817,7 @@ app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
     );
 
     await connection.commit();
-    return response.status(201).json({ message: "Web 帳號登记成功" });
+    return response.status(201).json({ message: "Web 帳號登記成功" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to save Web account:", error);
@@ -8829,7 +8829,7 @@ app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
 
 app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行 Web 帳號登记。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行 Web 帳號登記。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8846,8 +8846,8 @@ app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) =
   const phone = sanitizeString(payload.phone, 40);
   const email = sanitizeString(payload.email, 255);
 
-  if (password && password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 个字符。" });
-  if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的电子郵箱。" });
+  if (password && password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+  if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
 
   let connection;
   try {
@@ -8865,7 +8865,7 @@ app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) =
     }
     if (account.tenant_id != null) {
       await connection.rollback();
-      return response.status(409).json({ message: "已经分配给租戶的帳號不允許编辑。" });
+      return response.status(409).json({ message: "已經分配給租戶的帳號不允許編輯。" });
     }
     const duplicateRows = await connection.query(
       `SELECT id FROM web_users WHERE username = (SELECT username FROM web_users WHERE id = ?) AND sip_domain = ? AND id <> ? LIMIT 1`,
@@ -8873,7 +8873,7 @@ app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) =
     );
     if (duplicateRows.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "该域名下用户名已存在。" });
+      return response.status(409).json({ message: "該域名下使用者名稱已存在。" });
     }
 
     let updateSql = `UPDATE web_users SET sip_domain = ?, display_name = ?, email = ?, phone_number = ?, role = ?, status = ?`;
@@ -8901,7 +8901,7 @@ app.put("/api/admin/web-accounts/:id", requireAdmin, async (request, response) =
 
 app.post("/api/admin/web-accounts/:id/unassign", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8928,7 +8928,7 @@ app.post("/api/admin/web-accounts/:id/unassign", requireAdmin, async (request, r
 
 app.put("/api/admin/web-accounts/:id/reset-password", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行帳號操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8938,7 +8938,7 @@ app.put("/api/admin/web-accounts/:id/reset-password", requireAdmin, async (reque
 
   const password = String(request.body?.password || "");
   if (password.length < 6) {
-    return response.status(400).json({ message: "密碼至少需要 6 个字符。" });
+    return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
   }
 
   let connection;
@@ -8961,7 +8961,7 @@ app.put("/api/admin/web-accounts/:id/reset-password", requireAdmin, async (reque
 
 app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以刪除帳號。" });
+    return response.status(403).json({ message: "只有平臺管理員可以刪除帳號。" });
   }
 
   const accountId = Number(request.params.id);
@@ -8981,7 +8981,7 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
       return response.status(404).json({ message: "帳號不存在。" });
     }
     if (account.tenant_id != null) {
-      return response.status(409).json({ message: "已经分配给租戶的帳號不允許刪除。" });
+      return response.status(409).json({ message: "已經分配給租戶的帳號不允許刪除。" });
     }
 
     const remoteAccountName = String(rows[0].username || "").trim();
@@ -9060,7 +9060,7 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete Web account:", error);
-    return response.status(500).json({ message: "刪除帳號失败。" });
+    return response.status(500).json({ message: "刪除帳號失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9068,7 +9068,7 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
 
 app.get("/api/admin/gate-devices", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看設備。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視裝置。" });
   }
 
   let connection;
@@ -9119,7 +9119,7 @@ app.get("/api/admin/gate-devices", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch gate devices:", error);
-    return response.status(500).json({ message: "無法讀取設備列表。" });
+    return response.status(500).json({ message: "無法讀取裝置列表。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9127,7 +9127,7 @@ app.get("/api/admin/gate-devices", requireAdmin, async (request, response) => {
 
 app.post("/api/admin/gate-devices", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以添加設備。" });
+    return response.status(403).json({ message: "只有平臺管理員可以新增裝置。" });
   }
 
   const payload = request.body || {};
@@ -9140,7 +9140,7 @@ app.post("/api/admin/gate-devices", requireAdmin, async (request, response) => {
   const notes = sanitizeString(payload.notes, 1000);
 
   if (!subscribeTopic || !publishTopic) {
-    return response.status(400).json({ message: "請填寫订阅主题和发布主题。" });
+    return response.status(400).json({ message: "請填寫訂閱主題和釋出主題。" });
   }
 
   let connection;
@@ -9154,7 +9154,7 @@ app.post("/api/admin/gate-devices", requireAdmin, async (request, response) => {
       if (existing.length === 0) break;
       if (payload.uuid) {
         await connection.rollback();
-        return response.status(409).json({ message: "该設備 UUID 已存在。" });
+        return response.status(409).json({ message: "該裝置 UUID 已存在。" });
       }
       deviceUuid = generateGateDeviceUuid();
     }
@@ -9176,11 +9176,11 @@ app.post("/api/admin/gate-devices", requireAdmin, async (request, response) => {
     );
 
     await connection.commit();
-    return response.status(201).json({ message: "設備已新增。" });
+    return response.status(201).json({ message: "裝置已新增。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to save gate device:", error);
-    return response.status(500).json({ message: "設備儲存失敗。" });
+    return response.status(500).json({ message: "裝置儲存失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9188,12 +9188,12 @@ app.post("/api/admin/gate-devices", requireAdmin, async (request, response) => {
 
 app.put("/api/admin/gate-devices/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以维护設備。" });
+    return response.status(403).json({ message: "只有平臺管理員可以維護裝置。" });
   }
 
   const deviceId = Number(request.params.id);
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    return response.status(400).json({ message: "無效的設備 ID。" });
+    return response.status(400).json({ message: "無效的裝置 ID。" });
   }
 
   const payload = request.body || {};
@@ -9205,14 +9205,14 @@ app.put("/api/admin/gate-devices/:id", requireAdmin, async (request, response) =
   const notes = sanitizeString(payload.notes, 1000);
 
   if (!subscribeTopic || !publishTopic) {
-    return response.status(400).json({ message: "請填寫订阅主题和发布主题。" });
+    return response.status(400).json({ message: "請填寫訂閱主題和釋出主題。" });
   }
 
   let connection;
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(`SELECT id FROM gate_devices WHERE id = ? LIMIT 1`, [deviceId]);
-    if (rows.length === 0) return response.status(404).json({ message: "設備不存在。" });
+    if (rows.length === 0) return response.status(404).json({ message: "裝置不存在。" });
 
     await connection.query(
       `UPDATE gate_devices
@@ -9221,10 +9221,10 @@ app.put("/api/admin/gate-devices/:id", requireAdmin, async (request, response) =
        WHERE id = ?`,
       [relayId || null, subscribeTopic, publishTopic, wifiName || null, wifiPassword || null, notes || null, deviceId],
     );
-    return response.json({ message: "設備已更新。" });
+    return response.json({ message: "裝置已更新。" });
   } catch (error) {
     console.error("Failed to update gate device:", error);
-    return response.status(500).json({ message: "設備更新失敗。" });
+    return response.status(500).json({ message: "裝置更新失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9233,12 +9233,12 @@ app.put("/api/admin/gate-devices/:id", requireAdmin, async (request, response) =
 // POST /api/admin/gate-devices/:id/assign - 將設備分配給租戶
 app.post("/api/admin/gate-devices/:id/assign", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行設備操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行裝置操作。" });
   }
 
   const deviceId = Number(request.params.id);
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    return response.status(400).json({ message: "無效的設備 ID。" });
+    return response.status(400).json({ message: "無效的裝置 ID。" });
   }
 
   const tenantId = Number(request.body.tenantId);
@@ -9257,15 +9257,15 @@ app.post("/api/admin/gate-devices/:id/assign", requireAdmin, async (request, res
     );
     if (!device) {
       await connection.rollback();
-      return response.status(404).json({ message: "設備不存在。" });
+      return response.status(404).json({ message: "裝置不存在。" });
     }
     if (device.assignment_status === 'disabled') {
       await connection.rollback();
-      return response.status(400).json({ message: "已停用的設備無法分配。" });
+      return response.status(400).json({ message: "已停用的裝置無法分配。" });
     }
     if (device.assignment_status === "assigned" && Number(device.tenant_id) === tenantId) {
       await connection.rollback();
-      return response.json({ message: "設備已分配给该租戶。" });
+      return response.json({ message: "裝置已分配給該租戶。" });
     }
 
     // 检查租戶是否存在且有有效 SIP 帳號
@@ -9311,13 +9311,13 @@ app.post("/api/admin/gate-devices/:id/assign", requireAdmin, async (request, res
 
     await connection.commit();
     return response.json({
-      message: "設備已分配。",
+      message: "裝置已分配。",
       data: { id: deviceId, tenantId, expiresAt }
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to assign gate device:", error);
-    return response.status(500).json({ message: "分配設備失败。" });
+    return response.status(500).json({ message: "分配裝置失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9325,12 +9325,12 @@ app.post("/api/admin/gate-devices/:id/assign", requireAdmin, async (request, res
 
 app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以进行設備操作。" });
+    return response.status(403).json({ message: "只有平臺管理員可以進行裝置操作。" });
   }
 
   const deviceId = Number(request.params.id);
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    return response.status(400).json({ message: "無效的設備 ID。" });
+    return response.status(400).json({ message: "無效的裝置 ID。" });
   }
 
   let connection;
@@ -9341,11 +9341,11 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
     const device = rows[0];
     if (!device) {
       await connection.rollback();
-      return response.status(404).json({ message: "設備不存在。" });
+      return response.status(404).json({ message: "裝置不存在。" });
     }
     if (device.assignment_status !== "assigned" || device.tenant_id == null) {
       await connection.rollback();
-      return response.status(409).json({ message: "该設備尚未分配给租戶。" });
+      return response.status(409).json({ message: "該裝置尚未分配給租戶。" });
     }
     await connection.query(
       `UPDATE gate_devices
@@ -9365,7 +9365,7 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
       [deviceId, Number(device.tenant_id), device.assignment_status, request.admin.id],
     );
     await connection.commit();
-    return response.json({ message: "設備已取消分配。" });
+    return response.json({ message: "裝置已取消分配。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to unassign gate device:", error);
@@ -9377,12 +9377,12 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
 
 app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以刪除設備。" });
+    return response.status(403).json({ message: "只有平臺管理員可以刪除裝置。" });
   }
 
   const deviceId = Number(request.params.id);
   if (!Number.isInteger(deviceId) || deviceId <= 0) {
-    return response.status(400).json({ message: "無效的設備 ID。" });
+    return response.status(400).json({ message: "無效的裝置 ID。" });
   }
 
   let connection;
@@ -9393,19 +9393,19 @@ app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response
     const device = rows[0];
     if (!device) {
       await connection.rollback();
-      return response.status(404).json({ message: "設備不存在。" });
+      return response.status(404).json({ message: "裝置不存在。" });
     }
     if (device.tenant_id != null) {
       await connection.rollback();
-      return response.status(409).json({ message: "已经分配给租戶的設備不允許刪除。" });
+      return response.status(409).json({ message: "已經分配給租戶的裝置不允許刪除。" });
     }
     await connection.query(`DELETE FROM gate_devices WHERE id = ?`, [deviceId]);
     await connection.commit();
-    return response.json({ message: "設備已刪除。" });
+    return response.json({ message: "裝置已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete gate device:", error);
-    return response.status(500).json({ message: "設備刪除失敗。" });
+    return response.status(500).json({ message: "裝置刪除失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -9414,7 +9414,7 @@ app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response
 // GET /api/admin/billing-orders - 平台管理員取得所有訂單列表
 app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看所有訂單。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視所有訂單。" });
   }
 
   const page = Math.max(1, Number.parseInt(request.query.page || "1", 10));
@@ -9582,11 +9582,11 @@ app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => 
 
 app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以审核訂單。" });
+    return response.status(403).json({ message: "只有平臺管理員可以稽核訂單。" });
   }
 
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單编号无效。" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   const status = sanitizeString(request.body?.status, 40);
   const reviewNote = sanitizeString(request.body?.comments ?? request.body?.reviewNote, 500);
@@ -9594,10 +9594,10 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     ? request.body.sipAccountIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
     : [];
   if (!["review_approved", "review_rejected"].includes(status)) {
-    return response.status(400).json({ message: "审核结果无效。" });
+    return response.status(400).json({ message: "稽核結果無效。" });
   }
   if (status === "review_rejected" && !reviewNote) {
-    return response.status(400).json({ message: "审核不通过时必须填写审核意见。" });
+    return response.status(400).json({ message: "稽核不通過時必須填寫稽核意見。" });
   }
 
   let connection;
@@ -9624,15 +9624,15 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     }
     if (order.order_status === "review_approved") {
       await connection.rollback();
-      return response.status(409).json({ message: "审核通过的訂單不允許重复审核。" });
+      return response.status(409).json({ message: "稽核通過的訂單不允許重複稽核。" });
     }
     if (!["pending_review", "review_rejected"].includes(order.order_status)) {
       await connection.rollback();
-      return response.status(409).json({ message: "只有待审核或审核未通过的訂單可以提交审核结果。" });
+      return response.status(409).json({ message: "只有待稽核或稽核未通過的訂單可以提交稽核結果。" });
     }
     if (order.payment_status !== 'paid') {
       await connection.rollback();
-      return response.status(409).json({ message: "訂單尚未完成支付，不能审核通过。" });
+      return response.status(409).json({ message: "訂單尚未完成支付，不能稽核通過。" });
     }
 
     const months = Math.max(1, Number(order.months || 1));
@@ -9716,7 +9716,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       if (!requiresWebAccounts) return;
       const finalSipUserIds = Array.from(new Set((sipUserIds || []).map((id) => Number(id)).filter((id) => id > 0)));
       if (finalSipUserIds.length !== requiredAccountCount) {
-        const error = new Error("SIP 帳號分配數量异常，不能继续分配 WebRTC 帳號。");
+        const error = new Error("SIP 帳號分配數量異常，不能繼續分配 WebRTC 帳號。");
         error.httpStatus = 409;
         error.exposeMessage = true;
         throw error;
@@ -9764,7 +9764,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
            FOR UPDATE`,
         );
         if (webRows.length !== sipIdsNeedingWeb.length) {
-          const error = new Error(`未分配 WebRTC 帳號不足，还需要 ${sipIdsNeedingWeb.length} 个帳號用于訂單增值服务。`);
+          const error = new Error(`未分配 WebRTC 帳號不足，還需要 ${sipIdsNeedingWeb.length} 個帳號用於訂單增值服務。`);
           error.httpStatus = 409;
           error.exposeMessage = true;
           throw error;
@@ -9860,12 +9860,12 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     if (status === "review_approved") {
       if (requiredAccountCount <= 0) {
         await connection.rollback();
-        return response.status(409).json({ message: "訂單帳號數量无效，不能审核通过。" });
+        return response.status(409).json({ message: "訂單帳號數量無效，不能稽核通過。" });
       }
       if (isRenewalOrder) {
         if (!renewalSourceOrderId) {
           await connection.rollback();
-          return response.status(409).json({ message: "续订訂單缺少来源訂單，不能审核通过。" });
+          return response.status(409).json({ message: "續訂訂單缺少來源訂單，不能稽核通過。" });
         }
         allRenewalEntitlements = await connection.query(
           `SELECT id, sip_user_id, service_expires_at
@@ -9886,18 +9886,18 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
         if (allRenewalEntitlements.length < requiredAccountCount) {
           await connection.rollback();
-          return response.status(409).json({ message: "当前续订訂單帳號數量大于原帳號數量，暂不支持审核通过。" });
+          return response.status(409).json({ message: "當前續訂訂單帳號數量大於原帳號數量，暫不支援稽核通過。" });
         }
         const retainedEntitlementIds = new Set(retainedRows.map((item) => Number(item.entitlement_id)).filter((id) => id > 0));
         const retainedSipUserIds = new Set(retainedRows.map((item) => Number(item.sip_user_id)).filter((id) => id > 0));
         renewalEntitlements = allRenewalEntitlements.filter((item) => retainedEntitlementIds.has(Number(item.id)) || retainedSipUserIds.has(Number(item.sip_user_id)));
         if (renewalEntitlements.length !== retainedRows.length) {
           await connection.rollback();
-          return response.status(409).json({ message: "续订訂單包含無效的保留帳號，请重新生成续订訂單。" });
+          return response.status(409).json({ message: "續訂訂單包含無效的保留帳號，請重新生成續訂訂單。" });
         }
         if (renewalEntitlements.length > requiredAccountCount) {
           await connection.rollback();
-          return response.status(409).json({ message: `续订訂單最多复用 ${requiredAccountCount} 个帳號。` });
+          return response.status(409).json({ message: `續訂訂單最多複用 ${requiredAccountCount} 個帳號。` });
         }
         const replacementAccountCount = requiredAccountCount - renewalEntitlements.length;
         if (replacementAccountCount > 0) {
@@ -9912,7 +9912,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
           );
           if (renewalReplacementAccounts.length !== replacementAccountCount) {
             await connection.rollback();
-            return response.status(409).json({ message: `未分配 SIP 帳號不足，还需要 ${replacementAccountCount} 个帳號用于续订补分配。` });
+            return response.status(409).json({ message: `未分配 SIP 帳號不足，還需要 ${replacementAccountCount} 個帳號用於續訂補分配。` });
           }
         }
         const today = new Date().toISOString().slice(0, 10);
@@ -9926,7 +9926,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       } else {
         if (uniqueSipAccountIds.length !== requiredAccountCount) {
           await connection.rollback();
-          return response.status(400).json({ message: `請選擇 ${requiredAccountCount} 个帳號后再提交审核。` });
+          return response.status(400).json({ message: `請選擇 ${requiredAccountCount} 個帳號後再提交稽核。` });
         }
 
         const accountPlaceholders = uniqueSipAccountIds.map(() => "?").join(",");
@@ -9940,13 +9940,13 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
 
         if (selectedSipAccounts.length !== requiredAccountCount) {
           await connection.rollback();
-          return response.status(404).json({ message: "部分待分配帳號不存在，请刷新后重试。" });
+          return response.status(404).json({ message: "部分待分配帳號不存在，請重新整理後重試。" });
         }
 
         const assignedAccount = selectedSipAccounts.find((account) => account.tenant_id != null);
         if (assignedAccount) {
           await connection.rollback();
-          return response.status(409).json({ message: `帳號 ${assignedAccount.username} 已被分配，请刷新后重新选择。` });
+          return response.status(409).json({ message: `帳號 ${assignedAccount.username} 已被分配，請重新整理後重新選擇。` });
         }
       }
     }
@@ -10172,14 +10172,14 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       ],
     );
 
-    const reviewResultText = status === "review_approved" ? "审核通过" : "审核未通过";
-    const notificationTitle = status === "review_approved" ? "訂單审核通过" : "訂單审核未通过";
+    const reviewResultText = status === "review_approved" ? "稽核通過" : "稽核未通過";
+    const notificationTitle = status === "review_approved" ? "訂單稽核通過" : "訂單稽核未通過";
     const assignedAccountText = requiresWebAccounts
-      ? `已为该訂單分配 ${requiredAccountCount} 个 SIP 帳號及对应 WebRTC 帳號`
-      : `已为该訂單分配 ${requiredAccountCount} 个 SIP 帳號`;
+      ? `已為該訂單分配 ${requiredAccountCount} 個 SIP 帳號及對應 WebRTC 帳號`
+      : `已為該訂單分配 ${requiredAccountCount} 個 SIP 帳號`;
     const notificationBody = status === "review_approved"
-      ? `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。${assignedAccountText}，請前往“帳號管理”查看已分配帳號。`
-      : `訂單 ${order.order_no || orderId} 的审核结果为：${reviewResultText}。請前往“我的套餐”查看审核意见并重新提交审核。`;
+      ? `訂單 ${order.order_no || orderId} 的稽核結果為：${reviewResultText}。${assignedAccountText}，請前往“帳號管理”檢視已分配帳號。`
+      : `訂單 ${order.order_no || orderId} 的稽核結果為：${reviewResultText}。請前往“我的套餐”檢視稽核意見並重新提交稽核。`;
     const notificationTargetView = status === "review_approved" ? "tenant-account-management" : "domain";
     const notificationResult = await connection.query(
       `INSERT INTO notification_events (
@@ -10212,14 +10212,14 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     }
 
     await connection.commit();
-    return response.json({ message: "审核结果已保存。", order: { id: orderId, orderStatus: status, reviewNote } });
+    return response.json({ message: "稽核結果已儲存。", order: { id: orderId, orderStatus: status, reviewNote } });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to review billing order:", error);
     if (error?.exposeMessage && error?.httpStatus) {
       return response.status(error.httpStatus).json({ message: error.message });
     }
-    return response.status(500).json({ message: "保存审核结果失败。" });
+    return response.status(500).json({ message: "儲存稽核結果失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -10227,11 +10227,11 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
 
 app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看任意訂單详情。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視任意訂單詳情。" });
   }
 
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單编号无效。" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   let connection;
   try {
@@ -10369,7 +10369,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "讀取訂單详情失败。" });
+    return response.status(500).json({ message: "讀取訂單詳情失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -10384,10 +10384,10 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
 // GET /api/tenant/ecard-styles - 租戶侧取得已啟用的 Ecard 样式
 app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員請使用樣式管理頁面。" });
+    return response.status(403).json({ message: "平臺管理員請使用樣式管理頁面。" });
   }
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看 Ecard 样式。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視 Ecard 樣式。" });
   }
 
   let connection;
@@ -10447,7 +10447,7 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
     return response.json({ styles: formattedStyles });
   } catch (error) {
     console.error('Failed to fetch tenant ecard styles:', error);
-    return response.status(500).json({ message: '取得 Ecard 样式失败' });
+    return response.status(500).json({ message: '取得 Ecard 樣式失敗' });
   } finally {
     if (connection) connection.release();
   }
@@ -10455,10 +10455,10 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
 
 app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員無法直接查看租戶电子名片。" });
+    return response.status(403).json({ message: "平臺管理員無法直接檢視租戶電子名片。" });
   }
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看名片帳號列表。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視名片帳號列表。" });
   }
 
   let connection;
@@ -10523,7 +10523,7 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
     return response.json({ accounts });
   } catch (error) {
     console.error('Failed to fetch tenant ecard accounts:', error);
-    return response.status(500).json({ message: '取得名片帳號列表失败' });
+    return response.status(500).json({ message: '取得名片帳號列表失敗' });
   } finally {
     if (connection) connection.release();
   }
@@ -10536,7 +10536,7 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
  */
 app.get("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視 Ecard 樣式。" });
   }
 
   let connection;
@@ -10570,7 +10570,7 @@ app.get("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error('Failed to fetch ecard styles:', error);
-    return response.status(500).json({ message: '取得 Ecard 样式失败' });
+    return response.status(500).json({ message: '取得 Ecard 樣式失敗' });
   } finally {
     if (connection) connection.release();
   }
@@ -10578,11 +10578,11 @@ app.get("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
 
 app.get("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視 Ecard 樣式。" });
   }
   
   const styleId = Number(request.params.id);
-  if (!styleId) return response.status(400).json({ message: "無效的样式 ID。" });
+  if (!styleId) return response.status(400).json({ message: "無效的樣式 ID。" });
 
   let connection;
   try {
@@ -10590,7 +10590,7 @@ app.get("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
     const [styleRow] = await connection.query(`SELECT * FROM ecard_styles WHERE id = ?`, [styleId]);
 
     if (!styleRow) {
-      return response.status(404).json({ message: "找不到指定的样式。" });
+      return response.status(404).json({ message: "找不到指定的樣式。" });
     }
 
     const sampleRows = await connection.query(`SELECT * FROM ecard_style_samples WHERE style_id = ? ORDER BY sort_order ASC, id ASC`, [styleId]);
@@ -10625,7 +10625,7 @@ app.get("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
     });
   } catch (error) {
     console.error('Failed to fetch ecard style details:', error);
-    return response.status(500).json({ message: '取得样式详情失败' });
+    return response.status(500).json({ message: '取得樣式詳情失敗' });
   } finally {
     if (connection) connection.release();
   }
@@ -10633,7 +10633,7 @@ app.get("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
 
 app.post("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以创建 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以建立 Ecard 樣式。" });
   }
 
   const payload = request.body || {};
@@ -10648,7 +10648,7 @@ app.post("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
   const companyNameEnabled = styleType === 'with_company' ? 1 : 0;
 
   if (!styleCode || !styleName) {
-    return response.status(400).json({ message: "請填寫样式编号和名稱。" });
+    return response.status(400).json({ message: "請填寫樣式編號和名稱。" });
   }
 
   let connection;
@@ -10659,7 +10659,7 @@ app.post("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
     const [existing] = await connection.query(`SELECT id FROM ecard_styles WHERE style_code = ?`, [styleCode]);
     if (existing) {
       await connection.rollback();
-      return response.status(409).json({ message: "该样式编号已存在。" });
+      return response.status(409).json({ message: "該樣式編號已存在。" });
     }
 
     const styleResult = await connection.query(
@@ -10692,11 +10692,11 @@ app.post("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
     coverImageUrl = coverImageUrl || firstImageUrl || null;
     await connection.query(`UPDATE ecard_styles SET cover_image_url = ? WHERE id = ?`, [coverImageUrl, styleId]);
     await connection.commit();
-    return response.status(201).json({ message: "Ecard 样式创建成功" });
+    return response.status(201).json({ message: "Ecard 樣式建立成功" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to create Ecard style:", error);
-    return response.status(500).json({ message: "创建 Ecard 样式失败" });
+    return response.status(500).json({ message: "建立 Ecard 樣式失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -10704,11 +10704,11 @@ app.post("/api/admin/ecard-styles", requireAdmin, async (request, response) => {
 
 app.put("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以修改 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以修改 Ecard 樣式。" });
   }
 
   const styleId = Number(request.params.id);
-  if (!styleId) return response.status(400).json({ message: "無效的样式 ID。" });
+  if (!styleId) return response.status(400).json({ message: "無效的樣式 ID。" });
 
   const payload = request.body || {};
   const styleName = sanitizeString(payload.styleName, 128);
@@ -10720,7 +10720,7 @@ app.put("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
   const backgrounds = Array.isArray(payload.backgrounds) ? payload.backgrounds : [];
   const companyNameEnabled = styleType === 'with_company' ? 1 : 0;
 
-  if (!styleName) return response.status(400).json({ message: "請填寫样式名稱。" });
+  if (!styleName) return response.status(400).json({ message: "請填寫樣式名稱。" });
 
   let connection;
   try {
@@ -10730,7 +10730,7 @@ app.put("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
     const [existing] = await connection.query(`SELECT id FROM ecard_styles WHERE id = ?`, [styleId]);
     if (!existing) {
       await connection.rollback();
-      return response.status(404).json({ message: "找不到该样式。" });
+      return response.status(404).json({ message: "找不到該樣式。" });
     }
 
     await connection.query(
@@ -10765,11 +10765,11 @@ app.put("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
     coverImageUrl = coverImageUrl || firstImageUrl || null;
     await connection.query(`UPDATE ecard_styles SET cover_image_url = ? WHERE id = ?`, [coverImageUrl, styleId]);
     await connection.commit();
-    return response.status(200).json({ message: "Ecard 样式更新成功" });
+    return response.status(200).json({ message: "Ecard 樣式更新成功" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to update Ecard style:", error);
-    return response.status(500).json({ message: "修改 Ecard 样式失败" });
+    return response.status(500).json({ message: "修改 Ecard 樣式失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -10777,15 +10777,15 @@ app.put("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) =
 
 app.put("/api/admin/ecard-style-backgrounds/:id/json-config", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以修改背景图配置。" });
+    return response.status(403).json({ message: "只有平臺管理員可以修改背景圖配置。" });
   }
 
   const bgId = Number(request.params.id);
-  if (!bgId) return response.status(400).json({ message: "無效的背景图 ID。" });
+  if (!bgId) return response.status(400).json({ message: "無效的背景圖 ID。" });
 
   const { configType, configJson } = request.body || {};
   if (!["layout_json", "default_style_json", "display_config_json"].includes(configType)) {
-    return response.status(400).json({ message: "無效的配置類型。" });
+    return response.status(400).json({ message: "無效的配置型別。" });
   }
 
   let connection;
@@ -10799,13 +10799,13 @@ app.put("/api/admin/ecard-style-backgrounds/:id/json-config", requireAdmin, asyn
     if (Number(result.affectedRows || 0) === 0) {
           const check = await connection.query('SELECT id FROM ecard_style_backgrounds WHERE id = ?', [bgId]);
           if (check.length === 0) {
-            return response.status(404).json({ message: "找不到指定的背景图。" });
+            return response.status(404).json({ message: "找不到指定的背景圖。" });
           }
     }
-    return response.json({ message: "配置已保存。" });
+    return response.json({ message: "配置已儲存。" });
   } catch (error) {
     console.error("Failed to update background json config:", error);
-    return response.status(500).json({ message: "保存配置失败。" });
+    return response.status(500).json({ message: "儲存配置失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -10813,15 +10813,15 @@ app.put("/api/admin/ecard-style-backgrounds/:id/json-config", requireAdmin, asyn
 
 app.put("/api/admin/ecard-styles/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以修改 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以修改 Ecard 樣式。" });
   }
 
   const styleId = Number(request.params.id);
-  if (!styleId) return response.status(400).json({ message: "無效的样式 ID。" });
+  if (!styleId) return response.status(400).json({ message: "無效的樣式 ID。" });
 
   const status = sanitizeString(request.body?.status, 32);
   if (!['active', 'disabled'].includes(status)) {
-    return response.status(400).json({ message: "狀態无效。" });
+    return response.status(400).json({ message: "狀態無效。" });
   }
 
   let connection;
@@ -10829,12 +10829,12 @@ app.put("/api/admin/ecard-styles/:id/status", requireAdmin, async (request, resp
     connection = await pool.getConnection();
     const result = await connection.query(`UPDATE ecard_styles SET status = ? WHERE id = ?`, [status, styleId]);
     if (Number(result.affectedRows || 0) === 0) {
-      return response.status(404).json({ message: "找不到该样式。" });
+      return response.status(404).json({ message: "找不到該樣式。" });
     }
     return response.json({ message: "狀態更新成功" });
   } catch (error) {
     console.error("Failed to update ecard style status:", error);
-    return response.status(500).json({ message: "更新狀態失败" });
+    return response.status(500).json({ message: "更新狀態失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -10842,16 +10842,16 @@ app.put("/api/admin/ecard-styles/:id/status", requireAdmin, async (request, resp
 
 app.delete("/api/admin/ecard-styles/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以刪除 Ecard 样式。" });
+    return response.status(403).json({ message: "只有平臺管理員可以刪除 Ecard 樣式。" });
   }
   const styleId = Number(request.params.id);
-  if (!styleId) return response.status(400).json({ message: "無效的样式 ID。" });
+  if (!styleId) return response.status(400).json({ message: "無效的樣式 ID。" });
 
   let connection;
   try {
     connection = await pool.getConnection();
     await connection.query(`DELETE FROM ecard_styles WHERE id = ?`, [styleId]);
-    return response.json({ message: "样式已成功刪除。" });
+    return response.json({ message: "樣式已成功刪除。" });
   } catch (error) {
     console.error('Failed to delete ecard style:', error);
     return response.status(500).json({ message: '刪除失敗' });
@@ -10862,7 +10862,7 @@ app.delete("/api/admin/ecard-styles/:id", requireAdmin, async (request, response
 
 app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員無法访问租戶电子名片。" });
+    return response.status(403).json({ message: "平臺管理員無法訪問租戶電子名片。" });
   }
   const sipUserId = Number(request.params.sipUserId);
   const payload = request.body || {};
@@ -10880,7 +10880,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
 
     const [su] = await connection.query(`SELECT id FROM sip_users WHERE id = ? AND tenant_id = ?`, [sipUserId, request.admin.tenantId]);
     if (!su) {
-      return response.status(404).json({ message: "SIP 帳號不存在或不属于当前租戶" });
+      return response.status(404).json({ message: "SIP 帳號不存在或不屬於當前租戶" });
     }
 
     let avatarUrl = payload.avatarDataUrl || "";
@@ -10929,7 +10929,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
       ]
     );
 
-    return response.json({ message: "电子名片已保存" });
+    return response.json({ message: "電子名片已儲存" });
   } catch (err) {
     console.error("Save ecard failed", err);
     return response.status(500).json({ message: "儲存失敗", detail: err.message || String(err) });
@@ -10940,7 +10940,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
 
 app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員無法访问租戶电子名片。" });
+    return response.status(403).json({ message: "平臺管理員無法訪問租戶電子名片。" });
   }
   const sipUserId = Number(request.params.sipUserId);
   let connection;
@@ -10966,7 +10966,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
       validTo: ec.valid_to || null,
       status: ec.status || null,
     });
-    return response.status(500).json({ message: "取得名片失败" });
+    return response.status(500).json({ message: "取得名片失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -11363,7 +11363,7 @@ async function loadEcardCallSessionContext(connection, slug) {
   }
 
   if (!row.web_account) {
-    return { error: { status: 404, code: "ECARD_WEB_ACCOUNT_NOT_BOUND", message: "此帳號尚未綁定 WebRTC 帳號" } };
+    return { error: { status: 404, code: "ECARD_WEB_ACCOUNT_NOT_BOUND", message: "此帳號尚未繫結 WebRTC 帳號" } };
   }
 
   const ecardDataJson = parseEcardPublicJson(row.ecard_data_json);
@@ -11382,7 +11382,7 @@ app.get("/api/ecard/public/:slug", async (request, response) => {
     return response.status(400).json({
       success: false,
       code: "INVALID_ECARD_SLUG",
-      message: "查詢參數格式不正確",
+      message: "查詢引數格式不正確",
     });
   }
 
@@ -11421,7 +11421,7 @@ app.post("/api/ecard/public/:slug/call-session", async (request, response) => {
     return response.status(400).json({
       success: false,
       code: "INVALID_ECARD_SLUG",
-      message: "查詢參數格式不正確",
+      message: "查詢引數格式不正確",
     });
   }
 
@@ -11452,7 +11452,7 @@ app.post("/api/ecard/public/:slug/call-session", async (request, response) => {
       return response.status(403).json({
         success: false,
         code: "ECARD_CALL_DISABLED",
-        message: "目前未開放語音或視頻呼叫",
+        message: "目前未開放語音或影片呼叫",
       });
     }
 
@@ -11528,7 +11528,7 @@ app.post("/api/ecard/public/:slug/call-session", async (request, response) => {
 
 app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員無法访问租戶电子名片。" });
+    return response.status(403).json({ message: "平臺管理員無法訪問租戶電子名片。" });
   }
   const sipUserId = Number(request.params.sipUserId);
   const status = request.body?.status === 'active' ? 'active' : 'disabled';
@@ -11547,13 +11547,13 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
         [request.admin.tenantId, sipUserId]
       );
       if (check.length === 0) {
-        return response.status(404).json({ message: "该帳號尚未配置电子名片。" });
+        return response.status(404).json({ message: "該帳號尚未配置電子名片。" });
       }
     }
-    return response.json({ message: status === 'active' ? "电子名片已啟用" : "电子名片已停用" });
+    return response.json({ message: status === 'active' ? "電子名片已啟用" : "電子名片已停用" });
   } catch (err) {
     console.error(err);
-    return response.status(500).json({ message: "更新狀態失败" });
+    return response.status(500).json({ message: "更新狀態失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -11568,7 +11568,7 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
 // 讀取隐私政策 (管理后台)
 app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以讀取系统配置。" });
+    return response.status(403).json({ message: "只有平臺管理員可以讀取系統配置。" });
   }
   let connection;
   try {
@@ -11580,7 +11580,7 @@ app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get privacy policy:", error);
-    return response.status(500).json({ message: "讀取隐私政策失败。" });
+    return response.status(500).json({ message: "讀取隱私政策失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11589,7 +11589,7 @@ app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
 // 保存隐私政策 (管理后台)
 app.put("/api/admin/settings/privacy-policy", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以修改系统配置。" });
+    return response.status(403).json({ message: "只有平臺管理員可以修改系統配置。" });
   }
   const content = request.body?.content || "";
   let connection;
@@ -11601,10 +11601,10 @@ app.put("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       [content, content]
     );
-    return response.json({ message: "隐私政策已保存成功" });
+    return response.json({ message: "隱私政策已儲存成功" });
   } catch (error) {
     console.error("Failed to save privacy policy:", error);
-    return response.status(500).json({ message: "保存隐私政策失败。" });
+    return response.status(500).json({ message: "儲存隱私政策失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11613,7 +11613,7 @@ app.put("/api/admin/settings/privacy-policy", requireAdmin, async (request, resp
 // 讀取服务条款 (管理后台)
 app.get("/api/admin/settings/terms-of-service", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以讀取系统配置。" });
+    return response.status(403).json({ message: "只有平臺管理員可以讀取系統配置。" });
   }
   let connection;
   try {
@@ -11625,7 +11625,7 @@ app.get("/api/admin/settings/terms-of-service", requireAdmin, async (request, re
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get terms of service:", error);
-    return response.status(500).json({ message: "讀取服务条款失败。" });
+    return response.status(500).json({ message: "讀取服務條款失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11634,7 +11634,7 @@ app.get("/api/admin/settings/terms-of-service", requireAdmin, async (request, re
 // 保存服务条款 (管理后台)
 app.put("/api/admin/settings/terms-of-service", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以修改系统配置。" });
+    return response.status(403).json({ message: "只有平臺管理員可以修改系統配置。" });
   }
   const content = request.body?.content || "";
   let connection;
@@ -11646,10 +11646,10 @@ app.put("/api/admin/settings/terms-of-service", requireAdmin, async (request, re
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       [content, content]
     );
-    return response.json({ message: "服务条款已保存成功" });
+    return response.json({ message: "服務條款已儲存成功" });
   } catch (error) {
     console.error("Failed to save terms of service:", error);
-    return response.status(500).json({ message: "保存服务条款失败。" });
+    return response.status(500).json({ message: "儲存服務條款失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11663,11 +11663,11 @@ app.get("/api/public/settings/privacy-policy", async (request, response) => {
     const rows = await connection.query(
       `SELECT setting_value FROM system_settings WHERE setting_key = 'privacy_policy'`
     );
-    const content = rows.length > 0 ? rows[0].setting_value : "暂无隐私政策内容。";
+    const content = rows.length > 0 ? rows[0].setting_value : "暫無隱私政策內容。";
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get public privacy policy:", error);
-    return response.status(500).json({ message: "取得隐私政策失败，請稍後再試" });
+    return response.status(500).json({ message: "取得隱私政策失敗，請稍後再試" });
   } finally {
     if (connection) connection.release();
   }
@@ -11681,11 +11681,11 @@ app.get("/api/public/settings/terms-of-service", async (request, response) => {
     const rows = await connection.query(
       `SELECT setting_value FROM system_settings WHERE setting_key = 'terms_of_service'`
     );
-    const content = rows.length > 0 ? rows[0].setting_value : "暂无服务条款内容。";
+    const content = rows.length > 0 ? rows[0].setting_value : "暫無服務條款內容。";
     return response.json({ content });
   } catch (error) {
     console.error("Failed to get public terms of service:", error);
-    return response.status(500).json({ message: "取得服务条款失败，請稍後再試" });
+    return response.status(500).json({ message: "取得服務條款失敗，請稍後再試" });
   } finally {
     if (connection) connection.release();
   }
@@ -11694,7 +11694,7 @@ app.get("/api/public/settings/terms-of-service", async (request, response) => {
 // GET /api/call-centers - 租戶取得呼叫中心配置列表
 app.get("/api/call-centers", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看呼叫中心配置。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以檢視呼叫中心配置。" });
   }
 
   const limit = Math.max(1, parseInt(request.query.limit || "10", 10));
@@ -11796,7 +11796,7 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
     return response.json({ code: 0, data: { list: formattedRows, total, stats: { total: Number(stats.total||0), active: Number(stats.active||0), disabled: Number(stats.disabled||0), visitorEnabled: Number(stats.visitorEnabled||0), expiringSoon: expiringSoonCount } } });
   } catch (error) {
     console.error("Failed to fetch call centers:", error);
-    return response.status(500).json({ code: -1, message: "取得呼叫中心列表失败。" });
+    return response.status(500).json({ code: -1, message: "取得呼叫中心列表失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -11811,7 +11811,7 @@ app.post("/api/call-centers", requireAdmin, async (request, response) => {
   const payload = request.body || {};
   const centerName = sanitizeString(payload.name, 100);
   const slug = sanitizeString(payload.slug, 100);
-  if (!centerName || !slug) return response.status(400).json({ message: "缺少呼叫中心名稱或 Slug 参数。" });
+  if (!centerName || !slug) return response.status(400).json({ message: "缺少呼叫中心名稱或 Slug 引數。" });
 
   const centerUrl = `${callCenterBaseUrl}/callcenter?id=${slug}`;
   const visitorEnabled = payload.visitorEnabled ? 1 : 0;
@@ -11834,7 +11834,7 @@ app.post("/api/call-centers", requireAdmin, async (request, response) => {
     const [existing] = await connection.query(`SELECT id FROM call_centers WHERE center_slug = ? LIMIT 1`, [slug]);
     if (existing) {
       await connection.rollback();
-      return response.status(409).json({ message: "该唯一标识 Slug 已被占用，请更换。" });
+      return response.status(409).json({ message: "該唯一標識 Slug 已被佔用，請更換。" });
     }
 
     // 2. 处理图片文件上传及保存
@@ -11907,7 +11907,7 @@ app.post("/api/call-centers", requireAdmin, async (request, response) => {
           
           if (!sipAccountId) {
             await connection.rollback();
-            return response.status(400).json({ message: `坐席 ${agent.name || '(未命名)'} 缺少必要的电子名片关联，請檢查配置。` });
+            return response.status(400).json({ message: `坐席 ${agent.name || '(未命名)'} 缺少必要的電子名片關聯，請檢查配置。` });
           }
           // 插入分类下的坐席
           await connection.query(
@@ -11926,11 +11926,11 @@ app.post("/api/call-centers", requireAdmin, async (request, response) => {
     }
 
     await connection.commit();
-    return response.status(201).json({ message: "呼叫中心配置已保存" });
+    return response.status(201).json({ message: "呼叫中心配置已儲存" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("Failed to save call center:", error);
-    return response.status(500).json({ message: "保存呼叫中心失败" });
+    return response.status(500).json({ message: "儲存呼叫中心失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -11943,11 +11943,11 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
   }
 
   const id = Number(request.params.id);
-  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   const status = sanitizeString(request.body?.status, 20);
   if (!['active', 'disabled'].includes(status)) {
-    return response.status(400).json({ code: -1, message: "狀態值无效。" });
+    return response.status(400).json({ code: -1, message: "狀態值無效。" });
   }
 
   let connection;
@@ -11973,7 +11973,7 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
         }
       }
       if (isExpired) {
-        return response.status(403).json({ code: -1, message: "套餐已過期，無法启用。" });
+        return response.status(403).json({ code: -1, message: "套餐已過期，無法啟用。" });
       }
     }
 
@@ -11989,7 +11989,7 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
     return response.json({ code: 0, message: "狀態已更新。" });
   } catch (error) {
     console.error("Failed to update call center status:", error);
-    return response.status(500).json({ code: -1, message: "更新狀態失败。" });
+    return response.status(500).json({ code: -1, message: "更新狀態失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12002,7 +12002,7 @@ app.put("/api/call-centers/:id/visitor-info", requireAdmin, async (request, resp
   }
 
   const id = Number(request.params.id);
-  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   const visitorEnabled = Boolean(request.body?.visitorEnabled) ? 1 : 0;
 
@@ -12018,10 +12018,10 @@ app.put("/api/call-centers/:id/visitor-info", requireAdmin, async (request, resp
       return response.status(404).json({ code: -1, message: "找不到呼叫中心。" });
     }
 
-    return response.json({ code: 0, message: "访客登记狀態已更新。" });
+    return response.json({ code: 0, message: "訪客登記狀態已更新。" });
   } catch (error) {
     console.error("Failed to update visitor info status:", error);
-    return response.status(500).json({ code: -1, message: "更新访客登记狀態失败。" });
+    return response.status(500).json({ code: -1, message: "更新訪客登記狀態失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12035,7 +12035,7 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
 
   const ids = Array.isArray(request.body?.ids) ? request.body.ids.map(Number).filter(id => id > 0) : [];
   if (ids.length === 0) {
-    return response.status(400).json({ code: -1, message: "請提供要刪除的呼叫中心编号。" });
+    return response.status(400).json({ code: -1, message: "請提供要刪除的呼叫中心編號。" });
   }
 
   let connection;
@@ -12062,7 +12062,7 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
     const result = await connection.query(`DELETE FROM call_centers WHERE id IN (${validPlaceholders}) AND tenant_id = ?`, [...validIds, request.admin.tenantId]);
 
     await connection.commit();
-    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 个呼叫中心。` });
+    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 個呼叫中心。` });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete call centers:", error);
@@ -12075,11 +12075,11 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
 // GET /api/call-centers/:id - 取得呼叫中心详情
 app.get("/api/call-centers/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看呼叫中心配置。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以檢視呼叫中心配置。" });
   }
 
   const id = Number(request.params.id);
-  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   let connection;
   try {
@@ -12158,7 +12158,7 @@ app.get("/api/call-centers/:id", requireAdmin, async (request, response) => {
 
   } catch (error) {
     console.error("Failed to fetch call center details:", error);
-    return response.status(500).json({ code: -1, message: "取得呼叫中心详情失败。" });
+    return response.status(500).json({ code: -1, message: "取得呼叫中心詳情失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12171,12 +12171,12 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
   }
 
   const id = Number(request.params.id);
-  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(id) || id <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   const payload = request.body || {};
   const centerName = sanitizeString(payload.name, 100);
   const slug = sanitizeString(payload.slug, 100);
-  if (!centerName || !slug) return response.status(400).json({ code: -1, message: "缺少呼叫中心名稱或 Slug 参数。" });
+  if (!centerName || !slug) return response.status(400).json({ code: -1, message: "缺少呼叫中心名稱或 Slug 引數。" });
 
   const centerUrl = `${callCenterBaseUrl}/callcenter?id=${slug}`;
   const visitorEnabled = payload.visitorEnabled ? 1 : 0;
@@ -12197,7 +12197,7 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
     const [existing] = await connection.query(`SELECT id FROM call_centers WHERE center_slug = ? AND id != ? LIMIT 1`, [slug, id]);
     if (existing) {
       await connection.rollback();
-      return response.status(409).json({ code: -1, message: "该唯一标识 Slug 已被占用，请更换。" });
+      return response.status(409).json({ code: -1, message: "該唯一標識 Slug 已被佔用，請更換。" });
     }
 
     const [currentCc] = await connection.query(`SELECT logo_url, cover_image_url FROM call_centers WHERE id = ? AND tenant_id = ? FOR UPDATE`, [id, request.admin.tenantId]);
@@ -12275,7 +12275,7 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
           
           if (!sipAccountId) {
             await connection.rollback();
-            return response.status(400).json({ code: -1, message: `坐席 ${agent.name || '(未命名)'} 缺少必要的电子名片关联，請檢查配置。` });
+            return response.status(400).json({ code: -1, message: `坐席 ${agent.name || '(未命名)'} 缺少必要的電子名片關聯，請檢查配置。` });
           }
           await connection.query(
             `INSERT INTO call_center_category_agents (
@@ -12297,7 +12297,7 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to update call center:", error);
-    return response.status(500).json({ code: -1, message: "更新呼叫中心失败" });
+    return response.status(500).json({ code: -1, message: "更新呼叫中心失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -12313,7 +12313,7 @@ app.get("/callcenter", async (request, response) => {
     connection = await pool.getConnection();
     const [cc] = await connection.query(`SELECT * FROM call_centers WHERE center_slug = ? AND status = 'active' LIMIT 1`, [slug]);
     if (!cc) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>该呼叫中心不存在或已停用。</p>");
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該呼叫中心不存在或已停用。</p>");
     }
 
     // 检查呼叫中心所属租戶套餐是否有效
@@ -12328,10 +12328,10 @@ app.get("/callcenter", async (request, response) => {
       const expiresDate = new Date(`${tenantExpiresAt}T00:00:00Z`);
       const today = new Date();
       if (expiresDate.getTime() < today.getTime()) {
-         return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服务不可用：企业套餐已過期。</p>");
+         return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：企業套餐已過期。</p>");
       }
     } else {
-       return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服务不可用：该企业未开通有效套餐。</p>");
+       return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：該企業未開通有效套餐。</p>");
     }
 
     const categoriesRows = await connection.query(`SELECT * FROM call_center_categories WHERE call_center_id = ? ORDER BY sort_order ASC`, [cc.id]);
@@ -12417,7 +12417,7 @@ app.get("/callcenter", async (request, response) => {
     return response.send(html);
   } catch (error) {
     console.error("Failed to render visitor page:", error);
-    return response.status(500).send("<h2 style='text-align:center;margin-top:20vh;'>500 Internal Error</h2><p style='text-align:center;'>系统繁忙，請稍後再試。</p>");
+    return response.status(500).send("<h2 style='text-align:center;margin-top:20vh;'>500 Internal Error</h2><p style='text-align:center;'>系統繁忙，請稍後再試。</p>");
   } finally {
     if (connection) connection.release();
   }
@@ -12427,7 +12427,7 @@ app.get("/callcenter", async (request, response) => {
 app.get("/api/public/call-centers/agent-status", async (request, response) => {
   const account = sanitizeString(String(request.query.account || ''), 100);
   const domain = sanitizeString(String(request.query.domain || ''), 200);
-  if (!account || !domain) return response.status(400).json({ code: -1, message: "缺少 account 或 domain 参数" });
+  if (!account || !domain) return response.status(400).json({ code: -1, message: "缺少 account 或 domain 引數" });
 
   try {
     const redisKey = `fs:${account}@${domain}`;
@@ -12440,14 +12440,14 @@ app.get("/api/public/call-centers/agent-status", async (request, response) => {
     return response.json({ code: 0, data: { account, domain, online } });
   } catch (error) {
     console.error("Failed to query agent SIP status:", error);
-    return response.status(500).json({ code: -1, message: "查询失败" });
+    return response.status(500).json({ code: -1, message: "查詢失敗" });
   }
 });
 
 // POST /api/public/call-centers/:slug/visitor-submit - 访客提交登记表单
 app.post("/api/public/call-centers/:slug/visitor-submit", async (request, response) => {
   const slug = sanitizeString(request.params.slug, 100);
-  if (!slug) return response.status(400).json({ code: -1, message: "無效的链接。" });
+  if (!slug) return response.status(400).json({ code: -1, message: "無效的連結。" });
 
   const payload = request.body || {};
   const name = sanitizeString(payload.name, 128);
@@ -12464,8 +12464,8 @@ app.post("/api/public/call-centers/:slug/visitor-submit", async (request, respon
     connection = await pool.getConnection();
     const [cc] = await connection.query(`SELECT id, tenant_id, status FROM call_centers WHERE center_slug = ? LIMIT 1`, [slug]);
     
-    if (!cc) return response.status(404).json({ code: -1, message: "该呼叫中心不存在。" });
-    if (cc.status !== 'active') return response.status(403).json({ code: -1, message: "该呼叫中心已停用。" });
+    if (!cc) return response.status(404).json({ code: -1, message: "該呼叫中心不存在。" });
+    if (cc.status !== 'active') return response.status(403).json({ code: -1, message: "該呼叫中心已停用。" });
 
     await connection.query(
       `INSERT INTO call_center_visitor_inquiries (
@@ -12479,10 +12479,10 @@ app.post("/api/public/call-centers/:slug/visitor-submit", async (request, respon
       ]
     );
 
-    return response.json({ code: 0, message: "登记成功" });
+    return response.json({ code: 0, message: "登記成功" });
   } catch (error) {
     console.error("Failed to save visitor submit:", error);
-    return response.status(500).json({ code: -1, message: "系统繁忙，請稍後再試。" });
+    return response.status(500).json({ code: -1, message: "系統繁忙，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12491,7 +12491,7 @@ app.post("/api/public/call-centers/:slug/visitor-submit", async (request, respon
 // POST /api/public/call-centers/:slug/visitor-message - 访客在線留言
 app.post("/api/public/call-centers/:slug/visitor-message", async (request, response) => {
   const slug = sanitizeString(request.params.slug, 100);
-  if (!slug) return response.status(400).json({ code: -1, message: "無效的链接。" });
+  if (!slug) return response.status(400).json({ code: -1, message: "無效的連結。" });
 
   const { name, phone, email, company, content, agentId, agentName, agentSip, categoryId } = request.body || {};
   const visitorName = sanitizeString(String(name || ''), 100);
@@ -12540,7 +12540,7 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
     return response.json({ code: 0, message: "留言提交成功" });
   } catch (error) {
     console.error("Failed to save visitor message:", error.message, error.stack);
-    return response.status(500).json({ code: -1, message: error.message || "系统繁忙，請稍後再試。" });
+    return response.status(500).json({ code: -1, message: error.message || "系統繁忙，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12549,11 +12549,11 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
 // GET /api/call-centers/:id/visitor-inquiries - 取得呼叫中心的访客记录
 app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看访客记录。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以檢視訪客記錄。" });
   }
 
   const callCenterId = Number(request.params.id);
-  if (!Number.isInteger(callCenterId) || callCenterId <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(callCenterId) || callCenterId <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   const limit = Math.max(1, parseInt(request.query.limit || "10", 10));
   const offset = Math.max(0, parseInt(request.query.offset || "0", 10));
@@ -12622,7 +12622,7 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
     return response.json({ code: 0, data: { list: formattedRows, total, centerName: cc.center_name } });
   } catch (error) {
     console.error("Failed to fetch visitor inquiries:", error.message, error.stack);
-    return response.status(500).json({ code: -1, message: error.message || "取得访客记录失败。" });
+    return response.status(500).json({ code: -1, message: error.message || "取得訪客記錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12631,15 +12631,15 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
 // DELETE /api/call-centers/:callCenterId/visitor-inquiries - 批量/单条刪除访客记录
 app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以刪除访客记录。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以刪除訪客記錄。" });
   }
 
   const callCenterId = Number(request.params.callCenterId);
-  if (!Number.isInteger(callCenterId) || callCenterId <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心编号。" });
+  if (!Number.isInteger(callCenterId) || callCenterId <= 0) return response.status(400).json({ code: -1, message: "無效的呼叫中心編號。" });
 
   const ids = Array.isArray(request.body?.ids) ? request.body.ids.map(Number).filter(id => id > 0) : [];
   if (ids.length === 0) {
-    return response.status(400).json({ code: -1, message: "請提供要刪除的访客记录编号。" });
+    return response.status(400).json({ code: -1, message: "請提供要刪除的訪客記錄編號。" });
   }
 
   let connection;
@@ -12662,11 +12662,11 @@ app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, as
     );
 
     await connection.commit();
-    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 条访客记录。` });
+    return response.json({ code: 0, message: `成功刪除 ${result.affectedRows} 條訪客記錄。` });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete visitor inquiries:", error);
-    return response.status(500).json({ code: -1, message: "刪除访客记录失败。" });
+    return response.status(500).json({ code: -1, message: "刪除訪客記錄失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12675,7 +12675,7 @@ app.delete("/api/call-centers/:callCenterId/visitor-inquiries", requireAdmin, as
 // GET /api/access-communities - 取得租戶的社區列表及统计
 app.get("/api/access-communities", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ code: -1, message: "只有租戶管理員可以查看社區列表。" });
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以檢視社群列表。" });
   }
 
   const keyword = sanitizeString(request.query.keyword, 120) || null;
@@ -12854,7 +12854,7 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
             authCount: Number(ent.auth_count) || 0,
           });
         }
-      } catch (err) { console.error("查詢社區入口失敗:", err); }
+      } catch (err) { console.error("查詢社群入口失敗:", err); }
     }
 
     // 查詢權限矩陣
@@ -12874,7 +12874,7 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
           if (!authMatrixMap[String(a.community_id)][String(a.entrance_id)]) authMatrixMap[String(a.community_id)][String(a.entrance_id)] = [];
           authMatrixMap[String(a.community_id)][String(a.entrance_id)].push(Number(a.room_id));
         }
-      } catch (err) { console.error("查詢權限矩陣失敗:", err); }
+      } catch (err) { console.error("查詢許可權矩陣失敗:", err); }
     }
 
     response.json({
@@ -12909,8 +12909,8 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
       },
     });
   } catch (error) {
-    console.error("獲取社區列表失敗:", error);
-    response.status(500).json({ code: -1, message: "獲取社區列表失敗。" });
+    console.error("獲取社群列表失敗:", error);
+    response.status(500).json({ code: -1, message: "獲取社群列表失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12919,18 +12919,18 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
 // POST /api/access-communities - 租戶新增社區
 app.post("/api/access-communities", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以管理社區。" });
+    return response.status(403).json({ message: "只有租戶管理員可以管理社群。" });
   }
 
   const payload = request.body || {};
   const name = sanitizeString(payload.name, 100);
-  if (!name) return response.status(400).json({ message: "請填寫社區名稱。" });
+  if (!name) return response.status(400).json({ message: "請填寫社群名稱。" });
 
   const slug = sanitizeString(payload.slug, 64);
   if (!slug) return response.status(400).json({ message: "請提供唯一標識 Slug。" });
 
   const address = sanitizeString(payload.address, 500);
-  if (!address) return response.status(400).json({ message: "請填寫社區地址。" });
+  if (!address) return response.status(400).json({ message: "請填寫社群地址。" });
   const latitude = payload.latitude != null && !isNaN(Number(payload.latitude)) ? Number(payload.latitude) : null;
   const longitude = payload.longitude != null && !isNaN(Number(payload.longitude)) ? Number(payload.longitude) : null;
   const serviceScope = payload.serviceScope != null && !isNaN(Number(payload.serviceScope)) ? Math.round(Number(payload.serviceScope)) : 0;
@@ -12967,7 +12967,7 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
     );
     response.status(201).json({
       code: 0,
-      message: "社區已新增。",
+      message: "社群已新增。",
       data: {
         id: Number(result.insertId),
         tenantId: request.admin.tenantId,
@@ -12989,8 +12989,8 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
       }
     });
   } catch (error) {
-    console.error("新增社區失敗:", error);
-    response.status(500).json({ message: "新增社區失敗，請稍後再試。" });
+    console.error("新增社群失敗:", error);
+    response.status(500).json({ message: "新增社群失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -12999,21 +12999,21 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
 // PUT /api/access-communities/:id - 編輯社區
 app.put("/api/access-communities/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以管理社區。" });
+    return response.status(403).json({ message: "只有租戶管理員可以管理社群。" });
   }
 
   const communityId = Number(request.params.id);
-  if (!communityId) return response.status(400).json({ message: "無效的社區 ID。" });
+  if (!communityId) return response.status(400).json({ message: "無效的社群 ID。" });
 
   const payload = request.body || {};
   const name = sanitizeString(payload.name, 100);
-  if (!name) return response.status(400).json({ message: "請填寫社區名稱。" });
+  if (!name) return response.status(400).json({ message: "請填寫社群名稱。" });
 
   const slug = sanitizeString(payload.slug, 64);
   if (!slug) return response.status(400).json({ message: "請提供唯一標識 Slug。" });
 
   const address = sanitizeString(payload.address, 500);
-  if (!address) return response.status(400).json({ message: "請填寫社區地址。" });
+  if (!address) return response.status(400).json({ message: "請填寫社群地址。" });
 
   const latitude = payload.latitude != null && !isNaN(Number(payload.latitude)) ? Number(payload.latitude) : null;
   const longitude = payload.longitude != null && !isNaN(Number(payload.longitude)) ? Number(payload.longitude) : null;
@@ -13037,7 +13037,7 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
       "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "社區不存在。" });
+    if (!existing) return response.status(404).json({ message: "社群不存在。" });
 
     // 檢查 slug 唯一性（排除自身）
     const [existingSlug] = await connection.query(
@@ -13057,7 +13057,7 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
 
     response.json({
       code: 0,
-      message: "社區已更新。",
+      message: "社群已更新。",
       data: {
         id: communityId,
         tenantId: request.admin.tenantId,
@@ -13079,8 +13079,8 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
       }
     });
   } catch (error) {
-    console.error("編輯社區失敗:", error);
-    response.status(500).json({ message: "編輯社區失敗，請稍後再試。" });
+    console.error("編輯社群失敗:", error);
+    response.status(500).json({ message: "編輯社群失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -13089,11 +13089,11 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
 // PUT /api/access-communities/:id/toggle - 啟用/停用社區
 app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以管理社區。" });
+    return response.status(403).json({ message: "只有租戶管理員可以管理社群。" });
   }
 
   const communityId = Number(request.params.id);
-  if (!communityId) return response.status(400).json({ message: "無效的社區 ID。" });
+  if (!communityId) return response.status(400).json({ message: "無效的社群 ID。" });
 
   const isActive = request.body && request.body.isActive ? 1 : 0;
 
@@ -13105,7 +13105,7 @@ app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, resp
       "SELECT id, is_active FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "社區不存在。" });
+    if (!existing) return response.status(404).json({ message: "社群不存在。" });
 
     await connection.query(
       "UPDATE access_communities SET is_active = ? WHERE id = ? AND tenant_id = ?",
@@ -13114,11 +13114,11 @@ app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, resp
 
     response.json({
       code: 0,
-      message: isActive ? "社區已啟用。" : "社區已停用。",
+      message: isActive ? "社群已啟用。" : "社群已停用。",
       data: { id: communityId, isActive: !!isActive }
     });
   } catch (error) {
-    console.error("切換社區狀態失敗:", error);
+    console.error("切換社群狀態失敗:", error);
     response.status(500).json({ message: "操作失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
@@ -13128,11 +13128,11 @@ app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, resp
 // DELETE /api/access-communities/:id - 刪除社區
 app.delete("/api/access-communities/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以管理社區。" });
+    return response.status(403).json({ message: "只有租戶管理員可以管理社群。" });
   }
 
   const communityId = Number(request.params.id);
-  if (!communityId) return response.status(400).json({ message: "無效的社區 ID。" });
+  if (!communityId) return response.status(400).json({ message: "無效的社群 ID。" });
 
   let connection;
   try {
@@ -13142,17 +13142,17 @@ app.delete("/api/access-communities/:id", requireAdmin, async (request, response
       "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "社區不存在。" });
+    if (!existing) return response.status(404).json({ message: "社群不存在。" });
 
     await connection.query(
       "DELETE FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
 
-    response.json({ code: 0, message: "社區已刪除。", data: { id: communityId } });
+    response.json({ code: 0, message: "社群已刪除。", data: { id: communityId } });
   } catch (error) {
-    console.error("刪除社區失敗:", error);
-    response.status(500).json({ message: "刪除社區失敗，請稍後再試。" });
+    console.error("刪除社群失敗:", error);
+    response.status(500).json({ message: "刪除社群失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
   }
@@ -13166,7 +13166,7 @@ app.post("/api/access-buildings", requireAdmin, async (request, response) => {
 
   const payload = request.body || {};
   const communityId = Number(payload.communityId);
-  if (!communityId) return response.status(400).json({ message: "請提供所屬社區。" });
+  if (!communityId) return response.status(400).json({ message: "請提供所屬社群。" });
 
   const name = sanitizeString(payload.name, 255);
   if (!name) return response.status(400).json({ message: "請填寫樓宇名稱。" });
@@ -13188,7 +13188,7 @@ app.post("/api/access-buildings", requireAdmin, async (request, response) => {
       "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
-    if (!community) return response.status(404).json({ message: "社區不存在。" });
+    if (!community) return response.status(404).json({ message: "社群不存在。" });
 
     const result = await connection.query(
       `INSERT INTO access_buildings
@@ -13344,7 +13344,7 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
 // GET /api/sip-users/available - 獲取租戶可用的 SIP 用戶（已啟用且在有效期內）
 app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看 SIP 用戶。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視 SIP 使用者。" });
   }
 
   let connection;
@@ -13380,8 +13380,8 @@ app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
     }));
     response.json({ code: 0, data: { list } });
   } catch (error) {
-    console.error("獲取 SIP 用戶失敗:", error);
-    response.status(500).json({ message: "獲取 SIP 用戶失敗。" });
+    console.error("獲取 SIP 使用者失敗:", error);
+    response.status(500).json({ message: "獲取 SIP 使用者失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -13413,7 +13413,7 @@ app.put("/api/access-rooms/:id/assign-sip", requireAdmin, async (request, respon
         "SELECT id, username FROM sip_users WHERE id = ? AND tenant_id = ? AND status = 'active' AND (service_expires_at IS NULL OR service_expires_at > NOW())",
         [sipUserId, request.admin.tenantId]
       );
-      if (!sipUser) return response.status(400).json({ message: "SIP 用戶不存在或已停用/過期。" });
+      if (!sipUser) return response.status(400).json({ message: "SIP 使用者不存在或已停用/過期。" });
 
       const [web] = await connection.query(
         `SELECT 1 FROM tenant_web_account_entitlements
@@ -13482,7 +13482,7 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
         "SELECT id FROM sip_users WHERE id = ? AND tenant_id = ?",
         [sipUserId, request.admin.tenantId]
       );
-      if (!sipUser) return response.status(400).json({ message: "SIP 用戶不存在。" });
+      if (!sipUser) return response.status(400).json({ message: "SIP 使用者不存在。" });
     }
 
     const [dup] = await connection.query(
@@ -13639,7 +13639,7 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
   const buildingId = payload.buildingId != null ? Number(payload.buildingId) : null;
 
   if ((communityId && buildingId) || (!communityId && !buildingId)) {
-    return response.status(400).json({ message: "入口必須綁定社區或樓宇（二選一）。" });
+    return response.status(400).json({ message: "入口必須繫結社群或樓宇（二選一）。" });
   }
 
   const deviceId = payload.deviceId != null ? Number(payload.deviceId) : null;
@@ -13667,7 +13667,7 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
         "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
         [communityId, request.admin.tenantId]
       );
-      if (!community) return response.status(404).json({ message: "社區不存在。" });
+      if (!community) return response.status(404).json({ message: "社群不存在。" });
     }
 
     if (buildingId) {
@@ -13683,7 +13683,7 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
         "SELECT id FROM gate_devices WHERE id = ? AND tenant_id = ?",
         [deviceId, request.admin.tenantId]
       );
-      if (!device) return response.status(400).json({ message: "設備不存在。" });
+      if (!device) return response.status(400).json({ message: "裝置不存在。" });
     }
 
     const result = await connection.query(
@@ -13797,7 +13797,7 @@ app.put("/api/access-entrances/:id", requireAdmin, async (request, response) => 
 // GET /api/tenant/gate-devices - 租戶查看可用設備列表
 app.get("/api/tenant/gate-devices", requireAdmin, async (request, response) => {
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視。" });
   }
   let connection;
   try {
@@ -13841,7 +13841,7 @@ app.get("/api/tenant/gate-devices", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch tenant devices:", error);
-    response.status(500).json({ message: "獲取設備列表失敗。" });
+    response.status(500).json({ message: "獲取裝置列表失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -13888,7 +13888,7 @@ app.put("/api/access-entrances/:id/device", requireAdmin, async (request, respon
       );
       if (!device) {
         await connection.rollback();
-        return response.status(404).json({ message: "設備不存在。" });
+        return response.status(404).json({ message: "裝置不存在。" });
       }
       // Check if device is already assigned to another entrance
       const [otherEntrance] = await connection.query(
@@ -13897,7 +13897,7 @@ app.put("/api/access-entrances/:id/device", requireAdmin, async (request, respon
       );
       if (otherEntrance) {
         await connection.rollback();
-        return response.status(409).json({ message: `該設備已綁定入口「${otherEntrance.name}」。` });
+        return response.status(409).json({ message: `該裝置已繫結入口「${otherEntrance.name}」。` });
       }
 
       // Calculate expiry from tenant's latest plan expiry
@@ -13927,12 +13927,12 @@ app.put("/api/access-entrances/:id/device", requireAdmin, async (request, respon
 
     response.json({
       code: 0,
-      message: deviceId ? "設備已綁定。" : "設備已取消綁定。",
+      message: deviceId ? "裝置已繫結。" : "裝置已取消繫結。",
       data: { entranceId, deviceId }
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
-    console.error("綁定設備失敗:", error);
+    console.error("繫結裝置失敗:", error);
     response.status(500).json({ message: "操作失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
@@ -13961,7 +13961,7 @@ app.put("/api/access-entrances/:id/toggle", requireAdmin, async (request, respon
     if (!existing) return response.status(404).json({ message: "入口不存在。" });
 
     if (isActive && !existing.device_id) {
-      return response.status(400).json({ message: "未綁定設備的入口無法啟用，請先綁定設備。" });
+      return response.status(400).json({ message: "未繫結裝置的入口無法啟用，請先繫結裝置。" });
     }
 
     await connection.query(
@@ -14022,7 +14022,7 @@ app.put("/api/access-entrances/:entranceId/auth/building/:buildingId", requireAd
   }
   const entranceId = Number(request.params.entranceId);
   const buildingId = Number(request.params.buildingId);
-  if (!entranceId || !buildingId) return response.status(400).json({ message: "無效的參數。" });
+  if (!entranceId || !buildingId) return response.status(400).json({ message: "無效的引數。" });
 
   let connection;
   try {
@@ -14041,7 +14041,7 @@ app.put("/api/access-entrances/:entranceId/auth/building/:buildingId", requireAd
     );
     response.json({ code: 0, message: "樓宇全部房間已授權。" });
   } catch (error) {
-    console.error("批量授權失敗:", error);
+    console.error("批次授權失敗:", error);
     response.status(500).json({ message: "操作失敗。" });
   } finally {
     if (connection) connection.release();
@@ -14055,7 +14055,7 @@ app.delete("/api/access-entrances/:entranceId/auth/building/:buildingId", requir
   }
   const entranceId = Number(request.params.entranceId);
   const buildingId = Number(request.params.buildingId);
-  if (!entranceId || !buildingId) return response.status(400).json({ message: "無效的參數。" });
+  if (!entranceId || !buildingId) return response.status(400).json({ message: "無效的引數。" });
 
   let connection;
   try {
@@ -14068,7 +14068,7 @@ app.delete("/api/access-entrances/:entranceId/auth/building/:buildingId", requir
     );
     response.json({ code: 0, message: `已取消 ${result.affectedRows} 個房間的授權。` });
   } catch (error) {
-    console.error("批量取消授權失敗:", error);
+    console.error("批次取消授權失敗:", error);
     response.status(500).json({ message: "操作失敗。" });
   } finally {
     if (connection) connection.release();
@@ -14082,7 +14082,7 @@ app.post("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (re
   }
   const entranceId = Number(request.params.entranceId);
   const roomIds = (request.body?.roomIds || []).map(Number).filter(Boolean);
-  if (!entranceId || roomIds.length === 0) return response.status(400).json({ message: "無效的參數。" });
+  if (!entranceId || roomIds.length === 0) return response.status(400).json({ message: "無效的引數。" });
 
   let connection;
   try {
@@ -14098,7 +14098,7 @@ app.post("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (re
     );
     response.json({ code: 0, message: `已授權 ${roomIds.length} 個房間。` });
   } catch (error) {
-    console.error("批量授權房間失敗:", error);
+    console.error("批次授權房間失敗:", error);
     response.status(500).json({ message: "操作失敗。" });
   } finally {
     if (connection) connection.release();
@@ -14112,7 +14112,7 @@ app.delete("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (
   }
   const entranceId = Number(request.params.entranceId);
   const roomIds = (request.body?.roomIds || []).map(Number).filter(Boolean);
-  if (!entranceId || roomIds.length === 0) return response.status(400).json({ message: "無效的參數。" });
+  if (!entranceId || roomIds.length === 0) return response.status(400).json({ message: "無效的引數。" });
 
   let connection;
   try {
@@ -14124,7 +14124,7 @@ app.delete("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (
     );
     response.json({ code: 0, message: `已取消 ${roomIds.length} 個房間的授權。` });
   } catch (error) {
-    console.error("批量取消授權失敗:", error);
+    console.error("批次取消授權失敗:", error);
     response.status(500).json({ message: "操作失敗。" });
   } finally {
     if (connection) connection.release();
@@ -14138,7 +14138,7 @@ app.delete("/api/access-entrances/:entranceId/auth/:roomId", requireAdmin, async
   }
   const entranceId = Number(request.params.entranceId);
   const roomId = Number(request.params.roomId);
-  if (!entranceId || !roomId) return response.status(400).json({ message: "無效的參數。" });
+  if (!entranceId || !roomId) return response.status(400).json({ message: "無效的引數。" });
 
   let connection;
   try {
@@ -14160,7 +14160,7 @@ app.delete("/api/access-entrances/:entranceId/auth/:roomId", requireAdmin, async
 // GET /api/public/visitor/community/:slug - 訪客拜訪頁獲取社區資料
 app.get("/api/public/visitor/community/:slug", async (request, response) => {
   const slug = request.params.slug;
-  if (!slug) return response.status(400).json({ code: -1, message: "缺少社區參數。" });
+  if (!slug) return response.status(400).json({ code: -1, message: "缺少社群引數。" });
 
   let connection;
   try {
@@ -14170,7 +14170,7 @@ app.get("/api/public/visitor/community/:slug", async (request, response) => {
        FROM access_communities WHERE slug = ? AND is_active = 1 LIMIT 1`,
       [slug]
     );
-    if (!community) return response.status(404).json({ code: -1, message: "社區不存在或已停用。" });
+    if (!community) return response.status(404).json({ code: -1, message: "社群不存在或已停用。" });
 
     const buildings = await connection.query(
       `SELECT b.id, b.name, b.address
@@ -14217,8 +14217,8 @@ app.get("/api/public/visitor/community/:slug", async (request, response) => {
       }
     });
   } catch (error) {
-    console.error("獲取訪客社區資料失敗:", error);
-    response.status(500).json({ code: -1, message: "獲取社區資料失敗。" });
+    console.error("獲取訪客社群資料失敗:", error);
+    response.status(500).json({ code: -1, message: "獲取社群資料失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -14277,7 +14277,7 @@ app.post("/api/upload/community-image", requireAdmin, async (request, response) 
 // Serve uploaded community images
 app.use("/api/community-images", express.static(path.join(projectRoot, "assets/community-images")));
 
-// POST /api/admin/releases/upload - 上傳 APK 文件
+// POST /api/admin/releases/upload - 上傳 APK 檔案
 app.post("/api/admin/releases/upload", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ code: -1, message: "仅平台管理员可上传 APK。" });
@@ -14309,7 +14309,7 @@ app.post("/api/admin/releases/upload", requireAdmin, async (request, response) =
         if (fnMatch) {
           const ext = path.extname(fnMatch[1]).toLowerCase();
           if (ext !== ".apk") {
-            return response.status(400).json({ code: -1, message: "仅支持 .apk 文件。" });
+            return response.status(400).json({ code: -1, message: "僅支援 .apk 檔案。" });
           }
           // 提取原始版本号作为文件名一部分
           const baseName = path.basename(fnMatch[1], ext).replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -14335,10 +14335,10 @@ app.post("/api/admin/releases/upload", requireAdmin, async (request, response) =
           },
         });
       }
-      return response.status(400).json({ code: -1, message: "未检测到上传文件。" });
+      return response.status(400).json({ code: -1, message: "未檢測到上傳檔案。" });
     } catch (err) {
       console.error("APK upload error:", err);
-      return response.status(500).json({ code: -1, message: "上传失败。" });
+      return response.status(500).json({ code: -1, message: "上傳失敗。" });
     }
   });
 });
@@ -14351,7 +14351,7 @@ app.post("/api/admin/releases/upload", requireAdmin, async (request, response) =
 // GET /api/platform/admins - list all platform admins
 app.get("/api/platform/admins", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平臺管理員。" });
   }
   let connection;
   try {
@@ -14382,7 +14382,7 @@ app.get("/api/platform/admins", requireAdmin, async (request, response) => {
 // POST /api/platform/admins - create a platform admin
 app.post("/api/platform/admins", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平臺管理員。" });
   }
   const email = sanitizeString(request.body?.email, 255);
   const password = String(request.body?.password || "");
@@ -14392,14 +14392,14 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
     ? request.body.platformRole : "admin";
 
   if (!email || !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
-  if (password.length < 6) return response.status(400).json({ message: "密码至少需要 6 个字符。" });
+  if (password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
 
   let connection;
   try {
     connection = await pool.getConnection();
     const [existing] = await connection.query("SELECT id FROM admin_users WHERE email = ?", [email]);
     if (existing) {
-      return response.status(409).json({ message: "该邮箱已被使用。" });
+      return response.status(409).json({ message: "該郵箱已被使用。" });
     }
     const passwordHash = await hashPassword(password);
     const result = await connection.query(
@@ -14407,7 +14407,7 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
       [email, passwordHash, displayName || null, phoneNumber || null, platformRole]
     );
     return response.status(201).json({
-      message: "平台管理員已建立。",
+      message: "平臺管理員已建立。",
       admin: { id: Number(result.insertId), email, displayName, platformRole, status: 'active' },
     });
   } catch (error) {
@@ -14421,7 +14421,7 @@ app.post("/api/platform/admins", requireAdmin, async (request, response) => {
 // PUT /api/platform/admins/:id - update a platform admin
 app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平臺管理員。" });
   }
   const adminId = Number(request.params.id);
   if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
@@ -14434,7 +14434,7 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   const password = String(request.body?.password || "");
 
   if (email && !isValidEmail(email)) return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
-  if (password && password.length < 6) return response.status(400).json({ message: "密码至少需要 6 个字符。" });
+  if (password && password.length < 6) return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
 
   let connection;
   try {
@@ -14453,7 +14453,7 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
     if (phoneNumber !== undefined) { sets.push("phone_number = ?"); params.push(phoneNumber || null); }
     if (platformRole) { sets.push("platform_role = ?"); params.push(platformRole); }
     if (password) { sets.push("password_hash = ?"); params.push(await hashPassword(password)); }
-    if (sets.length === 0) return response.status(400).json({ message: "没有要更新的字段。" });
+    if (sets.length === 0) return response.status(400).json({ message: "沒有要更新的欄位。" });
     sql += sets.join(", ") + " WHERE id = ? AND account_type = 'platform'";
     params.push(adminId);
     await connection.query(sql, params);
@@ -14469,7 +14469,7 @@ app.put("/api/platform/admins/:id", requireAdmin, async (request, response) => {
 // PUT /api/platform/admins/:id/status - toggle platform admin status
 app.put("/api/platform/admins/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平臺管理員。" });
   }
   const adminId = Number(request.params.id);
   if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
@@ -14497,7 +14497,7 @@ app.put("/api/platform/admins/:id/status", requireAdmin, async (request, respons
 // DELETE /api/platform/admins/:id - delete a platform admin
 app.delete("/api/platform/admins/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有超級管理員可以管理平台管理員。" });
+    return response.status(403).json({ message: "只有超級管理員可以管理平臺管理員。" });
   }
   const adminId = Number(request.params.id);
   if (!Number.isInteger(adminId) || adminId <= 0) return response.status(400).json({ message: "管理員編號無效。" });
@@ -14576,7 +14576,7 @@ function getUptime() {
   const seconds = parseFloat(content.split(/\s+/)[0]);
   if (isNaN(seconds)) return null;
   const days = Math.floor(seconds / 86400);
-  return { seconds, days, text: days > 0 ? days + " 天" : Math.floor(seconds / 3600) + " 小时" };
+  return { seconds, days, text: days > 0 ? days + " 天" : Math.floor(seconds / 3600) + " 小時" };
 }
 
 function getLoadAvg() {
@@ -14587,7 +14587,7 @@ function getLoadAvg() {
 
 app.get("/api/platform/health", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看平台健康狀態。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視平臺健康狀態。" });
   }
   try {
     const cpu = getCpuUsage();
@@ -14735,22 +14735,22 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to read system health:", error);
-    return response.status(500).json({ message: "讀取平台健康狀態失敗。" });
+    return response.status(500).json({ message: "讀取平臺健康狀態失敗。" });
   }
 });
 
 // POST /api/platform/health/restart-ai - restart Web AI Docker service
 app.post("/api/platform/health/restart-ai", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以重啟服務。" });
+    return response.status(403).json({ message: "只有平臺管理員可以重啟服務。" });
   }
   try {
     const { execSync } = await import("node:child_process");
     execSync("docker compose -p " + aiComposeProject + " restart admin_ui 2>&1", { encoding: "utf8", timeout: 15000 });
-    return response.json({ message: "Web AI 服务已重启。" });
+    return response.json({ message: "Web AI 服務已重啟。" });
   } catch (error) {
     console.error("Failed to restart AI service:", error);
-    return response.status(500).json({ message: "重启 Web AI 服务失败：" + (error.message || "") });
+    return response.status(500).json({ message: "重啟 Web AI 服務失敗：" + (error.message || "") });
   }
 });
 
@@ -14759,7 +14759,7 @@ app.post("/api/platform/health/restart-ai", requireAdmin, async (request, respon
 // POST /api/platform/health/clean-logs - clean Asterisk and Flexisip logs safely
 app.post("/api/platform/health/clean-logs", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以清理日誌。" });
+    return response.status(403).json({ message: "只有平臺管理員可以清理日誌。" });
   }
   try {
     const { execSync } = await import("node:child_process");
@@ -14810,7 +14810,7 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
       }
     } catch {}
 
-    return response.json({ message: "日誌清理完成。當前日誌已清空，歸檔文件已刪除。", ...results });
+    return response.json({ message: "日誌清理完成。當前日誌已清空，歸檔檔案已刪除。", ...results });
   } catch (error) {
     console.error("Failed to clean logs:", error);
     return response.status(500).json({ message: "清理日誌失敗：" + (error.message || "") });
@@ -14843,10 +14843,10 @@ async function handleWebrtcAccountQuery(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 帳號。",
+      message: "只有平臺管理員可以查詢 WebRTC 帳號。",
       error: {
         code: "WEBRTC_ACCOUNT_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 帳號。",
+        message: "只有平臺管理員可以查詢 WebRTC 帳號。",
       },
     });
   }
@@ -14934,7 +14934,7 @@ async function handleWebrtcAccountStatusQuery(request, response) {
   if (!isPlatform && !tenantId) {
     return response.status(403).json({
       success: false,
-      message: "無權限查詢 WebRTC 帳號狀態。",
+      message: "無許可權查詢 WebRTC 帳號狀態。",
     });
   }
 
@@ -15016,10 +15016,10 @@ async function handleWebrtcAccountPresenceQuery(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 在線狀態。",
+      message: "只有平臺管理員可以查詢 WebRTC 線上狀態。",
       error: {
         code: "WEBRTC_PRESENCE_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 在線狀態。",
+        message: "只有平臺管理員可以查詢 WebRTC 線上狀態。",
       },
     });
   }
@@ -15040,17 +15040,17 @@ async function handleWebrtcAccountPresenceQuery(request, response) {
     const presence = await getWebrtcPresence(extension);
     return response.json({
       success: true,
-      message: "WebRTC 在線狀態已取得",
+      message: "WebRTC 線上狀態已取得",
       data: presence,
     });
   } catch (error) {
     const missingTable = /webrtc_account_presence_/i.test(String(error?.message || error?.sqlMessage || ""));
     return response.status(missingTable ? 503 : 500).json({
       success: false,
-      message: "WebRTC 在線狀態查詢失敗",
+      message: "WebRTC 線上狀態查詢失敗",
       error: {
         code: missingTable ? "WEBRTC_PRESENCE_TABLE_MISSING" : "WEBRTC_PRESENCE_QUERY_FAILED",
-        message: "WebRTC 在線狀態查詢失敗",
+        message: "WebRTC 線上狀態查詢失敗",
       },
     });
   }
@@ -15060,7 +15060,7 @@ async function handleWebrtcAccountPresenceBatchQuery(request, response) {
   const isPlatform = request.admin.accountType === "platform";
   const tenantId = request.admin.tenantId;
   if (!isPlatform && !tenantId) {
-    return response.status(403).json({ success: false, message: "無權限查詢在線狀態。" });
+    return response.status(403).json({ success: false, message: "無許可權查詢線上狀態。" });
   }
   const raw = String(request.query?.extensions || "").trim();
   let extensions = raw ? raw.split(",").map(e => e.trim()).filter(Boolean) : [];
@@ -15085,7 +15085,7 @@ async function handleWebrtcAccountPresenceBatchQuery(request, response) {
     const result = await getWebrtcPresenceBatch(extensions);
     return response.json({ success: true, data: result });
   } catch (error) {
-    return response.status(500).json({ success: false, message: "批量在線狀態查詢失敗" });
+    return response.status(500).json({ success: false, message: "批次線上狀態查詢失敗" });
   }
 }
 
@@ -15100,10 +15100,10 @@ async function handleWebrtcAccountCallLogsQuery(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 呼叫日誌。",
+      message: "只有平臺管理員可以查詢 WebRTC 呼叫日誌。",
       error: {
         code: "WEBRTC_CALL_LOG_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 呼叫日誌。",
+        message: "只有平臺管理員可以查詢 WebRTC 呼叫日誌。",
       },
     });
   }
@@ -15185,10 +15185,10 @@ async function handleWebrtcAccountConfigQuery(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 帳號配置。",
+      message: "只有平臺管理員可以查詢 WebRTC 帳號配置。",
       error: {
         code: "WEBRTC_ACCOUNT_CONFIG_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 帳號配置。",
+        message: "只有平臺管理員可以查詢 WebRTC 帳號配置。",
       },
     });
   }
@@ -15342,10 +15342,10 @@ async function handleWebrtcAccountConsistencyQuery(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以查詢 WebRTC 帳號一致性。",
+      message: "只有平臺管理員可以查詢 WebRTC 帳號一致性。",
       error: {
         code: "WEBRTC_ACCOUNT_CONSISTENCY_QUERY_FAILED",
-        message: "只有平台管理員可以查詢 WebRTC 帳號一致性。",
+        message: "只有平臺管理員可以查詢 WebRTC 帳號一致性。",
       },
     });
   }
@@ -15672,10 +15672,10 @@ async function handleWebrtcAccountDelete(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以刪除 WebRTC 帳號。",
+      message: "只有平臺管理員可以刪除 WebRTC 帳號。",
       error: {
         code: "WEBRTC_ACCOUNT_DELETE_FAILED",
-        message: "只有平台管理員可以刪除 WebRTC 帳號。",
+        message: "只有平臺管理員可以刪除 WebRTC 帳號。",
       },
     });
   }
@@ -15825,7 +15825,7 @@ async function handleWebrtcAccountDelete(request, response) {
         markDeleteStepFailed(steps, "finalize", { failed: responseData.failed.map((item) => item.extension) });
         return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
           code: "WEBRTC_ACCOUNT_DELETE_FAILED",
-          message: "WebRTC 帳號刪除過程中有項目失敗",
+          message: "WebRTC 帳號刪除過程中有專案失敗",
         }, 502);
       }
       // 同步刪除 SaaS 數據庫記錄
@@ -16019,7 +16019,7 @@ async function handleWebrtcAccountDelete(request, response) {
           responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
           return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
             code: "WEBRTC_ACCOUNT_DELETE_FAILED",
-            message: "WebRTC Runtime 疊加設定刪除後回滾失敗，請人工檢查備份文件",
+            message: "WebRTC Runtime 疊加設定刪除後回滾失敗，請人工檢查備份檔案",
           }, 500);
         }
       }
@@ -16117,7 +16117,7 @@ async function handleWebrtcAccountDelete(request, response) {
       return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
         code: "WEBRTC_ACCOUNT_DELETE_FAILED",
         message: responseData.failed.length > 0
-          ? "WebRTC 帳號刪除過程中有項目失敗"
+          ? "WebRTC 帳號刪除過程中有專案失敗"
           : "WebRTC 帳號刪除驗證失敗",
       }, 502);
     }
@@ -16163,10 +16163,10 @@ app.patch("/api/pbx/webrtc-accounts/:extension/display-name", requireAdmin, asyn
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以更新 WebRTC 帳號顯示名稱。",
+      message: "只有平臺管理員可以更新 WebRTC 帳號顯示名稱。",
       error: {
         code: "WEBRTC_DISPLAY_NAME_UPDATE_FAILED",
-        message: "只有平台管理員可以更新 WebRTC 帳號顯示名稱。",
+        message: "只有平臺管理員可以更新 WebRTC 帳號顯示名稱。",
       },
     });
   }
@@ -16392,10 +16392,10 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以更新 WebRTC 帳號密碼。",
+      message: "只有平臺管理員可以更新 WebRTC 帳號密碼。",
       error: {
         code: "WEBRTC_PASSWORD_UPDATE_FAILED",
-        message: "只有平台管理員可以更新 WebRTC 帳號密碼。",
+        message: "只有平臺管理員可以更新 WebRTC 帳號密碼。",
       },
     });
   }
@@ -16523,10 +16523,10 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
       success: false,
-      message: "只有平台管理員可以建立 PBX 測試帳號。",
+      message: "只有平臺管理員可以建立 PBX 測試帳號。",
       error: {
         code: "WEBRTC_ACCOUNT_CREATE_FAILED",
-        message: "只有平台管理員可以建立 PBX 測試帳號。",
+        message: "只有平臺管理員可以建立 PBX 測試帳號。",
       },
     });
   }
@@ -16897,7 +16897,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       await rollbackCreatedAccount().catch(() => {});
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "ENDPOINT_CUSTOM_POST_WRITE_FAILED",
-        message: "WebRTC Runtime 補充參數寫入失敗",
+        message: "WebRTC Runtime 補充引數寫入失敗",
       }, 502);
     }
     responseData.endpointCustomPostWritten = true;
@@ -16932,7 +16932,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份檔案",
         }, 500);
       }
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
@@ -17003,7 +17003,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份檔案",
         }, 500);
       }
       responseData.baseline = {
@@ -17030,7 +17030,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       markStepFailed(steps, "finalize", { success: false });
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
         code: "RUNTIME_VERIFY_FAILED",
-        message: "WebRTC Runtime 參數驗證失敗",
+        message: "WebRTC Runtime 引數驗證失敗",
       }, 502);
     }
     markStepSuccess(steps, "verify_runtime_endpoint", {
@@ -17054,7 +17054,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       if (responseData.rollbackExecuted && responseData.rollbackSuccess === false) {
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "ROLLBACK_FAILED",
-          message: "WebRTC 帳號回滾失敗，請人工檢查備份文件",
+          message: "WebRTC 帳號回滾失敗，請人工檢查備份檔案",
         }, 500);
       }
       return finalizeReport(false, "WebRTC 帳號建立失敗", {
@@ -17137,8 +17137,8 @@ app.get("/api/flexisip/accounts/registration-status", requireAdmin, async (reque
   if (domain && !/^[a-z0-9.-]+$/i.test(domain)) {
     return response.status(400).json({
       success: false,
-      message: "查詢參數格式不正確",
-      error: { code: "INVALID_REGISTRATION_STATUS_QUERY", message: "查詢參數格式不正確" },
+      message: "查詢引數格式不正確",
+      error: { code: "INVALID_REGISTRATION_STATUS_QUERY", message: "查詢引數格式不正確" },
     });
   }
 
@@ -17228,8 +17228,8 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
   if (!username || (domain && !/^[a-z0-9.-]+$/i.test(domain))) {
     return response.status(400).json({
       success: false,
-      message: "查詢參數格式不正確",
-      error: { code: "INVALID_REGISTRATION_DETAIL_QUERY", message: "查詢參數格式不正確" },
+      message: "查詢引數格式不正確",
+      error: { code: "INVALID_REGISTRATION_DETAIL_QUERY", message: "查詢引數格式不正確" },
     });
   }
 
@@ -17239,7 +17239,7 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
     try {
       const [row] = await dbConn.query("SELECT id FROM sip_users WHERE username = ? AND tenant_id = ? LIMIT 1", [username, tenantId]);
       if (!row) {
-        return response.status(403).json({ success: false, message: "無權限查看該帳號詳情" });
+        return response.status(403).json({ success: false, message: "無許可權檢視該帳號詳情" });
       }
     } finally { dbConn.release(); }
   }
@@ -17372,10 +17372,10 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   if (accountTokens.some((token) => !/^\d+$/.test(token))) {
     return response.status(400).json({
       success: false,
-      message: "查詢參數格式不正確",
+      message: "查詢引數格式不正確",
       error: {
         code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
-        message: "查詢參數格式不正確",
+        message: "查詢引數格式不正確",
       },
     });
   }
@@ -17383,10 +17383,10 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   if (domain && !/^[a-z0-9.-]+$/i.test(domain)) {
     return response.status(400).json({
       success: false,
-      message: "查詢參數格式不正確",
+      message: "查詢引數格式不正確",
       error: {
         code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
-        message: "查詢參數格式不正確",
+        message: "查詢引數格式不正確",
       },
     });
   }
@@ -17397,10 +17397,10 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
       !isValidFlexisipCallLogIsoDateTime(to)) {
     return response.status(400).json({
       success: false,
-      message: "查詢參數格式不正確",
+      message: "查詢引數格式不正確",
       error: {
         code: "INVALID_FLEXISIP_CALL_LOG_QUERY",
-        message: "查詢參數格式不正確",
+        message: "查詢引數格式不正確",
       },
     });
   }
@@ -17455,7 +17455,7 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
 // GET /api/flexisip/statistics/calls - proxy Flexisip Admin calls statistics.
 app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看服務端通話統計。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視服務端通話統計。" });
   }
 
   const from = sanitizeString(request.query.from || "", 20);
@@ -17589,7 +17589,7 @@ app.get("/api/flexisip/statistics/calls", requireAdmin, async (request, response
 // GET /api/admin/flexisip/remote-accounts-not-local - 取得 Flexisip 中不在本地数据库的帳號列表
 app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查詢 Flexisip 遠端帳號。" });
+    return response.status(403).json({ message: "只有平臺管理員可以查詢 Flexisip 遠端帳號。" });
   }
   let connection;
   try {
@@ -17680,7 +17680,7 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
       console.log('[flexisip-import] total remote accounts:', remoteAccounts.length);
     } catch (err) {
       console.error("Failed to discover Flexisip accounts:", err);
-      return response.status(502).json({ message: "無法連接 Flexisip。" });
+      return response.status(502).json({ message: "無法連線 Flexisip。" });
     }
 
     // Map all accounts with existsLocally flag
@@ -17720,11 +17720,11 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
 // POST /api/admin/flexisip/import-remote-accounts - 批量导入 Flexisip 远端帳號到本地
 app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以導入 Flexisip 遠端帳號。" });
+    return response.status(403).json({ message: "只有平臺管理員可以匯入 Flexisip 遠端帳號。" });
   }
   const { accountIds } = request.body || {};
   if (!Array.isArray(accountIds) || accountIds.length === 0) {
-    return response.status(400).json({ message: "请选择至少一个要導入的帳號。" });
+    return response.status(400).json({ message: "請選擇至少一個要匯入的帳號。" });
   }
 
   let connection;
@@ -17765,7 +17765,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
         );
         if (existing) {
           results.fail++;
-          results.errors.push(`${username}@${sipDomain}: 該帳號已存在於本地數據庫`);
+          results.errors.push(`${username}@${sipDomain}: 該帳號已存在於本地資料庫`);
           continue;
         }
 
@@ -17804,7 +17804,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
     return response.json(results);
   } catch (err) {
     console.error("Failed to import remote accounts:", err);
-    return response.status(500).json({ message: "導入遠端帳號失敗。" });
+    return response.status(500).json({ message: "匯入遠端帳號失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -17813,7 +17813,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
 // POST /api/flexisip/accounts/tombstones/release - release a deleted Flexisip username reservation.
 app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已刪除的服务端用户名。" });
+    return response.status(403).json({ message: "只有平臺超級管理員可以釋放已刪除的服務端使用者名稱。" });
   }
 
   const username = sanitizeString(request.body?.username, 64);
@@ -17822,13 +17822,13 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
 
   if (!username || !domain) {
     return response.status(400).json({
-      message: "username 和 domain 为必填项。",
+      message: "username 和 domain 為必填項。",
       code: "FLEXISIP_TOMBSTONE_INVALID_INPUT",
     });
   }
   if (!reason) {
     return response.status(400).json({
-      message: "请填写释放已刪除用户名的原因。",
+      message: "請填寫釋放已刪除使用者名稱的原因。",
       code: "FLEXISIP_TOMBSTONE_REASON_REQUIRED",
     });
   }
@@ -17876,7 +17876,7 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
     return response.status(500).json({
       success: false,
       code: "FLEXISIP_TOMBSTONE_RELEASE_FAILED",
-      message: "释放已刪除的服务端用户名失败。",
+      message: "釋放已刪除的服務端使用者名稱失敗。",
     });
   }
 });
@@ -17884,15 +17884,15 @@ app.post("/api/flexisip/accounts/tombstones/release", requireAdmin, async (reque
 // POST /api/flexisip/accounts/tombstones/batch-release - 批量释放已刪除的 Flexisip 用户名
 app.post("/api/flexisip/accounts/tombstones/batch-release", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform' || request.admin.platformRole !== "super_admin") {
-    return response.status(403).json({ message: "只有平台超级管理员可以释放已刪除的服务端用户名。" });
+    return response.status(403).json({ message: "只有平臺超級管理員可以釋放已刪除的服務端使用者名稱。" });
   }
 
   const items = request.body?.items;
   if (!Array.isArray(items) || items.length === 0 || items.length > 200) {
-    return response.status(400).json({ message: "items 必须是 1-200 条记录。" });
+    return response.status(400).json({ message: "items 必須是 1-200 條記錄。" });
   }
 
-  const reason = sanitizeString(request.body?.reason, 500) || '批量释放';
+  const reason = sanitizeString(request.body?.reason, 500) || '批次釋放';
 
   const results = [];
   for (const item of items) {
@@ -17917,7 +17917,7 @@ app.post("/api/flexisip/accounts/tombstones/batch-release", requireAdmin, async 
 // GET /api/platform/stats - platform communication & operation stats
 app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "只有平台管理員可以查看平台統計。" });
+    return response.status(403).json({ message: "只有平臺管理員可以檢視平臺統計。" });
   }
   let connection;
   try {
@@ -17971,7 +17971,7 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch platform stats:", error);
-    return response.status(500).json({ message: "讀取平台統計失敗。" });
+    return response.status(500).json({ message: "讀取平臺統計失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -17981,10 +17981,10 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
 // GET /api/tenant/dashboard - tenant dashboard data (tenant admin only)
 app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
-    return response.status(403).json({ message: "平台管理員請使用平台概覽。" });
+    return response.status(403).json({ message: "平臺管理員請使用平臺概覽。" });
   }
   if (!request.admin.tenantId) {
-    return response.status(403).json({ message: "只有租戶管理員可以查看租戶概覽。" });
+    return response.status(403).json({ message: "只有租戶管理員可以檢視租戶概覽。" });
   }
   const tenantId = request.admin.tenantId;
   let connection;
@@ -17995,7 +17995,7 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
     const [tenant] = await connection.query(
       "SELECT id, name, sip_domain, contact_person, contact_phone, contact_email, status, created_at FROM tenants WHERE id = ?", [tenantId]
     );
-    if (!tenant) return response.status(404).json({ message: "租户不存在。" });
+    if (!tenant) return response.status(404).json({ message: "租戶不存在。" });
 
     // Current plan
     const [plan] = await connection.query(
@@ -18107,7 +18107,7 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
         accountQuantity: plan.account_quantity || 0,
         addonNames: planAddons.map(a => a.item_name).join("、") || "-",
         payableAmount: Number(plan.payable_amount || 0),
-        paymentMethod: plan.payment_method === 'offline' ? '线下支付' : plan.payment_method === 'online' ? '线上支付' : '-',
+        paymentMethod: plan.payment_method === 'offline' ? '線下支付' : plan.payment_method === 'online' ? '線上支付' : '-',
         paymentDate: (planPayment[0] && planPayment[0].payment_date) || "-",
         createdAt: plan.created_at || "-",
         expiresAt: plan.expires_at || null,
@@ -18184,7 +18184,7 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
     }));
   } catch (error) {
     console.error("Failed to fetch tenant dashboard:", error);
-    return response.status(500).json({ message: "讀取租户概览失败。" });
+    return response.status(500).json({ message: "讀取租戶概覽失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -18199,11 +18199,11 @@ app.post("/api/chatroom/ephemeral-policy", async (request, response) => {
   const setByUsername = sanitizeString(String(request.body?.setByUsername || senderUsername), 120);
 
   if (!chatroomSipUri || !senderUsername) {
-    return response.status(400).json({ message: "缺少必要参数。" });
+    return response.status(400).json({ message: "缺少必要引數。" });
   }
   if (lifetimeSeconds < 1 || lifetimeSeconds > 604800) {
     if (enabled) {
-      return response.status(400).json({ message: "lifetimeSeconds 必须在 1-604800 之间。" });
+      return response.status(400).json({ message: "lifetimeSeconds 必須在 1-604800 之間。" });
     }
   }
 
@@ -18238,7 +18238,7 @@ app.post("/api/chatroom/ephemeral-policy", async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to save ephemeral policy:", error);
-    return response.status(500).json({ message: "保存阅后即焚策略失败。" });
+    return response.status(500).json({ message: "儲存閱後即焚策略失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -18249,7 +18249,7 @@ app.get("/api/chatroom/ephemeral-policy", async (request, response) => {
   const chatroomSipUri = sanitizeString(String(request.query?.chatroom || ""), 512);
   const senderUsername = sanitizeString(String(request.query?.sender || ""), 120);
   if (!chatroomSipUri || !senderUsername) {
-    return response.status(400).json({ message: "缺少 chatroom 或 sender 参数。" });
+    return response.status(400).json({ message: "缺少 chatroom 或 sender 引數。" });
   }
 
   let connection;
@@ -18275,7 +18275,7 @@ app.get("/api/chatroom/ephemeral-policy", async (request, response) => {
     });
   } catch (error) {
     console.error("Failed to fetch ephemeral policy:", error);
-    return response.status(500).json({ message: "查询阅后即焚策略失败。" });
+    return response.status(500).json({ message: "查詢閱後即焚策略失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -18313,7 +18313,7 @@ app.get("/api/chatroom/policies", async (request, response) => {
     return response.json({ policies });
   } catch (error) {
     console.error("Failed to fetch ephemeral policies:", error);
-    return response.status(500).json({ message: "批量查询策略失败。" });
+    return response.status(500).json({ message: "批次查詢策略失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -18340,7 +18340,7 @@ app.post("/api/ai/chat/session", requireSipUser, async (request, response) => {
       return response.status(error.statusCode).json(error.toJSON());
     }
     console.error("Failed to create AI session:", error);
-    return response.status(500).json({ message: "创建会话失败" });
+    return response.status(500).json({ message: "建立會話失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18350,7 +18350,7 @@ app.post("/api/ai/chat/session", requireSipUser, async (request, response) => {
 app.get("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
   const sipUserId = request.admin.id;
   const sessionId = parseInt(request.params.id, 10);
-  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
 
   let connection;
   try {
@@ -18358,7 +18358,7 @@ app.get("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, re
     await ensureAiAllowed(sipUserId, connection);
     const messages = await getMessages(sessionId, sipUserId, connection);
     if (messages === null) {
-      return response.status(404).json({ message: "会话不存在" });
+      return response.status(404).json({ message: "會話不存在" });
     }
     return response.json({ messages });
   } catch (error) {
@@ -18366,7 +18366,7 @@ app.get("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, re
       return response.status(error.statusCode).json(error.toJSON());
     }
     console.error("Failed to fetch AI messages:", error);
-    return response.status(500).json({ message: "获取消息失败" });
+    return response.status(500).json({ message: "獲取訊息失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18378,8 +18378,8 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
   const sessionId = parseInt(request.params.id, 10);
   const content = sanitizeString(String(request.body?.content || ""), 2000);
 
-  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
-  if (!content) return response.status(400).json({ message: "消息不能为空" });
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+  if (!content) return response.status(400).json({ message: "訊息不能為空" });
 
   let connection;
   try {
@@ -18399,7 +18399,7 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
       return response.status(error.statusCode).json(error.toJSON());
     }
     console.error("Failed to send AI message:", error);
-    return response.status(500).json({ message: "发送消息失败" });
+    return response.status(500).json({ message: "傳送訊息失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18409,7 +18409,7 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
 app.delete("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
   const sipUserId = request.admin.id;
   const sessionId = parseInt(request.params.id, 10);
-  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
 
   let connection;
   try {
@@ -18419,14 +18419,14 @@ app.delete("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request,
       `SELECT id FROM ai_bot_sessions WHERE id = ? AND owner_sip_user_id = ? LIMIT 1`,
       [sessionId, sipUserId]
     );
-    if (!session) return response.status(404).json({ message: "会话不存在" });
+    if (!session) return response.status(404).json({ message: "會話不存在" });
 
     await connection.query(`DELETE FROM ai_bot_messages WHERE session_id = ?`, [sessionId]);
     return response.json({ ok: true, sessionId: Number(session.id), cleared: true });
   } catch (error) {
     if (error instanceof AiError) return response.status(error.statusCode).json(error.toJSON());
     console.error("Failed to clear AI messages:", error);
-    return response.status(500).json({ message: "清空消息失败" });
+    return response.status(500).json({ message: "清空訊息失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18436,21 +18436,21 @@ app.delete("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request,
 app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response) => {
   const sipUserId = request.admin.id;
   const sessionId = parseInt(request.params.id, 10);
-  if (!sessionId) return response.status(400).json({ message: "无效的会话 ID" });
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
 
   let connection;
   try {
     connection = await pool.getConnection();
     await ensureAiAllowed(sipUserId, connection);
     const deleted = await deleteSession(sessionId, sipUserId, connection);
-    if (!deleted) return response.status(404).json({ message: "会话不存在" });
+    if (!deleted) return response.status(404).json({ message: "會話不存在" });
     return response.json({ ok: true });
   } catch (error) {
     if (error instanceof AiError) {
       return response.status(error.statusCode).json(error.toJSON());
     }
     console.error("Failed to delete AI session:", error);
-    return response.status(500).json({ message: "删除会话失败" });
+    return response.status(500).json({ message: "刪除會話失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18496,7 +18496,7 @@ app.get("/api/public/releases/check", async (request, response) => {
   const currentVersion = sanitizeString(String(request.query.version || ""), 50);
   const platform = sanitizeString(String(request.query.platform || "android"), 20);
   if (!currentVersion) {
-    return response.json({ update: false, message: "缺少 version 参数" });
+    return response.json({ update: false, message: "缺少 version 引數" });
   }
   let connection;
   try {
@@ -18506,7 +18506,7 @@ app.get("/api/public/releases/check", async (request, response) => {
        FROM app_releases WHERE platform = ? AND status = 'published' AND released_at IS NOT NULL
        ORDER BY version_code DESC LIMIT 1`, [platform]
     );
-    if (!latest) return response.json({ update: false, message: "暂无已发布的版本" });
+    if (!latest) return response.json({ update: false, message: "暫無已釋出的版本" });
     const currentCode = parseVersionCode(currentVersion);
     if (latest.version_code > currentCode) {
       return response.json({ update: true, version: latest.version, versionCode: latest.version_code, url: latest.download_url, fileSize: latest.file_size, sha256: latest.sha256, notes: latest.release_notes || "" });
@@ -18514,7 +18514,7 @@ app.get("/api/public/releases/check", async (request, response) => {
     return response.json({ update: false, message: "已是最新版本" });
   } catch (error) {
     console.error("Version check failed:", error);
-    return response.status(500).json({ update: false, message: "版本检查失败" });
+    return response.status(500).json({ update: false, message: "版本檢查失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18523,7 +18523,7 @@ app.get("/api/public/releases/check", async (request, response) => {
 // GET /api/admin/releases - 管理后台获取版本发布列表
 app.get("/api/admin/releases", requireAdmin, async (request, response) => {
   if (!['platform', 'tenant'].includes(request.admin.accountType)) {
-    return response.status(403).json({ code: -1, message: "仅管理员可查看版本发布" });
+    return response.status(403).json({ code: -1, message: "僅管理員可檢視版本釋出" });
   }
 
   let connection;
@@ -18538,7 +18538,7 @@ app.get("/api/admin/releases", requireAdmin, async (request, response) => {
     return response.json({ code: 0, data: bigIntSafe(rows) });
   } catch (error) {
     console.error("Failed to fetch releases:", error);
-    return response.status(500).json({ code: -1, message: "获取版本列表失败" });
+    return response.status(500).json({ code: -1, message: "獲取版本列表失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18547,7 +18547,7 @@ app.get("/api/admin/releases", requireAdmin, async (request, response) => {
 // POST /api/admin/releases - 创建新版本发布
 app.post("/api/admin/releases", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+    return response.status(403).json({ code: -1, message: "僅平臺管理員可管理版本釋出" });
   }
 
   const { platform, version, versionCode, downloadUrl, fileSize, sha256, releaseNotes, status } = request.body || {};
@@ -18559,7 +18559,7 @@ app.post("/api/admin/releases", requireAdmin, async (request, response) => {
   const s = sanitizeString(status || "draft", 16);
 
   if (!v || !url) {
-    return response.status(400).json({ code: -1, message: "版本号和下载地址为必填项" });
+    return response.status(400).json({ code: -1, message: "版本號和下載地址為必填項" });
   }
 
   let connection;
@@ -18570,10 +18570,10 @@ app.post("/api/admin/releases", requireAdmin, async (request, response) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [p, v, vc, url, fileSize || null, sha256 || null, notes || null, s]
     );
-    return response.json({ code: 0, data: { id: Number(result.insertId) }, message: "版本发布创建成功" });
+    return response.json({ code: 0, data: { id: Number(result.insertId) }, message: "版本釋出建立成功" });
   } catch (error) {
     console.error("Failed to create release:", error);
-    return response.status(500).json({ code: -1, message: "创建版本发布失败" });
+    return response.status(500).json({ code: -1, message: "建立版本釋出失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18582,11 +18582,11 @@ app.post("/api/admin/releases", requireAdmin, async (request, response) => {
 // PUT /api/admin/releases/:id - 更新版本发布
 app.put("/api/admin/releases/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+    return response.status(403).json({ code: -1, message: "僅平臺管理員可管理版本釋出" });
   }
 
   const id = parseNonNegativeInteger(request.params.id);
-  if (!id) return response.status(400).json({ code: -1, message: "无效的版本 ID" });
+  if (!id) return response.status(400).json({ code: -1, message: "無效的版本 ID" });
 
   const { version, versionCode, downloadUrl, fileSize, sha256, releaseNotes, status, releasedAt } = request.body || {};
   const updates = [];
@@ -18602,7 +18602,7 @@ app.put("/api/admin/releases/:id", requireAdmin, async (request, response) => {
   if (releasedAt !== undefined) { updates.push("released_at = ?"); params.push(releasedAt || null); }
 
   if (updates.length === 0) {
-    return response.status(400).json({ code: -1, message: "没有需要更新的字段" });
+    return response.status(400).json({ code: -1, message: "沒有需要更新的欄位" });
   }
 
   params.push(id);
@@ -18611,10 +18611,10 @@ app.put("/api/admin/releases/:id", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
     await connection.query(`UPDATE app_releases SET ${updates.join(", ")} WHERE id = ?`, params);
-    return response.json({ code: 0, message: "版本发布更新成功" });
+    return response.json({ code: 0, message: "版本釋出更新成功" });
   } catch (error) {
     console.error("Failed to update release:", error);
-    return response.status(500).json({ code: -1, message: "更新版本发布失败" });
+    return response.status(500).json({ code: -1, message: "更新版本釋出失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18623,20 +18623,20 @@ app.put("/api/admin/releases/:id", requireAdmin, async (request, response) => {
 // DELETE /api/admin/releases/:id - 删除版本发布
 app.delete("/api/admin/releases/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ code: -1, message: "仅平台管理员可管理版本发布" });
+    return response.status(403).json({ code: -1, message: "僅平臺管理員可管理版本釋出" });
   }
 
   const id = parseNonNegativeInteger(request.params.id);
-  if (!id) return response.status(400).json({ code: -1, message: "无效的版本 ID" });
+  if (!id) return response.status(400).json({ code: -1, message: "無效的版本 ID" });
 
   let connection;
   try {
     connection = await pool.getConnection();
     await connection.query("DELETE FROM app_releases WHERE id = ?", [id]);
-    return response.json({ code: 0, message: "版本发布已删除" });
+    return response.json({ code: 0, message: "版本釋出已刪除" });
   } catch (error) {
     console.error("Failed to delete release:", error);
-    return response.status(500).json({ code: -1, message: "删除版本发布失败" });
+    return response.status(500).json({ code: -1, message: "刪除版本釋出失敗" });
   } finally {
     if (connection) connection.release();
   }

@@ -364,7 +364,7 @@ function mapStatusFromContact(output, exists) {
   if (normalized === "avail" || normalized === "reachable") {
     return {
       status: "online",
-      statusText: "在線",
+      statusText: "線上",
     };
   }
   if (normalized === "unavailable" || normalized === "unavail") {
@@ -435,7 +435,7 @@ export async function getPjsipEndpointStatus(extension) {
       const normalized = normalizeValue(result.contactStatus);
       if (normalized === "avail" || normalized === "reachable") {
         result.status = "online";
-        result.statusText = "在線";
+        result.statusText = "線上";
       } else if (normalized === "unavailable" || normalized === "unavail") {
         result.status = "offline";
         result.statusText = "離線";
@@ -493,7 +493,7 @@ function parseEndpointRuntimeSummary(output, extension) {
     authExists: new RegExp(`^\\s*InAuth:\\s+${String(extension)}-auth\\/${String(extension)}\\b`, "im").test(text),
     aorExists: new RegExp(`^\\s*Aor:\\s+${String(extension)}\\b`, "im").test(text),
     status: contactStatus === "Avail" ? "online" : contactStatus === "Unavailable" ? "offline" : exists ? "offline" : "not_found",
-    statusText: contactStatus === "Avail" ? "在線" : contactStatus === "Unavailable" ? "離線" : exists ? "離線" : "帳號不存在",
+    statusText: contactStatus === "Avail" ? "線上" : contactStatus === "Unavailable" ? "離線" : exists ? "離線" : "帳號不存在",
     tech: "PJSIP",
     resource: String(extension),
     channelCount: channelMatch ? Number(channelMatch[1] || 0) : 0,

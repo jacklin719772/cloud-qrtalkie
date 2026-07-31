@@ -20,7 +20,7 @@ export class AiError extends Error {
  */
 export async function ensureAiAllowed(sipUserId, connection) {
     if (!isGloballyEnabled()) {
-        throw new AiError("AI_BOT_DISABLED", 503, "AI 助手暂不可用");
+        throw new AiError("AI_BOT_DISABLED", 503, "AI 助手暫不可用");
     }
 
     const rows = await connection.query(
@@ -30,13 +30,13 @@ export async function ensureAiAllowed(sipUserId, connection) {
     const ent = rows[0];
 
     if (!ent) {
-        throw new AiError("AI_NOT_ENABLED_FOR_ACCOUNT", 403, "您的账号暂未开通 AI 助手服务");
+        throw new AiError("AI_NOT_ENABLED_FOR_ACCOUNT", 403, "您的賬號暫未開通 AI 助手服務");
     }
     if (!ent.enabled) {
-        throw new AiError("AI_NOT_ENABLED_FOR_ACCOUNT", 403, "您的账号暂未开通 AI 助手服务");
+        throw new AiError("AI_NOT_ENABLED_FOR_ACCOUNT", 403, "您的賬號暫未開通 AI 助手服務");
     }
     if (ent.expires_at && new Date(ent.expires_at) < new Date()) {
-        throw new AiError("AI_ACCOUNT_ENTITLEMENT_EXPIRED", 403, "您的 AI 助手服务已过期");
+        throw new AiError("AI_ACCOUNT_ENTITLEMENT_EXPIRED", 403, "您的 AI 助手服務已過期");
     }
 
     // Lazy daily reset
@@ -63,10 +63,10 @@ export async function ensureAiAllowed(sipUserId, connection) {
     }
 
     if (ent.used_today >= ent.daily_limit) {
-        throw new AiError("AI_DAILY_LIMIT_EXCEEDED", 429, `今日 AI 使用次数已达上限 (${ent.daily_limit} 次)`);
+        throw new AiError("AI_DAILY_LIMIT_EXCEEDED", 429, `今日 AI 使用次數已達上限 (${ent.daily_limit} 次)`);
     }
     if (ent.monthly_limit != null && ent.used_this_month >= ent.monthly_limit) {
-        throw new AiError("AI_MONTHLY_LIMIT_EXCEEDED", 429, `本月 AI 使用次数已达上限 (${ent.monthly_limit} 次)`);
+        throw new AiError("AI_MONTHLY_LIMIT_EXCEEDED", 429, `本月 AI 使用次數已達上限 (${ent.monthly_limit} 次)`);
     }
 }
 

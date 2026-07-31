@@ -18,7 +18,7 @@ function normalizeStatus(status) {
 
 function statusTextFor(status, fallback = "") {
   if (fallback) return String(fallback);
-  if (status === "online") return "在線";
+  if (status === "online") return "線上";
   if (status === "offline") return "離線";
   if (status === "not_found") return "帳號不存在";
   return "狀態未知";

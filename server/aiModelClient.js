@@ -21,7 +21,7 @@ export function isGloballyEnabled() {
  */
 export async function chat(messages) {
     if (!Array.isArray(messages) || messages.length === 0) {
-        return { ok: false, error: "AI_INVALID_INPUT", message: "消息列表不能为空" };
+        return { ok: false, error: "AI_INVALID_INPUT", message: "訊息列表不能為空" };
     }
 
     const body = JSON.stringify({
@@ -56,14 +56,14 @@ export async function chat(messages) {
                 `[aiModelClient] AI model returned HTTP ${response.status}: ` +
                 `${errorBody.slice(0, 200)} (key=${keyHint})`
             );
-            return { ok: false, error: "AI_MODEL_ERROR", message: `AI 模型返回错误 (HTTP ${response.status})` };
+            return { ok: false, error: "AI_MODEL_ERROR", message: `AI 模型返回錯誤 (HTTP ${response.status})` };
         }
 
         const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             console.error("[aiModelClient] Unexpected AI response format:", JSON.stringify(data).slice(0, 300));
-            return { ok: false, error: "AI_MODEL_ERROR", message: "AI 模型返回格式异常" };
+            return { ok: false, error: "AI_MODEL_ERROR", message: "AI 模型返回格式異常" };
         }
 
         const content = String(data.choices[0].message.content || "").trim();
@@ -75,10 +75,10 @@ export async function chat(messages) {
 
         if (error.name === "AbortError") {
             console.error(`[aiModelClient] AI model request timed out after ${AI_MODEL_TIMEOUT_MS}ms`);
-            return { ok: false, error: "AI_TIMEOUT", message: "AI 模型响应超时，请稍后重试" };
+            return { ok: false, error: "AI_TIMEOUT", message: "AI 模型響應超時，請稍後重試" };
         }
 
         console.error(`[aiModelClient] AI model request failed: ${error.message}`);
-        return { ok: false, error: "AI_NETWORK_ERROR", message: "AI 模型服务不可用，请稍后重试" };
+        return { ok: false, error: "AI_NETWORK_ERROR", message: "AI 模型服務不可用，請稍後重試" };
     }
 }

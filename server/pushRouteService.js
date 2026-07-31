@@ -3,7 +3,7 @@ const CHINA_COUNTRY_CODES = new Set([
   "chn",
   "china",
   "mainland",
-  "中国",
+  "中國",
   "中國",
 ]);
 
