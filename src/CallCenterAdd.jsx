@@ -101,7 +101,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
             if (data.categories?.length > 0) setActiveCategoryId(data.categories[0].id);
           }
         })
-        .catch(err => alert("加載呼叫中心數據失敗: " + (err.response?.data?.message || err.message)))
+        .catch(err => alert("載入呼叫中心資料失敗: " + (err.response?.data?.message || err.message)))
         .finally(() => { setIsInitializing(false); setDataLoaded(true); });
     }
   }, [context, dataLoaded]);
@@ -142,10 +142,10 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
 
       if (context?.mode === 'edit' && context?.id) {
         await apiClient.put(`/call-centers/${context.id}`, payload);
-        window.alert('呼叫中心已成功更新並發佈！');
+        window.alert('呼叫中心已成功更新並釋出！');
       } else {
         await apiClient.post('/call-centers', payload);
-        window.alert('呼叫中心已成功儲存並發佈！');
+        window.alert('呼叫中心已成功儲存並釋出！');
       }
       if (onReturn) onReturn();
     } catch (err) {
@@ -918,7 +918,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           </button>
           <button type="button" className="cc-btn cc-btn-outline" onClick={onReturn} disabled={isSaving}>返回列表</button>
           <button type="button" className="cc-btn cc-btn-primary" onClick={handleSaveAndPublish} disabled={isSaving}>
-            {isSaving ? '儲存中...' : '儲存並發佈'}
+            {isSaving ? '儲存中...' : '儲存並釋出'}
           </button>
         </div>
       </div>

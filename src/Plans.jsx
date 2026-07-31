@@ -4,7 +4,7 @@ import { ChevronDown, Search, Plus, X } from 'lucide-react';
 import apiClient from './apiClient';
 
 const currencyOptions = [
-  { value: 'TWD', label: '新台幣 TWD' },
+  { value: 'TWD', label: '新臺幣 TWD' },
   { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
   { value: 'EUR', label: '歐元 EUR' },
@@ -231,11 +231,11 @@ const Plans = forwardRef((props, ref) => {
 
   const handleBatchDisable = async () => {
     if (selectedIds.length === 0) {
-      window.alert('请至少选择一条記錄进行操作。');
+      window.alert('請至少選擇一條記錄進行操作。');
       return;
     }
     
-    if (window.confirm(`确定要停用选中的 ${selectedIds.length} 個套餐吗？`)) {
+    if (window.confirm(`確定要停用選中的 ${selectedIds.length} 個套餐嗎？`)) {
       setIsSaving(true);
       showMessage('', '');
       try {
@@ -245,9 +245,9 @@ const Plans = forwardRef((props, ref) => {
         ));
         setSelectedIds([]);
         await loadPlans({ silent: true });
-        showMessage('success', '批量停用成功。');
+        showMessage('success', '批次停用成功。');
       } catch (error) {
-        showMessage('error', `批量停用失败: ${error.message || '未知错误'}`);
+        showMessage('error', `批次停用失敗: ${error.message || '未知错误'}`);
       } finally {
         setIsSaving(false);
       }
@@ -256,11 +256,11 @@ const Plans = forwardRef((props, ref) => {
 
   const handleBatchEnable = async () => {
     if (selectedIds.length === 0) {
-      window.alert('请至少选择一条記錄进行操作。');
+      window.alert('請至少選擇一條記錄進行操作。');
       return;
     }
     
-    if (window.confirm(`确定要启用选中的 ${selectedIds.length} 個套餐吗？`)) {
+    if (window.confirm(`確定要啟用選中的 ${selectedIds.length} 個套餐嗎？`)) {
       setIsSaving(true);
       showMessage('', '');
       try {
@@ -270,9 +270,9 @@ const Plans = forwardRef((props, ref) => {
         ));
         setSelectedIds([]);
         await loadPlans({ silent: true });
-        showMessage('success', '批量启用成功。');
+        showMessage('success', '批次啟用成功。');
       } catch (error) {
-        showMessage('error', `批量启用失败: ${error.message || '未知错误'}`);
+        showMessage('error', `批次啟用失敗: ${error.message || '未知错误'}`);
       } finally {
         setIsSaving(false);
       }
@@ -309,24 +309,24 @@ const Plans = forwardRef((props, ref) => {
     try {
       await apiClient.put(`/billing/plans/${updatedPlan.id}`, updatedPlan);
       setPlans(current => current.map(p => (p.id === updatedPlan.id ? updatedPlan : p)));
-      showMessage('success', '套餐状态已更新。');
+      showMessage('success', '套餐狀態已更新。');
     } catch (error) {
-      showMessage('error', `更新状态失败: ${error.message || '未知错误'}`);
+      showMessage('error', `更新狀態失敗: ${error.message || '未知错误'}`);
     }
   };
 
   const handleDelete = async (plan, event) => {
     event.stopPropagation();
-    if (window.confirm(`确定要删除套餐「${plan.name}」吗？`)) {
+    if (window.confirm(`確定要刪除套餐「${plan.name}」嗎？`)) {
       try {
         await apiClient.delete(`/billing/plans/${plan.id}`);
         setPlans((current) => current.filter((p) => p.id !== plan.id));
         if (selectedPlanId === plan.id) {
           closeModal();
         }
-        showMessage('success', '套餐已删除。');
+        showMessage('success', '套餐已刪除。');
       } catch (error) {
-        showMessage('error', `删除失败: ${error.message || '未知错误'}`);
+        showMessage('error', `刪除失敗: ${error.message || '未知错误'}`);
       }
     }
   };
@@ -336,11 +336,11 @@ const Plans = forwardRef((props, ref) => {
     if (!editingPlan) return;
 
     if (!(editingPlan.planCode || '').trim()) {
-      alert('请輸入套餐代碼');
+      alert('請輸入套餐程式碼');
       return;
     }
     if (!(editingPlan.name || '').trim()) {
-      alert('请輸入套餐名稱');
+      alert('請輸入套餐名稱');
       return;
     }
 
@@ -359,10 +359,10 @@ const Plans = forwardRef((props, ref) => {
     try {
       if (editingPlan.id === null) {
         await apiClient.post('/billing/plans', nextPlan);
-        showMessage('success', '套餐已成功创建。');
+        showMessage('success', '套餐已成功建立。');
       } else {
         await apiClient.put(`/billing/plans/${nextPlan.id}`, nextPlan);
-        showMessage('success', '套餐已成功保存。');
+        showMessage('success', '套餐已成功儲存。');
       }
       if (isAddPage) {
         onReturnToList?.();
@@ -371,7 +371,7 @@ const Plans = forwardRef((props, ref) => {
         loadPlans({ silent: true });
       }
     } catch (error) {
-      showMessage('error', error.message || '保存失败，请稍后再试。');
+      showMessage('error', error.message || '儲存失敗，請稍後再試。');
     } finally {
       setIsSaving(false);
     }
@@ -388,13 +388,13 @@ const Plans = forwardRef((props, ref) => {
   return (
     <>
       <style>{`
-        /* --- 全局字体与平滑 --- */
+        /* --- 全域性字型與平滑 --- */
         #plans {
           -webkit-font-smoothing: antialiased;
           color: #334155;
         }
         
-        /* --- 表格头部排版 --- */
+        /* --- 表格頭部排版 --- */
         #plans .billing-table {
           width: 100%;
           border-collapse: collapse;
@@ -413,7 +413,7 @@ const Plans = forwardRef((props, ref) => {
           white-space: nowrap;
         }
         
-        /* --- 表格内容排版 --- */
+        /* --- 表格內容排版 --- */
         #plans .billing-table td {
           height: 64px !important;
           padding: 0 22px !important;
@@ -432,7 +432,7 @@ const Plans = forwardRef((props, ref) => {
           background-color: #f8fafc;
         }
         
-        /* 状态徽章排版 */
+        /* 狀態徽章排版 */
         #plans .billing-table .status-badge {
           font-size: 12px !important;
           font-weight: 600 !important;
@@ -449,7 +449,7 @@ const Plans = forwardRef((props, ref) => {
           color: #64748b !important;
         }
         
-        /* --- 分页資訊排版 --- */
+        /* --- 分頁資訊排版 --- */
         #plans .pagination-info {
           font-size: 13px !important;
           font-weight: 500;
@@ -528,7 +528,7 @@ const Plans = forwardRef((props, ref) => {
           background-color: #fef2f2;
         }
         
-        /* --- 模态窗(编辑新增)排版 --- */
+        /* --- 模態窗(編輯新增)排版 --- */
         #plans .modal-content {
           border-radius: 12px;
           background-color: #ffffff;
@@ -614,7 +614,7 @@ const Plans = forwardRef((props, ref) => {
           border-color: #e2e8f0;
         }
         
-        /* 模态窗-定价规则区域排版 */
+        /* 模態窗-定價規則區域排版 */
         #plans .modal-section {
           margin-top: 24px;
           padding-top: 24px;
@@ -809,7 +809,7 @@ const Plans = forwardRef((props, ref) => {
                           ...editingPlan,
                           addonServices: e.target.value,
                         })}
-                        placeholder="輸入增值服務代碼，用逗號分隔"
+                        placeholder="輸入增值服務程式碼，用逗號分隔"
                       />
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingLeft: '4px' }}>
@@ -929,7 +929,7 @@ const Plans = forwardRef((props, ref) => {
                   style={{ width: '100%', boxSizing: 'border-box', padding: '10px 36px 10px 40px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', fontWeight: 400, color: '#e5e7eb', backgroundColor: '#0f172a', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.05)' }}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜尋套餐 ID、代碼或名稱..."
+                  placeholder="搜尋套餐 ID、程式碼或名稱..."
                   onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
                   onBlur={(e) => { e.target.style.borderColor = '#cbd5e1'; e.target.style.boxShadow = 'inset 0 1px 2px rgba(0, 0, 0, 0.05)'; }}
                 />
@@ -950,7 +950,7 @@ const Plans = forwardRef((props, ref) => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                aria-label="筛选状态"
+                aria-label="篩選狀態"
                 style={{ padding: '10px 32px 10px 16px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', backgroundColor: '#0f172a', outline: 'none', cursor: 'pointer', transition: 'all 0.2s ease', color: '#e5e7eb', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px 16px' }}
                 onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)'; }}
                 onBlur={(e) => { e.target.style.borderColor = '#374151'; e.target.style.boxShadow = 'none'; }}
@@ -981,7 +981,7 @@ const Plans = forwardRef((props, ref) => {
                         checked={isCurrentPageSelected}
                         onChange={(e) => toggleCurrentPageSelection(e.target.checked)}
                         style={{ cursor: 'pointer' }}
-                        aria-label="全选当前页"
+                        aria-label="全選當前頁"
                       />
                     </th>
                     <th>ID</th>
@@ -1069,7 +1069,7 @@ const Plans = forwardRef((props, ref) => {
                               >
                                 <button type="button" className="dropdown-item" onClick={() => { handleDetails(plan); setOpenDropdownId(null); }}>详情</button>
                                 <button type="button" className="dropdown-item" onClick={() => { handleEdit(plan); setOpenDropdownId(null); }}>编辑</button>
-                                <button type="button" className="dropdown-item" onClick={(e) => { handleToggleStatus(plan, e); setOpenDropdownId(null); }}>{plan.status === 'active' ? '停用' : '启用'}</button>
+                                <button type="button" className="dropdown-item" onClick={(e) => { handleToggleStatus(plan, e); setOpenDropdownId(null); }}>{plan.status === 'active' ? '停用' : '啟用'}</button>
                                 <button type="button" className="dropdown-item dropdown-item-danger" onClick={(e) => { handleDelete(plan, e); setOpenDropdownId(null); }}>刪除</button>
                               </div>,
                               document.body
@@ -1129,7 +1129,7 @@ const Plans = forwardRef((props, ref) => {
                   className="modal-close"
                   type="button"
                   onClick={closeModal}
-                  aria-label="关闭"
+                  aria-label="關閉"
                 >
                   ×
                 </button>
@@ -1296,7 +1296,7 @@ const Plans = forwardRef((props, ref) => {
                             addonServices: e.target.value,
                           })
                         }
-                        placeholder="輸入增值服務代碼，用逗號分隔"
+                        placeholder="輸入增值服務程式碼，用逗號分隔"
                         readOnly={isDetails}
                       />
                     </label>
@@ -1343,7 +1343,7 @@ const Plans = forwardRef((props, ref) => {
                     取消
                   </button>
                   <button className="primary-btn" type="submit" disabled={isSaving}>
-                    {isSaving ? '保存中...' : (editingPlan.id === null ? '创建套餐' : '保存修改')}
+                    {isSaving ? '儲存中...' : (editingPlan.id === null ? '建立套餐' : '儲存修改')}
                   </button>
                 </div>
               )}

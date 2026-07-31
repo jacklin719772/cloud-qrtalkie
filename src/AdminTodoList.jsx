@@ -3,18 +3,18 @@ import { ClipboardList, ExternalLink } from 'lucide-react';
 import apiClient from './apiClient';
 
 const PLATFORM_TASKS = [
-  { id: 'platform_admin', label: '設置平台管理員', view: 'platform-admin-management', api: '/platform/admins', key: 'admins' },
-  { id: 'privacy_policy', label: '設置隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy', key: 'content' },
-  { id: 'terms_of_service', label: '設置服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service', key: 'content' },
-  { id: 'ecard_styles', label: '設置電子名片樣式', view: 'e-business-card', api: '/admin/ecard-styles', key: 'styles' },
-  { id: 'offline_account', label: '設置收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account', key: 'account' },
-  { id: 'payment_methods', label: '設置線上支付方式', view: 'payment-methods', api: '/billing/payment-method-settings', key: 'methods' },
-  { id: 'discount_data', label: '設置優惠碼', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
-  { id: 'addon_services', label: '設置增值服務', view: 'addons', api: '/billing/addon-services', key: 'addons' },
-  { id: 'plans', label: '設置套餐資料', view: 'plans', api: '/billing/plans', key: 'plans' },
-  { id: 'devices', label: '設置門控設備', view: 'device-management', api: '/admin/gate-devices', key: 'devices' },
-  { id: 'sip_accounts', label: '添加 SIP 帳號', view: 'sip-account-registration', api: '/admin/sip-accounts', key: 'accounts' },
-  { id: 'web_accounts', label: '添加 Web 帳號', view: 'sip-account-allocation', api: '/admin/web-accounts', key: 'accounts' },
+  { id: 'platform_admin', label: '設定平臺管理員', view: 'platform-admin-management', api: '/platform/admins', key: 'admins' },
+  { id: 'privacy_policy', label: '設定隱私政策', view: 'privacy-policy', api: '/admin/settings/privacy-policy', key: 'content' },
+  { id: 'terms_of_service', label: '設定服務條款', view: 'terms-of-service', api: '/admin/settings/terms-of-service', key: 'content' },
+  { id: 'ecard_styles', label: '設定電子名片樣式', view: 'e-business-card', api: '/admin/ecard-styles', key: 'styles' },
+  { id: 'offline_account', label: '設定收款賬戶', view: 'offline-account', api: '/billing/offline-payment-account', key: 'account' },
+  { id: 'payment_methods', label: '設定線上支付方式', view: 'payment-methods', api: '/billing/payment-method-settings', key: 'methods' },
+  { id: 'discount_data', label: '設定優惠碼', view: 'discount-data', api: '/billing/coupon-settings', key: 'coupons' },
+  { id: 'addon_services', label: '設定增值服務', view: 'addons', api: '/billing/addon-services', key: 'addons' },
+  { id: 'plans', label: '設定套餐資料', view: 'plans', api: '/billing/plans', key: 'plans' },
+  { id: 'devices', label: '設定門控裝置', view: 'device-management', api: '/admin/gate-devices', key: 'devices' },
+  { id: 'sip_accounts', label: '新增 SIP 帳號', view: 'sip-account-registration', api: '/admin/sip-accounts', key: 'accounts' },
+  { id: 'web_accounts', label: '新增 Web 帳號', view: 'sip-account-allocation', api: '/admin/web-accounts', key: 'accounts' },
   { id: 'pending_subscriptions', label: '審核待訂閱套餐', view: 'plan-management', api: '/admin/billing-orders?status=pending_review', key: 'orders' },
 ];
 
@@ -22,8 +22,8 @@ const TENANT_TASKS = [
   { id: 'has_subscription', label: '是否有已生效套餐', view: 'domain', api: '/billing/orders', key: 'orders', check: 'subscription' },
   { id: 'pending_review_order', label: '有訂單待提交審核', notDoneLabel: '無訂單待提交審核', view: 'domain', api: '/billing/orders', key: 'orders', check: 'pending_review' },
   { id: 'contact_books', label: '是否已建立通訊錄', view: 'contact-books', api: '/contact-books', key: 'contactBooks' },
-  { id: 'ecards', label: '是否已創建電子名片', view: 'ecard-styles-management', api: '/tenant/ecard-accounts', key: 'accounts' },
-  { id: 'call_center', label: '是否已設置呼叫中心', view: 'call-center', api: '/call-centers', key: 'list' },
+  { id: 'ecards', label: '是否已建立電子名片', view: 'ecard-styles-management', api: '/tenant/ecard-accounts', key: 'accounts' },
+  { id: 'call_center', label: '是否已設定呼叫中心', view: 'call-center', api: '/call-centers', key: 'list' },
 ];
 
 export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
@@ -129,7 +129,7 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ClipboardList size={20} color="#60a5fa" />
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>
-              {role === 'platform' ? '平台初始化待辦清單' : '租戶待辦清單'}
+              {role === 'platform' ? '平臺初始化待辦清單' : '租戶待辦清單'}
             </h3>
           </div>
           <button onClick={onClose} style={{
@@ -190,7 +190,7 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
               <button
                 type="button"
                 onClick={() => { onNavigate?.(task.view); onClose?.(); }}
-                title={task.done ? '查看' : '前往設定'}
+                title={task.done ? '檢視' : '前往設定'}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '4px',
                   padding: '5px 12px', borderRadius: '5px',
@@ -201,7 +201,7 @@ export default function AdminTodoList({ isOpen, onClose, onNavigate, role }) {
                   whiteSpace: 'nowrap',
                 }}>
                 <ExternalLink size={12} />
-                {task.done ? '查看' : '前往'}
+                {task.done ? '檢視' : '前往'}
               </button>
             </div>
           ))}

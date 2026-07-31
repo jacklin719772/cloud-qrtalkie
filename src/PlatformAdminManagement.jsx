@@ -7,12 +7,12 @@ function RequiredMark() {
 }
 
 const roleLabels = {
-  super_admin: '超级管理员',
-  admin: '管理员',
-  operator: '运营',
-  finance: '财务',
+  super_admin: '超級管理員',
+  admin: '管理員',
+  operator: '運營',
+  finance: '財務',
   support: '客服',
-  auditor: '审计',
+  auditor: '審計',
 };
 
 const PlatformAdminManagement = forwardRef((props, ref) => {
@@ -30,7 +30,7 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
       const res = await apiClient.get('/platform/admins');
       setAdmins(Array.isArray(res.admins) ? res.admins.filter(a => a.platformRole !== 'super_admin') : []);
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || '加载失败' });
+      setMessage({ type: 'error', text: e.message || '載入失敗' });
     } finally {
       setLoading(false);
     }
@@ -79,19 +79,19 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
     try {
       if (dialogMode === 'add') {
         if (!form.email || !form.password) {
-          setMessage({ type: 'error', text: '请输入邮箱和密码。' });
+          setMessage({ type: 'error', text: '請輸入郵箱和密碼。' });
           setSaving(false);
           return;
         }
         await apiClient.post('/platform/admins', form);
       } else if (dialogMode === 'resetPassword') {
         if (!form.password) {
-          setMessage({ type: 'error', text: '请输入新密码。' });
+          setMessage({ type: 'error', text: '請輸入新密碼。' });
           setSaving(false);
           return;
         }
         if (form.password !== form.confirmPassword) {
-          setMessage({ type: 'error', text: '两次输入的密码不一致。' });
+          setMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
           setSaving(false);
           return;
         }
@@ -99,10 +99,10 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
       } else {
         await apiClient.put(`/platform/admins/${editTarget.id}`, form);
       }
-      setMessage({ type: 'success', text: dialogMode === 'add' ? '管理员已创建。' : '管理员已更新。' });
+      setMessage({ type: 'success', text: dialogMode === 'add' ? '管理員已建立。' : '管理員已更新。' });
       setTimeout(() => { closeDialog(); loadAdmins(); }, 600);
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || '操作失败' });
+      setMessage({ type: 'error', text: e.message || '操作失敗' });
     } finally {
       setSaving(false);
     }
@@ -110,22 +110,22 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
 
   const handleToggleStatus = async (admin) => {
     const newStatus = admin.status === 'active' ? 'disabled' : 'active';
-    if (!window.confirm(`确定要${newStatus === 'active' ? '啟用' : '停用'}管理员 ${admin.email} 吗？`)) return;
+    if (!window.confirm(`確定要${newStatus === 'active' ? '啟用' : '停用'}管理員 ${admin.email} 嗎？`)) return;
     try {
       await apiClient.put(`/platform/admins/${admin.id}/status`, { status: newStatus });
       loadAdmins();
     } catch (e) {
-      window.alert(e.message || '操作失败');
+      window.alert(e.message || '操作失敗');
     }
   };
 
   const handleDelete = async (admin) => {
-    if (!window.confirm(`确定要删除管理员 ${admin.email} 吗？此操作不可恢复。`)) return;
+    if (!window.confirm(`確定要刪除管理員 ${admin.email} 嗎？此操作不可恢復。`)) return;
     try {
       await apiClient.delete(`/platform/admins/${admin.id}`);
       loadAdmins();
     } catch (e) {
-      window.alert(e.message || '删除失败');
+      window.alert(e.message || '刪除失敗');
     }
   };
 
@@ -227,7 +227,7 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
                 <>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>新密碼 <RequiredMark /> <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(至少 6 個字元)</span></span>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字符" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字元" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>確認密碼 <RequiredMark /></span>
@@ -242,7 +242,7 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {dialogMode === 'add' && <RequiredMark />} {dialogMode === 'edit' && <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 400 }}>(留空則不修改)</span>}</span>
-                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={dialogMode === 'edit' ? '留空則不修改' : '至少 6 位字符'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder={dialogMode === 'edit' ? '留空則不修改' : '至少 6 位字元'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} autoComplete="new-password" />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>

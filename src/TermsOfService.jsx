@@ -36,7 +36,7 @@ export default function TermsOfService() {
     };
   }, []);
 
-  const handleImportTemplate = () => { if (!content.trim() || window.confirm('导入模板将覆盖当前内容，确定继续？')) { setContent(tosTemplate); } };
+  const handleImportTemplate = () => { if (!content.trim() || window.confirm('匯入模板將覆蓋當前內容，確定繼續？')) { setContent(tosTemplate); } };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -44,10 +44,10 @@ export default function TermsOfService() {
     setMessage({ type: '', text: '' });
     try {
       await apiClient.put('/admin/settings/terms-of-service', { content });
-      setMessage({ type: 'success', text: '服务条款内容已保存成功。' });
+      setMessage({ type: 'success', text: '服務條款內容已儲存成功。' });
       setTimeout(() => { setMessage({ type: '', text: '' }); }, 3000);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || '保存失败，请稍后重试。' });
+      setMessage({ type: 'error', text: err.message || '儲存失敗，請稍後重試。' });
     } finally {
       setIsSaving(false);
     }
@@ -67,7 +67,7 @@ export default function TermsOfService() {
                   className="tos-textarea"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="在此输入您的服务条款规范..."
+                  placeholder="在此輸入您的服務條款規範..."
                   style={{
                     flex: 1, width: '100%', minHeight: '240px',
                     padding: '16px', borderRadius: '8px',
@@ -88,7 +88,7 @@ export default function TermsOfService() {
             )}
             <button type="button" onClick={handleImportTemplate} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>导入模板</button>
             <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>预览</button>
-            <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>{isSaving ? '保存中...' : '保存更改'}</button>
+            <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>{isSaving ? '儲存中...' : '儲存更改'}</button>
           </div>
         </form>
 
@@ -97,7 +97,7 @@ export default function TermsOfService() {
             <div className="dialog-card legal-card" onClick={e => e.stopPropagation()} style={{ backgroundColor: '#111827', width: 'min(800px, calc(100vw - 32px))', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
               <div className="panel-head" style={{ flexShrink: 0, paddingBottom: '16px', borderBottom: '1px solid #1f2937', marginBottom: '16px' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6' }}>服务条款预览</h2>
-                <button className="icon-btn" type="button" title="关闭" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
+                <button className="icon-btn" type="button" title="關閉" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
               </div>
               <div className="legal-content policy-markdown-preview" style={{ overflowY: 'auto', flex: 1, color: '#e5e7eb' }}>
                 <style>{`

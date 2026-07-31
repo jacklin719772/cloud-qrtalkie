@@ -248,11 +248,11 @@ const PaymentMethods = forwardRef((props, ref) => {
 
   const validateMethod = (method) => {
     const methodCode = method.methodCode.trim().toLowerCase();
-    if (!methodCode) return '請輸入方式代碼。';
-    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) return '方式代碼只能使用英文字母、數字、底線或連字符，且至少 2 個字元。';
-    if (methods.some((m) => m.id !== method.id && m.methodCode.trim().toLowerCase() === methodCode)) return '方式代碼不可重複。';
+    if (!methodCode) return '請輸入方式程式碼。';
+    if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) return '方式程式碼只能使用英文字母、數字、底線或連字元，且至少 2 個字元。';
+    if (methods.some((m) => m.id !== method.id && m.methodCode.trim().toLowerCase() === methodCode)) return '方式程式碼不可重複。';
     if (!method.displayName.trim()) return '請輸入顯示名稱。';
-    if (!['online', 'offline'].includes(method.methodType)) return '請選擇付款類型。';
+    if (!['online', 'offline'].includes(method.methodType)) return '請選擇付款型別。';
     if (!['active', 'disabled'].includes(method.status)) return '請選擇啟用狀態。';
     return '';
   };

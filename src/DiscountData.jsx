@@ -3,7 +3,7 @@ import { BadgePercent, CalendarDays, CalendarX, CircleDollarSign, Search, Ticket
 import apiClient from './apiClient';
 
 const currencyOptions = [
-  { value: 'TWD', label: '新台幣 TWD' },
+  { value: 'TWD', label: '新臺幣 TWD' },
   { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
   { value: 'EUR', label: '歐元 EUR' },
@@ -168,7 +168,7 @@ const DiscountData = forwardRef((props, ref) => {
   const validateDraft = () => {
     const coupon = toApiCoupon(draftCoupon);
     if (!coupon.couponCode) return '請輸入優惠碼。';
-    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '優惠碼只能使用英文大寫字母、數字、底線或連字符，且至少 2 個字元。';
+    if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(coupon.couponCode)) return '優惠碼只能使用英文大寫字母、數字、底線或連字元，且至少 2 個字元。';
     if (coupons.some((item) => item.id !== draftCoupon.id && item.couponCode.trim().toUpperCase() === coupon.couponCode)) return '優惠碼不可重複。';
     if (!coupon.displayName) return '請輸入顯示名稱。';
     if (coupon.discountValue <= 0) return '優惠值必須大於 0。';
@@ -336,7 +336,7 @@ const DiscountData = forwardRef((props, ref) => {
               <div className="discount-toolbar">
                 <label className="discount-search">
                   <Search size={16} aria-hidden="true" />
-                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋代碼或名稱" />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋程式碼或名稱" />
                 </label>
                 <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="篩選狀態">
                   <option value="all">全部狀態</option>

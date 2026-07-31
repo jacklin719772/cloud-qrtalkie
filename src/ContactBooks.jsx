@@ -268,7 +268,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
         setIsLoadingDetail(false);
       }
     } else if (action === 'delete') {
-      if (window.confirm(`確定要刪除通訊錄「${book.name}」吗？`)) {
+      if (window.confirm(`確定要刪除通訊錄「${book.name}」嗎？`)) {
         try {
           await apiClient.delete(`/contact-books/${book.id}`);
           setContactBooks(currentBooks => currentBooks.filter(b => b.id !== book.id));
@@ -295,7 +295,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       const res = await apiClient.get('/contact-books/validate');
       setValidateResult(res);
     } catch (err) {
-      setValidateResult({ success: false, flexisipError: err.message || '校验失败' });
+      setValidateResult({ success: false, flexisipError: err.message || '校驗失敗' });
     } finally {
       setIsValidating(false);
     }
@@ -712,7 +712,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 {paginatedBooks.length === 0 ? (
                   <tr>
                     <td colSpan="7" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-                      {loading ? '載入中...' : '暫無通訊錄數據'}
+                      {loading ? '載入中...' : '暫無通訊錄資料'}
                     </td>
                   </tr>
                 ) : (
@@ -826,7 +826,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             </div>
             <div style={{ padding: '16px 20px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
               <button type="button" onClick={() => setIsCreateModalOpen(false)} disabled={isSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button type="submit" className="primary-btn" disabled={isSaving || !newBookForm.name.trim()}>{isSaving ? '保存中...' : '保存通訊錄'}</button>
+              <button type="submit" className="primary-btn" disabled={isSaving || !newBookForm.name.trim()}>{isSaving ? '儲存中...' : '儲存通訊錄'}</button>
             </div>
           </form>
         </div>,
@@ -942,7 +942,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             </div>
             <div style={{ padding: '16px 20px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '10px', flexShrink: 0 }}>
               <button type="button" onClick={() => setIsEditModalOpen(false)} disabled={isSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button type="submit" className="primary-btn" disabled={isSaving || isLoadingDetail || !editBookForm.name.trim()}>{isSaving ? '保存中...' : '保存'}</button>
+              <button type="submit" className="primary-btn" disabled={isSaving || isLoadingDetail || !editBookForm.name.trim()}>{isSaving ? '儲存中...' : '儲存'}</button>
             </div>
           </form>
         </div>,
@@ -1030,7 +1030,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ fontWeight: 600, color: '#e5e7eb' }}>{r.name}</span>
                         <span style={{ padding: '1px 8px', borderRadius: '999px', fontSize: '11px', background: r.status === 'matched' ? '#065f46' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#7f1d1d' : '#374151', color: r.status === 'matched' ? '#6ee7b7' : r.status === 'local_only' ? '#93c5fd' : r.status === 'missing_on_flexisip' ? '#fca5a5' : '#9ca3af' }}>
-                          {r.status === 'matched' ? '一致' : r.status === 'local_only' ? '仅本地' : r.status === 'missing_on_flexisip' ? 'Flexisip缺失' : r.status === 'missing_locally' ? '本地缺失' : r.status}
+                          {r.status === 'matched' ? '一致' : r.status === 'local_only' ? '僅本地' : r.status === 'missing_on_flexisip' ? 'Flexisip缺失' : r.status === 'missing_locally' ? '本地缺失' : r.status}
                         </span>
                       </div>
                       {r.note && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{r.note}</div>}

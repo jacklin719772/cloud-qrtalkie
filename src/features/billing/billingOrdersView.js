@@ -14,13 +14,13 @@ export function renderBillingOrdersView({ orders, page, pageSize }) {
   const prevButton = document.querySelector("#billing-prev-page");
   const nextButton = document.querySelector("#billing-next-page");
 
-  if (info) info.textContent = `共 ${orders.length} 笔`;
+  if (info) info.textContent = `共 ${orders.length} 筆`;
   if (pageNumber) pageNumber.textContent = `${normalizedPage} / ${totalPages}`;
   if (prevButton) prevButton.disabled = normalizedPage <= 1;
   if (nextButton) nextButton.disabled = normalizedPage >= totalPages;
 
   if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty-cell">暂无订单</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-cell">暫無訂單</td></tr>`;
     hideFloatingOrderMenu();
     return normalizedPage;
   }
@@ -44,7 +44,7 @@ export function renderBillingOrdersView({ orders, page, pageSize }) {
           <td>${order.paymentDate || "-"}</td>
           <td>
             <div class="row-actions">
-              <button class="ghost-btn" type="button" data-order-action="detail" data-order-id="${order.id}">查看详情</button>
+              <button class="ghost-btn" type="button" data-order-action="detail" data-order-id="${order.id}">檢視詳情</button>
               <button class="ghost-btn more-trigger" type="button" data-order-more data-order-id="${order.id}" data-menu-actions='${JSON.stringify(menuActions)}'>更多</button>
             </div>
           </td>

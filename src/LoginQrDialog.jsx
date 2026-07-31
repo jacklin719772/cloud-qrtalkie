@@ -23,10 +23,10 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
         setProvisionUrl(res.data.provisionUrl);
         setExpireAt(res.data.expireAt || null);
       } else {
-        setError(res?.message || '未獲取到可用鏈接');
+        setError(res?.message || '未獲取到可用連結');
       }
     } catch (err) {
-      setError(err.message || '獲取 provisioning 鏈接失敗');
+      setError(err.message || '獲取 provisioning 連結失敗');
     } finally {
       setLoading(false);
       setRenewing(false);
@@ -168,7 +168,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
             <div style={{ display: 'flex', gap: '8px' }}>
               <div style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', background: 'rgba(26,35,50,0.8)', border: '1px solid rgba(55,65,81,0.5)', color: '#d1d5db', fontSize: '13px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>{provisionUrl}</div>
               <button onClick={handleCopyUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '10px 16px', borderRadius: '8px', border: '1px solid rgba(75,85,99,0.4)', background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(55,65,81,0.5)', color: copied ? '#4ade80' : '#d1d5db', fontSize: '12px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                <Copy size={14} /> {copied ? '已複製' : '複製鏈接'}
+                <Copy size={14} /> {copied ? '已複製' : '複製連結'}
               </button>
             </div>
             <div style={{ marginTop: '8px' }}>

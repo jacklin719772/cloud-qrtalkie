@@ -229,7 +229,7 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
       return;
     }
     if (!formData.proofFile && formData.existingProofUrl) {
-      setMessage({ type: 'info', text: '當前付款憑證已保存，如需更換請先刪除圖片後重新上傳。' });
+      setMessage({ type: 'info', text: '當前付款憑證已儲存，如需更換請先刪除圖片後重新上傳。' });
       return;
     }
     if (!formData.proofFile) {
@@ -248,16 +248,16 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
         fileName: formData.proofFileName || formData.proofFile.name || 'payment-proof.png',
       });
       const canSubmitReview = order.orderStatus !== 'pending_review';
-      if (canSubmitReview && window.confirm('支付憑證保存成功，訂單已完成支付。是否立即提交審核？')) {
+      if (canSubmitReview && window.confirm('支付憑證儲存成功，訂單已完成支付。是否立即提交審核？')) {
         const submitResult = await apiClient.post(`/billing/orders/${order.id}/review-submission`, { action: 'submit' });
-        setMessage({ type: 'success', text: submitResult.message || '订单已提交审核。' });
+        setMessage({ type: 'success', text: submitResult.message || '訂單已提交稽核。' });
       } else {
-        setMessage({ type: 'success', text: result.message || '支付憑證已保存。' });
+        setMessage({ type: 'success', text: result.message || '支付憑證已儲存。' });
       }
       closeDialog();
       onSuccess?.();
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || '支付憑證保存失敗。' });
+      setMessage({ type: 'error', text: error.message || '支付憑證儲存失敗。' });
     } finally {
       setIsSubmitting(false);
     }
@@ -316,7 +316,7 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
     </style>
   </head>
   <body>
-            <img id="payment-proof-full-image" src="${escapeHtml(imageSrc)}" alt="付款凭证完整图像">
+            <img id="payment-proof-full-image" src="${escapeHtml(imageSrc)}" alt="付款憑證完整影像">
   </body>
 </html>`);
     previewWindow.document.close();
@@ -410,8 +410,8 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
                       className={`proof-image-action proof-image-open ${isReadonly ? 'solo' : ''}`}
                       onClick={handlePreviewImage}
                       type="button"
-                      title="查看完整圖像"
-                      aria-label="查看完整圖像"
+                      title="檢視完整影像"
+                      aria-label="檢視完整影像"
                     >
                       <Eye size={18} strokeWidth={2} />
                     </button>
@@ -446,7 +446,7 @@ const PaymentProofDialog = forwardRef(({ onSuccess }, ref) => {
           <menu className="form-actions">
             <button className="ghost-btn dialog-close" type="button" onClick={closeDialog}>取消</button>
             <button className="primary-btn" type="submit" disabled={isSubmitting || isReadonly}>
-              {isSubmitting ? '上傳中...' : '保存'}
+              {isSubmitting ? '上傳中...' : '儲存'}
             </button>
           </menu>
         )}

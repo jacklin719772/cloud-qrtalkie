@@ -312,7 +312,7 @@ export default forwardRef(function TenantManagement(props, ref) {
     }
 
     if (Number(tenant.totalPaid) > 0) {
-      alert('該租戶已有支付紀錄，為保障財務數據完整性，無法刪除。');
+      alert('該租戶已有支付紀錄，為保障財務資料完整性，無法刪除。');
       return;
     }
 
@@ -483,7 +483,7 @@ export default forwardRef(function TenantManagement(props, ref) {
           background-color: #fef2f2;
         }
           /* ========================================================
-             复刻设备管理页面顶部命令按钮的视觉风格
+             復刻裝置管理頁面頂部命令按鈕的視覺風格
              ======================================================== */
           .page-heading > button.primary-btn {
             display: inline-flex !important;

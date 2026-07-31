@@ -59,9 +59,9 @@ const LoginEmailDialog = forwardRef(({ initialEmail = '' }, ref) => {
         confirmPassword: formData.confirmPassword,
       });
       setCodeSent(true);
-      setMessage({ type: 'success', text: result.message || '驗證碼已發送。' });
+      setMessage({ type: 'success', text: result.message || '驗證碼已傳送。' });
     } catch (error) {
-      setMessage({ type: 'error', text: error.message || '驗證碼發送失敗。' });
+      setMessage({ type: 'error', text: error.message || '驗證碼傳送失敗。' });
     } finally {
       setIsSending(false);
     }
@@ -115,7 +115,7 @@ const LoginEmailDialog = forwardRef(({ initialEmail = '' }, ref) => {
         {message.text && <p className={`form-message ${message.type}`}>{message.text}</p>}
         <menu className="form-actions">
           <button className="ghost-btn dialog-close" type="button" onClick={closeDialog}>取消</button>
-          <button className="ghost-btn" type="button" onClick={requestCode} disabled={isSending || isConfirming}>{isSending ? '發送中...' : '傳送驗證碼'}</button>
+          <button className="ghost-btn" type="button" onClick={requestCode} disabled={isSending || isConfirming}>{isSending ? '傳送中...' : '傳送驗證碼'}</button>
           {codeSent && <button className="primary-btn" type="submit" disabled={isConfirming}>{isConfirming ? '確認中...' : '確認修改'}</button>}
         </menu>
       </form>

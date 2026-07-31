@@ -26,16 +26,16 @@ export function createAuthController({
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = "注册中...";
+    submitButton.textContent = "註冊中...";
 
     try {
       const result = await authApi.register(payload);
-      showAuthMessage(form, result.message || "注册成功，请前往邮箱完成验证。", "success");
+      showAuthMessage(form, result.message || "註冊成功，請前往郵箱完成驗證。", "success");
       if (result.devVerificationUrl) console.info("Dev verification URL:", result.devVerificationUrl);
     } catch (error) {
       console.error(error);
       if (error.code === "EMAIL_UNVERIFIED") {
-        showAuthMessage(form, error.message || "此邮箱已注册但尚未验证。", "info");
+        showAuthMessage(form, error.message || "此郵箱已註冊但尚未驗證。", "info");
         let resendContainer = form.querySelector(".resend-verification-wrap");
         if (!resendContainer) {
           resendContainer = document.createElement("div");
@@ -46,11 +46,11 @@ export function createAuthController({
         resendContainer.innerHTML = "";
         const resendBtn = document.createElement("button");
         resendBtn.type = "button";
-        resendBtn.textContent = "重新发送验证邮件";
+        resendBtn.textContent = "重新發送驗證郵件";
         resendBtn.style.cssText = "padding:10px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;";
         resendBtn.onclick = async () => {
           resendBtn.disabled = true;
-          resendBtn.textContent = "发送中...";
+          resendBtn.textContent = "傳送中...";
           try {
             const resp = await fetch("/api/auth/resend-verification", {
               method: "POST",
@@ -61,23 +61,23 @@ export function createAuthController({
             if (resp.ok) {
               resendContainer.innerHTML = `<span style="color:#10b981;font-size:14px;">${data.message || "验证邮件已发送，请检查邮箱。"}</span>`;
             } else {
-              showAuthMessage(form, data.message || "发送失败，请稍后重试。", "error");
+              showAuthMessage(form, data.message || "傳送失敗，請稍後重試。", "error");
               resendBtn.disabled = false;
-              resendBtn.textContent = "重新发送验证邮件";
+              resendBtn.textContent = "重新發送驗證郵件";
             }
           } catch {
-            showAuthMessage(form, "无法连接服务器，请稍后重试。", "error");
+            showAuthMessage(form, "無法連線伺服器，請稍後重試。", "error");
             resendBtn.disabled = false;
-            resendBtn.textContent = "重新发送验证邮件";
+            resendBtn.textContent = "重新發送驗證郵件";
           }
         };
         resendContainer.appendChild(resendBtn);
       } else {
-        showAuthMessage(form, error.message || "无法连接注册服务，请确认 API 是否已启动。", "error");
+        showAuthMessage(form, error.message || "無法連線註冊服務，請確認 API 是否已啟動。", "error");
       }
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "注册并验证电子邮件";
+      submitButton.textContent = "註冊並驗證電子郵件";
     }
   }
 
@@ -93,17 +93,17 @@ export function createAuthController({
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = "登录中...";
+    submitButton.textContent = "登入中...";
 
     try {
       const result = await authApi.login(email, password);
       setAuthToken(result.token);
       await enterConsole();
     } catch (error) {
-      showAuthMessage(form, error.message || "登录失败，请稍后重试。", "error");
+      showAuthMessage(form, error.message || "登入失敗，請稍後重試。", "error");
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "登录";
+      submitButton.textContent = "登入";
     }
   }
 
@@ -117,10 +117,10 @@ export function createAuthController({
 
     try {
       const result = await authApi.verifyEmail(token);
-      showAuthMessage(loginForm, result.message || "验证邮件发送成功，请登录。", result.ok ? "success" : "error");
+      showAuthMessage(loginForm, result.message || "驗證郵件傳送成功，請登入。", result.ok ? "success" : "error");
     } catch (error) {
       console.error(error);
-      showAuthMessage(loginForm, "无法连接验证服务，请确认 API 是否已启动。", "error");
+      showAuthMessage(loginForm, "無法連線驗證服務，請確認 API 是否已啟動。", "error");
     } finally {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -137,7 +137,7 @@ export function createAuthController({
       setAuthToken("");
       logoutButton.disabled = false;
       returnToLogin();
-      showAuthMessage(document.querySelector("#login-form"), "已退出系统。", "success");
+      showAuthMessage(document.querySelector("#login-form"), "已退出系統。", "success");
     }
   }
 

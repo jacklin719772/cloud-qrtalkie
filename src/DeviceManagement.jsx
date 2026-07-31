@@ -248,7 +248,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   async function handleSaveDevice(event) {
     event.preventDefault();
     if (!formData.uuid.trim() || !formData.subscribeTopic.trim() || !formData.publishTopic.trim()) {
-      setFormMessage({ type: 'error', text: '請填寫 UUID、訂閱主題和發佈主題。' });
+      setFormMessage({ type: 'error', text: '請填寫 UUID、訂閱主題和釋出主題。' });
       return;
     }
     setIsSaving(true);
@@ -256,7 +256,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     try {
       if (viewMode === 'edit') await apiClient.put(`/admin/gate-devices/${formData.id}`, formData);
       else await apiClient.post('/admin/gate-devices', formData);
-      setFormMessage({ type: 'success', text: viewMode === 'edit' ? '設備已更新。' : '設備已新增。' });
+      setFormMessage({ type: 'success', text: viewMode === 'edit' ? '裝置已更新。' : '裝置已新增。' });
       await loadDevices();
       window.setTimeout(() => {
         setViewMode('list');
@@ -272,21 +272,21 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   async function handleBatchDelete() {
     const selectedDevices = devices.filter((device) => selectedIds.includes(device.id));
     if (selectedDevices.length === 0) {
-      window.alert('請選擇要刪除的设备。');
+      window.alert('請選擇要刪除的裝置。');
       return;
     }
     const assignedDevices = selectedDevices.filter((device) => device.status === 'assigned');
     if (assignedDevices.length > 0) {
-      window.alert(`所選設備中有 ${assignedDevices.length} 個已分配給租戶，請先取消分配。`);
+      window.alert(`所選裝置中有 ${assignedDevices.length} 個已分配給租戶，請先取消分配。`);
       return;
     }
-    if (!window.confirm(`確定要刪除選中的 ${selectedDevices.length} 個設備吗？`)) return;
+    if (!window.confirm(`確定要刪除選中的 ${selectedDevices.length} 個裝置嗎？`)) return;
     try {
       await Promise.all(selectedDevices.map((device) => apiClient.delete(`/admin/gate-devices/${device.id}`)));
       setSelectedIds([]);
       await loadDevices();
     } catch (error) {
-      window.alert(error.message || '批量刪除失敗。');
+      window.alert(error.message || '批次刪除失敗。');
     }
   }
 
@@ -297,11 +297,11 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     const subscribeTopic = String(batchAddForm.subscribeTopic || '').trim();
     const publishTopic = String(batchAddForm.publishTopic || '').trim();
     if (!relayId || !subscribeTopic || !publishTopic) {
-      setBatchAddMessage({ type: 'error', text: '請填寫繼電器ID、訂閱主題和發佈主題。' });
+      setBatchAddMessage({ type: 'error', text: '請填寫繼電器ID、訂閱主題和釋出主題。' });
       return;
     }
     if (!Number.isInteger(count) || count <= 0 || count > 1000) {
-      setBatchAddMessage({ type: 'error', text: '新增數量必须在 1 到 1000 之间。' });
+      setBatchAddMessage({ type: 'error', text: '新增數量必須在 1 到 1000 之間。' });
       return;
     }
 
@@ -334,18 +334,18 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       setBatchAddMessage({ type: 'error', text: `已成功新增 ${successCount} 個，失敗 ${errors.length} 個。${errors.slice(0, 3).join('；')}` });
       return;
     }
-    setBatchAddMessage({ type: 'success', text: `已成功批量新增 ${successCount} 個設備。` });
+    setBatchAddMessage({ type: 'success', text: `已成功批次新增 ${successCount} 個裝置。` });
     window.setTimeout(() => setBatchAddOpen(false), 800);
   }
 
   async function handleBatchAssign() {
     const unassignedDevices = devices.filter((device) => selectedIds.includes(device.id) && device.status !== 'assigned');
     if (selectedIds.length === 0) {
-      window.alert('請選擇要分配的設備。');
+      window.alert('請選擇要分配的裝置。');
       return;
     }
     if (unassignedDevices.length === 0) {
-      window.alert('所選設備均已分配。');
+      window.alert('所選裝置均已分配。');
       return;
     }
     setBatchAssignDevices(unassignedDevices);
@@ -373,26 +373,26 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     setBatchAssignDialogOpen(false);
     setSelectedIds([]);
     await loadDevices();
-    window.alert(`已成功分配 ${success} 個設備。`);
+    window.alert(`已成功分配 ${success} 個裝置。`);
   }
 
   async function handleBatchUnassign() {
     const assignedDevices = devices.filter((device) => selectedIds.includes(device.id) && device.status === 'assigned');
     if (selectedIds.length === 0) {
-      window.alert('請選擇要取消分配的设备。');
+      window.alert('請選擇要取消分配的裝置。');
       return;
     }
     if (assignedDevices.length === 0) {
-      window.alert('所選設備均未分配給租戶。');
+      window.alert('所選裝置均未分配給租戶。');
       return;
     }
-    if (!window.confirm(`確定要取消分配選中的 ${assignedDevices.length} 個設備吗？`)) return;
+    if (!window.confirm(`確定要取消分配選中的 ${assignedDevices.length} 個裝置嗎？`)) return;
     try {
       await Promise.all(assignedDevices.map((device) => apiClient.post(`/admin/gate-devices/${device.id}/unassign`)));
       setSelectedIds([]);
       await loadDevices();
     } catch (error) {
-      window.alert(error.message || '批量取消分配失敗。');
+      window.alert(error.message || '批次取消分配失敗。');
     }
   }
 
@@ -416,10 +416,10 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'unassign') {
       if (device.status !== 'assigned') {
-        window.alert('該設備尚未分配給租戶。');
+        window.alert('該裝置尚未分配給租戶。');
         return;
       }
-      if (!window.confirm(`確定取消設備 ${device.uuid} 的租戶分配吗？`)) return;
+      if (!window.confirm(`確定取消裝置 ${device.uuid} 的租戶分配嗎？`)) return;
       try {
         await apiClient.post(`/admin/gate-devices/${device.id}/unassign`);
         await loadDevices();
@@ -430,15 +430,15 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'delete') {
       if (device.status === 'assigned') {
-        window.alert('已經分配給租戶的設備不允許刪除。');
+        window.alert('已經分配給租戶的裝置不允許刪除。');
         return;
       }
-      if (!window.confirm(`確定刪除設備 ${device.uuid} 吗？`)) return;
+      if (!window.confirm(`確定刪除裝置 ${device.uuid} 嗎？`)) return;
       try {
         await apiClient.delete(`/admin/gate-devices/${device.id}`);
         await loadDevices();
       } catch (error) {
-        window.alert(error.message || '刪除失败。');
+        window.alert(error.message || '刪除失敗。');
       }
     }
   }
@@ -502,7 +502,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <form className="panel" onSubmit={handleSaveDevice} style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯設備' : '新增設備'}</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>{viewMode === 'edit' ? '編輯裝置' : '新增裝置'}</h3>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <h4 style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', marginBottom: '16px', marginTop: 0 }}>基礎設備資訊</h4>
@@ -554,7 +554,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       ['UUID', viewingDevice.uuid || '-'],
       ['繼電器ID', viewingDevice.relayId || '-'],
       ['訂閱主題', viewingDevice.subscribeTopic || '-'],
-      ['發佈主題', viewingDevice.publishTopic || '-'],
+      ['釋出主題', viewingDevice.publishTopic || '-'],
       ['Wifi名稱', viewingDevice.wifiName || '-'],
       ['Wifi密碼', viewingDevice.wifiPassword || '-'],
       ['分配狀態', viewingDevice.status || '-'],
@@ -572,7 +572,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 {details.map(([label, value]) => (
-                  <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: ['訂閱主題', '發佈主題'].includes(label) ? '1 / -1' : undefined }}>
+                  <label key={label} style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: ['訂閱主題', '釋出主題'].includes(label) ? '1 / -1' : undefined }}>
                     <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>{label}</span>
                     <input value={value} readOnly style={fieldStyle} />
                   </label>
@@ -966,7 +966,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                     <td colSpan="9" style={{ padding: 0, textAlign: 'center' }}>
                       <div className="device-empty">
                         <div className="device-empty-icon"><Wifi size={56} /></div>
-                        <div className="device-empty-title">{isLoading ? '載入中...' : '暫無設備'}</div>
+                        <div className="device-empty-title">{isLoading ? '載入中...' : '暫無裝置'}</div>
                         {!isLoading && <div className="device-empty-desc">當前篩選條件下沒有設備，請調整搜尋條件或新增設備</div>}
                       </div>
                     </td>

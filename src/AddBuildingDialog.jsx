@@ -161,7 +161,7 @@ const AddBuildingDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
 
               <label style={{ gridColumn: '1 / -1' }}>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>地址</span>
-                <input name="address" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="預設與社區地址相同" />
+                <input name="address" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="預設與社群地址相同" />
               </label>
 
               <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>

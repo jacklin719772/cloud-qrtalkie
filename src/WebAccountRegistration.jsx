@@ -88,7 +88,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     '補全 FreePBX WebRTC 進階配置',
     '套用 FreePBX 配置',
     '驗證 FreePBX 生成的 Endpoint 配置',
-    '補齊 WebRTC Runtime 參數',
+    '補齊 WebRTC Runtime 引數',
     '重新套用 Runtime 補充配置',
     '驗證 WebRTC Runtime 狀態',
     '確認既有標準帳號未受影響',
@@ -134,7 +134,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setSimulatedStep(-1);
       const errorText = data.error?.message || data.message || err.message || '建立失敗';
       if (err.status === 409 || errorCode === 'FREEPBX_EXTENSION_ALREADY_EXISTS') {
-        setAddMessage({ type: 'error', text: data.error?.message || '該 WebRTC 帳號已存在，請更換帳號或查看現有配置。' });
+        setAddMessage({ type: 'error', text: data.error?.message || '該 WebRTC 帳號已存在，請更換帳號或檢視現有配置。' });
       } else {
         setAddMessage({ type: 'error', text: errorText });
       }
@@ -384,7 +384,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       if (lines.length <= 1) {
         setImportRows([]);
-        setImportMessage({ type: 'error', text: 'CSV 文件没有可導入的數據。' });
+        setImportMessage({ type: 'error', text: 'CSV 檔案沒有可匯入的資料。' });
         return;
       }
       const rows = lines.slice(1).map((line, index) => {
@@ -401,14 +401,14 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           email: email || '',
           error: '',
         };
-        if (!item.username) item.error = '用戶名不能为空';
-        else if (item.password.length < 6) item.error = '密碼至少需要 6 個字符';
-        else if (accounts.some((account) => account.username === item.username && (account.domain || defaultSipDomain) === item.domain)) item.error = '该域名下用戶名已存在';
+        if (!item.username) item.error = '使用者名稱不能為空';
+        else if (item.password.length < 6) item.error = '密碼至少需要 6 個字元';
+        else if (accounts.some((account) => account.username === item.username && (account.domain || defaultSipDomain) === item.domain)) item.error = '該域名下使用者名稱已存在';
         return item;
       });
       setImportRows(rows);
       const errorCount = rows.filter((row) => row.error).length;
-      setImportMessage(errorCount > 0 ? { type: 'error', text: `发现 ${errorCount} 條错误，请修正后重新上傳。` } : { type: 'success', text: `已解析 ${rows.length} 條數據，可执行導入。` });
+      setImportMessage(errorCount > 0 ? { type: 'error', text: `發現 ${errorCount} 條錯誤，請修正後重新上傳。` } : { type: 'success', text: `已解析 ${rows.length} 條資料，可執行匯入。` });
     };
     reader.readAsText(file, 'UTF-8');
   }
@@ -416,7 +416,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   async function handleImportSubmit() {
     const validRows = importRows.filter((row) => !row.error);
     if (validRows.length === 0) {
-      setImportMessage({ type: 'error', text: '没有可導入的數據。' });
+      setImportMessage({ type: 'error', text: '沒有可匯入的資料。' });
       return;
     }
     setIsImporting(true);
@@ -437,7 +437,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setImportMessage({ type: 'error', text: `成功 ${successCount} 條，失敗 ${errors.length} 條。${errors.slice(0, 3).join('；')}` });
       return;
     }
-    setImportMessage({ type: 'success', text: `成功導入 ${successCount} 條 Web 帳號。` });
+    setImportMessage({ type: 'success', text: `成功匯入 ${successCount} 條 Web 帳號。` });
   }
 
   function downloadImportTemplate() {
@@ -478,11 +478,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   async function handleSaveAccount(event) {
     event.preventDefault();
     if (!formData.username.trim()) {
-      setFormMessage({ type: 'error', text: '請輸入用戶名。' });
+      setFormMessage({ type: 'error', text: '請輸入使用者名稱。' });
       return;
     }
     if (viewMode === 'add' && accounts.some((account) => account.username === formData.username.trim() && (account.domain || defaultSipDomain) === (formData.domain || defaultSipDomain))) {
-      setFormMessage({ type: 'error', text: '该域名下用戶名已存在。' });
+      setFormMessage({ type: 'error', text: '該域名下使用者名稱已存在。' });
       return;
     }
     if (viewMode === 'add' && !formData.password) {
@@ -490,7 +490,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (formData.password && formData.password.length < 6) {
-      setFormMessage({ type: 'error', text: '密碼至少需要 6 個字符。' });
+      setFormMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
       return;
     }
     if (formData.password !== formData.confirmPassword) {
@@ -503,7 +503,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     try {
       if (viewMode === 'edit') await apiClient.put(`/admin/web-accounts/${formData.id}`, formData);
       else await apiClient.post('/admin/web-accounts', formData);
-      setFormMessage({ type: 'success', text: viewMode === 'edit' ? '帳號已更新。' : '帳號已登记。' });
+      setFormMessage({ type: 'success', text: viewMode === 'edit' ? '帳號已更新。' : '帳號已登記。' });
       await loadAccounts();
       window.setTimeout(() => {
         setViewMode('list');
@@ -557,7 +557,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
       try {
         const res = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
-        results.push({ ext, status: 'success', label: '創建成功', steps: res.data?.steps || [] });
+        results.push({ ext, status: 'success', label: '建立成功', steps: res.data?.steps || [] });
         successCount++;
       } catch (err) {
         const data = err.response?.data || err.data || {};
@@ -566,7 +566,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           results.push({ ext, status: 'skipped', label: '遠端已存在' });
           skipCount++;
         } else {
-          results.push({ ext, status: 'failed', label: data.error?.message || data.message || err.message || '創建失敗' });
+          results.push({ ext, status: 'failed', label: data.error?.message || data.message || err.message || '建立失敗' });
           failCount++;
         }
       }
@@ -583,7 +583,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       if (failCount > 0) msgs.push(`${failCount} 個失敗`);
       setBatchAddMessage({ type: failCount > 0 ? 'error' : 'info', text: `${msgs.join('，')}。` });
     } else {
-      setBatchAddMessage({ type: 'success', text: `全部 ${successCount} 個帳號創建成功。` });
+      setBatchAddMessage({ type: 'success', text: `全部 ${successCount} 個帳號建立成功。` });
       setTimeout(() => { setBatchAddOpen(false); setBatchResults([]); }, 2000);
     }
   }
@@ -649,20 +649,20 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
     const assignedAccounts = selectedAccounts.filter((account) => account.tenantName);
     if (selectedAccounts.length === 0) {
-      window.alert('请選擇要取消分配的帳號。');
+      window.alert('請選擇要取消分配的帳號。');
       return;
     }
     if (assignedAccounts.length === 0) {
-      window.alert('所选帳號均未分配给租戶。');
+      window.alert('所選帳號均未分配給租戶。');
       return;
     }
-    if (!window.confirm(`確定要取消分配选中的 ${assignedAccounts.length} 個 Web 帳號嗎？`)) return;
+    if (!window.confirm(`確定要取消分配選中的 ${assignedAccounts.length} 個 Web 帳號嗎？`)) return;
     try {
       await Promise.all(assignedAccounts.map((account) => apiClient.post(`/admin/web-accounts/${account.id}/unassign`)));
       setSelectedIds([]);
       await loadAccounts();
     } catch (error) {
-      window.alert(error.message || '批量取消分配失敗。');
+      window.alert(error.message || '批次取消分配失敗。');
     }
   }
 
@@ -688,7 +688,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'delete') {
       if (account.tenantName) {
-        window.alert('已經分配给租戶的帳號不允許刪除。');
+        window.alert('已經分配給租戶的帳號不允許刪除。');
         return;
       }
       if (!window.confirm(`確定刪除 Web 帳號 ${account.username} 嗎？`)) return;
@@ -709,7 +709,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'unassign') {
       if (!account.tenantName) {
-        window.alert('該帳號尚未分配给租戶。');
+        window.alert('該帳號尚未分配給租戶。');
         return;
       }
       if (!window.confirm(`確定取消 Web 帳號 ${account.username} 的租戶分配嗎？`)) return;
@@ -722,7 +722,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (action === 'assign') {
-      window.alert('請在訂單审核或帳號分配流程中選擇該 Web 帳號完成分配。');
+      window.alert('請在訂單稽核或帳號分配流程中選擇該 Web 帳號完成分配。');
       return;
     }
     if (action === 'toggle_status') {
@@ -799,7 +799,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <table style={{ width: '100%', minWidth: '860px', borderCollapse: 'collapse' }}>
                   <thead style={{ backgroundColor: '#1a2332', position: 'sticky', top: 0 }}>
                     <tr>
-                      {['行号', '用戶名', '顯示名稱', 'SIP Domain', '角色', '狀態', '手機号', '郵箱', '校验'].map((label) => (
+                      {['行號', '使用者名稱', '顯示名稱', 'SIP Domain', '角色', '狀態', '手機號', '郵箱', '校驗'].map((label) => (
                         <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', fontSize: '13px', color: '#9ca3af', textAlign: 'left' }}>{label}</th>
                       ))}
                     </tr>
@@ -817,7 +817,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.status}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.phone || '-'}</td>
                         <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>{row.email || '-'}</td>
-                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', color: row.error ? '#dc2626' : '#16a34a' }}>{row.error || '可導入'}</td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', color: row.error ? '#dc2626' : '#16a34a' }}>{row.error || '可匯入'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -826,7 +826,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               <button type="button" onClick={() => setViewMode('list')} disabled={isImporting} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
-              <button type="button" onClick={handleImportSubmit} disabled={isImporting || importRows.length === 0 || importRows.some((row) => row.error)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isImporting ? '導入中...' : '执行導入'}</button>
+              <button type="button" onClick={handleImportSubmit} disabled={isImporting || importRows.length === 0 || importRows.some((row) => row.error)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isImporting ? '匯入中...' : '執行匯入'}</button>
             </div>
           </div>
         </div>
@@ -863,7 +863,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         .dropdown-menu-portal .dropdown-item-danger { color: #dc2626; }
 
         /* ========================================================
-           复刻設備管理頁面顶部命令按钮的视觉风格
+           復刻裝置管理頁面頂部命令按鈕的視覺風格
            ======================================================== */
         .page-heading > div > button.ghost-btn,
         .page-heading > div > button.primary-btn {
@@ -902,7 +902,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
 
         /* ========================================================
-           查詢和統計條部分的样式对齐設備管理
+           查詢和統計條部分的樣式對齊裝置管理
            ======================================================== */
         #web-account-registration .web-toolbar {
           display: flex;
@@ -1191,7 +1191,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <Search size={18} />
               <input
                 type="search"
-                placeholder="搜尋帳號、域名、郵箱或手機号"
+                placeholder="搜尋帳號、域名、郵箱或手機號"
                 value={searchKeyword}
                 onChange={(event) => setSearchKeyword(event.target.value)}
               />
@@ -1229,14 +1229,14 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <tr>
                 <th style={{ width: '50px', textAlign: 'center', padding: 0, background: '#1a2332' }}><input type="checkbox" checked={isCurrentPageSelected} onChange={(event) => toggleCurrentPageSelection(event.target.checked)} /></th>
                 {[
-                  ['username', '用戶名', '110px'],
+                  ['username', '使用者名稱', '110px'],
                   ['displayName', '顯示名稱', '110px'],
                   ['domain', 'Domain', '120px'],
                   ['role', '角色', '60px'],
                   ['status', '狀態', '80px'],
                   ['tenantName', '租戶', '100px'],
-                  ['createdAt', '創建時間', '110px'],
-                  ['creatorName', '創建者', '100px'],
+                  ['createdAt', '建立時間', '110px'],
+                  ['creatorName', '建立者', '100px'],
                 ].map(([key, label, width]) => (
                   <th key={key} style={{ width, background: '#1a2332' }}>
                     <button type="button" className="web-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
@@ -1361,7 +1361,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <h4 style={{ margin: '0 0 10px', fontSize: '13px', fontWeight: 600, color: '#60a5fa' }}>基礎資訊</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '6px 12px', fontSize: '13px' }}>
                   {[
-                    ['用戶名', detailAccount.username],
+                    ['使用者名稱', detailAccount.username],
                     ['顯示名稱', detailAccount.displayName],
                     ['Domain', detailAccount.domain],
                     ['角色', detailAccount.role],
@@ -1601,7 +1601,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
             <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button type="button" disabled={isBatchAdding} onClick={() => { setBatchAddOpen(false); setBatchResults([]); }} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button type="submit" disabled={isBatchAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: isBatchAdding ? '#1e3a5f' : '#3b82f6', color: isBatchAdding ? '#6b7280' : '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: isBatchAdding ? 'not-allowed' : 'pointer' }}>{isBatchAdding ? '創建中...' : '開始批量新增'}</button>
+              <button type="submit" disabled={isBatchAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: isBatchAdding ? '#1e3a5f' : '#3b82f6', color: isBatchAdding ? '#6b7280' : '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: isBatchAdding ? 'not-allowed' : 'pointer' }}>{isBatchAdding ? '建立中...' : '開始批次新增'}</button>
             </div>
           </form>
         </div>,

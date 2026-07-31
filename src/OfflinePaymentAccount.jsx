@@ -102,7 +102,7 @@ export default function OfflinePaymentAccount() {
     if (!formData.payeeName.trim()) return '請輸入收款單位。';
     if (!formData.bankName.trim()) return '請輸入開戶銀行。';
     if (!formData.bankAccountNo.trim()) return '請輸入銀行帳號。';
-    if (!/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())) return '幣別需為 3 位英文代碼。';
+    if (!/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())) return '幣別需為 3 位英文程式碼。';
     if (formData.contactEmail.trim() && !isValidEmail(formData.contactEmail)) return '請輸入有效的聯絡信箱。';
     return '';
   };

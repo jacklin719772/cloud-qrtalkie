@@ -26,7 +26,7 @@ import {
 const navItems = [
   { id: 'users', label: '租戶概覽', icon: RadioTower },
   { id: 'analytics', label: '統計分析', icon: BarChart3 },
-  { id: 'dashboard', label: '平台概覽', icon: Gauge },
+  { id: 'dashboard', label: '平臺概覽', icon: Gauge },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
   { id: 'tenant-account-management', label: '帳號管理', icon: Users },
@@ -40,8 +40,8 @@ const navItems = [
 const baseDataItems = [
   { id: 'plans', label: '套餐資料' },
   { id: 'addons', label: '增值服務' },
-  { id: 'discount-data', label: '優惠碼設置' },
-  { id: 'payment-methods', label: '在線支付' },
+  { id: 'discount-data', label: '優惠碼設定' },
+  { id: 'payment-methods', label: '線上支付' },
   { id: 'offline-account', label: '收款帳戶' },
   { id: 'e-business-card', label: '電子名片' },
   { id: 'terms-of-service', label: '服務條款' },
@@ -139,8 +139,8 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <button
               className={`nav-item nav-parent ${isSipAccountOpen ? 'open' : ''}`}
               type="button"
-              title={isCollapsed ? '帳號設置' : undefined}
-              aria-label="帳號設置"
+              title={isCollapsed ? '帳號設定' : undefined}
+              aria-label="帳號設定"
               aria-expanded={isSipAccountOpen}
               onClick={toggleSipAccount}
             >
@@ -154,7 +154,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             </button>
 
             {isSipAccountOpen && !isCollapsed && (
-              <div className="sub-nav" aria-label="帳號設置子選單">
+              <div className="sub-nav" aria-label="帳號設定子選單">
                 <button
                   className={`sub-nav-item ${currentView === 'sip-account-registration' ? 'active' : ''}`}
                   type="button"
@@ -177,8 +177,8 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <button
               className={`nav-item ${currentView === 'device-management' ? 'active' : ''}`}
               type="button"
-              title={isCollapsed ? '設備管理' : undefined}
-              aria-label="設備管理"
+              title={isCollapsed ? '裝置管理' : undefined}
+              aria-label="裝置管理"
               onClick={() => onViewChange('device-management')}
             >
               <Monitor className="nav-icon" size={20} aria-hidden="true" />
@@ -188,8 +188,8 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <button
               className={`nav-item nav-parent ${isBaseDataOpen ? 'open' : ''}`}
               type="button"
-              title={isCollapsed ? '基礎數據' : undefined}
-              aria-label="基礎數據"
+              title={isCollapsed ? '基礎資料' : undefined}
+              aria-label="基礎資料"
               aria-expanded={isBaseDataOpen}
               onClick={toggleBaseData}
             >
@@ -203,7 +203,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             </button>
 
             {isBaseDataOpen && !isCollapsed && (
-              <div className="sub-nav" aria-label="基礎數據子選單">
+              <div className="sub-nav" aria-label="基礎資料子選單">
                 {baseDataItems.map((item) => (
                   <button
                     key={item.id}
@@ -239,7 +239,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
           <button
             className={`nav-item ${currentView === 'platform-admin-management' ? 'active' : ''}`}
             type="button"
-            title={isCollapsed ? '管理員設置' : undefined}
+            title={isCollapsed ? '管理員設定' : undefined}
             onClick={() => onViewChange('platform-admin-management')}
           >
             <Shield className="nav-icon" size={20} aria-hidden="true" />

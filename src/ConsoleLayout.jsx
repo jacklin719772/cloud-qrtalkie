@@ -57,24 +57,24 @@ const viewTitles = {
   'ecard-styles-management': '電子名片管理',
   'tenant-management': '租戶管理',
   'tenant-coupon-management': '優惠碼管理',
-  'device-management': '設備管理',
+  'device-management': '裝置管理',
   'offline-account': '收款帳戶',
   plans: '套餐資料',
   'plans-add': '新增套餐',
-  'payment-methods': '在線支付',
-  'discount-data': '優惠碼設置',
+  'payment-methods': '線上支付',
+  'discount-data': '優惠碼設定',
   addons: '增值服務',
   'terms-of-service': '服務條款',
   'privacy-policy': '隱私政策',
   'purchase-plan': '購買套餐',
-  'call-center': '呼叫中心設置',
+  'call-center': '呼叫中心設定',
   'call-center-add': '新增呼叫中心',
   'call-center-inquiries': '訪客諮詢記錄',
   'access-control': '門禁系統配置',
   'order-detail': '訂單詳情',
-  'platform-admin-management': '管理員設置',
+  'platform-admin-management': '管理員設定',
   'app-releases': 'App 版本管理',
-  'dashboard-platform': 'QRTalkie Cloud 平台概覽',
+  'dashboard-platform': 'QRTalkie Cloud 平臺概覽',
   'analytics': '統計分析',
 };
 
@@ -523,7 +523,7 @@ export default function ConsoleLayout({ onLogout }) {
             type="button"
             onClick={() => deviceManagementRef.current?.returnToList()}
           >
-            {deviceManagementMode === 'detail' ? '返回列表' : '返回設備管理首页'}
+            {deviceManagementMode === 'detail' ? '返回列表' : '返回裝置管理首頁'}
           </button>
         );
       }
@@ -647,7 +647,7 @@ export default function ConsoleLayout({ onLogout }) {
           <button className="primary-btn" type="button" onClick={() => platformAdminRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
             + 新增管理員
           </button>
-          <button type="button" onClick={() => setShowAdminHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助">
+          <button type="button" onClick={() => setShowAdminHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="幫助">
             <HelpCircle size={18} />
           </button>
         </div>
@@ -696,13 +696,13 @@ export default function ConsoleLayout({ onLogout }) {
       );
     }
     if (currentView === 'offline-account') {
-      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowOfflineAccountHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="帮助"><HelpCircle size={18} /></button></div>);
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowOfflineAccountHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="幫助"><HelpCircle size={18} /></button></div>);
     }
     if (currentView === 'terms-of-service') {
-      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('服務條款'); setLegalHelpType('terms'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('服務條款'); setLegalHelpType('terms'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="幫助"><HelpCircle size={18} /></button></div>);
     }
     if (currentView === 'privacy-policy') {
-      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('隱私政策'); setLegalHelpType('privacy'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="帮助"><HelpCircle size={18} /></button></div>);
+      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('隱私政策'); setLegalHelpType('privacy'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="幫助"><HelpCircle size={18} /></button></div>);
     }
     if (currentView === 'plan-management') {
       return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowPlanMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button></div>);
@@ -741,7 +741,7 @@ export default function ConsoleLayout({ onLogout }) {
       <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
         <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}) }}>
           <h1 id="page-title">{
-            currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平台概覽' :
+            currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平臺概覽' :
             currentView === 'purchase-plan'
               ? (purchaseContext?.mode === 'edit' ? '訂單修改' : purchaseContext?.mode === 'renewal' ? '訂單續訂' : purchaseContext?.mode === 'repurchase' ? '重新購買' : '購買套餐')
               : (viewTitles[currentView] || '控制台')
@@ -906,12 +906,12 @@ export default function ConsoleLayout({ onLogout }) {
 
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#9998; 编辑管理员</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"编辑"按钮，可修改管理员的邮箱、显示名称、电话和角色。密码留空则不修改。</p>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"編輯"按钮，可修改管理员的邮箱、显示名称、电话和角色。密码留空则不修改。</p>
               </div>
 
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#128273; 重置密码</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"重置密码"按钮，输入新密码和确认密码。密码至少需要 6 个字符，两次输入需一致。</p>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"重置密碼"按钮，输入新密码和确认密码。密码至少需要 6 个字符，两次输入需一致。</p>
               </div>
 
               <div style={{ marginBottom: '24px' }}>
@@ -921,7 +921,7 @@ export default function ConsoleLayout({ onLogout }) {
 
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ color: '#60a5fa', fontSize: '14px', marginBottom: '8px' }}>&#10060; 删除管理员</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"删除"按钮可永久删除管理员账号。此操作不可恢复。超级管理员不可删除。</p>
+                <p style={{ color: '#9ca3af', margin: 0 }}>点击操作列的"刪除"按钮可永久删除管理员账号。此操作不可恢复。超级管理员不可删除。</p>
               </div>
 
               <div>

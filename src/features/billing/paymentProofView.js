@@ -41,16 +41,16 @@ export function setPaymentProofReadonly(readonly) {
 export function readProofFile(file) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
-      reject(new Error("请上传图片格式的支付凭证。"));
+      reject(new Error("請上傳圖片格式的支付憑證。"));
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      reject(new Error("支付凭证图片大小需小于 8MB。"));
+      reject(new Error("支付憑證圖片大小需小於 8MB。"));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("读取图片失败，请重新选择。"));
+    reader.onerror = () => reject(new Error("讀取圖片失敗，請重新選擇。"));
     reader.readAsDataURL(file);
   });
 }

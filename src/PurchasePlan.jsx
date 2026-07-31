@@ -76,7 +76,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           if (!isMounted) return;
           const order = orderRes.order || {};
           if (purchaseContext.mode === 'edit' && order.editable === false) {
-            setError('当前订单状态不允许修改。');
+            setError('當前訂單狀態不允許修改。');
             return;
           }
           const matchedPlan = activePlans.find(plan => plan.planCode === order.planCode);
@@ -137,9 +137,9 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
       || { currency, unitPrice: 0, syncWithPlanTerm: true };
   };
   const formatAddonUnit = (unit) => {
-    if (unit === 'tenant') return '租户';
-    if (unit === 'unit') return '个';
-    return '项';
+    if (unit === 'tenant') return '租戶';
+    if (unit === 'unit') return '個';
+    return '項';
   };
   // availableAddons 现在包含所有活跃增值服务，并标记哪些是当前套餐自带的
   const availableAddons = useMemo(() => {
@@ -292,7 +292,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const handleCheckout = async (e) => {
     e.preventDefault();
     if (paymentType === 'online') {
-      alert('线上支付功能正在开发中。');
+      alert('線上支付功能正在開發中。');
       return;
     }
     const missingPaymentMethod = paymentType === 'online'
@@ -341,10 +341,10 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
 
       if (paymentType === 'offline') {
         alert(purchaseContext?.mode === 'edit'
-          ? '订单修改已保存，原付款凭证已清空，支付状态已重置为未支付。请重新上传付款凭证后再提交审核。'
+          ? '訂單修改已儲存，原付款憑證已清空，支付狀態已重置為未支付。請重新上傳付款憑證後再提交稽核。'
           : isRenewalMode
-            ? '订单续订已保存。请在付款后上传付款凭证，然后提交审核。'
-            : '保存成功。请在付款后上传付款凭证，然后提交审核。');
+            ? '訂單續訂已儲存。請在付款後上傳付款憑證，然後提交稽核。'
+            : '儲存成功。請在付款後上傳付款憑證，然後提交稽核。');
         onBack(); // 返回我的套餐頁面
       } else {
         // TODO: 處理線上支付跳轉
@@ -592,7 +592,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
                     <button type="button" className="link-btn" onClick={clearRetainedAccounts} disabled={!canSelectRetainedAccounts}>清空</button>
                   </div>
                 </div>
-                <div className="renewal-account-listbox" role="group" aria-label="原订单已分配账号">
+                <div className="renewal-account-listbox" role="group" aria-label="原訂單已分配賬號">
                   {renewalAccounts.map(account => {
                     const sipUserId = Number(account.sipUserId);
                     const checked = selectedRetainedSipUserIds.has(sipUserId);
@@ -733,7 +733,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         <div className="purchase-page-actions">
           {error && <p className="form-message error">{error}</p>}
           <button className="primary-btn" type="submit" disabled={submitting || loading}>
-            {submitting ? '處理中...' : paymentType === 'offline' ? '保存' : '支付'}
+            {submitting ? '處理中...' : paymentType === 'offline' ? '儲存' : '支付'}
           </button>
           <button className="ghost-btn" type="button" onClick={onBack}>取消</button>
         </div>

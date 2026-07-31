@@ -2,18 +2,18 @@ import React, { useEffect, useState, useMemo } from 'react';
 import apiClient from './apiClient';
 
 const MOCK = {
-  tenant: { name: "未来社区物业管理有限公司", sipDomain: "sip.qrtalkie.org", contactPerson: "张三", contactPhone: "138****8888", contactEmail: "admin@futurecommunity.com", status: "active", createdAt: "2025-03-15 14:20:30", lastLoginAt: "2026-06-01 10:15:22" },
-  plan: { planName: "企业版 Professional", accountQuantity: 10, addonNames: "Ecard, 呼叫中心", payableAmount: 999, paymentMethod: "线下支付", paymentDate: "2025-03-15", createdAt: "2025-03-15", expiresAt: "2027-06-01", daysLeft: 365, status: "active" },
+  tenant: { name: "未來社群物業管理有限公司", sipDomain: "sip.qrtalkie.org", contactPerson: "張三", contactPhone: "138****8888", contactEmail: "admin@futurecommunity.com", status: "active", createdAt: "2025-03-15 14:20:30", lastLoginAt: "2026-06-01 10:15:22" },
+  plan: { planName: "企業版 Professional", accountQuantity: 10, addonNames: "Ecard, 呼叫中心", payableAmount: 999, paymentMethod: "線下支付", paymentDate: "2025-03-15", createdAt: "2025-03-15", expiresAt: "2027-06-01", daysLeft: 365, status: "active" },
   sipAccounts: { total: 3200, enabled: 3015, expired: 85, expiring: 32, noDisplayName: 185, noEmail: 320, limit: 5000, list: [] },
   ecards: { total: 3200, configured: 2800, unconfigured: 400, active: 2600, expired: 120, expiring: 48 },
   devices: { total: 218, online: 213, offline: 5, onlineRate: 97.7, limit: 500 },
   buildings: { communities: 35, buildings: 185, rooms: 6200, entrances: 128, entranceBound: 112, devices: 500, deviceBound: 218 },
   callCenter: { total: 5, active: 3, disabled: 1, visitorEnabled: 2, expiring: 1, agents: 28, todayCalls: 682, monthCalls: 12852, callTrend: [{date:"2026-05-27",count:45},{date:"2026-05-28",count:62},{date:"2026-05-29",count:38},{date:"2026-05-30",count:71},{date:"2026-05-31",count:55},{date:"2026-06-01",count:80},{date:"2026-06-02",count:68}], recentCalls: [{ time: "10:28", caller: "10001", callee: "10002", status: "completed" }, { time: "10:25", caller: "10008", callee: "10001", status: "completed" }, { time: "10:21", caller: "10005", callee: "10003", status: "completed" }, { time: "10:18", caller: "10012", callee: "10001", status: "failed" }] },
   cloudStorage: { used: 128, limit: 500 },
-  alerts: [{ text: "东门门禁设备离线", time: "10:25" }, { text: "地下车库入口设备离线", time: "09:58" }, { text: "南门对讲设备异常", time: "09:40" }, { text: "3栋2单元门禁设备电量低", time: "08:30" }],
+  alerts: [{ text: "東門門禁裝置離線", time: "10:25" }, { text: "地下車庫入口裝置離線", time: "09:58" }, { text: "南門對講裝置異常", time: "09:40" }, { text: "3棟2單元門禁裝置電量低", time: "08:30" }],
   orderList: [
-    { id: 1, orderNo: "ORD20250315918452", planName: "企业版 Professional", orderStatus: "review_approved", payableAmount: 999, expiresAt: "2027-06-01" },
-    { id: 2, orderNo: "ORD20240601918452", planName: "企业版 Professional", orderStatus: "review_approved", payableAmount: 999, expiresAt: "2026-06-01" },
+    { id: 1, orderNo: "ORD20250315918452", planName: "企業版 Professional", orderStatus: "review_approved", payableAmount: 999, expiresAt: "2027-06-01" },
+    { id: 2, orderNo: "ORD20240601918452", planName: "企業版 Professional", orderStatus: "review_approved", payableAmount: 999, expiresAt: "2026-06-01" },
   ],
 };
 
@@ -22,7 +22,7 @@ function formatDate(v) { if (!v) return "-"; return String(v).slice(0, 10) + " "
 function buildChartBars(trend, valueKey) {
   if (!trend || trend.length === 0) return { bars: [], labels: [], max: 1 };
   const max = Math.max(1, ...trend.map(d => d[valueKey]));
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
   const bars = trend.map(d => ({ label: dayNames[new Date(d.date + 'T00:00:00').getDay()] || d.date.slice(5), pct: Math.round((d[valueKey] / max) * 100) }));
   return { bars, labels: bars.map(b => b.label), max };
 }
@@ -175,7 +175,7 @@ export default function TenantDashboard({ onNavigate }) {
           <h2 className="td-section-title"><span className="td-num">1</span>租户基本信息</h2>
           <div className="td-card td-tenant-card">
             <div>
-              <div className="td-title">{d.tenant.name} <span className="td-tag">{d.tenant.status === 'active' ? '正常' : '异常'}</span></div>
+              <div className="td-title">{d.tenant.name} <span className="td-tag">{d.tenant.status === 'active' ? '正常' : '異常'}</span></div>
               <div className="td-meta">
                 租户ID：TENANT-{String(d.tenant.id).padStart(5, '0')}<br />
                 创建时间：{formatDate(d.tenant.createdAt)}<br />
@@ -198,7 +198,7 @@ export default function TenantDashboard({ onNavigate }) {
           <div className="td-grid-2">
             <div className="td-card td-plan">
               <div className="td-small">当前套餐</div>
-              <div className="td-plan-name">{d.plan?.planName || '未订购'} <span className="td-tag" style={{ background: d.plan?.status === 'active' ? '#065f46' : '#7f1d1d', color: d.plan?.status === 'active' ? '#6ee7b7' : '#fca5a5' }}>{d.plan?.status === 'active' ? '正常' : '已过期'}</span></div>
+              <div className="td-plan-name">{d.plan?.planName || '未訂購'} <span className="td-tag" style={{ background: d.plan?.status === 'active' ? '#065f46' : '#7f1d1d', color: d.plan?.status === 'active' ? '#6ee7b7' : '#fca5a5' }}>{d.plan?.status === 'active' ? '正常' : '已過期'}</span></div>
               {d.plan ? (
                 <div className="td-meta">
                   账号数量：{d.plan.accountQuantity ?? '-'}<br />
@@ -343,7 +343,7 @@ export default function TenantDashboard({ onNavigate }) {
                     <tr key={r.id}>
                       <td>{r.name || "-"}</td>
                       <td style={{ fontFamily: "monospace", fontSize: 12 }}>{r.url || "-"}</td>
-                      <td>{r.visitorEnabled ? "已开启" : "未开启"}</td>
+                      <td>{r.visitorEnabled ? "已開啟" : "未開啟"}</td>
                       <td>{r.agentCount}</td>
                       <td><span className={`td-status ${r.status !== 'active' ? 'red' : ''}`}>{r.status === 'active' ? '啟用' : '停用'}</span></td>
                       <td>{r.createdAt || "-"}</td>

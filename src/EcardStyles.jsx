@@ -63,7 +63,7 @@ export default function EcardStyles() {
   const [activeJsonType, setActiveJsonType] = useState('layout_json');
   const [previewImgSize, setPreviewImgSize] = useState({ w: 0, h: 0 });
 
-  const TEST_CARD_DATA = {"name":"張浩","titleCn":"市場經理","titleEn":"Market Manager","phone":"+886 912 345 678","email":"zhanghao@company.com","address":"臺灣臺北市信義區世紀大道100號","postcode":"110","qrCaption":"掃碼二維碼 · 交換名片","companyNameCn":"上海智聯科技有限公司","companyNameEn":"Shanghai Zhilian Technology Co., Ltd.","sloganCn":"連接價值 · 智聯未來","sloganEn":"Connecting Value, Linking the Future","avatarUrl":"/ecard-demo-avatar.jpg","companyLogoUrl":"/ecard-demo-logo.png"};
+  const TEST_CARD_DATA = {"name":"張浩","titleCn":"市場經理","titleEn":"Market Manager","phone":"+886 912 345 678","email":"zhanghao@company.com","address":"臺灣臺北市信義區世紀大道100號","postcode":"110","qrCaption":"掃碼二維碼 · 交換名片","companyNameCn":"上海智聯科技有限公司","companyNameEn":"Shanghai Zhilian Technology Co., Ltd.","sloganCn":"連線價值 · 智聯未來","sloganEn":"Connecting Value, Linking the Future","avatarUrl":"/ecard-demo-avatar.jpg","companyLogoUrl":"/ecard-demo-logo.png"};
   const [pendingJsonType, setPendingJsonType] = useState(null);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const jsonFileInputRef = useRef(null);
@@ -336,11 +336,11 @@ export default function EcardStyles() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式編號 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={formData.styleCode} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} placeholder="系统自动產生" />
+                  <input required value={formData.styleCode} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} placeholder="系統自動產生" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式名稱 <span style={{ color: '#ef4444' }}>*</span></span>
-                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="例如：企業商务蓝卡" />
+                  <input required value={formData.styleName} onChange={e => setFormData({ ...formData, styleName: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="例如：企業商務藍卡" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>樣式類型 <span style={{ color: '#ef4444' }}>*</span></span>
@@ -358,7 +358,7 @@ export default function EcardStyles() {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
-                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="简单描述該风格的特點" />
+                  <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#4b5563'} placeholder="簡單描述該風格的特點" />
                 </label>
               </div>
 
@@ -643,7 +643,7 @@ export default function EcardStyles() {
                         const file = e.target.files?.[0];
                         if (!file) return;
                         if (!file.name.endsWith('.json') && file.type !== 'application/json') {
-                          setJsonError('請選擇 JSON 文件');
+                          setJsonError('請選擇 JSON 檔案');
                           e.target.value = '';
                           return;
                         }
@@ -656,9 +656,9 @@ export default function EcardStyles() {
                           setJsonError('');
                         } catch (error) {
                           if (error instanceof SyntaxError) {
-                            setJsonError('JSON 格式错误：' + error.message);
+                            setJsonError('JSON 格式錯誤：' + error.message);
                           } else {
-                            setJsonError('JSON 文件讀取失敗');
+                            setJsonError('JSON 檔案讀取失敗');
                           }
                         } finally {
                           e.target.value = '';
@@ -674,7 +674,7 @@ export default function EcardStyles() {
                             }
                             setJsonError('');
                           } catch (e) {
-                            setJsonError('先修正 JSON 格式后才能格式化。');
+                            setJsonError('先修正 JSON 格式後才能格式化。');
                           }
                       }} style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#111827', color: '#9ca3af', border: '1px solid #1f2937', cursor: 'pointer', fontSize: '12px' }}>格式化</button>
                     </div>
@@ -718,10 +718,10 @@ export default function EcardStyles() {
                       const camelKey = { 'layout_json': 'layoutJson', 'default_style_json': 'defaultStyleJson', 'display_config_json': 'displayConfigJson' }[activeJsonType];
                       const jsonString = jsonConfigs[camelKey];
                       if (jsonString.trim()) JSON.parse(jsonString);
-                      alert('JSON 格式正确');
+                      alert('JSON 格式正確');
                       setJsonError('');
                     } catch (e) {
-                      setJsonError('JSON 格式错误：' + e.message);
+                      setJsonError('JSON 格式錯誤：' + e.message);
                     }
                   }} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#111827', color: '#9ca3af', border: '1px solid #1f2937', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>校验 JSON</button>
                   <button type="button" onClick={async () => {
@@ -753,7 +753,7 @@ export default function EcardStyles() {
                       setJsonError('');
                     } catch (e) {
                       if (e instanceof SyntaxError) {
-                        setJsonError('JSON 格式错误：' + e.message);
+                        setJsonError('JSON 格式錯誤：' + e.message);
                       } else {
                         setJsonError('儲存配置失敗：' + (e.response?.data?.message || e.message || '請稍後重試'));
                       }
@@ -796,7 +796,7 @@ export default function EcardStyles() {
                           setJsonError('');
                         } catch (e) {
                           if (e instanceof SyntaxError) { 
-                            setJsonError('JSON 格式错误：' + e.message); 
+                            setJsonError('JSON 格式錯誤：' + e.message); 
                           } else { 
                             setJsonError('儲存配置失敗：' + (e.response?.data?.message || e.message || '請稍後重試')); 
                           }

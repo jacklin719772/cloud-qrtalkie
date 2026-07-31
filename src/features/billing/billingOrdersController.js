@@ -36,7 +36,7 @@ export function createBillingOrdersController({
       renderOrders();
     } catch {
       const tbody = document.querySelector("#billing-order-table");
-      if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="empty-cell">读取订单列表失败</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="empty-cell">讀取訂單列表失敗</td></tr>`;
     }
   }
 
@@ -47,13 +47,13 @@ export function createBillingOrdersController({
 
   async function deleteOrder(orderId) {
     const messageNode = document.querySelector("#billing-message") || document.querySelector("#tenant-message") || document.querySelector("#purchase-page-message");
-    if (!window.confirm("确定要删除此未支付订单吗？")) return;
+    if (!window.confirm("確定要刪除此未支付訂單嗎？")) return;
     try {
       const result = await billingApi.deleteOrder(orderId);
-      showInlineMessage(messageNode, result.message || "订单已删除。", "success");
+      showInlineMessage(messageNode, result.message || "訂單已刪除。", "success");
       await loadOrders();
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "删除订单失败。", "error");
+      showInlineMessage(messageNode, error.message || "刪除訂單失敗。", "error");
     }
   }
 
@@ -61,10 +61,10 @@ export function createBillingOrdersController({
     const messageNode = document.querySelector("#billing-message") || document.querySelector("#purchase-page-message") || document.querySelector("#tenant-message");
     try {
       const result = await billingApi.updateReviewSubmission(orderId, action);
-      showInlineMessage(messageNode, result.message || "订单状态已更新。", "success");
+      showInlineMessage(messageNode, result.message || "訂單狀態已更新。", "success");
       await loadOrders();
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "订单状态更新失败。", "error");
+      showInlineMessage(messageNode, error.message || "訂單狀態更新失敗。", "error");
     }
   }
 
@@ -130,7 +130,7 @@ export function createBillingOrdersController({
       document.querySelector("#proof-upload-area")?.focus();
     } catch (error) {
       const listMessage = document.querySelector("#billing-message") || document.querySelector("#tenant-message");
-      showInlineMessage(listMessage, error.message || "读取订单支付信息失败。", "error");
+      showInlineMessage(listMessage, error.message || "讀取訂單支付資訊失敗。", "error");
     }
   }
 
@@ -142,7 +142,7 @@ export function createBillingOrdersController({
       setProofPreview(dataUrl, file?.name || "payment-proof.png");
       hideInlineMessage(messageNode);
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "读取支付凭证失败。", "error");
+      showInlineMessage(messageNode, error.message || "讀取支付憑證失敗。", "error");
     }
   }
 
@@ -182,27 +182,27 @@ export function createBillingOrdersController({
     if (!proofOrderId) return;
     const actualAmount = Number(form.elements.actualAmount.value);
     if (!Number.isFinite(actualAmount) || actualAmount <= 0) {
-      showInlineMessage(messageNode, "请输入有效的实付金额。", "error");
+      showInlineMessage(messageNode, "請輸入有效的實付金額。", "error");
       form.elements.actualAmount.focus();
       return;
     }
     if (!form.elements.paymentDate.value) {
-      showInlineMessage(messageNode, "请选择付款日期。", "error");
+      showInlineMessage(messageNode, "請選擇付款日期。", "error");
       form.elements.paymentDate.focus();
       return;
     }
     if (!proofDataUrl && proofExistingUrl) {
-      showInlineMessage(messageNode, "当前支付凭证已保存，无需重复保存。如需更换，请先删除图片后重新上传。", "info");
+      showInlineMessage(messageNode, "當前支付憑證已儲存，無需重複儲存。如需更換，請先刪除圖片後重新上傳。", "info");
       return;
     }
     if (!proofDataUrl) {
-      showInlineMessage(messageNode, "请先上传或粘贴支付凭证截图。", "error");
+      showInlineMessage(messageNode, "請先上傳或貼上支付憑證截圖。", "error");
       document.querySelector("#proof-upload-area")?.focus();
       return;
     }
 
     submitButton.disabled = true;
-    submitButton.textContent = "上传中...";
+    submitButton.textContent = "上傳中...";
     setPaymentProofProgress(0, true);
     try {
       const result = await billingApi.uploadPaymentProof(
@@ -218,23 +218,23 @@ export function createBillingOrdersController({
         },
       );
       setPaymentProofProgress(100, true);
-      showInlineMessage(document.querySelector("#billing-message"), result.message || "支付凭证已保存。", "success");
+      showInlineMessage(document.querySelector("#billing-message"), result.message || "支付憑證已儲存。", "success");
       document.querySelector("#payment-proof-dialog")?.close();
 
       window.alert(
         proofOrderStatus === "pending_review"
-          ? "支付凭证已更换，订单状态保持不变。"
-          : "支付凭证保存成功，订单已变为已支付，请提交该订单，以便后台完成订单审核。",
+          ? "支付憑證已更換，訂單狀態保持不變。"
+          : "支付憑證儲存成功，訂單已變為已支付，請提交該訂單，以便後臺完成訂單稽核。",
       );
       await loadOrders();
 
       proofOrderId = null;
       clearProofImage();
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "支付凭证保存失败。", "error");
+      showInlineMessage(messageNode, error.message || "支付憑證儲存失敗。", "error");
     } finally {
       submitButton.disabled = false;
-      submitButton.textContent = "保存";
+      submitButton.textContent = "儲存";
     }
   }
 

@@ -126,11 +126,11 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
     };
 
     if (!payload.name) {
-      setErrorMessage('請填寫社區名稱。');
+      setErrorMessage('請填寫社群名稱。');
       return;
     }
     if (!payload.address) {
-      setErrorMessage('請填寫社區地址。');
+      setErrorMessage('請填寫社群地址。');
       return;
     }
 
@@ -143,11 +143,11 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
         if (editId && onUpdated) onUpdated(res.data);
         else if (!editId && onCreated) onCreated(res.data);
       } else {
-        setErrorMessage(res?.message || (editId ? '編輯社區失敗。' : '新增社區失敗。'));
+        setErrorMessage(res?.message || (editId ? '編輯社群失敗。' : '新增社群失敗。'));
       }
     } catch (error) {
-      console.error(editId ? '編輯社區失敗:' : '新增社區失敗:', error);
-      setErrorMessage(error.response?.data?.message || error.message || (editId ? '編輯社區失敗，請稍後再試。' : '新增社區失敗，請稍後再試。'));
+      console.error(editId ? '編輯社群失敗:' : '新增社群失敗:', error);
+      setErrorMessage(error.response?.data?.message || error.message || (editId ? '編輯社群失敗，請稍後再試。' : '新增社群失敗，請稍後再試。'));
     } finally {
       setIsSaving(false);
     }
@@ -216,7 +216,7 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       `}</style>
       <form ref={formRef} method="dialog" onSubmit={handleSubmit} className="add-community-form">
         <div className="add-community-header">
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>{isEdit ? '編輯社區' : '新增社區'}</h2>
+          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>{isEdit ? '編輯社群' : '新增社群'}</h2>
           <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={handleClose}>&#x2715;</button>
         </div>
 
@@ -344,7 +344,7 @@ const AddCommunityDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
             </label>
             <label style={{ gridColumn: '1 / -1' }}>
               <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>溫馨提示內容</span>
-              <input name="tipsText" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }} placeholder="預設：如遇門禁問題或需要幫助，請聯繫對應樓宇或房間服務人員。" />
+              <input name="tipsText" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#e5e7eb', outline: 'none', boxSizing: 'border-box' }} placeholder="預設：如遇門禁問題或需要幫助，請聯絡對應樓宇或房間服務人員。" />
             </label>
           </div>
         </div>

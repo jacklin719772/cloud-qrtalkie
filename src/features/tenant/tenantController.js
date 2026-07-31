@@ -28,17 +28,17 @@ export function createTenantController({
     }
 
     saveButton.disabled = true;
-    saveButton.textContent = "保存中...";
+    saveButton.textContent = "儲存中...";
 
     try {
       const result = await tenantApi.updateSettings(payload);
       await loadTenantSettings();
-      showInlineMessage(messageNode, result.message || "已保存修改。", "success");
+      showInlineMessage(messageNode, result.message || "已儲存修改。", "success");
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "保存失败，请稍后重试。", "error");
+      showInlineMessage(messageNode, error.message || "儲存失敗，請稍後重試。", "error");
     } finally {
       saveButton.disabled = false;
-      saveButton.textContent = "保存修改";
+      saveButton.textContent = "儲存修改";
     }
   }
 
@@ -63,27 +63,27 @@ export function createTenantController({
     }
 
     sendButton.disabled = true;
-    sendButton.textContent = "发送中...";
+    sendButton.textContent = "傳送中...";
 
     try {
       const result = await tenantApi.requestLoginEmailChangeCode(payload);
-      showInlineMessage(messageNode, result.message || "验证码已发送。", "success");
+      showInlineMessage(messageNode, result.message || "驗證碼已傳送。", "success");
       document.querySelector("#email-code-field").classList.remove("hidden");
       document.querySelector("#confirm-login-email-change").classList.remove("hidden");
-      sendButton.textContent = "60 秒后重发";
+      sendButton.textContent = "60 秒後重發";
       let seconds = 60;
       const timer = window.setInterval(() => {
         seconds -= 1;
-        sendButton.textContent = seconds > 0 ? `${seconds} 秒后重发` : "重新发送";
+        sendButton.textContent = seconds > 0 ? `${seconds} 秒後重發` : "重新發送";
         if (seconds <= 0) {
           window.clearInterval(timer);
           sendButton.disabled = false;
         }
       }, 1000);
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "验证码发送失败。", "error");
+      showInlineMessage(messageNode, error.message || "驗證碼傳送失敗。", "error");
       sendButton.disabled = false;
-      sendButton.textContent = "发送验证码";
+      sendButton.textContent = "傳送驗證碼";
     }
   }
 
@@ -100,17 +100,17 @@ export function createTenantController({
     }
 
     confirmButton.disabled = true;
-    confirmButton.textContent = "确认中...";
+    confirmButton.textContent = "確認中...";
 
     try {
       const result = await tenantApi.confirmLoginEmailChange(payload);
-      showInlineMessage(messageNode, result.message || "已更新，请重新登录。", "success");
+      showInlineMessage(messageNode, result.message || "已更新，請重新登入。", "success");
       setAuthToken("");
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
-      showInlineMessage(messageNode, error.message || "修改失败，请稍后重试。", "error");
+      showInlineMessage(messageNode, error.message || "修改失敗，請稍後重試。", "error");
       confirmButton.disabled = false;
-      confirmButton.textContent = "确认修改";
+      confirmButton.textContent = "確認修改";
     }
   }
 

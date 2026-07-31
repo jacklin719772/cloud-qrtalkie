@@ -320,7 +320,7 @@ const TenantAccountManagement = forwardRef(({
 
   function openEditAccount(account) {
     if (!canUseAccountActions(account)) {
-      window.alert(isLocalOnly(account) ? '該帳號僅在本地數據庫中存在，無法使用，請聯繫平台管理員！' : '已過期帳號不能編輯。');
+      window.alert(isLocalOnly(account) ? '該帳號僅在本地資料庫中存在，無法使用，請聯絡平臺管理員！' : '已過期帳號不能編輯。');
       return;
     }
     setEditAccount(account);
@@ -345,11 +345,11 @@ const TenantAccountManagement = forwardRef(({
     event.preventDefault();
     if (!editAccount) return;
     if ((editForm.password || editForm.confirmPassword) && editForm.password !== editForm.confirmPassword) {
-      setEditMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setEditMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
     if (editForm.password && editForm.password.length < 6) {
-      setEditMessage({ type: 'error', text: '密碼至少需要 6 個字符。' });
+      setEditMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
       return;
     }
 
@@ -382,7 +382,7 @@ const TenantAccountManagement = forwardRef(({
     const targets = Array.isArray(account) ? account : [account];
     const localOnlyTargets = targets.filter(isLocalOnly);
     if (localOnlyTargets.length > 0) {
-      window.alert(`所選帳號（${localOnlyTargets.map(a => a.username).join('、')}）僅在本地數據庫中存在，無法重設密碼，請聯繫平台管理員！`);
+      window.alert(`所選帳號（${localOnlyTargets.map(a => a.username).join('、')}）僅在本地資料庫中存在，無法重設密碼，請聯絡平臺管理員！`);
       return;
     }
     const usableTargets = targets.filter(canUseAccountActions);
@@ -408,13 +408,13 @@ const TenantAccountManagement = forwardRef(({
 
   async function sendFlexisipManagedEmail(account, action) {
     if (!canUseAccountActions(account)) {
-      window.alert('已過期帳號不能發送郵件。');
+      window.alert('已過期帳號不能傳送郵件。');
       return;
     }
 
     // 检查邮箱
     if (!account.email) {
-      window.alert('該帳號尚未設置郵箱，請先在編輯功能中為帳號設置郵箱後再發送郵件。');
+      window.alert('該帳號尚未設定郵箱，請先在編輯功能中為帳號設定郵箱後再傳送郵件。');
       return;
     }
 
@@ -422,7 +422,7 @@ const TenantAccountManagement = forwardRef(({
     if (sendingEmailKey === actionKey) return;
 
     const actionLabel = action === 'reset_password' ? '重置密碼' : 'Provisioning 資訊';
-    const confirmMessage = `確定要向 ${account.username}（${account.email}）發送${actionLabel}郵件嗎？`;
+    const confirmMessage = `確定要向 ${account.username}（${account.email}）傳送${actionLabel}郵件嗎？`;
     if (!window.confirm(confirmMessage)) return;
 
     const endpoint = action === 'reset_password'
@@ -432,9 +432,9 @@ const TenantAccountManagement = forwardRef(({
     setSendingEmailKey(actionKey);
     try {
       const result = await apiClient.post(endpoint);
-      window.alert(`郵件已成功發送至 ${account.email}：${result?.message || '郵件發送請求已提交'}`);
+      window.alert(`郵件已成功傳送至 ${account.email}：${result?.message || '郵件發送請求已提交'}`);
     } catch (error) {
-      window.alert(`發送至 ${account.email} 失敗：${error.message || '郵件發送失敗，請稍後重試'}`);
+      window.alert(`傳送至 ${account.email} 失敗：${error.message || '郵件發送失敗，請稍後重試'}`);
     } finally {
       setSendingEmailKey('');
       setOpenDropdownId(null);
@@ -450,11 +450,11 @@ const TenantAccountManagement = forwardRef(({
       return;
     }
     if (resetPasswordForm.password.length < 6) {
-      setResetPasswordMessage({ type: 'error', text: '密碼至少需要 6 個字符。' });
+      setResetPasswordMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
       return;
     }
     if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
-      setResetPasswordMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setResetPasswordMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
 
@@ -491,7 +491,7 @@ const TenantAccountManagement = forwardRef(({
     }
     const localOnlyAccounts = selectedAccounts.filter(isLocalOnly);
     if (localOnlyAccounts.length > 0) {
-      window.alert(`所選帳號中包含僅在本地數據庫中存在的帳號（${localOnlyAccounts.map(a => a.username).join('、')}），無法${actionLabel}，請聯繫平台管理員！`);
+      window.alert(`所選帳號中包含僅在本地資料庫中存在的帳號（${localOnlyAccounts.map(a => a.username).join('、')}），無法${actionLabel}，請聯絡平臺管理員！`);
       return [];
     }
     const usableAccounts = selectedAccounts.filter(canUseAccountActions);
@@ -537,8 +537,8 @@ const TenantAccountManagement = forwardRef(({
     event.preventDefault();
     const targets = contactBookTargets.length > 0 ? contactBookTargets : (contactBookAccount ? [contactBookAccount] : []);
     if (targets.length === 0) return;
-    const targetText = targets.length === 1 ? `帳號 ${targets[0].username}` : `所选 ${targets.length} 個帳號`;
-    if (!window.confirm(`確定要儲存${targetText}的通訊錄配置吗？`)) return;
+    const targetText = targets.length === 1 ? `帳號 ${targets[0].username}` : `所選 ${targets.length} 個帳號`;
+    if (!window.confirm(`確定要儲存${targetText}的通訊錄配置嗎？`)) return;
     setIsSavingContactBook(true);
     setContactBookMessage({ type: '', text: '' });
     try {
@@ -605,7 +605,7 @@ const TenantAccountManagement = forwardRef(({
     }
     if (action === 'toggle_status') {
       if (isLocalOnly(account)) {
-        window.alert('該帳號僅在本地數據庫中存在，無法使用，請聯繫平台管理員！');
+        window.alert('該帳號僅在本地資料庫中存在，無法使用，請聯絡平臺管理員！');
         return;
       }
       if (!canUseAccountActions(account)) {
@@ -614,7 +614,7 @@ const TenantAccountManagement = forwardRef(({
       }
       const nextStatus = account.status === 'active' ? 'disabled' : 'active';
       const actionText = nextStatus === 'active' ? '啟用' : '停用';
-      if (!window.confirm(`確定要${actionText}帳號 ${account.username} 吗？`)) return;
+      if (!window.confirm(`確定要${actionText}帳號 ${account.username} 嗎？`)) return;
       apiClient.put(`${apiBasePath}/${account.id}/status`, { status: nextStatus })
         .then((result) => {
           setAccounts((items) => items.map((item) => (item.id === account.id ? { ...item, status: result.account?.status || nextStatus } : item)));

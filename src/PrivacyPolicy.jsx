@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
     };
   }, []);
 
-  const handleImportTemplate = () => { if (!content.trim() || window.confirm("导入模板将覆盖当前内容，确定继续？")) { setContent(policyTemplate); } };
+  const handleImportTemplate = () => { if (!content.trim() || window.confirm("匯入模板將覆蓋當前內容，確定繼續？")) { setContent(policyTemplate); } };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -48,14 +48,14 @@ export default function PrivacyPolicy() {
     try {
       // 此處 API 端點為示範，請根據後端實際的路由進行調整
       await apiClient.put('/admin/settings/privacy-policy', { content });
-      setMessage({ type: 'success', text: '隐私政策内容已保存成功。' });
+      setMessage({ type: 'success', text: '隱私政策內容已儲存成功。' });
       
       // 3秒后清除成功提示
       setTimeout(() => {
         setMessage({ type: '', text: '' });
       }, 3000);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || '保存失败，请稍后重试。' });
+      setMessage({ type: 'error', text: err.message || '儲存失敗，請稍後重試。' });
     } finally {
       setIsSaving(false);
     }
@@ -75,7 +75,7 @@ export default function PrivacyPolicy() {
                   className="pp-textarea"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  placeholder="在此输入您的隐私政策规范..."
+                  placeholder="在此輸入您的隱私政策規範..."
                   style={{
                     flex: 1,
                     width: '100%',
@@ -111,7 +111,7 @@ export default function PrivacyPolicy() {
               预览
             </button>
             <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>
-              {isSaving ? '保存中...' : '保存更改'}
+              {isSaving ? '儲存中...' : '儲存更改'}
             </button>
           </div>
         </form>
@@ -121,7 +121,7 @@ export default function PrivacyPolicy() {
             <div className="dialog-card legal-card" onClick={e => e.stopPropagation()} style={{ backgroundColor: "#111827", width: 'min(800px, calc(100vw - 32px))', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
               <div className="panel-head" style={{ flexShrink: 0, paddingBottom: '16px', borderBottom: '1px solid #1f2937', marginBottom: '16px' }}>
                 <h2 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6' }}>隐私政策预览</h2>
-                <button className="icon-btn" type="button" title="关闭" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
+                <button className="icon-btn" type="button" title="關閉" onClick={() => setIsPreviewOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', color: '#9ca3af' }}>x</button>
               </div>              <div className="legal-content policy-markdown-preview" style={{ overflowY: 'auto', flex: 1, color: '#e5e7eb' }}>
                 <style>{`
                   .policy-markdown-preview * { color: #e5e7eb !important; }

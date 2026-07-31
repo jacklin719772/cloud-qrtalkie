@@ -161,7 +161,7 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               {context.label && (
                 <div style={{ gridColumn: '1 / -1', fontSize: '13px', color: '#9ca3af', background: '#1a2332', padding: '8px 12px', borderRadius: '8px', border: '1px solid #1f2937' }}>
-                  {context.type === 'community' ? '所屬社區' : '所屬樓宇'}：<strong style={{ color: '#f3f4f6' }}>{context.label}</strong>
+                  {context.type === 'community' ? '所屬社群' : '所屬樓宇'}：<strong style={{ color: '#f3f4f6' }}>{context.label}</strong>
                 </div>
               )}
 
@@ -172,7 +172,7 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
 
               <label style={{ gridColumn: '1 / -1' }}>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>地址</span>
-                <input name="address" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="預設與社區地址相同" />
+                <input name="address" style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="預設與社群地址相同" />
               </label>
 
               <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>

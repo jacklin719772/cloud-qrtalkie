@@ -63,7 +63,7 @@ export function renderBillingDetail(catalog, appliedCoupon) {
 
   const header = `
     <div class="billing-detail-row billing-detail-header">
-      <span>序号</span><span>项目</span><span>计算公式</span><span>金额</span>
+      <span>序號</span><span>專案</span><span>計算公式</span><span>金額</span>
     </div>
   `;
   const rows = detail.rows
@@ -82,7 +82,7 @@ export function renderBillingDetail(catalog, appliedCoupon) {
     ? `
       <div class="billing-detail-row discount">
         <span>-</span>
-        <strong>优惠折扣</strong>
+        <strong>優惠折扣</strong>
         <span>${appliedCoupon.couponCode}：${formatCouponDiscount(appliedCoupon)}</span>
         <b>- ${formatMoney(detail.discountAmount, detail.currency)}</b>
       </div>
@@ -108,7 +108,7 @@ export function refreshAddonPricesForSelectedPlan(catalog, appliedCoupon) {
       return `
         <button class="addon-service-row${selectedAddonCodes.includes(addonCode) ? " selected" : ""}" type="button" data-addon-code="${addon.addonCode}">
           <span>${addon.name}</span>
-          <strong>${formatMoney(addon.unitPrice, addon.currency)} / 服务 / 月</strong>
+          <strong>${formatMoney(addon.unitPrice, addon.currency)} / 服務 / 月</strong>
         </button>
       `;
     })
@@ -129,7 +129,7 @@ export function renderPurchaseCatalog(catalog, appliedCoupon) {
           <strong>${plan.name}</strong>
           <span><i>$</i>${Number(plan.unitPrice).toFixed(2)}</span>
           <small>每月</small>
-          <em>${plan.accountQuantity} 个账号</em>
+          <em>${plan.accountQuantity} 個賬號</em>
           <b>${planFeatureLabels[plan.planCode] || plan.featureSummary || ""}</b>
         </label>
       `,

@@ -16,7 +16,7 @@ export function renderUsers({ users, sipUri }) {
           <td><span class="status ${user.status}">${statusLabel(user.status)}</span></td>
           <td>${user.devices}</td>
           <td>${user.lastSeen}</td>
-          <td><button class="ghost-btn">详情</button></td>
+          <td><button class="ghost-btn">詳情</button></td>
         </tr>
       `,
     )
@@ -31,7 +31,7 @@ export function renderRegistrations({ registrations, sipDomain }) {
         <article class="registration-card">
           <div><strong>${item.username}@${sipDomain}</strong><span>${item.contact}</span></div>
           <div><strong>${item.agent}</strong><span>${item.transport}</span></div>
-          <div><small>到期/状态</small><strong>${item.expires}</strong></div>
+          <div><small>到期/狀態</small><strong>${item.expires}</strong></div>
           <button class="ghost-btn">${item.state === "online" ? "立即登出" : "查看日志"}</button>
         </article>
       `,

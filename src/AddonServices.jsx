@@ -3,7 +3,7 @@ import { Boxes, CircleDollarSign, PackagePlus, Search, ToggleRight, Trash2 } fro
 import apiClient from './apiClient';
 
 const currencyOptions = [
-  { value: 'TWD', label: '新台币 TWD' },
+  { value: 'TWD', label: '新臺幣 TWD' },
   { value: 'CNY', label: '人民幣 CNY' },
   { value: 'USD', label: '美元 USD' },
   { value: 'EUR', label: '歐元 EUR' },
@@ -181,7 +181,7 @@ const AddonServices = forwardRef((props, ref) => {
       sortOrder: draftAddon.sortOrder || 0,
       prices: draftAddon.prices || [],
     };
-    if (!payload.addonCode || !payload.name) return alert('請輸入服務代碼和名稱。');
+    if (!payload.addonCode || !payload.name) return alert('請輸入服務程式碼和名稱。');
     setSaving(true);
     try {
       await apiClient.put('/billing/addon-services', payload);
@@ -293,7 +293,7 @@ const AddonServices = forwardRef((props, ref) => {
               <div className="addon-toolbar">
                 <label className="addon-search">
                   <Search size={16} aria-hidden="true" />
-                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋代碼或名稱" style={{ fontSize: '14px' }} />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜尋程式碼或名稱" style={{ fontSize: '14px' }} />
                 </label>
                 <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)} aria-label="篩選狀態" style={{ fontSize: '14px' }}>
                   <option value="all">全部狀態</option>

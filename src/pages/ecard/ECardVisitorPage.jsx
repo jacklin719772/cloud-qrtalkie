@@ -178,7 +178,7 @@ export default function ECardVisitorPage({ slug }) {
 
     if (!isValidSlug(slug)) {
       setLoading(false);
-      setErrorInfo({ code: 'INVALID_ECARD_SLUG', message: '查詢參數格式不正確' });
+      setErrorInfo({ code: 'INVALID_ECARD_SLUG', message: '查詢引數格式不正確' });
       return () => { cancelled = true; };
     }
 
@@ -291,7 +291,7 @@ export default function ECardVisitorPage({ slug }) {
   function markRegistrationFailed() {
     if (isPageUnmountingRef.current) return;
     setRegistrationStatus('failed');
-    setRegistrationMessage('帳號忙，請稍後刷新重試');
+    setRegistrationMessage('帳號忙，請稍後重新整理重試');
     cleanupRegistrationUa();
   }
 
@@ -511,7 +511,7 @@ export default function ECardVisitorPage({ slug }) {
           setRegistrationMessage('');
         } else {
           setRegistrationStatus('failed');
-          setRegistrationMessage('帳號忙，請稍後刷新重試');
+          setRegistrationMessage('帳號忙，請稍後重新整理重試');
         }
         cleanupRegistrationUa();
       });
@@ -526,7 +526,7 @@ export default function ECardVisitorPage({ slug }) {
           reasonPhrase: event?.response?.reason_phrase || '',
         });
         setRegistrationStatus('failed');
-        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        setRegistrationMessage('帳號忙，請稍後重新整理重試');
         cleanupRegistrationUa();
       });
 
@@ -537,7 +537,7 @@ export default function ECardVisitorPage({ slug }) {
           webrtcDomain: callSession.webrtcDomain || '',
         });
         setRegistrationStatus('failed');
-        setRegistrationMessage('帳號忙，請稍後刷新重試');
+        setRegistrationMessage('帳號忙，請稍後重新整理重試');
         cleanupRegistrationUa();
       });
 
@@ -794,7 +794,7 @@ export default function ECardVisitorPage({ slug }) {
             {publicStatus.expired ? '此電子名片已過期' : '此電子名片目前未啟用'}
           </div>
           <div style={errorMessageStyle}>
-            {publicStatus.expired ? '請聯繫管理員重新啟用或更新有效期。' : '請聯繫管理員確認名片狀態。'}
+            {publicStatus.expired ? '請聯絡管理員重新啟用或更新有效期。' : '請聯絡管理員確認名片狀態。'}
           </div>
         </div>
       </div>
@@ -874,7 +874,7 @@ export default function ECardVisitorPage({ slug }) {
                   <div className="ecard-statusActions">
                     <div
                       className={`ecard-statusDot ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' ? 'is-warn' : 'is-bad'}`}
-                      title={registrationStatus === 'registered' ? '已注册' : registrationStatus === 'idle_timeout' ? '空閒超時已註銷' : registrationStatus === 'hangup' ? '通話結束已註銷' : '未注册 / 失败'}
+                      title={registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'idle_timeout' ? '空閒超時已登出' : registrationStatus === 'hangup' ? '通話結束已登出' : '未註冊 / 失敗'}
                     />
                     <button
                       type="button"
@@ -893,7 +893,7 @@ export default function ECardVisitorPage({ slug }) {
                   </div>
                 </div>
                 <div className={`ecard-statusPill ${registrationStatus === 'registered' ? 'is-ok' : registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' || registrationStatus === 'disconnected' ? 'is-warn' : 'is-bad'}`}>
-                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'idle_timeout' ? '已自動註銷' : registrationStatus === 'hangup' ? '通話已結束' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
+                  {registrationStatus === 'registered' ? '已註冊' : registrationStatus === 'registering' ? '註冊中' : registrationStatus === 'idle_timeout' ? '已自動登出' : registrationStatus === 'hangup' ? '通話已結束' : registrationStatus === 'disconnected' ? '重新註冊中' : '註冊失敗'}
               </div>
               </div>
 
@@ -906,7 +906,7 @@ export default function ECardVisitorPage({ slug }) {
                   <div className="ecard-statusActions">
                     <div
                       className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
-                      title={ecardData.sipRegistrationStatus === 'online' ? '在線' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
+                      title={ecardData.sipRegistrationStatus === 'online' ? '線上' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
                     />
                     <button
                       type="button"
@@ -934,7 +934,7 @@ export default function ECardVisitorPage({ slug }) {
                   </div>
               </div>
               <div className={`ecard-statusPill ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}>
-                {ecardData.sipRegistrationStatus === 'online' ? 'SIP 在線' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
+                {ecardData.sipRegistrationStatus === 'online' ? 'SIP 線上' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
               </div>
             </div>
             </div>
@@ -948,8 +948,8 @@ export default function ECardVisitorPage({ slug }) {
                 color: registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' ? '#fbbf24' : registrationStatus === 'failed' ? '#fca5a5' : '#d6c59c',
                 fontWeight: 600,
               }}>
-                {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動註銷 Web 帳號，請點擊刷新按鈕重新註冊'
-                  : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已註銷，請點擊刷新按鈕重新註冊'
+                {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動登出 Web 帳號，請點選重新整理按鈕重新註冊'
+                  : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已登出，請點選重新整理按鈕重新註冊'
                   : registrationMessage}
               </div>
             )}
@@ -1037,10 +1037,10 @@ export default function ECardVisitorPage({ slug }) {
         onConfirm={handleConfirmCall}
         title="發起呼叫"
         type="info"
-        confirmText={isSystemReady ? '確認呼叫' : '優化網路'}
+        confirmText={isSystemReady ? '確認呼叫' : '最佳化網路'}
         confirmDisabled={!isSystemReady}
         cancelText="取消"
-        message={`${isSystemReady ? `確定要呼叫此電子名片的${isVideoCall ? '視頻' : '語音'}通話嗎？` : `網路優化結束後點擊確認呼叫按鈕可進行${isVideoCall ? '視頻' : '語音'}通話`}`}
+        message={`${isSystemReady ? `確定要呼叫此電子名片的${isVideoCall ? '影片' : '語音'}通話嗎？` : `網路優化結束後點擊確認呼叫按鈕可進行${isVideoCall ? '影片' : '語音'}通話`}`}
       />
 
       <CallModal

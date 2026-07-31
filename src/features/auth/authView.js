@@ -20,14 +20,14 @@ export function getSignupPayload(form) {
 }
 
 export function validateSignupPayload(payload) {
-  if (!payload.companyName) return "请输入公司名称";
-  if (!payload.email) return "请输入邮箱地址";
-  if (!isValidEmail(payload.email)) return "请输入有效的邮箱格式";
-  if (!payload.password) return "请输入密码";
-  if (payload.password.length < 8) return "密码至少需要 8 位字符";
-  if (!payload.confirmPassword) return "请再次输入密码";
-  if (payload.password !== payload.confirmPassword) return "两次输入的密码不一致";
-  if (!payload.acceptedTerms) return "请先阅读并同意服务条款与隐私政策";
+  if (!payload.companyName) return "請輸入公司名稱";
+  if (!payload.email) return "請輸入郵箱地址";
+  if (!isValidEmail(payload.email)) return "請輸入有效的郵箱格式";
+  if (!payload.password) return "請輸入密碼";
+  if (payload.password.length < 8) return "密碼至少需要 8 位字元";
+  if (!payload.confirmPassword) return "請再次輸入密碼";
+  if (payload.password !== payload.confirmPassword) return "兩次輸入的密碼不一致";
+  if (!payload.acceptedTerms) return "請先閱讀並同意服務條款與隱私政策";
   return "";
 }
 
@@ -40,7 +40,7 @@ export function getLoginPayload(form) {
 }
 
 export function validateLoginPayload(payload) {
-  if (!isValidEmail(payload.email) || !payload.password) return "请输入有效的登录邮箱和密码。";
+  if (!isValidEmail(payload.email) || !payload.password) return "請輸入有效的登入郵箱和密碼。";
   return "";
 }
 

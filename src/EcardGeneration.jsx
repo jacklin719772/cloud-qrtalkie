@@ -40,7 +40,7 @@ function checkExpirationStatus(validTo) {
 const mockEcardAccounts = [
   {
     id: 1,
-    userName: '张伟',
+    userName: '張偉',
     sipAccount: '1000001',
     webAccount: '2000001',
     avatarUrl: '',
@@ -51,7 +51,7 @@ const mockEcardAccounts = [
     enabled: true,
     configured: true,
     accessUrl: 'https://ecard.qrtalkie.org/u/1000001',
-    createdBy: '管理员A',
+    createdBy: '管理員A',
     createdAt: '2026-05-20'
   },
   {
@@ -67,12 +67,12 @@ const mockEcardAccounts = [
     enabled: true,
     configured: true,
     accessUrl: 'https://ecard.qrtalkie.org/u/1000002',
-    createdBy: '张三',
+    createdBy: '張三',
     createdAt: '2026-05-21'
   },
   {
     id: 3,
-    userName: '赵敏',
+    userName: '趙敏',
     sipAccount: '1000004',
     webAccount: '2000004',
     avatarUrl: '',
@@ -166,8 +166,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   });
 
   const [cardData, setCardData] = useState({
-    name: '张浩',
-    titleZh: '市场经理',
+    name: '張浩',
+    titleZh: '市場經理',
     titleEn: 'Market Manager',
     phone: '+86 138 1234 5678',
     email: 'zhanghao@company.com',
@@ -176,7 +176,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     qrDesc: '掃碼二維碼 · 交換名片',
     companyZh: 'QRTalkie Team',
     companyEn: 'QRTalkie Team',
-    sloganZh: '连接价值 · 智联未来',
+    sloganZh: '連線價值 · 智聯未來',
     sloganEn: 'Connecting Value, Linking the Future'
   });
 
@@ -399,7 +399,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         .catch(err => {
           console.error('獲取樣式模板失敗:', err);
           // 提取真实错误信息暴露在界面上，便於联调（如 404 Not Found 等）
-          const errorMsg = err.response?.data?.message || err.response?.statusText || err.message || '未知异常';
+          const errorMsg = err.response?.data?.message || err.response?.statusText || err.message || '未知異常';
           setTemplatesError(`載入失敗: ${errorMsg}`);
           setTemplates([]);
           setSelectedTemplateId('');
@@ -550,7 +550,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       const data = await apiClient.get('/tenant/ecard-accounts');
       setEcardAccounts(data.accounts || []);
     } catch (err) {
-      console.warn('接口載入失敗，降级使用模拟數據:', err);
+      console.warn('介面載入失敗，降級使用模擬資料:', err);
       setEcardAccounts(mockEcardAccounts);
     } finally {
       setIsLoadingAccounts(false);
@@ -669,7 +669,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       }
 
       if (canvas.width === 0 || canvas.height === 0) {
-        throw new Error("名片預覽區域尺寸為 0，請检查页面布局");
+        throw new Error("名片預覽區域尺寸為 0，請檢查頁面佈局");
       }
 
       canvasEl.style.transform = originalTransform;
@@ -698,7 +698,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       };
 
       await apiClient.post(`/tenant/ecard-accounts/${selectedAccountForCreate.sip_user_id || selectedAccountForCreate.id}/ecard`, payload);
-      alert('名片已成功儲存并產生圖片！');
+      alert('名片已成功儲存並產生圖片！');
       
       loadEcardAccounts();
       setSelectedAccountForCreate(prev => ({
@@ -726,7 +726,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
   const handlePreviewAndTest = () => {
     if (!selectedAccountForCreate || !selectedAccountForCreate.configured || !selectedAccountForCreate.ecardThumbnailUrl) {
-      alert("當前設置未儲存，無法进行預覽&测试操作");
+      alert("當前設定未儲存，無法進行預覽&測試操作");
       return;
     }
     setTestPreviewImageUrl(getFullImageUrl(selectedAccountForCreate.ecardThumbnailUrl));
@@ -760,7 +760,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
 
     if (invalidPageUrl) {
       console.error('當前下載地址不是圖片地址，而是頁面地址:', rawImageUrl, item);
-      alert('當前記錄没有返回真实圖片地址，無法直接下載圖片。請检查后端 ecardThumbnailUrl / ecardImageUrl 字段。');
+      alert('當前記錄沒有返回真實圖片地址，無法直接下載圖片。請檢查後端 ecardThumbnailUrl / ecardImageUrl 欄位。');
       return;
     }
 
@@ -787,7 +787,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.startsWith('image/')) {
         console.error('下載地址返回的不是圖片:', imageUrl, contentType);
-        alert('下載地址返回的不是圖片文件，請检查后端返回的圖片地址。');
+        alert('下載地址返回的不是圖片檔案，請檢查後端返回的圖片地址。');
         return;
       }
 
@@ -834,7 +834,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     }
     const unconfigured = selectedAccounts.filter(acc => !acc.configured);
     if (unconfigured.length > 0) {
-      window.alert(`选中的帳號中有 ${unconfigured.length} 個尚未配置名片，無法进行${actionLabel}。`);
+      window.alert(`選中的帳號中有 ${unconfigured.length} 個尚未配置名片，無法進行${actionLabel}。`);
       return [];
     }
     return selectedAccounts;
@@ -853,11 +853,11 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     });
 
     if (actualTargets.length === 0) {
-      window.alert(`选中的帳號均已处於${actionLabel}狀態。`);
+      window.alert(`選中的帳號均已處於${actionLabel}狀態。`);
       return;
     }
 
-    if (!window.confirm(`確定要${actionLabel}选中的 ${actualTargets.length} 個電子名片嗎？`)) return;
+    if (!window.confirm(`確定要${actionLabel}選中的 ${actualTargets.length} 個電子名片嗎？`)) return;
     try {
       // 改為串行請求，防止 MySQL 并发更新时产生死锁（Deadlock）
       for (const acc of actualTargets) {
@@ -865,7 +865,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       }
       setSelectedIds([]);
       loadEcardAccounts();
-      alert(`批量${actionLabel}成功`);
+      alert(`批次${actionLabel}成功`);
     } catch (err) {
       alert(err.message || `部分或全部${actionLabel}失敗`);
       loadEcardAccounts();
@@ -877,8 +877,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     setSelectedAccountForCreate(item);
     
     setCardData({
-      name: item.userName || '张浩',
-      titleZh: '市场经理',
+      name: item.userName || '張浩',
+      titleZh: '市場經理',
       titleEn: 'Market Manager',
       phone: '+86 138 1234 5678',
       email: 'zhanghao@company.com',
@@ -887,7 +887,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       qrDesc: '掃碼二維碼 · 交換名片',
       companyZh: 'QRTalkie Team',
       companyEn: 'QRTalkie Team',
-      sloganZh: '连接价值 · 智联未来',
+      sloganZh: '連線價值 · 智聯未來',
       sloganEn: 'Connecting Value, Linking the Future'
     });
     setLocalStyles({});
@@ -983,7 +983,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   };
 
   const handleBatchDownloadEcardImages = async () => {
-    const targets = getSelectedActionableEcards('批量下載');
+    const targets = getSelectedActionableEcards('批次下載');
     if (targets.length === 0) return;
 
     try {
@@ -1037,8 +1037,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       window.URL.revokeObjectURL(blobUrl);
 
     } catch (err) {
-      console.error('批量下載失敗:', err);
-      alert('批量下載失敗，請稍後重試。');
+      console.error('批次下載失敗:', err);
+      alert('批次下載失敗，請稍後重試。');
     }
   };
 
@@ -1053,7 +1053,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     return (
       <section className="ecard-generation-page ecard-add-page">
         <style>{`
-          /* 覆盖全局结构樣式，使新增頁面完全独立，隱藏原有标题区和外层 Padding */
+          /* 覆蓋全域性結構樣式，使新增頁面完全獨立，隱藏原有標題區和外層 Padding */
           .page-heading { display: none !important; }
           .main-scroll { padding: 0 !important; }
 
@@ -1086,7 +1086,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             gap: 24px;
           }
           
-          /* --- 左侧表单区 --- */
+          /* --- 左側表單區 --- */
           .ecard-add-left {
             flex: 0 0 48%;
             display: flex;
@@ -1141,7 +1141,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-upload-area span { font-size: 12px; font-weight: 500; }
           .ecard-upload-area small { font-size: 11px; color: #94a3b8; }
           
-          /* 模板横向滚动區域 */
+          /* 模板橫向滾動區域 */
           .ecard-template-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
           .ecard-template-nav-btns { display: flex; gap: 8px; }
           .ecard-template-nav-btn { width: 24px; height: 24px; border: 1px solid #cbd5e1; border-radius: 4px; background: #111827; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #9ca3af; font-size: 16px; line-height: 1; }
@@ -1184,7 +1184,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             object-fit: cover;
           }
 
-          /* --- 字段樣式配置区 --- */
+          /* --- 欄位樣式配置區 --- */
           .ecard-style-config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
           .ecard-style-field-block { background: #1a2332; border: 1px solid #1f2937; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
           .ecard-style-field-label { font-size: 13px; font-weight: 600; color: #f3f4f6; }
@@ -1193,7 +1193,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             flex: 1; height: 32px; border: 1px solid #374151; border-radius: 6px; background: #111827; color: #e5e7eb; font-size: 12px; outline: none; padding: 0 4px; min-width: 0; cursor: pointer;
           }
 
-          /* --- 預覽模态框 --- */
+          /* --- 預覽模態框 --- */
           .ecard-template-preview-modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(15, 23, 42, 0.6);
@@ -1237,7 +1237,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             background: #1a2332;
           }
 
-          /* --- 右侧預覽区 --- */
+          /* --- 右側預覽區 --- */
           .ecard-add-right {
             flex: 0 0 52%;
             display: flex;
@@ -1325,7 +1325,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             }}>{isSelfService ? '返回我的帳號' : '返回列表'}</button>
             {/* <button type="button" className="ghost-btn" style={{ padding: '8px 16px', fontSize: '13px' }}>儲存草稿</button> */}
             <button type="button" className="primary-btn" disabled={isGenerating} style={{ padding: '8px 16px', fontSize: '13px' }} onClick={handleSaveAndGenerateImage}>
-              {isGenerating ? '產生中...' : '儲存并產生圖片'}
+              {isGenerating ? '產生中...' : '儲存並產生圖片'}
             </button>
           </div>
         </div>
@@ -1507,11 +1507,11 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   <div className="ecard-style-config-grid">
                     {[
                       { label: '姓名', key: 'name', defaultColor: '#ffffff', defaultWeight: '700', defaultSize: 24, show: true },
-                      { label: '职位 (中/英)', key: 'title', defaultColor: '#d4af37', defaultWeight: '400', defaultSize: 13, show: true },
-                      { label: '手机号', key: 'phone', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
+                      { label: '職位 (中/英)', key: 'title', defaultColor: '#d4af37', defaultWeight: '400', defaultSize: 13, show: true },
+                      { label: '手機號', key: 'phone', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
                       { label: '郵箱', key: 'email', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
-                      { label: '地址與邮编', key: 'address', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
-                      { label: '二維碼说明', key: 'qrCaption', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 10, show: showQrCode && localDisplayConfig.showQrCodeDesc },
+                      { label: '地址與郵編', key: 'address', defaultColor: '#cbd5e1', defaultWeight: '400', defaultSize: 12, show: true },
+                      { label: '二維碼說明', key: 'qrCaption', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 10, show: showQrCode && localDisplayConfig.showQrCodeDesc },
                       { label: '公司中文名稱', key: 'companyNameCn', defaultColor: '#ffffff', defaultWeight: '700', defaultSize: 14, show: showCompanyInfo },
                       { label: '公司英文名稱', key: 'companyNameEn', defaultColor: '#94a3b8', defaultWeight: '400', defaultSize: 11, show: showCompanyInfo && localDisplayConfig.showEnCompanyName },
                       { label: '中文 Slogan', key: 'sloganCn', defaultColor: '#d4af37', defaultWeight: '700', defaultSize: 12, show: showCompanyInfo && localDisplayConfig.showSlogan },
@@ -1542,21 +1542,21 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                             <select 
                               value={currentFont} 
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontFamily', e.target.value)}
-                              title="字体"
+                              title="字型"
                             >
-                              <option value="sans-serif">預設黑体</option>
-                              <option value="Microsoft YaHei">微软雅黑</option>
-                              <option value="PingFang SC">苹方</option>
-                              <option value="Noto Sans SC">思源黑体</option>
-                              <option value="SimHei">黑体</option>
-                              <option value="SimSun">宋体</option>
-                              <option value="KaiTi">楷体</option>
-                              <option value="serif">預設衬線</option>
+                              <option value="sans-serif">預設黑體</option>
+                              <option value="Microsoft YaHei">微軟雅黑</option>
+                              <option value="PingFang SC">蘋方</option>
+                              <option value="Noto Sans SC">思源黑體</option>
+                              <option value="SimHei">黑體</option>
+                              <option value="SimSun">宋體</option>
+                              <option value="KaiTi">楷體</option>
+                              <option value="serif">預設襯線</option>
                               <option value="Arial">Arial</option>
                               <option value="Helvetica">Helvetica</option>
                               <option value="Times New Roman">Times New Roman</option>
-                              <option value="monospace">等宽字体</option>
-                              <option value="cursive">手写体</option>
+                              <option value="monospace">等寬字型</option>
+                              <option value="cursive">手寫體</option>
                               {![ 'sans-serif', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'SimHei', 'SimSun', 'KaiTi', 'serif', 'Arial', 'Helvetica', 'Times New Roman', 'monospace', 'cursive'].includes(currentFont) && (
                                 <option value={currentFont}>{currentFont}</option>
                               )}
@@ -1565,7 +1565,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               type="number" 
                               value={currentSize}
                               onChange={(e) => handleLocalStyleChange(field.key, 'fontSize', Number(e.target.value))}
-                              title="字号 (px)"
+                              title="字號 (px)"
                               style={{ width: '48px', height: '32px', border: '1px solid #374151', borderRadius: '6px', fontSize: '12px', padding: '0 4px', outline: 'none', textAlign: 'center', background: '#111827', color: '#e5e7eb' }}
                             />
                             <select
@@ -1574,12 +1574,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               title="字重"
                               style={{ width: '64px', flex: 'none', height: '32px', border: '1px solid #374151', borderRadius: '6px', background: '#111827', color: '#e5e7eb', fontSize: '12px', padding: '0 4px', outline: 'none', cursor: 'pointer' }}
                             >
-                              <option value="300">细体</option>
-                              <option value="400">常规</option>
+                              <option value="300">細體</option>
+                              <option value="400">常規</option>
                               <option value="500">中等</option>
                               <option value="600">中粗</option>
-                              <option value="700">粗体</option>
-                              <option value="900">黑体</option>
+                              <option value="700">粗體</option>
+                              <option value="900">黑體</option>
                               {![ '300', '400', '500', '600', '700', '900'].includes(currentWeight) && (
                                 <option value={currentWeight}>{currentWeight}</option>
                               )}
@@ -1588,7 +1588,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                               type="color" 
                               value={hexColor} 
                               onChange={(e) => handleLocalStyleChange(field.key, 'color', e.target.value)}
-                              title="颜色"
+                              title="顏色"
                               style={{ width: '32px', height: '32px', padding: '0', border: '1px solid #374151', borderRadius: '6px', cursor: 'pointer', flexShrink: 0 }}
                             />
                           </div>
@@ -1605,13 +1605,13 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div className="ecard-preview-panel">
               <div className="ecard-preview-head">
                 <div className="ecard-preview-title">
-                  <h3>实时預覽</h3>
+                  <h3>即時預覽</h3>
                 </div>
                 <div className="ecard-preview-tags">
                   <button type="button" className="ecard-preview-tag" onClick={() => setShowQrCode(!showQrCode)}>
                     {showQrCode ? '移除二維碼' : '新增二維碼'}
                   </button>
-                  <button type="button" className="ecard-preview-tag" style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }} onClick={handlePreviewAndTest}>預覽&测试</button>
+                  <button type="button" className="ecard-preview-tag" style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }} onClick={handlePreviewAndTest}>預覽&測試</button>
                 </div>
               </div>
               <div className="ecard-preview-container" ref={viewportRef}>
@@ -1676,7 +1676,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 <div>圖片狀態：<strong style={{ color: selectedAccountForCreate?.ecardThumbnailUrl ? '#16a34a' : '#f59e0b' }}>
                   {selectedAccountForCreate?.ecardThumbnailUrl ? '已產生' : '未產生'}
                 </strong></div>
-                <div>预估尺寸：<strong>{previewSize ? `${previewSize.width} × ${previewSize.height}` : '—'}</strong></div>
+                <div>預估尺寸：<strong>{previewSize ? `${previewSize.width} × ${previewSize.height}` : '—'}</strong></div>
               </div>
             </div>
           </div>
@@ -1691,7 +1691,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 return selectedTemplate && coverUrl ? (
                   <img src={getFullImageUrl(coverUrl)} alt={selectedTemplate.styleName} onError={(e) => { e.target.style.display = 'none'; }} />
                 ) : (
-                  <div style={{ padding: '40px', color: '#94a3b8' }}>暫無預覽图</div>
+                  <div style={{ padding: '40px', color: '#94a3b8' }}>暫無預覽圖</div>
                 );
               })()}
             </div>
@@ -1705,7 +1705,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <button className="ecard-template-preview-close" onClick={() => setShowTestPreviewModal(false)}>×</button>
               <img src={testPreviewImageUrl} alt="Ecard Preview & Test" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
               <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
-                請扫描名片中的二維碼测试通话功能是否正常
+                請掃描名片中的二維碼測試通話功能是否正常
               </div>
             </div>
           </div>,
@@ -1723,7 +1723,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           flex-direction: column;
           gap: 20px;
           height: 100%;
-          /* 如果外层 ConsoleLayout 已经提供了 padding，这里可以酌情减小。这里按需求設置 */
+          /* 如果外層 ConsoleLayout 已經提供了 padding，這裡可以酌情減小。這裡按需求設定 */
           padding: 0;
           box-sizing: border-box;
           animation: fadeIn 0.3s ease-in-out;
@@ -1733,7 +1733,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- 主面板区 --- */
+        /* --- 主面板區 --- */
         .ecard-generation-panel {
           background: #111827;
           border-radius: 16px;
@@ -1828,7 +1828,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           font-weight: 700;
         }
 
-        /* --- 表格区 --- */
+        /* --- 表格區 --- */
         .ecard-generation-table-wrap {
           flex: 1;
           overflow: auto;
@@ -1881,7 +1881,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         .ecard-generation-table tr:hover td { background: #1a2332; }
         .ecard-generation-table tr:hover .ecard-generation-action-cell { background: #1a2332; }
         
-        /* 表格内部件 */
+        /* 表格內部件 */
         .ecard-generation-account-cell { display: flex; align-items: center; gap: 12px; }
         .ecard-generation-account-info { display: flex; flex-direction: column; gap: 2px; }
         .ecard-generation-account-info strong { color: #f3f4f6; font-size: 14px; font-weight: 600; }
@@ -1939,7 +1939,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           background-color: #1a2332;
         }
 
-        /* --- 預覽模态框 --- */
+        /* --- 預覽模態框 --- */
         .ecard-template-preview-modal {
           position: fixed; top: 0; left: 0; right: 0; bottom: 0;
           background: rgba(15, 23, 42, 0.6);
@@ -1983,7 +1983,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           background: #1a2332;
         }
 
-        /* --- 分頁栏 --- */
+        /* --- 分頁欄 --- */
         .ecard-generation-pagination {
           min-height: 74px;
           padding: 0 30px;
@@ -2047,7 +2047,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         .ecard-generation-page *::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
       `}</style>
 
-      {/* 工具栏 */}
+      {/* 工具欄 */}
       <div className="ecard-generation-toolbar">
         <div className="ecard-generation-filter-left">
           <label className="ecard-generation-search">
@@ -2061,7 +2061,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <option value="configured">已配置 Ecard</option>
             <option value="unconfigured">未配置 Ecard</option>
             <option value="valid">有效 (未過期)</option>
-            <option value="expiring">即将過期</option>
+            <option value="expiring">即將過期</option>
             <option value="expired">已過期</option>
           </select>
         </div>
@@ -2069,12 +2069,12 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           <span className="ecard-generation-stat-pill">全部<strong>{stats.total}</strong></span>
           <span className="ecard-generation-stat-pill">已配置<strong style={{ color: '#16a34a' }}>{stats.configured}</strong></span>
           <span className="ecard-generation-stat-pill">未配置<strong style={{ color: '#64748b' }}>{stats.unconfigured}</strong></span>
-          <span className="ecard-generation-stat-pill">即将過期<strong style={{ color: '#f59e0b' }}>{stats.expiring}</strong></span>
+          <span className="ecard-generation-stat-pill">即將過期<strong style={{ color: '#f59e0b' }}>{stats.expiring}</strong></span>
           <span className="ecard-generation-stat-pill">已過期<strong style={{ color: '#ef4444' }}>{stats.expired}</strong></span>
         </div>
       </div>
 
-      {/* 主面板区 */}
+      {/* 主面板區 */}
       <div className="ecard-generation-panel">
         {/* 表格 */}
         <div className="ecard-generation-table-wrap">
@@ -2101,11 +2101,11 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                 </th>
                 <th style={{ cursor: "pointer" }} onClick={() => handleEcardListSort("sipAccount")}>SIP 帳號<EcardSortIcon col="sipAccount" /></th>
                 <th style={{ cursor: "pointer" }} onClick={() => handleEcardListSort("webAccount")}>Web 帳號<EcardSortIcon col="webAccount" /></th>
-                <th>Ecard缩略图</th>
+                <th>Ecard縮圖</th>
                 <th style={{ width: '100px' }}>有效期</th>
                 <th style={{ cursor: "pointer" }} onClick={() => handleEcardListSort("enabled")}>狀態<EcardSortIcon col="enabled" /></th>
                 <th>下載連結</th>
-                <th>访问連結</th>
+                <th>訪問連結</th>
                 <th style={{ width: '80px', whiteSpace: 'nowrap' }}>產生人</th>
                 <th style={{ width: '100px', whiteSpace: 'nowrap' }}>產生日期</th>
                 <th className="ecard-generation-action-head">操作</th>
@@ -2113,9 +2113,9 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             </thead>
             <tbody>
               {isLoadingAccounts ? (
-                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>正在載入名片數據...</td></tr>
+                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>正在載入名片資料...</td></tr>
               ) : sortedEcardAccounts.length === 0 ? (
-                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>暫無啟用的 SIP 帳號數據</td></tr>
+                <tr><td colSpan="11" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>暫無啟用的 SIP 帳號資料</td></tr>
               ) : sortedEcardAccounts.map(item => (
                 <tr key={item.id}>
                   <td style={{ width: '48px', textAlign: 'center', padding: '12px 10px' }}>
@@ -2152,7 +2152,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   </td>
                   <td>
                     {item.configured ? (
-                      <img src={getFullImageUrl(item.ecardThumbnailUrl || item.avatarUrl)} alt="缩略图" className="ecard-generation-thumb-placeholder" style={{ objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                      <img src={getFullImageUrl(item.ecardThumbnailUrl || item.avatarUrl)} alt="縮圖" className="ecard-generation-thumb-placeholder" style={{ objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
                     ) : (
                       <div className="ecard-generation-thumb-empty">未配置</div>
                     )}
@@ -2240,7 +2240,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           </table>
         </div>
 
-        {/* 分頁栏 */}
+        {/* 分頁欄 */}
         <div className="ecard-generation-pagination">
           <div className="ecard-generation-total">共 {totalItems} 條</div>
           <div className="ecard-generation-page-controls">

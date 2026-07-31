@@ -66,7 +66,7 @@ export default function Tenant({ onOpenLoginEmail }) {
       const data = await apiClient.get('/me');
       if (data?.admin?.accountType === 'platform') {
         setIsPlatformAccount(true);
-        showMessage('error', '平台管理員沒有租戶設定資料。');
+        showMessage('error', '平臺管理員沒有租戶設定資料。');
         return;
       }
       const nextFormData = toFormData(data);

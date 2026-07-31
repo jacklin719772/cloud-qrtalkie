@@ -59,8 +59,8 @@ export default function Topbar({
         <button
           className="topbar-menu-btn"
           type="button"
-          aria-label="收起或展开左侧导航"
-          title="收起或展开左侧导航"
+          aria-label="收起或展開左側導航"
+          title="收起或展開左側導航"
           onClick={onToggleSidebar}
         >
           <Menu size={28} aria-hidden="true" />
@@ -93,8 +93,8 @@ export default function Topbar({
           <button
             className="console-message-btn"
             type="button"
-            aria-label="待处理消息"
-            title="待处理消息"
+            aria-label="待處理訊息"
+            title="待處理訊息"
             onClick={() => setIsMessagesOpen((value) => !value)}
           >
             <Bell size={20} aria-hidden="true" />

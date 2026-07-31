@@ -41,7 +41,7 @@ export function createPurchaseController({
     if (!addressInput) return;
     addressInput.value = currentBillingAddress();
     addressInput.readOnly = true;
-    if (editButton) editButton.textContent = "编辑";
+    if (editButton) editButton.textContent = "編輯";
     cancelButton?.classList.add("hidden");
   }
 

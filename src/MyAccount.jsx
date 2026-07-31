@@ -80,9 +80,9 @@ export default function MyAccount({ identity }) {
     setMessage({ type: '', text: '' });
 
     if (actionDialog === 'password') {
-      if (!form.password) { setMessage({ type: 'error', text: '请输入新密码。' }); return; }
-      if (form.password.length < 6) { setMessage({ type: 'error', text: '密码至少需要 6 个字符。' }); return; }
-      if (form.password !== form.confirmPassword) { setMessage({ type: 'error', text: '两次输入的密码不一致。' }); return; }
+      if (!form.password) { setMessage({ type: 'error', text: '請輸入新密碼。' }); return; }
+      if (form.password.length < 6) { setMessage({ type: 'error', text: '密碼至少需要 6 個字元。' }); return; }
+      if (form.password !== form.confirmPassword) { setMessage({ type: 'error', text: '兩次輸入的密碼不一致。' }); return; }
     }
 
     setSaving(true);
@@ -93,10 +93,10 @@ export default function MyAccount({ identity }) {
         payload.confirmPassword = form.confirmPassword;
       }
       await apiClient.put(`/tenant/sip-accounts/${profile.admin.id}`, payload);
-      setMessage({ type: 'success', text: '保存成功。' });
+      setMessage({ type: 'success', text: '儲存成功。' });
       setTimeout(() => { closeDialog(); loadProfile(); }, 800);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || '保存失败。' });
+      setMessage({ type: 'error', text: err.message || '儲存失敗。' });
     } finally {
       setSaving(false);
     }
@@ -110,7 +110,7 @@ export default function MyAccount({ identity }) {
       await apiClient.put(`/tenant/ecard-accounts/${profile.admin.id}/ecard/status`, { status: newStatus });
       setEcardActive(!ecardActive);
     } catch (err) {
-      setMessage({ type: 'error', text: err.message || '状态切换失败' });
+      setMessage({ type: 'error', text: err.message || '狀態切換失敗' });
     }
   };
 
@@ -182,7 +182,7 @@ export default function MyAccount({ identity }) {
             <button onClick={triggerSave} style={{ background: 'linear-gradient(90deg, #2563eb, #06b6d4)', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', padding: '8px 14px', whiteSpace: 'nowrap' }}>保存</button>
             </div>
           </div>
-          <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存并產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div className="ma-mobile-ecard-body" ref={(el) => { if (el) { setTimeout(() => { const h1 = el.querySelector('h1, h2, .page-heading, .cc-add-header'); if (h1) h1.style.display = 'none'; const allBtns = el.querySelectorAll('button'); allBtns.forEach(b => { if (b.textContent.includes('返回我的帳號') || b.textContent.includes('返回列表') || b.textContent.includes('儲存並產生圖片')) b.style.display = 'none'; }); }, 100); } }} style={{ flex: 1, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <EcardGeneration selfServiceSipUserId={profile?.admin?.id} onSelfServiceBack={() => { setShowEcardEditor(false); loadProfile(); }} />
           </div>
         </div>
@@ -297,17 +297,17 @@ export default function MyAccount({ identity }) {
               <div className="ma-action-row">
                 <button className="ma-action-btn" onClick={() => openDialog('displayName')}>
                   <span className="ma-action-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>&#9998;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置显示名</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置显示名</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || '未設定'}</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => openDialog('email')}>
                   <span className="ma-action-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>&#9993;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置邮箱</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.email || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置邮箱</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.email || '未設定'}</div></div>
                 </button>
               </div>
               <div className="ma-action-row">
                 <button className="ma-action-btn" onClick={() => openDialog('phone')}>
                   <span className="ma-action-icon" style={{ background: '#fef3c7', color: '#b45309' }}>&#9742;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置电话</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.phone || '未设置'}</div></div>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设置电话</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.phone || '未設定'}</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => openDialog('password')}>
                   <span className="ma-action-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>&#128274;</span>
@@ -329,7 +329,7 @@ export default function MyAccount({ identity }) {
                   <span className="ma-action-icon" style={{ background: '#f3e8ff', color: '#7c3aed' }}>&#128196;</span>
                   <div onClick={() => setShowEcardEditor(true)} style={{ minWidth: 0, flex: 1, cursor: 'pointer' }}>
                     <div className="ma-ecard-title" style={{ fontWeight: 500, whiteSpace: 'nowrap' }}>电子名片</div>
-                    <div className="ma-ecard-status" style={{ fontSize: '12px', color: ecardData ? (ecardActive ? '#22c55e' : '#9ca3af') : '#9ca3af' }}>{ecardData ? (ecardActive ? '已啟用' : '已停用') : '未设置'}</div>
+                    <div className="ma-ecard-status" style={{ fontSize: '12px', color: ecardData ? (ecardActive ? '#22c55e' : '#9ca3af') : '#9ca3af' }}>{ecardData ? (ecardActive ? '已啟用' : '已停用') : '未設定'}</div>
                   </div>
                   {ecardData && (
                     <div className="ma-ecard-toggle" onClick={handleToggleEcardStatus} style={{
@@ -345,7 +345,7 @@ export default function MyAccount({ identity }) {
                     </div>
                   )}
                   <div className="ma-ecard-actions" style={{ display: 'flex', gap: '6px' }}>
-                    <span onClick={() => setShowEcardEditor(true)} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#1e3a5f', color: '#60a5fa', cursor: 'pointer' }}>{ecardData ? '编辑' : '创建'}</span>
+                    <span onClick={() => setShowEcardEditor(true)} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#1e3a5f', color: '#60a5fa', cursor: 'pointer' }}>{ecardData ? '編輯' : '建立'}</span>
                     {ecardData && ecardThumbnailUrl && (
                       <span onClick={handleDownloadEcard} className="ma-ecard-tag" style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: '#0f2818', color: '#22c55e', cursor: 'pointer' }}>下载</span>
                     )}
@@ -363,8 +363,8 @@ export default function MyAccount({ identity }) {
           <div className="ma-card">
             <h3>基本信息</h3>
             <div className="ma-info-row"><span className="ma-info-label">账号</span><span className="ma-info-value">{admin.username || '-'}</span></div>
-            <div className="ma-info-row"><span className="ma-info-label">同步状态</span><span className="ma-info-value" style={{ color: admin.flexisipSyncStatus === 'active' ? '#22c55e' : admin.flexisipSyncStatus === 'local_only' ? '#f59e0b' : '#ef4444' }}>{admin.flexisipSyncStatus === 'active' ? '已同步' : admin.flexisipSyncStatus === 'local_only' ? '仅本地' : admin.flexisipSyncStatus || '-'}</span></div>
-            <div className="ma-info-row"><span className="ma-info-label">激活状态</span><span className="ma-info-value" style={{ color: admin.flexisipActivated === true ? '#22c55e' : admin.flexisipActivated === false ? '#ef4444' : '#9ca3af' }}>{admin.flexisipActivated === true ? '已激活' : admin.flexisipActivated === false ? '未激活' : '未知'}</span></div>
+            <div className="ma-info-row"><span className="ma-info-label">同步状态</span><span className="ma-info-value" style={{ color: admin.flexisipSyncStatus === 'active' ? '#22c55e' : admin.flexisipSyncStatus === 'local_only' ? '#f59e0b' : '#ef4444' }}>{admin.flexisipSyncStatus === 'active' ? '已同步' : admin.flexisipSyncStatus === 'local_only' ? '僅本地' : admin.flexisipSyncStatus || '-'}</span></div>
+            <div className="ma-info-row"><span className="ma-info-label">激活状态</span><span className="ma-info-value" style={{ color: admin.flexisipActivated === true ? '#22c55e' : admin.flexisipActivated === false ? '#ef4444' : '#9ca3af' }}>{admin.flexisipActivated === true ? '已啟用' : admin.flexisipActivated === false ? '未啟用' : '未知'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">显示名</span><span className="ma-info-value">{admin.displayName || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">邮箱</span><span className="ma-info-value">{admin.email || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">电话</span><span className="ma-info-value">{admin.phoneNumber || '-'}</span></div>
@@ -378,30 +378,30 @@ export default function MyAccount({ identity }) {
         <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) closeDialog(); }}>
           <form className="ma-dialog" onSubmit={handleSave}>
             <div className="ma-dialog-header">
-              <h3>{actionDialog === 'displayName' ? '设置显示名' : actionDialog === 'email' ? '设置邮箱' : actionDialog === 'phone' ? '设置电话' : actionDialog === 'password' ? '设置密码' : '电子名片'}</h3>
+              <h3>{actionDialog === 'displayName' ? '設定顯示名' : actionDialog === 'email' ? '設定郵箱' : actionDialog === 'phone' ? '設定電話' : actionDialog === 'password' ? '設定密碼' : '電子名片'}</h3>
               <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>&#10005;</button>
             </div>
             <div className="ma-dialog-body">
               {actionDialog === 'displayName' && (
-                <label>显示名称<input type="text" value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} placeholder="输入显示名称" /></label>
+                <label>显示名称<input type="text" value={form.displayName} onChange={e => setForm(f => ({ ...f, displayName: e.target.value }))} placeholder="輸入顯示名稱" /></label>
               )}
               {actionDialog === 'email' && (
-                <label>电子邮箱<input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="输入电子邮箱" /></label>
+                <label>电子邮箱<input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="輸入電子郵箱" /></label>
               )}
               {actionDialog === 'phone' && (
-                <label>电话号码<input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="输入电话号码" /></label>
+                <label>电话号码<input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="輸入電話號碼" /></label>
               )}
               {actionDialog === 'password' && (
                 <>
-                  <label>新密码<input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字符" autoComplete="new-password" /></label>
-                  <label>确认密码<input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次输入密码" autoComplete="new-password" /></label>
+                  <label>新密码<input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字元" autoComplete="new-password" /></label>
+                  <label>确认密码<input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次輸入密碼" autoComplete="new-password" /></label>
                 </>
               )}
               {message.text && <p style={{ margin: 0, fontSize: '13px', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>{message.text}</p>}
             </div>
             <div className="ma-dialog-footer">
               <button type="button" onClick={closeDialog} disabled={saving} style={{ padding: '8px 16px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', color: '#9ca3af', cursor: 'pointer', fontSize: '13px' }}>取消</button>
-              <button type="submit" disabled={saving} style={{ padding: '8px 20px', border: '0', borderRadius: '8px', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>{saving ? '保存中...' : '保存'}</button>
+              <button type="submit" disabled={saving} style={{ padding: '8px 20px', border: '0', borderRadius: '8px', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>{saving ? '儲存中...' : '儲存'}</button>
             </div>
           </form>
         </div>,
@@ -415,7 +415,7 @@ export default function MyAccount({ identity }) {
               <button onClick={() => setShowEcardPreview(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#9ca3af' }}>&#10005;</button>
             </div>
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}>
-              <img src={ecardThumbnailUrl.startsWith('/') ? '/api' + ecardThumbnailUrl : ecardThumbnailUrl} alt="电子名片" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }} />
+              <img src={ecardThumbnailUrl.startsWith('/') ? '/api' + ecardThumbnailUrl : ecardThumbnailUrl} alt="電子名片" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }} />
             </div>
           </div>
         </div>,

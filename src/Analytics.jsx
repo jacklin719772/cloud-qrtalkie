@@ -11,7 +11,7 @@ const TABS = [
 
 const statusBadge = (s) => {
   const map = {
-    online: { bg: '#065f46', color: '#6ee7b7', text: '在線' },
+    online: { bg: '#065f46', color: '#6ee7b7', text: '線上' },
     offline: { bg: '#1e293b', color: '#9ca3af', text: '離線' },
     unknown: { bg: '#1f2937', color: '#6b7280', text: '未知' },
     not_found: { bg: '#1f2937', color: '#6b7280', text: '不存在' },
@@ -251,7 +251,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
             })()
           )}
           {(activeTab === 'web' || activeTab === 'sip') && (
-          <button onClick={() => activeTab === 'web' ? loadData(true) : loadSipData(true)} title="手動刷新"
+          <button onClick={() => activeTab === 'web' ? loadData(true) : loadSipData(true)} title="手動重新整理"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', background: '#1f2937', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}>
             <RefreshCw size={14} style={{ animation: activeTab === 'web' ? (isRefreshing ? 'spin 1s linear infinite' : 'none') : (isSipRefreshing ? 'spin 1s linear infinite' : 'none') }} />
             刷新
@@ -555,7 +555,7 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
       if (res?.data) {
         setDetailData(res.data);
       } else {
-        setDetailError(res?.message || '數據為空');
+        setDetailError(res?.message || '資料為空');
       }
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.statusText || err?.message || '請求失敗';
@@ -688,8 +688,8 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                         { label: '帳號', value: detailData.username },
                         { label: 'Domain', value: detailData.domain },
                         { label: 'AOR', value: detailData.aor },
-                        { label: '註冊狀態', value: detailData.status === 'online' ? '🟢 在線' : detailData.status === 'offline' ? '🔴 離線' : '⚪ 未知' },
-                        { label: 'Key 類型', value: detailData.keyType },
+                        { label: '註冊狀態', value: detailData.status === 'online' ? '🟢 線上' : detailData.status === 'offline' ? '🔴 離線' : '⚪ 未知' },
+                        { label: 'Key 型別', value: detailData.keyType },
                         { label: 'TTL (秒)', value: String(detailData.ttl) },
                         { label: '總 Contact 數', value: String(detailData.totalContacts) },
                         { label: '有效 Contact 數', value: String(detailData.validContacts) },
@@ -727,7 +727,7 @@ function SipAccountTable({ data, stats, isLoading, search, statusFilter, tenantF
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
                             {[
-                              { label: '設備 ID (脫敏)', value: contact.uniqueId },
+                              { label: '裝置 ID (脫敏)', value: contact.uniqueId },
                               { label: 'Contact URI', value: contact.contactUri, full: true },
                               { label: '傳輸協議', value: contact.transport },
                               { label: 'User-Agent', value: contact.userAgent },
@@ -806,7 +806,7 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
   };
 
   const directionBadge = (d) => {
-    const map = { inbound: '呼入', outbound: '呼出', internal: '內部', unknown: '未知' };
+    const map = { inbound: '呼入', outbound: '撥出', internal: '內部', unknown: '未知' };
     return map[d] || d;
   };
 

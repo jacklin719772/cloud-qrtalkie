@@ -81,7 +81,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
 
   const handleToggleStatus = async (item) => {
     const nextStatus = item.status === 'active' ? 'disabled' : 'active';
-    const actionText = item.status === 'active' ? '禁用' : '啟用';
+    const actionText = item.status === 'active' ? '停用' : '啟用';
 
     if (nextStatus === 'active') {
       let isExpired = true;
@@ -166,11 +166,11 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
         setSelectedIds([]);
         fetchCallCenters();
       } else {
-        alert(res?.message || '批量刪除失敗');
+        alert(res?.message || '批次刪除失敗');
       }
     } catch (error) {
       console.error(error);
-      alert(error.response?.data?.message || error.message || '批量刪除失敗');
+      alert(error.response?.data?.message || error.message || '批次刪除失敗');
     }
   };
 
@@ -653,7 +653,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                             className="dropdown-item" 
                             onClick={() => { setOpenDropdownId(null); handleToggleStatus(item); }}
                           >
-                            {item.status === 'active' ? '禁用' : '啟用'}
+                            {item.status === 'active' ? '停用' : '啟用'}
                           </button>
                           <button type="button" className="dropdown-item" onClick={async () => {
                             const ok = await copyToClipboard(item.url);

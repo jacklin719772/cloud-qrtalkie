@@ -9,19 +9,19 @@ function getStatusBadge(orderStatus, paymentStatus, effectiveStatus) {
     return { label: '已生效', className: 'status-active' };
   }
   if (orderStatus === 'pending_review') {
-    return { label: '待审核', className: 'status-pending' };
+    return { label: '待稽核', className: 'status-pending' };
   }
   if (orderStatus === 'review_rejected') {
-    return { label: '审核未通过', className: 'status-inactive' };
+    return { label: '稽核未通過', className: 'status-inactive' };
   }
   if (orderStatus === 'cancelled') {
     return { label: '已取消', className: 'status-inactive' };
   }
   if (effectiveStatus === 'expired') {
-    return { label: '已过期', className: 'status-inactive' };
+    return { label: '已過期', className: 'status-inactive' };
   }
   if (effectiveStatus === 'expiring') {
-    return { label: '即将过期', className: 'status-expiring' };
+    return { label: '即將過期', className: 'status-expiring' };
   }
   if (paymentStatus !== 'paid' && orderStatus !== 'cancelled') {
     return { label: '待支付', className: 'status-pending' };
@@ -63,7 +63,7 @@ export default function TenantPlanManagement() {
     setIsLoading(true);
     try {
       const data = await apiClient.get('/admin/billing/orders'); // 假设这里有一个新的API接口
-      console.log('【前端 DEBUG】接口返回的套餐订单数据:', data);
+      console.log('【前端 DEBUG】介面返回的套餐訂單資料:', data);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
     } catch (err) {
       console.error('Failed to load tenant plan orders:', err);
@@ -83,8 +83,8 @@ export default function TenantPlanManagement() {
     orders.forEach((order) => {
       const effectiveStatus = getStatusBadge(order.orderStatus, order.paymentStatus, order.effectiveAt, order.expiresAt);
       if (effectiveStatus.label === '已生效') active++;
-      if (effectiveStatus.label === '待审核') pendingReview++;
-      if (effectiveStatus.label === '已过期') expired++;
+      if (effectiveStatus.label === '待稽核') pendingReview++;
+      if (effectiveStatus.label === '已過期') expired++;
     });
     return { total, active, pendingReview, expired };
   }, [orders]);
@@ -101,8 +101,8 @@ export default function TenantPlanManagement() {
       const effectiveStatus = getStatusBadge(order.orderStatus, order.paymentStatus, order.effectiveAt, order.expiresAt);
       if (statusFilter !== 'all') {
         if (statusFilter === 'active') matchesStatus = effectiveStatus.label === '已生效';
-        else if (statusFilter === 'pendingReview') matchesStatus = effectiveStatus.label === '待审核';
-        else if (statusFilter === 'inactive') matchesStatus = effectiveStatus.label === '未生效' || effectiveStatus.label === '已过期' || effectiveStatus.label === '审核未通过' || effectiveStatus.label === '已取消';
+        else if (statusFilter === 'pendingReview') matchesStatus = effectiveStatus.label === '待稽核';
+        else if (statusFilter === 'inactive') matchesStatus = effectiveStatus.label === '未生效' || effectiveStatus.label === '已過期' || effectiveStatus.label === '稽核未通過' || effectiveStatus.label === '已取消';
       }
 
       return matchesSearch && matchesStatus;
@@ -192,7 +192,7 @@ export default function TenantPlanManagement() {
 
   const handleAction = (action, order) => {
     setOpenDropdownId(null);
-    alert(`触发操作: ${action} - 订单: ${order.orderNo}`);
+    alert(`觸發操作: ${action} - 訂單: ${order.orderNo}`);
     // 这里会根据 action 执行不同的操作，例如打开详情模态框、审核、编辑、删除等
   };
 
@@ -204,7 +204,7 @@ export default function TenantPlanManagement() {
         <div className="toolbar" style={{ flexShrink: 0, display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px', width: '100%', boxSizing: 'border-box' }}>
           <input
             type="search"
-            placeholder="搜寻租户、订单号、套餐名称"
+            placeholder="搜尋租戶、訂單號、套餐名稱"
             value={searchKeyword}
             onChange={(e) => setSearchKeyword(e.target.value)}
             style={{ width: '280px' }}

@@ -12,9 +12,9 @@ export function createBillingApi({ apiBaseUrl, apiFetch, getAuthToken }) {
       xhr.addEventListener("load", () => {
         const result = JSON.parse(xhr.responseText || "{}");
         if (xhr.status >= 200 && xhr.status < 300) resolve(result);
-        else reject(new Error(result.message || "支付凭证保存失败。"));
+        else reject(new Error(result.message || "支付憑證儲存失敗。"));
       });
-      xhr.addEventListener("error", () => reject(new Error("上传失败，请检查网络连接。")));
+      xhr.addEventListener("error", () => reject(new Error("上傳失敗，請檢查網路連線。")));
       xhr.send(JSON.stringify(payload));
     });
   }

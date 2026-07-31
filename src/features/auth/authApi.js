@@ -7,7 +7,7 @@ export function createAuthApi({ apiBaseUrl, apiFetch }) {
     });
     const result = await response.json();
     if (!response.ok) {
-      const err = new Error(result.message || "注册失败，请稍后重试。");
+      const err = new Error(result.message || "註冊失敗，請稍後重試。");
       err.code = result.code;
       err.email = result.email;
       throw err;

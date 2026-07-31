@@ -32,7 +32,7 @@ const MOCK_STATS = {
   sipCreated: 18367, sipAssigned: 12845, webCreated: 8521, webAssigned: 5932,
   tenantCount: 286, orderCount: 1248, pendingReviewCount: 15, pendingPaymentCount: 8, paidTotal: 186520,
   ecardCount: 3847, deviceCount: 2156, communityCount: 328, roomCount: 4920,
-  topPlan: "企业旗舰版", bottomPlan: "基础版",
+  topPlan: "企業旗艦版", bottomPlan: "基礎版",
   tenantTrend: [
     { date: 'Mon', count: 12 }, { date: 'Tue', count: 15 }, { date: 'Wed', count: 11 }, { date: 'Thu', count: 17 }, { date: 'Fri', count: 16 }, { date: 'Sat', count: 19 }, { date: 'Sun', count: 22 },
   ],
@@ -44,7 +44,7 @@ const MOCK_STATS = {
 function buildChartBars(trend, valueKey) {
   if (!trend || trend.length === 0) return { bars: [], labels: [], max: 1 };
   const max = Math.max(1, ...trend.map(d => d[valueKey]));
-  const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const dayNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
   const bars = trend.map(d => ({ label: dayNames[new Date(d.date + 'T00:00:00').getDay()] || d.date.slice(5), pct: Math.round((d[valueKey] / max) * 100) }));
   return { bars, labels: bars.map(b => b.label), max };
 }
@@ -74,7 +74,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({ refresh }));
 
   const handleRestartAi = async () => {
-    if (!window.confirm('確定要重啟 Web AI 服務吗？')) return;
+    if (!window.confirm('確定要重啟 Web AI 服務嗎？')) return;
     try {
       await apiClient.post('/platform/health/restart-ai');
       alert('Web AI 服務已重啟');
@@ -85,7 +85,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
   };
 
   const handleCleanLogs = async () => {
-    if (!window.confirm('確定要清理 Asterisk 和 Flexisip 日誌吗？\n\n安全清理策略：\n- 當前日誌檔案：truncate 清空（不影响服務運行）\n- 旧归档檔案（.gz）：直接删除\n- .log.1 缓冲区：保留')) return;
+    if (!window.confirm('確定要清理 Asterisk 和 Flexisip 日誌嗎？\n\n安全清理策略：\n- 當前日誌檔案：truncate 清空（不影響服務執行）\n- 舊歸檔檔案（.gz）：直接刪除\n- .log.1 緩衝區：保留')) return;
     try {
       const res = await apiClient.post('/platform/health/clean-logs');
       alert(res.message || '日誌清理完成');
@@ -213,23 +213,23 @@ const PlatformDashboard = forwardRef((props, ref) => {
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
-              <div><div className="pdb-service-name">SIP 呼叫服務</div><div className="pdb-service-status">{health.flexisip === 'running' ? '運行正常' : health.flexisip === 'partial' ? '部分運行' : '已停止'}</div></div>
+              <div><div className="pdb-service-name">SIP 呼叫服務</div><div className="pdb-service-status">{health.flexisip === 'running' ? '執行正常' : health.flexisip === 'partial' ? '部分執行' : '已停止'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.asterisk === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Web 呼叫服務</div><div className="pdb-service-status">{health.asterisk === 'running' ? '運行正常' : health.asterisk === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Web 呼叫服務</div><div className="pdb-service-status">{health.asterisk === 'running' ? '執行正常' : health.asterisk === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mariadb === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MariaDB</div><div className="pdb-service-status">{health.mariadb === 'running' ? '连接正常' : '连接异常'}</div></div>
+              <div><div className="pdb-service-name">MariaDB</div><div className="pdb-service-status">{health.mariadb === 'running' ? '連線正常' : '連線異常'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mongodb === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '運行正常' : health.mongodb === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '執行正常' : health.mongodb === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '運行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '執行正常' : health.redis === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
           </div>
         </div>
@@ -239,22 +239,22 @@ const PlatformDashboard = forwardRef((props, ref) => {
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.accountManager === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">帳號管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '運行正常' : health.accountManager === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">帳號管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '執行正常' : health.accountManager === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.lime === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">加密服務</div><div className="pdb-service-status">{health.lime === 'running' ? '運行正常' : health.lime === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">加密服務</div><div className="pdb-service-status">{health.lime === 'running' ? '執行正常' : health.lime === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.fts === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">檔案傳輸服務</div><div className="pdb-service-status">{health.fts === 'running' ? '運行正常' : health.fts === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">檔案傳輸服務</div><div className="pdb-service-status">{health.fts === 'running' ? '執行正常' : health.fts === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.aiservice === 'running' ? 'green' : 'warn'}`} />
               <div style={{ flex: 1 }}>
                 <div className="pdb-service-name">Web AI 服務</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="pdb-service-status">{health.aiservice === 'running' ? '運行正常' : health.aiservice === 'stopped' ? '已停止' : '未安装'}</div>
+                  <div className="pdb-service-status">{health.aiservice === 'running' ? '執行正常' : health.aiservice === 'stopped' ? '已停止' : '未安裝'}</div>
                   {health.aiservice !== 'running' && (
                     <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重啟</span>
                   )}
@@ -263,15 +263,15 @@ const PlatformDashboard = forwardRef((props, ref) => {
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '運行正常' : health.redis === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '執行正常' : health.redis === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.coturn === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '運行正常' : health.coturn === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '執行正常' : health.coturn === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
             <div className="pdb-card pdb-service-card">
               <span className={`pdb-dot ${health.mqtt === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '運行正常' : health.mqtt === 'stopped' ? '已停止' : '未安装'}</div></div>
+              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '執行正常' : health.mqtt === 'stopped' ? '已停止' : '未安裝'}</div></div>
             </div>
           </div>
         </div>
@@ -310,19 +310,19 @@ const PlatformDashboard = forwardRef((props, ref) => {
             <div className="pdb-card" style={{ padding: '18px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {[
-                  { label: '已注册租户', value: stats.tenantCount?.toLocaleString() },
-                  { label: '已销售套餐', value: stats.orderCount?.toLocaleString() },
-                  { label: '待审核订单', value: stats.pendingReviewCount?.toLocaleString(), color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' },
-                  { label: '待付款订单', value: stats.pendingPaymentCount?.toLocaleString(), color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' },
-                  { label: '已收款总额', value: '$' + (stats.paidTotal?.toLocaleString()) },
+                  { label: '已註冊租戶', value: stats.tenantCount?.toLocaleString() },
+                  { label: '已銷售套餐', value: stats.orderCount?.toLocaleString() },
+                  { label: '待稽核訂單', value: stats.pendingReviewCount?.toLocaleString(), color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' },
+                  { label: '待付款訂單', value: stats.pendingPaymentCount?.toLocaleString(), color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' },
+                  { label: '已收款總額', value: '$' + (stats.paidTotal?.toLocaleString()) },
                   { label: '已分配 SIP 帳號', value: stats.sipAssigned?.toLocaleString() },
                   { label: '已分配 Web 帳號', value: stats.webAssigned?.toLocaleString() },
-                  { label: '电子名片数量', value: stats.ecardCount?.toLocaleString() },
-                  { label: '门控设备数量', value: stats.deviceCount?.toLocaleString() },
-                  { label: '管控社区数量', value: stats.communityCount?.toLocaleString() },
-                  { label: '管控房间数量', value: stats.roomCount?.toLocaleString() },
-                  { label: '销量最高套餐', value: stats.topPlan },
-                  { label: '销量最低套餐', value: stats.bottomPlan },
+                  { label: '電子名片數量', value: stats.ecardCount?.toLocaleString() },
+                  { label: '門控裝置數量', value: stats.deviceCount?.toLocaleString() },
+                  { label: '管控社群數量', value: stats.communityCount?.toLocaleString() },
+                  { label: '管控房間數量', value: stats.roomCount?.toLocaleString() },
+                  { label: '銷量最高套餐', value: stats.topPlan },
+                  { label: '銷量最低套餐', value: stats.bottomPlan },
                 ].map((item, i) => (
                   <div key={i} style={{ background: '#1a2332', borderRadius: '8px', padding: '12px 14px', border: '1px solid #1f2937' }}>
                     <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>{item.label}</div>

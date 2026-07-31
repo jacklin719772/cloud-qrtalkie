@@ -220,7 +220,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '撤销優惠碼失败。');
+      setError(err.message || '撤銷優惠碼失敗。');
     } finally {
       setIsRevoking(false);
     }
@@ -228,7 +228,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
   async function enableAssignment(item) {
     if (item.status !== 'revoked') {
-      window.alert('只有撤销状态的優惠碼可以启用。');
+      window.alert('只有撤銷狀態的優惠碼可以啟用。');
       return;
     }
 
@@ -239,7 +239,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '启用優惠碼失败。');
+      setError(err.message || '啟用優惠碼失敗。');
     } finally {
       setIsRevoking(false);
     }
@@ -247,10 +247,10 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
 
   async function deleteAssignment(item) {
     if (item.status !== 'revoked') {
-      window.alert('只有撤销状态的優惠碼可以删除。');
+      window.alert('只有撤銷狀態的優惠碼可以刪除。');
       return;
     }
-    if (!window.confirm(`确定要删除「${item.tenantName || item.tenantNumber}」的優惠碼「${item.couponCode}」分配記錄嗎？`)) return;
+    if (!window.confirm(`確定要刪除「${item.tenantName || item.tenantNumber}」的優惠碼「${item.couponCode}」分配記錄嗎？`)) return;
 
     setIsRevoking(true);
     setError('');
@@ -259,7 +259,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
       await loadAssignments(page);
       if (detailItem?.id === item.id) setDetailItem(null);
     } catch (err) {
-      setError(err.message || '删除優惠碼分配記錄失败。');
+      setError(err.message || '刪除優惠碼分配記錄失敗。');
     } finally {
       setIsRevoking(false);
     }
@@ -387,8 +387,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
     <section className="view active tenant-coupon-page" id="tenant-coupon-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <style>{`
         /* ========================================================
-           复刻设备管理页面顶部命令按钮的视觉风格
-           严格限定在该页面挂载时生效，通过子选择器仅覆盖工具栏操作按钮组
+           復刻裝置管理頁面頂部命令按鈕的視覺風格
+           嚴格限定在該頁面掛載時生效，通過子選擇器僅覆蓋工具欄操作按鈕組
            ======================================================== */
         .page-heading > button {
           display: inline-flex !important;
@@ -424,7 +424,7 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           height: 14px !important;
         }
         /* ========================================================
-           優惠碼管理页面样式 - 对齐 DeviceManagement.jsx
+           優惠碼管理頁面樣式 - 對齊 DeviceManagement.jsx
            ======================================================== */
         #tenant-coupon-management .tenant-coupon-shell {
           background: rgba(255, 255, 255, 0.96);
@@ -462,8 +462,8 @@ const TenantCouponManagement = forwardRef(({ onModeChange }, ref) => {
           width: clamp(280px, 30vw, 360px);
           flex: 0 1 360px;
           max-width: 100%;
-          border: none; /* 修复：移除外层容器可能存在的边框，解决双边框问题 */
-          padding: 0; /* 修复：移除外层容器可能存在的内边距 */
+          border: none; /* 修復：移除外層容器可能存在的邊框，解決雙邊框問題 */
+          padding: 0; /* 修復：移除外層容器可能存在的內邊距 */
         }
         #tenant-coupon-management .tenant-coupon-search svg {
           position: absolute;

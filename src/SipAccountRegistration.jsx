@@ -160,7 +160,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleImportServerAccounts = async () => {
     if (serverImportSelected.length === 0) {
-      alert('请至少選擇一個帳號');
+      alert('請至少選擇一個帳號');
       return;
     }
     setServerImportSaving(true);
@@ -174,7 +174,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         fetchRemoteAccounts();
       }
     } catch (err) {
-      alert(err.message || '導入失敗');
+      alert(err.message || '匯入失敗');
     } finally {
       setServerImportSaving(false);
     }
@@ -213,7 +213,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     try {
       // 獲取真实的 SIP 帳號列表
       const data = await apiClient.get('/admin/sip-accounts');
-      console.log('【前端 DEBUG】接口返回的數據:', data);
+      console.log('【前端 DEBUG】介面返回的資料:', data);
       setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
     } catch (err) {
       console.error('Failed to load sip accounts:', err);
@@ -236,7 +236,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       if (acc.tenantName) assigned++;
     });
 
-    console.log('【前端 DEBUG】當前狀態中的帳號列表长度:', accounts.length);
+    console.log('【前端 DEBUG】當前狀態中的帳號列表長度:', accounts.length);
     return { total: accounts.length, active, disabled, assigned };
   }, [accounts]);
 
@@ -356,7 +356,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       active: { label: '啟用中', bg: '#dcfce7', color: '#15803d' },
       disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
       inactive: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
-      pending: { label: '待审核', bg: '#e0f2fe', color: '#0369a1' },
+      pending: { label: '待稽核', bg: '#e0f2fe', color: '#0369a1' },
     };
     const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
     return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '10px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
@@ -364,7 +364,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleExportCsv = () => {
     if (selectedIds.length === 0) {
-      alert("请至少選擇一條記錄进行導出。");
+      alert("請至少選擇一條記錄進行匯出。");
       return;
     }
 
@@ -431,7 +431,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) {
-      alert("请至少選擇一條記錄进行刪除。");
+      alert("請至少選擇一條記錄進行刪除。");
       return;
     }
 
@@ -439,7 +439,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     const assignedAccounts = selectedAccounts.filter(acc => acc.tenantName);
 
     if (assignedAccounts.length > 0) {
-      alert('选中的帳號中包含已分配给租戶的帳號，已经分配给租戶的帳號不允许刪除。');
+      alert('選中的帳號中包含已分配給租戶的帳號，已經分配給租戶的帳號不允許刪除。');
       return;
     }
 
@@ -481,7 +481,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       const releaseResult = await apiClient.post('/flexisip/accounts/tombstones/release', {
         username: info.username,
         domain: info.domain,
-        reason: '管理員重新創建同名帳號',
+        reason: '管理員重新建立同名帳號',
       });
       if (!releaseResult?.released) {
         // tombstone 可能已被之前的彻底删除释放，直接尝试创建
@@ -490,7 +490,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       // 重试创建
       try {
         await apiClient.post('/admin/sip-accounts', formData);
-        setFormMessage({ type: 'success', text: '帳號創建成功！' });
+        setFormMessage({ type: 'success', text: '帳號建立成功！' });
         setTimeout(async () => {
           setViewMode('list');
           setFormData(emptyAccountForm);
@@ -499,9 +499,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }, 800);
       } catch (createErr) {
         if (createErr.code === 'FLEXISIP_USERNAME_TOMBSTONED') {
-          setFormMessage({ type: 'error', text: '釋放失敗，該用戶名仍被保留，請聯繫管理員。' });
+          setFormMessage({ type: 'error', text: '釋放失敗，該使用者名稱仍被保留，請聯絡管理員。' });
         } else {
-          setFormMessage({ type: 'error', text: createErr.message || '創建失敗' });
+          setFormMessage({ type: 'error', text: createErr.message || '建立失敗' });
         }
       }
     } catch (err) {
@@ -513,7 +513,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const handleBatchUnassign = async () => {
     if (selectedIds.length === 0) {
-      alert("请至少選擇一條記錄进行操作。");
+      alert("請至少選擇一條記錄進行操作。");
       return;
     }
 
@@ -522,13 +522,13 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     const unassignedAccounts = selectedAccounts.filter(acc => !acc.tenantName);
 
     if (assignedAccounts.length === 0) {
-      alert('选中的帳號均未分配给任何租戶，无需取消分配。');
+      alert('選中的帳號均未分配給任何租戶，無需取消分配。');
       return;
     }
 
-    let confirmMsg = `確定要取消选中的 ${assignedAccounts.length} 個帳號的租戶分配吗？`;
+    let confirmMsg = `確定要取消選中的 ${assignedAccounts.length} 個帳號的租戶分配嗎？`;
     if (unassignedAccounts.length > 0) {
-      confirmMsg = `选中的帳號中包含 ${unassignedAccounts.length} 個未分配的帳號。是否跳过它们，仅对已分配的 ${assignedAccounts.length} 個帳號执行取消分配？`;
+      confirmMsg = `選中的帳號中包含 ${unassignedAccounts.length} 個未分配的帳號。是否跳過它們，僅對已分配的 ${assignedAccounts.length} 個帳號執行取消分配？`;
     }
 
     if (window.confirm(confirmMsg)) {
@@ -569,7 +569,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       const cleanText = text.replace(/^\uFEFF/, '');
       const lines = cleanText.split(/\r?\n/).filter(line => line.trim());
       if (lines.length <= 1) {
-        alert('CSV/VSV 文件为空或没有數據行。');
+        alert('CSV/VSV 檔案為空或沒有資料行。');
         return;
       }
 
@@ -599,13 +599,13 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           _error: ''
         };
 
-        if (!acc.username) acc._error = '用戶名不能为空';
-        else if (seenUsernames.has(acc.username)) acc._error = '用戶名已存在或文件内重复';
-        else if (!acc.password || acc.password.length < 6) acc._error = '密碼至少需要 6 個字符';
+        if (!acc.username) acc._error = '使用者名稱不能為空';
+        else if (seenUsernames.has(acc.username)) acc._error = '使用者名稱已存在或檔案內重複';
+        else if (!acc.password || acc.password.length < 6) acc._error = '密碼至少需要 6 個字元';
         else if (acc.hasExternal) {
-          if (!acc.externalUsername) acc._error = '外部帳號用戶名不能为空';
-          else if (!acc.externalDomain) acc._error = '外部帳號域名不能为空';
-          else if (!acc.externalPassword) acc._error = '外部帳號密碼不能为空';
+          if (!acc.externalUsername) acc._error = '外部帳號使用者名稱不能為空';
+          else if (!acc.externalDomain) acc._error = '外部帳號域名不能為空';
+          else if (!acc.externalPassword) acc._error = '外部帳號密碼不能為空';
         }
 
         seenUsernames.add(acc.username);
@@ -655,7 +655,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     if (action === 'edit') {
       if (account.tenantName) {
-        alert('已经分配给租戶的帳號不允许編輯。');
+        alert('已經分配給租戶的帳號不允許編輯。');
         return;
       }
       const initialData = {
@@ -686,7 +686,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     if (action === 'delete') {
       if (account.tenantName) {
-        alert('已经分配给租戶的帳號不允许刪除。');
+        alert('已經分配給租戶的帳號不允許刪除。');
         return;
       }
       setDeleteConfirm({ account, isBatch: false });
@@ -703,10 +703,10 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     if (action === 'unassign') {
       if (!account.tenantName) {
-        alert('该帳號尚未分配给任何租戶。');
+        alert('該帳號尚未分配給任何租戶。');
         return;
       }
-      if (window.confirm(`確定要取消帳號「${account.username}」的租戶分配吗？`)) {
+      if (window.confirm(`確定要取消帳號「${account.username}」的租戶分配嗎？`)) {
         setIsLoading(true);
         try {
           await apiClient.post(`/admin/sip-accounts/${account.id}/unassign`);
@@ -785,7 +785,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (resetPasswordValue.length < 6) {
-      setResetMessage({ type: 'error', text: '密碼至少需要 6 個字符。' });
+      setResetMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
       return;
     }
     if (resetPasswordValue !== resetConfirmPasswordValue) {
@@ -849,11 +849,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const handleSaveAccount = async (e) => {
     e.preventDefault();
     if (!formData.username.trim()) {
-      setFormMessage({ type: 'error', text: '請輸入用戶名。' });
+      setFormMessage({ type: 'error', text: '請輸入使用者名稱。' });
       return;
     }
     if (viewMode === 'add' && accounts.some(acc => acc.username === formData.username.trim())) {
-      setFormMessage({ type: 'error', text: '该用戶名已存在，请使用其他名稱。' });
+      setFormMessage({ type: 'error', text: '該使用者名稱已存在，請使用其他名稱。' });
       return;
     }
     if (!formData.domain.trim()) {
@@ -865,28 +865,28 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (formData.password && formData.password.length < 6) {
-      setFormMessage({ type: 'error', text: '密碼至少需要 6 個字符。' });
+      setFormMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
       return;
     }
     if (viewMode === 'add' && !formData.confirmPassword) {
-      setFormMessage({ type: 'error', text: '请確認密碼。' });
+      setFormMessage({ type: 'error', text: '請確認密碼。' });
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      setFormMessage({ type: 'error', text: '两次输入的密碼不一致。' });
+      setFormMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
     if (!formData.role) {
-      setFormMessage({ type: 'error', text: '请選擇角色。' });
+      setFormMessage({ type: 'error', text: '請選擇角色。' });
       return;
     }
     if (!formData.status) {
-      setFormMessage({ type: 'error', text: '请選擇狀態。' });
+      setFormMessage({ type: 'error', text: '請選擇狀態。' });
       return;
     }
     if (formData.hasExternal) {
       if (!formData.externalUsername.trim()) {
-        setFormMessage({ type: 'error', text: '請輸入外部帳號的用戶名。' });
+        setFormMessage({ type: 'error', text: '請輸入外部帳號的使用者名稱。' });
         return;
       }
       if (!formData.externalDomain.trim()) {
@@ -965,7 +965,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (count > 200) {
-      setBatchAddMessage({ type: 'error', text: '單次批量新增數量不能超過 200。' });
+      setBatchAddMessage({ type: 'error', text: '單次批次新增數量不能超過 200。' });
       return;
     }
 
@@ -996,7 +996,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setBatchAddMessage({ type: 'error', text: `已完成：${createdOk} 個成功，${msgs.join('，')}。` });
         setBatchAddResults((result.results || []).filter(r => !r.success || r.check?.consistent === false));
       } else {
-        setBatchAddMessage({ type: 'success', text: `批量新增完成，${createdOk} 個帳號全部創建成功。` });
+        setBatchAddMessage({ type: 'success', text: `批次新增完成，${createdOk} 個帳號全部建立成功。` });
         setTimeout(() => {
           setBatchAddOpen(false);
           setBatchAddResults(null);
@@ -1004,7 +1004,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }, 1000);
       }
     } catch (err) {
-      setBatchAddMessage({ type: 'error', text: err.message || '批量新增失敗' });
+      setBatchAddMessage({ type: 'error', text: err.message || '批次新增失敗' });
     } finally {
       setIsBatchAdding(false);
       await loadAccounts();
@@ -1023,7 +1023,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       // 批量释放
       const releaseResult = await apiClient.post('/flexisip/accounts/tombstones/batch-release', {
         items: tombstoned.map(r => ({ username: r.username, domain: defaultSipDomain })),
-        reason: '批量釋放已刪除保留帳號',
+        reason: '批次釋放已刪除保留帳號',
       });
       const releasedCount = releaseResult.results?.filter(r => r.released).length || 0;
       if (releasedCount === 0) {
@@ -1068,7 +1068,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
-                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '默认与用戶名相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                  <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '預設與使用者名稱相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
@@ -1148,7 +1148,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
               <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
-              <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登记')}</button>
+              <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登記')}</button>
             </div>
           </form>
         </div>
@@ -1285,7 +1285,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', gap: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600', flexShrink: 0 }}>導入服務器賬號</h3>
               <span style={{ fontSize: '14px', color: '#9ca3af', flexShrink: 0 }}>
-                {serverImportLoading ? '正在載入...' : `共 ${serverAccounts.length} 個，${serverAccounts.filter(a => !a.existsLocally).length} 個可導入`}
+                {serverImportLoading ? '正在載入...' : `共 ${serverAccounts.length} 個，${serverAccounts.filter(a => !a.existsLocally).length} 個可匯入`}
               </span>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#9ca3af', flexShrink: 0 }}>
                 <input type="checkbox" checked={serverImportSelected.length > 0 && serverImportSelected.length === sortedServerAccounts.filter(a => !a.existsLocally).length} onChange={handleSelectAllServer} style={{ accentColor: '#3b82f6', width: '16px', height: '16px', margin: 0 }} />
@@ -1296,7 +1296,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <RefreshCw size={14} /> 刷新列表
               </button>
               <button className="primary-btn" type="button" onClick={handleImportServerAccounts} disabled={serverImportSelected.length === 0 || serverImportSaving} style={{ flexShrink: 0, padding: '6px 14px', fontSize: '13px' }}>
-                {serverImportSaving ? '導入中...' : `導入選中帳號 (${serverImportSelected.length})`}
+                {serverImportSaving ? '匯入中...' : `匯入選中帳號 (${serverImportSelected.length})`}
               </button>
             </div>
 
@@ -1433,7 +1433,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                                <tr key={idx}>
                                  <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#9ca3af' }}>{d._originalRow}</td>
                                  <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: '#e5e7eb' }}>{d.username || '-'}</td>
-                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: d._error ? '#ef4444' : '#10b981' }}>{d._error || '校验通过'}</td>
+                                 <td style={{ padding: '12px 16px', borderBottom: '1px solid #1f2937', color: d._error ? '#ef4444' : '#10b981' }}>{d._error || '校驗通過'}</td>
                                </tr>
                              ))}
                           </tbody>
@@ -1442,7 +1442,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                      <div style={{ flexShrink: 0, marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
                         <button className="ghost-btn" onClick={() => setImportStep(1)}>重新選擇文件</button>
                         <button className="primary-btn" onClick={executeImport} disabled={parsedData.filter(d => d._error).length > 0}>
-                           {parsedData.filter(d => d._error).length > 0 ? '请先修正错误后重新上傳' : '確認无误，执行導入'}
+                           {parsedData.filter(d => d._error).length > 0 ? '請先修正錯誤後重新上傳' : '確認無誤，執行匯入'}
                         </button>
                      </div>
                   </div>
@@ -1519,8 +1519,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
 
         /* ========================================================
-           复刻設備管理頁面顶部命令按钮的视觉风格
-           严格限定在该頁面挂载时生效，通过子選擇器仅覆盖工具栏操作按钮组
+           復刻裝置管理頁面頂部命令按鈕的視覺風格
+           嚴格限定在該頁面掛載時生效，通過子選擇器僅覆蓋工具欄操作按鈕組
            ======================================================== */
         .page-heading > div > button.ghost-btn,
         .page-heading > div > button.primary-btn {
@@ -1559,7 +1559,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
 
         /* ========================================================
-           查詢和統計條部分的样式对齐設備管理
+           查詢和統計條部分的樣式對齊裝置管理
            ======================================================== */
         #sip-account-registration .sip-toolbar {
           display: flex;
@@ -1851,7 +1851,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <Search size={18} />
                 <input
                   type="search"
-                  placeholder="搜寻帳號名稱、手機、郵箱"
+                  placeholder="搜尋帳號名稱、手機、郵箱"
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                 />
@@ -1904,8 +1904,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     ['status', '狀態', '140px'],
                     ['tenantName', '租戶名稱', '150px'],
                     ['expiresAt', '到期日期', '130px'],
-                    ['creatorName', '添加人', '170px'],
-                    ['createdAt', '添加時間', '150px'],
+                    ['creatorName', '新增人', '170px'],
+                    ['createdAt', '新增時間', '150px'],
                   ].map(([key, label, width]) => (
                     <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" className="sip-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
@@ -1919,7 +1919,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   <tr>
                     <td colSpan="8" style={{ padding: 0, textAlign: 'center' }}>
                       <div className="sip-empty">
-                        <div>{isLoading ? '載入中...' : '暫無SIP帳號數據'}</div>
+                        <div>{isLoading ? '載入中...' : '暫無SIP帳號資料'}</div>
                       </div>
                     </td>
                   </tr>
@@ -2109,11 +2109,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       <div key={i} style={{ padding: '8px 12px', borderBottom: i < batchAddResults.length - 1 ? '1px solid #1f2937' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{r.username || r.sipUri}</span>
                         <span style={{ color: r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '#f59e0b' : '#ef4444', fontSize: '12px' }}>
-                          {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已删除保留' :
+                          {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已刪除保留' :
                            r.errorCode === 'DUPLICATE_LOCAL_SIP_ACCOUNT' ? '本地已存在' :
-                           r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '远端已存在' :
-                           r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地保存失败' :
-                           r.message || r.errorCode || '失败'}
+                           r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '遠端已存在' :
+                           r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地儲存失敗' :
+                           r.message || r.errorCode || '失敗'}
                         </span>
                       </div>
                     ))}

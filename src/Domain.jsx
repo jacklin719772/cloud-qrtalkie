@@ -171,7 +171,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       return;
     }
     if (action === 'submit-review') {
-      if (!window.confirm('確認提交該訂單進行後台審核嗎？')) return;
+      if (!window.confirm('確認提交該訂單進行後臺審核嗎？')) return;
       try { await apiClient.post(`/billing/orders/${order.id}/review-submission`, { action: 'submit' }); loadOrders(); setMessage({ type: 'success', text: '訂單已提交審核。' }); }
       catch (e) { window.alert(e.message || '操作失敗'); }
       return;
@@ -190,7 +190,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
     const canRenew = order.orderStatus === 'review_approved';
     const review = order.orderStatus === 'pending_review' ? { action: 'revoke-review', label: '撤銷提交' } : { action: 'submit-review', label: '重新提交', disabled: order.orderStatus === 'review_approved' };
     return [
-      { action: 'detail', label: '查看詳情' },
+      { action: 'detail', label: '檢視詳情' },
       showProof ? { action: 'upload-proof', label: '支付憑證' } : null,
       canRenew ? { action: 'renew', label: '訂單續訂' } : null,
       { action: 'repurchase', label: '重新購買' },

@@ -230,7 +230,7 @@ export default function PlanManagement({ onNavigate }) {
       setCurrentPage(1);
       await loadOrders();
     } catch (err) {
-      alert(err.message || '審核提交失敗，请稍後重試。');
+      alert(err.message || '審核提交失敗，請稍後重試。');
     } finally {
       setIsLoadingReview(false);
     }
@@ -245,7 +245,7 @@ export default function PlanManagement({ onNavigate }) {
     }
     const availableCount = unassignedSipAccounts.length;
     if (availableCount < requiredCount) {
-      const confirmed = window.confirm(`未分配帳號數量不足。當前未分配帳號 ${availableCount} 個，需要分配 ${requiredCount} 個。\n\n点击確定后将前往帳號登记頁面，请添加足够帳號以完成帳號分配操作。`);
+      const confirmed = window.confirm(`未分配帳號數量不足。當前未分配帳號 ${availableCount} 個，需要分配 ${requiredCount} 個。\n\n點選確定後將前往帳號登記頁面，請新增足夠帳號以完成帳號分配操作。`);
       if (confirmed) {
         setReviewOrder(null);
         onNavigate?.('sip-account-registration');
@@ -259,7 +259,7 @@ export default function PlanManagement({ onNavigate }) {
   const goToWebAccountAssignmentStep = () => {
     const requiredCount = Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0);
     if (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== requiredCount) {
-      alert(`當前已選擇 ${selectedSipAccountIds.length} 個 SIP 帳號，需要選擇 ${requiredCount} 個帳號後才能进入 Web 帳號分配。`);
+      alert(`當前已選擇 ${selectedSipAccountIds.length} 個 SIP 帳號，需要選擇 ${requiredCount} 個帳號後才能進入 Web 帳號分配。`);
       return;
     }
 
@@ -394,7 +394,7 @@ export default function PlanManagement({ onNavigate }) {
 
   const getSipStatusBadge = (status) => {
     const statusMap = {
-      active: { label: '启用中', className: 'status-active' },
+      active: { label: '啟用中', className: 'status-active' },
       disabled: { label: '已停用', className: 'status-inactive' },
       inactive: { label: '已停用', className: 'status-inactive' },
       pending: { label: '待審核', className: 'status-pending' },
@@ -404,8 +404,8 @@ export default function PlanManagement({ onNavigate }) {
   };
 
   const paymentMethodLabel = (order) => {
-    if (order.payment_method === 'offline') return '线下支付';
-    if (order.payment_method === 'online') return order.payment_channel ? `线上支付 / ${order.payment_channel}` : '线上支付';
+    if (order.payment_method === 'offline') return '線下支付';
+    if (order.payment_method === 'online') return order.payment_channel ? `線上支付 / ${order.payment_channel}` : '線上支付';
     return '-';
   };
 
@@ -448,10 +448,10 @@ export default function PlanManagement({ onNavigate }) {
       const replacementCount = Math.max(0, requiredCount - retained.length);
       const replacements = Array.from({ length: replacementCount }, (_, index) => ({
         id: `replacement-${index + 1}`,
-        username: `系统随机补分配 ${index + 1}`,
+        username: `系統隨機補分配 ${index + 1}`,
         domain: '',
-        displayName: '待补分配 SIP',
-        kind: '补充',
+        displayName: '待補分配 SIP',
+        kind: '補充',
         reuseWeb: false
       }));
       return [...retained, ...replacements];
@@ -1221,7 +1221,7 @@ export default function PlanManagement({ onNavigate }) {
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isSelectionComplete ? '#bbf7d0' : '#fed7aa'}`, backgroundColor: isSelectionComplete ? '#f0fdf4' : '#fff7ed', color: isSelectionComplete ? '#166534' : '#9a3412', fontSize: '13px' }}>
                             <span>已選擇 <strong>{selectedCount}</strong> / 需分配 <strong>{requiredCount}</strong> 個帳號</span>
-                            {!isSelectionComplete && <span>{selectedCount < requiredCount ? `还需選擇 ${requiredCount - selectedCount} 個` : `已超出 ${selectedCount - requiredCount} 個`}</span>}
+                            {!isSelectionComplete && <span>{selectedCount < requiredCount ? `還需選擇 ${requiredCount - selectedCount} 個` : `已超出 ${selectedCount - requiredCount} 個`}</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', color: '#9ca3af', fontSize: '13px' }}>
 	                            <span>帳號有效期</span>
@@ -1319,7 +1319,7 @@ export default function PlanManagement({ onNavigate }) {
                                     <div key={sipAccount.id} style={{ border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827', padding: '12px', display: 'grid', gap: '10px', minWidth: 0 }}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
                                         <span style={{ fontSize: '12px', color: '#64748b' }}>SIP帳號</span>
-                                        <span style={{ fontSize: '12px', color: sipAccount.kind === '补充' ? '#f97316' : '#2563eb', backgroundColor: sipAccount.kind === '补充' ? '#fff7ed' : '#eff6ff', borderRadius: '999px', padding: '2px 8px' }}>{sipAccount.kind}</span>
+                                        <span style={{ fontSize: '12px', color: sipAccount.kind === '補充' ? '#f97316' : '#2563eb', backgroundColor: sipAccount.kind === '補充' ? '#fff7ed' : '#eff6ff', borderRadius: '999px', padding: '2px 8px' }}>{sipAccount.kind}</span>
                                       </div>
                                       <div title={`${sipAccount.username}${sipAccount.domain ? ` | ${sipAccount.domain}` : ''}`} style={{ minWidth: 0 }}>
                                         <div style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.displayName || sipAccount.username}</div>
@@ -1436,7 +1436,7 @@ export default function PlanManagement({ onNavigate }) {
                     <span style={{ fontSize: '13px', color: '#64748b' }}>訂單金額</span>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
                       <span style={{ fontSize: '18px', color: '#ef4444', fontWeight: '600' }}>{Number(detailOrder.payable_amount || detailOrder.payableAmount || 0).toFixed(2)} {detailOrder.currency}</span>
-                      <button type="button" onClick={() => setShowCostDetails(!showCostDetails)} style={{ fontSize: '13px', color: '#3b82f6', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}>{showCostDetails ? '收起明细' : '查看明细'}</button>
+                      <button type="button" onClick={() => setShowCostDetails(!showCostDetails)} style={{ fontSize: '13px', color: '#3b82f6', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}>{showCostDetails ? '收起明細' : '檢視明細'}</button>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

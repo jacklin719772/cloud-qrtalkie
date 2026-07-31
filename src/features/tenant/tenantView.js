@@ -26,7 +26,7 @@ export function syncPurchaseBillingAddress(tenantSnapshot) {
   if (!addressInput) return;
   addressInput.value = tenantSnapshot?.tenant?.billingAddress || "";
   addressInput.readOnly = true;
-  if (editButton) editButton.textContent = "编辑";
+  if (editButton) editButton.textContent = "編輯";
   cancelButton?.classList.add("hidden");
 }
 
@@ -44,8 +44,8 @@ export function getTenantPayload() {
 }
 
 export function validateTenantPayload(payload) {
-  if (!payload.companyName) return "请输入公司名称";
-  if (payload.enterpriseEmail && !isValidEmail(payload.enterpriseEmail)) return "请输入正确的企业邮箱格式";
+  if (!payload.companyName) return "請輸入公司名稱";
+  if (payload.enterpriseEmail && !isValidEmail(payload.enterpriseEmail)) return "請輸入正確的企業郵箱格式";
   return "";
 }
 
@@ -74,11 +74,11 @@ export function getLoginEmailChangePayload(includeCode = false) {
 }
 
 export function validateLoginEmailChangePayload(payload, includeCode = false) {
-  if (!isValidEmail(payload.newEmail)) return "请输入有效的新登录邮箱";
-  if (!payload.oldPassword) return "请输入原密码";
-  if (!payload.newPassword) return "请输入新登录密码";
-  if (payload.newPassword.length < 8) return "新登录密码至少需要 8 位";
-  if (payload.newPassword !== payload.confirmPassword) return "两次输入的新密码不一致";
-  if (includeCode && !/^\d{6}$/.test(payload.code)) return "请输入正确的 6 位验证码";
+  if (!isValidEmail(payload.newEmail)) return "請輸入有效的新登入郵箱";
+  if (!payload.oldPassword) return "請輸入原密碼";
+  if (!payload.newPassword) return "請輸入新登入密碼";
+  if (payload.newPassword.length < 8) return "新登入密碼至少需要 8 位";
+  if (payload.newPassword !== payload.confirmPassword) return "兩次輸入的新密碼不一致";
+  if (includeCode && !/^\d{6}$/.test(payload.code)) return "請輸入正確的 6 位驗證碼";
   return "";
 }

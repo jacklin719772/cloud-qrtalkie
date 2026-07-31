@@ -74,7 +74,7 @@ const AccessControl = forwardRef((props, ref) => {
         })));
       }
     } catch (error) {
-      console.error('獲取社區列表失敗:', error);
+      console.error('獲取社群列表失敗:', error);
     } finally {
       setLoading(false);
     }
@@ -149,7 +149,7 @@ const AccessControl = forwardRef((props, ref) => {
         setCommunities(prev => prev.map(item => item.id === c.id ? { ...item, isActive: newActive } : item));
       }
     } catch (error) {
-      console.error('切換社區狀態失敗:', error);
+      console.error('切換社群狀態失敗:', error);
     }
   };
 
@@ -157,12 +157,12 @@ const AccessControl = forwardRef((props, ref) => {
     setDropdownOpen(null);
     const url = c.accessUrl;
     if (!url) {
-      setToast({ message: '該社區尚未設置訪問鏈接。', type: 'error' });
+      setToast({ message: '該社群尚未設定訪問連結。', type: 'error' });
       return;
     }
     try {
       await navigator.clipboard.writeText(url);
-      setToast({ message: '訪問鏈接已複製到剪貼板。', type: 'success' });
+      setToast({ message: '訪問連結已複製到剪貼簿。', type: 'success' });
     } catch {
       setToast({ message: '複製失敗，請手動複製。', type: 'error' });
     }
@@ -170,7 +170,7 @@ const AccessControl = forwardRef((props, ref) => {
 
   const handleDeleteCommunity = async (c) => {
     setDropdownOpen(null);
-    if (!window.confirm(`確定要刪除社區「${c.name}」嗎？此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除社群「${c.name}」嗎？此操作無法撤銷。`)) return;
     try {
       const res = await apiClient.delete(`/access-communities/${c.id}`);
       if (res && res.code === 0) {
@@ -178,7 +178,7 @@ const AccessControl = forwardRef((props, ref) => {
         if (expandedCommunity === c.id) setExpandedCommunity(null);
       }
     } catch (error) {
-      console.error('刪除社區失敗:', error);
+      console.error('刪除社群失敗:', error);
     }
   };
 
@@ -358,7 +358,7 @@ const AccessControl = forwardRef((props, ref) => {
     try {
       const res = await apiClient.get(`/sip-users/available?roomId=${room.id}`);
       if (res && res.code === 0) setSipAccounts(res.data.list || []);
-    } catch (error) { console.error('獲取 SIP 用戶失敗:', error); }
+    } catch (error) { console.error('獲取 SIP 使用者失敗:', error); }
     setSipLoading(false);
   };
 
@@ -380,17 +380,17 @@ const AccessControl = forwardRef((props, ref) => {
     if (!community) return;
     const entrancesWithoutDevice = (community.communityEntrances || []).filter(e => e.deviceStatus === 'none');
     if (entrancesWithoutDevice.length === 0) {
-      window.alert('該社區所有入口均已綁定設備。');
+      window.alert('該社群所有入口均已繫結裝置。');
       return;
     }
-    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未綁定設備的入口自動分配設備，確定繼續？`)) return;
+    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
     try {
       // Get available unassigned devices
       const res = await apiClient.get('/tenant/gate-devices');
       const allDevices = Array.isArray(res?.devices) ? res.devices : [];
       // 後端已篩選：未分配 + 已分配給該租戶的設備
       if (allDevices.length < entrancesWithoutDevice.length) {
-        window.alert(`可用設備不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用設備。`);
+        window.alert(`可用裝置不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用裝置。`);
         return;
       }
       let assigned = 0;
@@ -410,7 +410,7 @@ const AccessControl = forwardRef((props, ref) => {
           return { ...e, deviceId: d.id, device: d.uuid, deviceStatus: 'unknown', isActive: true };
         }) };
       }));
-      window.alert(`已成功為 ${assigned} 個入口分配設備。`);
+      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
     } catch (err) { console.error(err); window.alert('操作失敗。'); }
   };
 
@@ -421,15 +421,15 @@ const AccessControl = forwardRef((props, ref) => {
     if (!building) return;
     const entrancesWithoutDevice = (building.entrances || []).filter(e => e.deviceStatus === 'none');
     if (entrancesWithoutDevice.length === 0) {
-      window.alert('該樓宇所有入口均已綁定設備。');
+      window.alert('該樓宇所有入口均已繫結裝置。');
       return;
     }
-    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未綁定設備的入口自動分配設備，確定繼續？`)) return;
+    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
     try {
       const res = await apiClient.get('/tenant/gate-devices');
       const allDevices = Array.isArray(res?.devices) ? res.devices : [];
       if (allDevices.length < entrancesWithoutDevice.length) {
-        window.alert(`可用設備不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用設備。`);
+        window.alert(`可用裝置不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用裝置。`);
         return;
       }
       let assigned = 0;
@@ -451,7 +451,7 @@ const AccessControl = forwardRef((props, ref) => {
           }) };
         }) };
       }));
-      window.alert(`已成功為 ${assigned} 個入口分配設備。`);
+      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
     } catch (err) { console.error(err); window.alert('操作失敗。'); }
   };
 
@@ -462,10 +462,10 @@ const AccessControl = forwardRef((props, ref) => {
     if (!building) return;
     const entrancesWithDevice = (building.entrances || []).filter(e => e.deviceStatus !== 'none');
     if (entrancesWithDevice.length === 0) {
-      window.alert('該樓宇沒有已綁定設備的入口。');
+      window.alert('該樓宇沒有已繫結裝置的入口。');
       return;
     }
-    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的設備綁定，確定繼續？`)) return;
+    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
     let removed = 0;
     for (const e of entrancesWithDevice) {
       try {
@@ -480,7 +480,7 @@ const AccessControl = forwardRef((props, ref) => {
         return { ...b2, entrances: (b2.entrances || []).map(e => e.deviceStatus !== 'none' ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e) };
       }) };
     }));
-    window.alert(`已成功移除 ${removed} 個入口的設備。`);
+    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
   };
 
   const handleBatchRemoveDevices = async (communityId) => {
@@ -488,10 +488,10 @@ const AccessControl = forwardRef((props, ref) => {
     if (!community) return;
     const entrancesWithDevice = (community.communityEntrances || []).filter(e => e.deviceStatus !== 'none');
     if (entrancesWithDevice.length === 0) {
-      window.alert('該社區沒有已綁定設備的入口。');
+      window.alert('該社群沒有已繫結裝置的入口。');
       return;
     }
-    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的設備綁定，確定繼續？`)) return;
+    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
     let removed = 0;
     for (const e of entrancesWithDevice) {
       try {
@@ -503,21 +503,21 @@ const AccessControl = forwardRef((props, ref) => {
       if (c.id !== communityId) return c;
       return { ...c, communityEntrances: (c.communityEntrances || []).map(e => e.deviceStatus !== 'none' ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e) };
     }));
-    window.alert(`已成功移除 ${removed} 個入口的設備。`);
+    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
   };
 
   const handleMgmtBatchAssignDevices = async (entrances) => {
     const withoutDevice = entrances.filter(e => e.deviceStatus === 'none');
     if (withoutDevice.length === 0) {
-      window.alert('所選入口均已綁定設備。');
+      window.alert('所選入口均已繫結裝置。');
       return;
     }
-    if (!window.confirm(`將為 ${withoutDevice.length} 個未綁定設備的入口自動分配設備，確定繼續？`)) return;
+    if (!window.confirm(`將為 ${withoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
     try {
       const res = await apiClient.get('/tenant/gate-devices');
       const devices = Array.isArray(res?.devices) ? res.devices : [];
       if (devices.length < withoutDevice.length) {
-        window.alert(`可用設備不足：需要 ${withoutDevice.length} 個，目前僅有 ${devices.length} 個可用設備。`);
+        window.alert(`可用裝置不足：需要 ${withoutDevice.length} 個，目前僅有 ${devices.length} 個可用裝置。`);
         return;
       }
       let assigned = 0;
@@ -543,17 +543,17 @@ const AccessControl = forwardRef((props, ref) => {
           }),
         })),
       })));
-      window.alert(`已成功為 ${assigned} 個入口分配設備。`);
+      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
     } catch (err) { console.error(err); window.alert('操作失敗。'); }
   };
 
   const handleMgmtBatchRemoveDevices = async (entrances) => {
     const withDevice = entrances.filter(e => e.deviceStatus !== 'none');
     if (withDevice.length === 0) {
-      window.alert('所選入口沒有已綁定設備。');
+      window.alert('所選入口沒有已繫結裝置。');
       return;
     }
-    if (!window.confirm(`將移除 ${withDevice.length} 個入口的設備綁定，確定繼續？`)) return;
+    if (!window.confirm(`將移除 ${withDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
     let removed = 0;
     for (const e of withDevice) {
       try {
@@ -569,7 +569,7 @@ const AccessControl = forwardRef((props, ref) => {
         entrances: (b.entrances || []).map(e => withDevice.some(w => w.id === e.id) ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e),
       })),
     })));
-    window.alert(`已成功移除 ${removed} 個入口的設備。`);
+    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
   };
 
   const handleAssignDevice = async () => {
@@ -1186,7 +1186,7 @@ const AccessControl = forwardRef((props, ref) => {
             <Search size={18} />
             <input
               type="search"
-              placeholder="搜尋社區名稱或地址..."
+              placeholder="搜尋社群名稱或地址..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1205,11 +1205,11 @@ const AccessControl = forwardRef((props, ref) => {
       <div className="ac-panel">
         <div className="ac-tabs">
           {[
-            { id: 'overview', label: '社區列表' },
+            { id: 'overview', label: '社群列表' },
             { id: 'buildings', label: '樓宇管理' },
             { id: 'entrances', label: '入口管理' },
-            { id: 'auth', label: '權限設置' },
-            { id: 'gateDevices', label: '門控設備' },
+            { id: 'auth', label: '許可權設定' },
+            { id: 'gateDevices', label: '門控裝置' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -1365,7 +1365,7 @@ const AccessControl = forwardRef((props, ref) => {
                         {filtered.map(e => (
                           <tr key={`${e.belongType}-${e.id}`}>
                             <td style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                            <td style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.belongType === 'building' ? '樓宇級' : '社區級'}</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.belongType === 'building' ? '樓宇級' : '社群級'}</td>
                             <td style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.belongName}>{e.belongName}</td>
                             <td style={{ fontFamily: 'monospace', fontSize: '12px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.device || ''}>{e.device || '—'}</td>
                             <td style={{ whiteSpace: 'nowrap' }}>
@@ -1471,7 +1471,7 @@ const AccessControl = forwardRef((props, ref) => {
                               onMouseLeave={(ev) => { if (!isSel) ev.currentTarget.style.background = '#111827'; }}>
                               <div style={{ fontSize: '13px', fontWeight: 600, color: '#f3f4f6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</div>
                               <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                                {e.belongName} · {e.belongType === 'building' ? '樓宇級' : '社區級'} · {authCount} 授權
+                                {e.belongName} · {e.belongType === 'building' ? '樓宇級' : '社群級'} · {authCount} 授權
                               </div>
                             </div>
                           );
@@ -1687,7 +1687,7 @@ const AccessControl = forwardRef((props, ref) => {
                                     <td>
                                       <span className={`ac-badge ${e.deviceStatus}`}>
                                         <span className="ac-badge-dot" />
-                                        {e.deviceStatus === 'online' ? '在線' : e.deviceStatus === 'offline' ? '離線' : '—'}
+                                        {e.deviceStatus === 'online' ? '線上' : e.deviceStatus === 'offline' ? '離線' : '—'}
                                       </span>
                                     </td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
@@ -2528,7 +2528,7 @@ const AccessControl = forwardRef((props, ref) => {
                           <tr key={`${e.belongType}-${e.id}`}>
                             <td><input type="checkbox" checked={!!e._sel4} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt4(e.id, ev.target.checked)} /></td>
                             <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                            <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
+                            <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社群級'})</td>
                             <td style={{ fontSize: '12px' }}>
                               {e.total === 0 ? <span style={{ color: '#9ca3af' }}>無房間</span> :
                                e.isAll ? <span style={{ color: '#16a34a' }}>全部 ({e.authCount}/{e.total})</span> :
@@ -2836,7 +2836,7 @@ const AccessControl = forwardRef((props, ref) => {
                             <tr key={`${e.belongType}-${e.id}`}>
                               <td><input type="checkbox" checked={!!e._sel2} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt(e.id, ev.target.checked)} /></td>
                               <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
-                              <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社區級'})</td>
+                              <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社群級'})</td>
                               <td>
                                 {isAuth ? (
                                   <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 6px', height: '24px', color: '#dc2626' }} onClick={() => handleRoomAuthOp(e.id, false)}>取消</button>
@@ -2897,8 +2897,8 @@ const AccessControl = forwardRef((props, ref) => {
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
               )}
               <div style={{ height: '1px', background: '#1f2937' }} />
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未綁定設備，無法生成訪問鏈接。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); window.open(url, '_blank'); setEntranceDropdownOpen(null); }}>🌐 預覽</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未綁定設備，無法生成訪問鏈接。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); setQrDialog({ url: url, title: entranceData.name, filename: (communityData?.name || 'community') + '-' + entranceData.name + '-' + (entranceData.device || 'device') + '-qrcode' }); setEntranceDropdownOpen(null); }}>🔗 鏈接</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未繫結裝置，無法生成訪問連結。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); window.open(url, '_blank'); setEntranceDropdownOpen(null); }}>🌐 預覽</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未繫結裝置，無法生成訪問連結。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); setQrDialog({ url: url, title: entranceData.name, filename: (communityData?.name || 'community') + '-' + entranceData.name + '-' + (entranceData.device || 'device') + '-qrcode' }); setEntranceDropdownOpen(null); }}>🔗 鏈接</button>
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteEntrance(entranceData, cId, bId); }}>✕ 刪除</button>
             </div>
           </>
@@ -2919,8 +2919,8 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ marginTop: '12px', fontSize: '11px', color: '#9ca3af', wordBreak: 'break-all' }}>{qrDialog.url}</div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={async () => { try { var r = await fetch(qrUrl); var b = await r.blob(); var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (qrDialog.filename || 'qrcode') + '.png'; a.click(); URL.revokeObjectURL(a.href); } catch(e) { window.alert('下載失敗'); } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>⬇ 下載 QR</button>
-              <button type="button" onClick={async () => { try { var resp = await fetch(qrUrl); var blob = await resp.blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]); window.alert('QR Code 已複製'); } catch(e) { try { await navigator.clipboard.writeText(qrDialog.url); window.alert('圖片複製失敗，已複製鏈接'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>📋 複製 QR</button>
-              <button type="button" onClick={() => { navigator.clipboard.writeText(qrDialog.url).then(() => window.alert('鏈接已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>📋 複製鏈接</button>
+              <button type="button" onClick={async () => { try { var resp = await fetch(qrUrl); var blob = await resp.blob(); await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]); window.alert('QR Code 已複製'); } catch(e) { try { await navigator.clipboard.writeText(qrDialog.url); window.alert('圖片複製失敗，已複製連結'); } catch(e2) { window.alert('複製失敗'); } } }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>📋 複製 QR</button>
+              <button type="button" onClick={() => { navigator.clipboard.writeText(qrDialog.url).then(() => window.alert('連結已複製')).catch(() => window.alert('複製失敗')); }} style={{ height: '36px', padding: '0 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>📋 複製鏈接</button>
             </div>
           </div>
         </dialog>
@@ -2942,7 +2942,7 @@ const AccessControl = forwardRef((props, ref) => {
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>選擇設備</span>
                   <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #374151', fontSize: '13px', color: '#e5e7eb', background: '#111827', outline: 'none', cursor: 'pointer' }}>
-                    <option value="">{deviceEntrance.deviceId ? '清除已綁定設備' : '請選擇門控設備'}</option>
+                    <option value="">{deviceEntrance.deviceId ? '清除已繫結裝置' : '請選擇門控裝置'}</option>
                     {availableDevices.map(d => (
                       <option key={d.id} value={d.id}>{d.uuid}{d.tenantName ? ` (已分配: ${d.tenantName})` : ''}</option>
                     ))}
