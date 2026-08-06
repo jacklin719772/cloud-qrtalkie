@@ -16,7 +16,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { pool } from "./db.js";
+import { pool, limePool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
@@ -11688,6 +11688,28 @@ app.get("/api/public/settings/terms-of-service", async (request, response) => {
     return response.status(500).json({ message: "取得服務條款失敗，請稍後再試" });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// GET /api/public/lime/status - 查詢用戶 LIME 加密密鑰是否就緒
+app.get("/api/public/lime/status", async (request, response) => {
+  const username = sanitizeString(String(request.query.username || ""), 64);
+  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org"), 64);
+
+  if (!username) {
+    return response.status(400).json({ code: -1, message: "缺少 username 參數" });
+  }
+
+  try {
+    const [row] = await limePool.query(
+      `SELECT COUNT(*) AS key_count FROM OPk WHERE Uid = (SELECT id FROM accounts WHERE username = ? AND domain = ? LIMIT 1)`,
+      [username, domain]
+    );
+    const ready = Number(row?.key_count || 0) > 0;
+    return response.json({ code: 0, data: { ready, keyCount: Number(row?.key_count || 0) } });
+  } catch (error) {
+    console.error("LIME status check failed:", error.message);
+    return response.json({ code: 0, data: { ready: false, keyCount: 0 } });
   }
 });
 
