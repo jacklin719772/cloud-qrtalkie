@@ -175,22 +175,22 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-label">CPU 使用率</div>
               <div className="pdb-metric-value">{health.cpu?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.cpu?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">5分鐘平均负载：{health.load?.load5 ?? '-'}</div>
+              <div className="pdb-metric-sub">5分鐘平均負載：{health.load?.load5 ?? '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div className="pdb-metric-label">内存使用率</div>
+              <div className="pdb-metric-label">內存使用率</div>
               <div className="pdb-metric-value">{health.memory?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.memory?.usage || 0}%` }} /></div>
               <div className="pdb-metric-sub">已用 14.7GB / 32GB</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div className="pdb-metric-label">磁盘使用率</div>
+                <div className="pdb-metric-label">磁盤使用率</div>
                 <span onClick={handleCleanLogs} style={{ fontSize: '11px', color: '#2563eb', cursor: 'pointer', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff' }}>清理</span>
               </div>
               <div className="pdb-metric-value">{health.disk?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className={`pdb-bar ${(health.disk?.usage || 0) > 80 ? 'red' : (health.disk?.usage || 0) > 60 ? 'orange' : 'green'}`} style={{ width: `${health.disk?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">/ 剩余 {(health.disk?.usage != null) ? `${((100 - health.disk.usage) * 1.0).toFixed(0)}%` : '-'}</div>
+              <div className="pdb-metric-sub">/ 剩餘 {(health.disk?.usage != null) ? `${((100 - health.disk.usage) * 1.0).toFixed(0)}%` : '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">SSL 證書到期</div>
@@ -201,7 +201,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-sub">{health.ssl ? `到期日：${health.ssl.date}` : '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
-              <div className="pdb-metric-label">系统運行时间</div>
+              <div className="pdb-metric-label">系統運行時間</div>
               <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
               <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
             </div>
@@ -283,7 +283,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
           </div>
           <div className="pdb-grid pdb-grid-5">
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已创建 SIP 帳號</div>
+              <div className="pdb-biz-label">已創建 SIP 帳號</div>
               <div className="pdb-biz-value">{stats.sipCreated?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
@@ -291,7 +291,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-biz-value">{stats.sipAssigned?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已创建 Web 帳號</div>
+              <div className="pdb-biz-label">已創建 Web 帳號</div>
               <div className="pdb-biz-value">{stats.webCreated?.toLocaleString()}</div>
             </div>
             <div className="pdb-card pdb-biz-card">
@@ -334,7 +334,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日租户注册数量</div>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日租戶註冊數量</div>
                 <div className="pdb-chart" style={{ height: '140px' }}>
                   <div className="pdb-chart-bars" style={{ height: '100px' }}>
                     {buildChartBars(stats.tenantTrend, 'count').bars.map((b, i) => (
@@ -347,7 +347,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
                 </div>
               </div>
               <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日用户付款金额</div>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日用戶付款金額</div>
                 <div className="pdb-chart" style={{ height: '140px' }}>
                   <div className="pdb-chart-bars" style={{ height: '100px' }}>
                     {buildChartBars(stats.paymentTrend, 'amount').bars.map((b, i) => (

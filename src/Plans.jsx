@@ -739,7 +739,7 @@ const Plans = forwardRef((props, ref) => {
                 <div className="form-grid" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', alignContent: 'start', alignItems: 'start' }}>
                 <div style={{ display: 'grid', gap: '16px' }}>
                   <label style={{ display: 'grid', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐代碼<RequiredMark /></span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#9ca3af' }}>套餐編號<RequiredMark /></span>
                     <input
                       value={editingPlan?.planCode || ''}
                       onChange={(e) => setEditingPlan({
@@ -985,7 +985,7 @@ const Plans = forwardRef((props, ref) => {
                       />
                     </th>
                     <th>ID</th>
-                    <th>套餐代碼</th>
+                    <th>套餐編號</th>
                     <th>套餐名稱</th>
                     <th>狀態</th>
                     <th>帳戶數量</th>
@@ -1138,7 +1138,7 @@ const Plans = forwardRef((props, ref) => {
               <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '24px' }}>
                 <div className="form-grid">
                   <label>
-                    <span>套餐代碼<RequiredMark /></span>
+                    <span>套餐編號<RequiredMark /></span>
                     <input
                       value={editingPlan.planCode}
                       onChange={(e) =>

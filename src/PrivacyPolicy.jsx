@@ -106,7 +106,7 @@ export default function PrivacyPolicy() {
                 {message.text}
               </p>
             )}
-            <button type="button" onClick={handleImportTemplate} style={{ padding: "8px 24px", borderRadius: "6px", backgroundColor: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb", cursor: "pointer", fontSize: "14px", fontWeight: 500 }}>导入模板</button>
+            <button type="button" onClick={handleImportTemplate} style={{ padding: "8px 24px", borderRadius: "6px", backgroundColor: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb", cursor: "pointer", fontSize: "14px", fontWeight: 500 }}>導入範本</button>
             <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
               预览
             </button>

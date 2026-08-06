@@ -362,7 +362,7 @@ const AddonServices = forwardRef((props, ref) => {
 
               <div className="tenant-field-grid addon-field-grid">
                 <label>
-                  服務代碼
+                  服務編號
                   <input value={draftAddon.addonCode} onChange={updateDraft('addonCode')} placeholder="ecard" />
                 </label>
                 <label>

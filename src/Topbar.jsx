@@ -102,10 +102,10 @@ export default function Topbar({
           </button>
           {isMessagesOpen && (
             <div className="console-message-popover" role="menu">
-              <div className="console-message-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>待处理消息</span>{messageCount > 0 && <button type="button" onClick={() => onMarkAllRead?.()} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "11px" }}>全部已读</button>}</div>
+              <div className="console-message-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span>待處理訊息</span>{messageCount > 0 && <button type="button" onClick={() => onMarkAllRead?.()} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontSize: "11px" }}>全部已讀</button>}</div>
               <div className="console-message-list">
               {messageCount === 0 ? (
-                <p className="console-message-empty">暂无待处理消息</p>
+                <p className="console-message-empty">暫無待處理訊息</p>
               ) : (
                 messages.map((message) => (
                   <div
@@ -126,7 +126,7 @@ export default function Topbar({
                     </button>
                     <div className="console-message-actions">
                       <button type="button" onClick={() => onMessageDismiss?.(message)}>忽略</button>
-                      <button type="button" onClick={() => onMessageDelete?.(message)}>删除</button>
+                      <button type="button" onClick={() => onMessageDelete?.(message)}>刪除</button>
                     </div>
                   </div>
                 ))
@@ -157,7 +157,7 @@ export default function Topbar({
               onMouseEnter={e => e.target.style.background = '#f1f5f9'}
               onMouseLeave={e => e.target.style.background = 'none'}
             >
-              <Key size={16} /> 修改密码
+              <Key size={16} /> 修改密碼
             </button>
             <button
               type="button"
@@ -170,7 +170,7 @@ export default function Topbar({
               onMouseEnter={e => e.target.style.background = '#fef2f2'}
               onMouseLeave={e => e.target.style.background = 'none'}
             >
-              <LogOut size={16} /> 退出系统
+              <LogOut size={16} /> 退出系統
             </button>
           </div>
         )}

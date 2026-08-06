@@ -86,7 +86,7 @@ export default function TermsOfService() {
             {message.text && (
               <p style={{ marginRight: 'auto', alignSelf: 'center', margin: 0, fontSize: '13px', color: message.type === 'error' ? '#ef4444' : '#10b981' }}>{message.text}</p>
             )}
-            <button type="button" onClick={handleImportTemplate} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>导入模板</button>
+            <button type="button" onClick={handleImportTemplate} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>導入範本</button>
             <button type="button" onClick={() => setIsPreviewOpen(true)} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1e3a5f', color: '#93c5fd', border: '1px solid #2563eb', cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>预览</button>
             <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>{isSaving ? '儲存中...' : '儲存更改'}</button>
           </div>

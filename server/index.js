@@ -1413,7 +1413,7 @@ app.post("/api/auth/change-password", async (request, response) => {
 app.post("/api/auth/forgot-password", async (request, response) => {
   const email = normalizeEmail(request.body.email);
   if (!isValidEmail(email)) {
-    return response.status(400).json({ message: "請輸入有效的電子郵件地址。" });
+    return response.status(400).json({ message: "請輸入有效的電子郵件位址。" });
   }
 
   let connection;
@@ -1572,7 +1572,7 @@ app.put("/api/auth/change-password", requireAdmin, async (request, response) => 
 app.post("/api/auth/resend-verification", async (request, response) => {
   const email = normalizeEmail(request.body.email);
   if (!isValidEmail(email)) {
-    return response.status(400).json({ message: "請輸入有效的電子郵件地址。" });
+    return response.status(400).json({ message: "請輸入有效的電子郵件位址。" });
   }
 
   let connection;
@@ -14280,7 +14280,7 @@ app.use("/api/community-images", express.static(path.join(projectRoot, "assets/c
 // POST /api/admin/releases/upload - 上傳 APK 檔案
 app.post("/api/admin/releases/upload", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ code: -1, message: "仅平台管理员可上传 APK。" });
+    return response.status(403).json({ code: -1, message: "僅平臺管理員可上傳 APK。" });
   }
 
   const downloadDir = path.join(projectRoot, "public/download");

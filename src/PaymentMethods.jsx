@@ -403,7 +403,7 @@ const PaymentMethods = forwardRef((props, ref) => {
               </div>
               <div className="tenant-field-grid">
                 <label>
-                  <span className="field-label">方式代碼 <RequiredMark /></span>
+                  <span className="field-label">方式編號 <RequiredMark /></span>
                   <input value={draftMethod.methodCode} onChange={updateDraftMethod('methodCode')} placeholder="留空將自動由顯示名稱生成" />
                 </label>
                 <label>

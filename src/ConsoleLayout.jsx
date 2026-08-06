@@ -1007,7 +1007,7 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#9998; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳戶代碼</strong> — 系統內部使用的唯一識別碼，預設為 default-usd-bank。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳戶編號</strong> — 系統內部使用的唯一識別碼，預設為 default-usd-bank。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳戶名稱</strong> — 收款帳戶的顯示名稱，例如「公司主要帳戶」。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>收款單位</strong> — 收款方的公司或個人名稱。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>開戶銀行</strong> — 銀行名稱，例如「HSBC Taiwan」。（必填）</li>
@@ -1054,7 +1054,7 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>方式代碼</strong> — 唯一識別碼，用於系統內部識別。留空將自動由顯示名稱生成。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>方式編號</strong> — 唯一識別碼，用於系統內部識別。留空將自動由顯示名稱生成。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 租戶端顯示的付款方式名稱，例如「信用卡」、「銀行轉帳」。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>付款類型</strong> — 線上付款（即時處理）或線下付款（人工確認）。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>啟用狀態</strong> — 設為啟用後，租戶才能在付款頁面看到此付款方式。（必填）</li>
@@ -1138,23 +1138,23 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>新增套餐</strong> — 點擊「新增套餐」按鈕進入新增頁面，填寫套餐代碼、名稱、帳戶數量、價格和功能摘要等資訊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增套餐</strong> — 點擊「新增套餐」按鈕進入新增頁面，填寫套餐編號、名稱、帳戶數量、價格和功能摘要等資訊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯套餐</strong> — 點擊表格行中的下拉選單選擇「編輯」，在彈出視窗中修改套餐設定。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 選擇「詳情」以唯讀模式查看套餐的所有設定。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量操作</strong> — 勾選多個套餐後，使用「批量停用」或「批量啟用」按鈕一次性修改多個套餐的狀態。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>快速切換狀態</strong> — 在下拉選單中選擇「啟用/停用」可快速切換單個套餐的狀態。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 使用頂部搜尋欄搜尋套餐 ID、代碼或名稱；使用下拉選單按狀態篩選。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 使用頂部搜尋欄搜尋套餐編號或名稱；使用下拉選單按狀態篩選。</li>
                 </ul>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>套餐代碼</strong> — 唯一識別碼，用於系統內部和 API 調用。（必填）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>套餐編號</strong> — 唯一識別碼，用於系統內部和 API 調用。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>套餐名稱</strong> — 租戶端顯示的套餐名稱。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳戶數量</strong> — 套餐包含的 SIP/Web 帳戶數量上限。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用（租戶可購買）/ 停用（隱藏）。（必填）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>排序</strong> — 數字越小越靠前，控制套餐在購買頁面的顯示順序。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>增值服務列表</strong> — 此套餐可選配的增值服務代碼，用逗號分隔。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>增值服務列表</strong> — 此套餐可選配的增值服務編號，用逗號分隔。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>描述</strong> — 套餐的文字說明。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>功能摘要</strong> — 套餐功能的簡短摘要，顯示在購買頁面。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>價格階梯</strong> — 設定不同帳戶數量對應的單價和幣種，支援多個階梯。第一個階梯為基礎價格。</li>
@@ -1727,7 +1727,7 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作流程</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>1. 新增服務</strong> — 點擊「新增服務」按鈕，在右側面板填寫服務代碼、名稱、說明、計費單位和預設定價。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>1. 新增服務</strong> — 點擊「新增服務」按鈕，在右側面板填寫服務編號、名稱、說明、計費單位和預設定價。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>2. 設定套餐定價</strong> — 在「套餐定價」區域為每個套餐設定不同的單價和幣種，可勾選「隨套餐期限」讓價格自動跟隨套餐週期。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>3. 檢視服務</strong> — 點擊左側列表中的服務項目，右側顯示該服務的詳細資訊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>4. 啟用/停用</strong> — 使用開關按鈕快速切換服務狀態，停用的服務不會在租戶端顯示。</li>

@@ -193,7 +193,7 @@ export default function OfflinePaymentAccount() {
                   <h3>收款账号资讯</h3>
                 </div>
                 <div className="tenant-field-grid">
-                  <label>帳戶代碼<input value={formData.accountCode} onChange={updateField('accountCode')} /></label>
+                  <label>帳戶編號<input value={formData.accountCode} onChange={updateField('accountCode')} /></label>
                   <label><span className="field-label">帳戶名稱 <RequiredMark /></span><input value={formData.displayName} onChange={updateField('displayName')} required /></label>
                   <label><span className="field-label">收款單位 <RequiredMark /></span><input value={formData.payeeName} onChange={updateField('payeeName')} required /></label>
                   <label><span className="field-label">開戶銀行 <RequiredMark /></span><input value={formData.bankName} onChange={updateField('bankName')} required /></label>
