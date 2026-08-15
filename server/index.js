@@ -10,6 +10,7 @@ process.on("uncaughtException", (error) => {
   setTimeout(function() { process.exit(1); }, 1000);
 });
 import express from "express";
+import QRCode from "qrcode";
 import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/promises";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -11085,6 +11086,97 @@ function resolveEcardProfileFromJson(ecardDataJson, sipUser) {
     avatarUrl: pickFirstString(ecardDataJson.avatarDataUrl, ecardDataJson.avatarUrl, sipUser?.avatar_url),
   };
 }
+
+// ==========================================
+// Ecard 访问链接与二维码（管理员 + SIP 用户）
+// ==========================================
+
+// 构造 ecard 访问信息（含二维码 data URL，512px 适配桌面端与手机端显示）
+async function buildEcardAccessPayload(connection, sipUserId, tenantId) {
+  const [ec] = await connection.query(
+    `SELECT access_slug, status
+     FROM tenant_ecards
+     WHERE sip_user_id = ? AND tenant_id = ?
+     LIMIT 1`,
+    [sipUserId, tenantId],
+  );
+  if (!ec || ec.status !== "active") {
+    return { configured: false };
+  }
+  const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+  const accessUrl = `${baseUrl}/u/${ec.access_slug}`;
+  const downloadUrl = `${baseUrl}/d/${ec.access_slug}`;
+  let qrcodeDataUrl = "";
+  try {
+    qrcodeDataUrl = await QRCode.toDataURL(accessUrl, {
+      width: 512,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    });
+  } catch (qrError) {
+    console.error("[buildEcardAccessPayload] QRCode generation failed:", qrError?.message || qrError);
+  }
+  return {
+    configured: true,
+    accessUrl,
+    downloadUrl,
+    qrcodeDataUrl,
+  };
+}
+
+// 场景 A：租户管理员获取指定账号的 ecard 访问链接与二维码
+// GET /api/tenant/ecard-accounts/:sipUserId/ecard/qrcode
+app.get("/api/tenant/ecard-accounts/:sipUserId/ecard/qrcode", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === "platform") {
+    return response.status(403).json({ message: "平台管理員無法訪問租戶電子名片。" });
+  }
+  const sipUserId = Number(request.params.sipUserId);
+  if (!Number.isInteger(sipUserId) || sipUserId <= 0) {
+    return response.status(400).json({ success: false, message: "SIP 帳號參數不正確。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      "SELECT id FROM sip_users WHERE id = ? AND tenant_id = ? LIMIT 1",
+      [sipUserId, request.admin.tenantId],
+    );
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+    const data = await buildEcardAccessPayload(connection, sipUserId, request.admin.tenantId);
+    return response.json({ success: true, data });
+  } catch (error) {
+    console.error("[ecard/qrcode] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "取得電子名片連結失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 场景 B：SIP 用户获取自己的 ecard 访问链接与二维码（ai-login Bearer token 认证）
+// GET /api/ecard/me
+app.get("/api/ecard/me", requireSipUser, async (request, response) => {
+  const sipUserId = Number(request.admin?.id);
+  if (!Number.isInteger(sipUserId) || sipUserId <= 0) {
+    // 管理员 token 没有 sip_user_id
+    return response.status(403).json({ success: false, message: "此介面僅限 SIP 帳號使用。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      "SELECT id, tenant_id FROM sip_users WHERE id = ? LIMIT 1",
+      [sipUserId],
+    );
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在。" });
+    const data = await buildEcardAccessPayload(connection, sipUserId, su.tenant_id);
+    return response.json({ success: true, data });
+  } catch (error) {
+    console.error("[ecard/me] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "取得電子名片連結失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
 
 async function loadEcardPublicViewData(connection, slug) {
   const ecardRows = await connection.query(
