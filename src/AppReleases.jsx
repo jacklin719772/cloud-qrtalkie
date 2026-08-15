@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import apiClient from './apiClient';
 
-const AppReleases = forwardRef(({ accountType }, ref) => {
-  const isTenant = accountType === 'tenant';
+const AppReleases = forwardRef((props, ref) => {
   const [releases, setReleases] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -36,8 +34,6 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
     fetchReleases();
   }, []);
 
-  const displayReleases = isTenant ? releases.filter(r => r.status === 'published') : releases;
-
   const fetchReleases = async () => {
     setLoading(true);
     try {
@@ -46,7 +42,7 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
         setReleases(res.data || []);
       }
     } catch (err) {
-      console.error('獲取版本列表失敗:', err);
+      console.error('获取版本列表失败:', err);
     } finally {
       setLoading(false);
     }
@@ -60,7 +56,7 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
   // 文件上传
   const handleFileUpload = async (file) => {
     if (!file || !file.name.endsWith('.apk')) {
-      showMsg('error', '僅支援 .apk 檔案');
+      showMsg('error', '仅支持 .apk 文件');
       return null;
     }
     setUploading(true);
@@ -81,9 +77,9 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
         });
         xhr.addEventListener('load', () => {
           try { resolve(JSON.parse(xhr.responseText)); }
-          catch { reject(new Error('解析響應失敗')); }
+          catch { reject(new Error('解析响应失败')); }
         });
-        xhr.addEventListener('error', () => reject(new Error('上傳失敗')));
+        xhr.addEventListener('error', () => reject(new Error('上传失败')));
         xhr.send(formData);
       });
 
@@ -94,14 +90,14 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
           fileSize: res.data.fileSize || '',
           sha256: res.data.sha256 || '',
         }));
-        showMsg('success', 'APK 上傳成功');
+        showMsg('success', 'APK 上传成功');
         return res.data;
       } else {
-        showMsg('error', res?.message || '上傳失敗');
+        showMsg('error', res?.message || '上传失败');
         return null;
       }
     } catch (err) {
-      showMsg('error', err.message || '上傳失敗');
+      showMsg('error', err.message || '上传失败');
       return null;
     } finally {
       setUploading(false);
@@ -119,7 +115,7 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.version || !form.downloadUrl) {
-      showMsg('error', '版本號和下載地址為必填項');
+      showMsg('error', '版本号和下载地址为必填项');
       return;
     }
 
@@ -138,16 +134,16 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
 
       if (editingId) {
         await apiClient.put(`/admin/releases/${editingId}`, payload);
-        showMsg('success', '版本資訊已更新');
+        showMsg('success', '版本信息已更新');
       } else {
         await apiClient.post('/admin/releases', payload);
-        showMsg('success', '版本已建立');
+        showMsg('success', '版本已创建');
       }
       setShowForm(false);
       resetForm();
       fetchReleases();
     } catch (err) {
-      showMsg('error', err.response?.data?.message || err.message || '儲存失敗');
+      showMsg('error', err.response?.data?.message || err.message || '保存失败');
     }
   };
 
@@ -175,13 +171,13 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('確定要刪除此版本記錄嗎？')) return;
+    if (!window.confirm('确定要删除此版本记录吗？')) return;
     try {
       await apiClient.delete(`/admin/releases/${id}`);
-      showMsg('success', '已刪除');
+      showMsg('success', '已删除');
       fetchReleases();
     } catch (err) {
-      showMsg('error', err.response?.data?.message || '刪除失敗');
+      showMsg('error', err.response?.data?.message || '删除失败');
     }
   };
 
@@ -191,10 +187,10 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
         status: 'published',
         releasedAt: r.released_at || new Date().toISOString(),
       });
-      showMsg('success', '版本已釋出');
+      showMsg('success', '版本已发布');
       fetchReleases();
     } catch (err) {
-      showMsg('error', err.response?.data?.message || '釋出失敗');
+      showMsg('error', err.response?.data?.message || '发布失败');
     }
   };
 
@@ -233,21 +229,21 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
       URL.revokeObjectURL(url);
       const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-      showMsg('success', '二維碼已複製到剪貼簿');
+      showMsg('success', '二维码已复制到剪贴板');
     } catch (err) {
-      showMsg('error', '複製二維碼失敗: ' + (err.message || ''));
+      showMsg('error', '复制二维码失败: ' + (err.message || ''));
     }
   };
 
   const showQr = (url, version) => {
     setQrUrl(url);
-    setQrTitle(`下載二維碼 - v${version}`);
+    setQrTitle(`下载二维码 - v${version}`);
   };
 
   const copyUrl = (url) => {
     navigator.clipboard.writeText(url.startsWith('/') ? `https://cloud.qrtalkie.org${url}` : url)
-      .then(() => showMsg('success', '連結已複製'))
-      .catch(() => showMsg('error', '複製失敗'));
+      .then(() => showMsg('success', '链接已复制'))
+      .catch(() => showMsg('error', '复制失败'));
   };
 
   const formatBytes = (bytes) => {
@@ -280,8 +276,23 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
         .rel-table td { padding: 12px 16px; border-bottom: 1px solid #1f2937; font-size: 13px; color: #e5e7eb; }
         .rel-table tr:hover td { background: #1a2332; }
         .rel-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
-        .rel-badge-published { background: #0d2818; color: #22c55e; }
-        .rel-badge-draft { background: #422006; color: #fbbf24; }
+        .rel-badge-published { background: #dcfce7; color: #16a34a; }
+        .rel-badge-draft { background: #fef3c7; color: #d97706; }
+        .rel-form-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.36); z-index: 2147483646; display: flex; align-items: center; justify-content: center; }
+        .rel-form-card { background: #fff; border-radius: 12px; padding: 28px; width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(15,23,42,0.22); }
+        .rel-form-card h3 { margin: 0 0 20px; font-size: 16px; color: #0f172a; }
+        .rel-field { margin-bottom: 14px; }
+        .rel-field label { display: block; font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 4px; }
+        .rel-field input, .rel-field select, .rel-field textarea { width: 100%; height: 38px; border: 1px solid #d8e2ef; border-radius: 8px; padding: 0 12px; font-size: 13px; outline: none; box-sizing: border-box; }
+        .rel-field textarea { height: 80px; padding: 8px 12px; resize: vertical; }
+        .rel-field input:focus, .rel-field select:focus, .rel-field textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+        .rel-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .rel-upload-zone { border: 2px dashed #d8e2ef; border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: all .2s; }
+        .rel-upload-zone:hover { border-color: #2563eb; background: #f8faff; }
+        .rel-progress { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .rel-progress-bar { height: 100%; background: linear-gradient(90deg, #2563eb, #06b6d4); transition: width .3s; }
+        .rel-qr-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.36); z-index: 2147483647; display: flex; align-items: center; justify-content: center; }
+        .rel-qr-card { background: #fff; border-radius: 12px; padding: 32px; text-align: center; box-shadow: 0 24px 80px rgba(15,23,42,0.22); }
         .rel-msg { padding: 8px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
         .rel-msg-success { background: #052e16; color: #4ade80; }
         .rel-msg-error { background: #450a0a; color: #fca5a5; }
@@ -298,10 +309,14 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
         }
       `}</style>
 
+
+      <h2 style={{ margin: '0 0 4px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
+      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#9ca3af' }}>管理 Android App 版本发布，上传 APK 并生成下载链接和二维码</p>
+
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
       <div className="rel-toolbar">
-        <span style={{ fontSize: 13, color: '#9ca3af' }}>共 {displayReleases.length} 个版本</span>
+        <span style={{ fontSize: 13, color: '#9ca3af' }}>共 {releases.length} 个版本</span>
       </div>
 
       <div className="rel-card">
@@ -319,36 +334,26 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
           <tbody>
             {loading ? (
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
-            ) : displayReleases.length === 0 ? (
+            ) : releases.length === 0 ? (
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
-            ) : displayReleases.map(r => (
+            ) : releases.map(r => (
               <tr key={r.id}>
-                <td><strong style={{ color: '#f3f4f6' }}>v{r.version}</strong> <span style={{ color: '#9ca3af', fontSize: 11 }}>({r.version_code})</span></td>
+                <td><strong style={{ color: '#0f172a' }}>v{r.version}</strong> <span style={{ color: '#94a3b8', fontSize: 11 }}>({r.version_code})</span></td>
                 <td>{r.platform}</td>
                 <td>{formatBytes(r.file_size)}</td>
-                <td><span className={`rel-badge ${r.status === 'published' ? 'rel-badge-published' : 'rel-badge-draft'}`}>{r.status === 'published' ? '已釋出' : '草稿'}</span></td>
-                <td style={{ fontSize: 12, color: '#9ca3af' }}>{formatDate(r.released_at)}</td>
-                {!isTenant && (
+                <td><span className={`rel-badge ${r.status === 'published' ? 'rel-badge-published' : 'rel-badge-draft'}`}>{r.status === 'published' ? '已发布' : '草稿'}</span></td>
+                <td style={{ fontSize: 12, color: '#94a3b8' }}>{formatDate(r.released_at)}</td>
                 <td>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => showQr(r.download_url, r.version)}>二维码</button>
-                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => copyUrl(r.download_url)}>复制链接</button>
+                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#374151', color: '#d1d5db', borderColor: '#4b5563' }} onClick={() => showQr(r.download_url, r.version)}>二维码</button>
+                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#374151', color: '#d1d5db', borderColor: '#4b5563' }} onClick={() => copyUrl(r.download_url)}>复制链接</button>
                     {r.status !== 'published' && (
-                      <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handlePublish(r)}>发布</button>
+                      <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#374151', color: '#d1d5db', borderColor: '#4b5563' }} onClick={() => handlePublish(r)}>发布</button>
                     )}
-                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleEdit(r)}>编辑</button>
+                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#374151', color: '#d1d5db', borderColor: '#4b5563' }} onClick={() => handleEdit(r)}>编辑</button>
                     <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px', background: '#7f1d1d', color: '#fca5a5', borderColor: '#991b1b' }} onClick={() => handleDelete(r.id)}>删除</button>
                   </div>
                 </td>
-                )}
-                {isTenant && (
-                <td>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => showQr(r.download_url, r.version)}>二维码</button>
-                    <button className="ghost-btn" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => copyUrl(r.download_url)}>复制链接</button>
-                  </div>
-                </td>
-                )}
               </tr>
             ))}
           </tbody>
@@ -356,104 +361,94 @@ const AppReleases = forwardRef(({ accountType }, ref) => {
       </div>
 
       {/* 编辑/新建弹窗 */}
-      {!isTenant && showForm && createPortal(
-        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000 }} onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}>
-          <form onSubmit={handleSave} style={{ backgroundColor: '#111827', borderRadius: '10px', width: '520px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f3f4f6' }}>{editingId ? '編輯版本' : '新建版本'}</h3>
-              <button type="button" onClick={() => { setShowForm(false); resetForm(); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>&#10005;</button>
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', scrollbarWidth: 'none' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>APK 文件上传</span>
-                <div style={{ border: '2px dashed #374151', borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer', transition: 'all .2s' }}
-                  onClick={() => fileInputRef.current?.click()}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#1a2332'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.backgroundColor = 'transparent'; }}>
-                  {uploading ? (
-                    <div>
-                      <span style={{ fontSize: 13, color: '#9ca3af' }}>上传中 {uploadProgress}%</span>
-                      <div style={{ height: 6, background: '#374151', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: 'linear-gradient(90deg, #2563eb, #06b6d4)', width: uploadProgress + '%', transition: 'width .3s' }} />
-                      </div>
-                    </div>
-                  ) : form.downloadUrl ? (
-                    <span style={{ fontSize: 13, color: '#22c55e' }}>已上传: {form.downloadUrl}</span>
-                  ) : (
-                    <span style={{ fontSize: 13, color: '#9ca3af' }}>点击选择 .apk 文件上传</span>
-                  )}
-                </div>
-                <input ref={fileInputRef} type="file" accept=".apk,application/vnd.android.package-archive" hidden onChange={handleFileChange} />
-              </label>
+      {showForm && (
+        <div className="rel-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowForm(false); resetForm(); } }}>
+          <form className="rel-form-card" onSubmit={handleSave}>
+            <h3>{editingId ? '编辑版本' : '新建版本'}</h3>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>版本号 <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span></span>
-                <input value={form.version} onChange={e => setForm({ ...form, version: e.target.value })} placeholder="如 10.0.2" required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>版本代码 <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span></span>
-                <input value={form.versionCode} onChange={e => setForm({ ...form, versionCode: e.target.value })} placeholder="如 10000002" required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>平台</span>
-                <select value={form.platform} onChange={e => setForm({ ...form, platform: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }}>
-                  <option value="android">Android</option>
-                  <option value="ios">iOS</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>下载地址</span>
-                <input value={form.downloadUrl} onChange={e => setForm({ ...form, downloadUrl: e.target.value })} placeholder="上傳 APK 後自動填充" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>文件大小 (bytes)</span>
-                <input value={form.fileSize} readOnly placeholder="上傳後自動填充" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', fontSize: '13px' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>SHA256</span>
-                <input value={form.sha256} readOnly placeholder="上傳後自動填充" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', fontSize: '11px' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>更新说明</span>
-                <textarea value={form.releaseNotes} onChange={e => setForm({ ...form, releaseNotes: e.target.value })} placeholder="此版本的更新內容..." style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px', resize: 'vertical', height: 80 }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>状态</span>
-                <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }}>
-                  <option value="draft">草稿</option>
-                  <option value="published">已发布</option>
-                </select>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>发布时间</span>
-                <input type="datetime-local" value={form.releasedAt} onChange={e => setForm({ ...form, releasedAt: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
-              </label>
+            <div className="rel-field">
+              <label>APK 文件上传</label>
+              <div className="rel-upload-zone" onClick={() => fileInputRef.current?.click()}>
+                {uploading ? (
+                  <div>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>上传中 {uploadProgress}%</span>
+                    <div className="rel-progress"><div className="rel-progress-bar" style={{ width: uploadProgress + '%' }} /></div>
+                  </div>
+                ) : form.downloadUrl ? (
+                  <span style={{ fontSize: 13, color: '#16a34a' }}>已上传: {form.downloadUrl}</span>
+                ) : (
+                  <span style={{ fontSize: 13, color: '#94a3b8' }}>点击选择 .apk 文件上传</span>
+                )}
+              </div>
+              <input ref={fileInputRef} type="file" accept=".apk,application/vnd.android.package-archive" hidden onChange={handleFileChange} />
             </div>
-            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" disabled={uploading} onClick={() => { setShowForm(false); resetForm(); }} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button className="primary-btn" type="submit" disabled={uploading}>{editingId ? '儲存' : '建立'}</button>
+
+            <div className="rel-field">
+              <label>版本号 *</label>
+              <input value={form.version} onChange={e => setForm({ ...form, version: e.target.value })} placeholder="如 10.0.2" required />
+            </div>
+            <div className="rel-field">
+              <label>版本代码 *</label>
+              <input value={form.versionCode} onChange={e => setForm({ ...form, versionCode: e.target.value })} placeholder="如 10000002" required />
+            </div>
+            <div className="rel-field">
+              <label>平台</label>
+              <select value={form.platform} onChange={e => setForm({ ...form, platform: e.target.value })}>
+                <option value="android">Android</option>
+                <option value="ios">iOS</option>
+              </select>
+            </div>
+            <div className="rel-field">
+              <label>下载地址</label>
+              <input value={form.downloadUrl} onChange={e => setForm({ ...form, downloadUrl: e.target.value })} placeholder="上传 APK 后自动填充" />
+            </div>
+            <div className="rel-field">
+              <label>文件大小 (bytes)</label>
+              <input value={form.fileSize} readOnly placeholder="上传后自动填充" />
+            </div>
+            <div className="rel-field">
+              <label>SHA256</label>
+              <input value={form.sha256} readOnly placeholder="上传后自动填充" style={{ fontSize: 11 }} />
+            </div>
+            <div className="rel-field">
+              <label>更新说明</label>
+              <textarea value={form.releaseNotes} onChange={e => setForm({ ...form, releaseNotes: e.target.value })} placeholder="此版本的更新内容..." />
+            </div>
+            <div className="rel-field">
+              <label>状态</label>
+              <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                <option value="draft">草稿</option>
+                <option value="published">已发布</option>
+              </select>
+            </div>
+            <div className="rel-field">
+              <label>发布时间</label>
+              <input type="datetime-local" value={form.releasedAt} onChange={e => setForm({ ...form, releasedAt: e.target.value })} />
+            </div>
+
+            <div className="rel-form-actions">
+              <button type="button" className="rel-btn rel-btn-primary" onClick={() => { setShowForm(false); resetForm(); }}>取消</button>
+              <button type="submit" className="rel-btn rel-btn-primary" disabled={uploading}>{editingId ? '保存' : '创建'}</button>
             </div>
           </form>
-        </div>,
-        document.body
+        </div>
       )}
 
       {/* QR 码弹窗 */}
-      {qrUrl && createPortal(
-        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100001 }} onClick={() => setQrUrl('')}>
-          <div onClick={e => e.stopPropagation()} style={{ backgroundColor: '#111827', borderRadius: '10px', padding: '32px', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
-            <h3 style={{ margin: '0 0 16px', color: '#f3f4f6', fontSize: '18px', fontWeight: 600 }}>{qrTitle}</h3>
-            <div ref={qrRef} style={{ background: '#fff', padding: 12, borderRadius: 8, display: 'inline-block' }}>
+      {qrUrl && (
+        <div className="rel-qr-overlay" onClick={() => setQrUrl('')}>
+          <div className="rel-qr-card" onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 16px' }}>{qrTitle}</h3>
+            <div ref={qrRef}>
               <QRCodeSVG value={qrUrl.startsWith('/') ? `https://cloud.qrtalkie.org${qrUrl}` : qrUrl} size={220} />
             </div>
-            <p style={{ marginTop: 12, fontSize: 12, color: '#9ca3af', wordBreak: 'break-all', maxWidth: 280 }}>
+            <p style={{ marginTop: 12, fontSize: 12, color: '#64748b', wordBreak: 'break-all', maxWidth: 280 }}>
               {qrUrl.startsWith('/') ? `https://cloud.qrtalkie.org${qrUrl}` : qrUrl}
             </p>
-            <button className="rel-btn rel-btn-primary rel-btn-sm" style={{ marginTop: 12, padding: '0 14px' }} onClick={() => copyUrl(qrUrl)}>复制链接</button>
-            <button className="rel-btn rel-btn-primary rel-btn-sm" style={{ marginTop: 12, marginLeft: 8, padding: '0 14px' }} onClick={copyQrCode}>复制二维码</button>
+            <button className="rel-btn rel-btn-primary rel-btn-sm" style={{ marginTop: 12 }} onClick={() => copyUrl(qrUrl)}>复制链接</button>
+            <button className="rel-btn rel-btn-primary rel-btn-sm" style={{ marginTop: 12, marginLeft: 8 }} onClick={copyQrCode}>复制二维码</button>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </section>
   );
