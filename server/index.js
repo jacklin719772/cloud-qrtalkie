@@ -11152,6 +11152,34 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard/qrcode", requireAdmin, asyn
   }
 });
 
+// 场景 C：Desktop 端专用——按用户名直接获取 ecard 内容（免认证）
+// GET /api/desktop/ecard?username=<sip_username>&domain=<sip_domain>
+app.get("/api/desktop/ecard", async (request, response) => {
+  const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
+  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+
+  if (!username) {
+    return response.status(400).json({ success: false, message: "缺少 username 參數" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      "SELECT id, tenant_id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1",
+      [username, domain],
+    );
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在。" });
+    const data = await buildEcardAccessPayload(connection, su.id, su.tenant_id);
+    return response.json({ success: true, data });
+  } catch (error) {
+    console.error("[desktop/ecard] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "取得電子名片連結失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // 场景 B：SIP 用户获取自己的 ecard 访问链接与二维码（ai-login Bearer token 认证）
 // GET /api/ecard/me
 app.get("/api/ecard/me", requireSipUser, async (request, response) => {
