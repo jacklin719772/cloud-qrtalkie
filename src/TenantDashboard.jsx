@@ -167,57 +167,57 @@ export default function TenantDashboard({ onNavigate }) {
       <div className="td-page">
         {isMock && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '8px 14px', marginBottom: '16px', fontSize: '13px', color: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            &#9888; 无法连接服务器，当前显示示例数据。请检查网络连接后刷新页面。
+            &#9888; 無法連接服務器，當前顯示示例數據。請檢查網絡連接後刷新頁面。
           </div>
         )}
-        {/* 1. 租户基本信息 */}
+        {/* 1. 租戶基本信息 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">1</span>租户基本信息</h2>
+          <h2 className="td-section-title"><span className="td-num">1</span>租戶基本信息</h2>
           <div className="td-card td-tenant-card">
             <div>
               <div className="td-title">{d.tenant.name} <span className="td-tag">{d.tenant.status === 'active' ? '正常' : '異常'}</span></div>
               <div className="td-meta">
-                租户ID：TENANT-{String(d.tenant.id).padStart(5, '0')}<br />
-                创建时间：{formatDate(d.tenant.createdAt)}<br />
-                最后登录：{formatDate(d.tenant.lastLoginAt)}<br />
-                <button className="td-btn" style={{ marginTop: 8 }} onClick={() => onNavigate?.('tenant')}>租户设定</button>
+                租戶ID：TENANT-{String(d.tenant.id).padStart(5, '0')}<br />
+                創建時間：{formatDate(d.tenant.createdAt)}<br />
+                最后登錄：{formatDate(d.tenant.lastLoginAt)}<br />
+                <button className="td-btn" style={{ marginTop: 8 }} onClick={() => onNavigate?.('tenant')}>租戶設定</button>
               </div>
             </div>
             <div className="td-divider" />
             <div className="td-contact">
               <b>管理员：</b> {d.tenant.contactPerson || '-'}<br />
-              <b>联系电话：</b> {d.tenant.contactPhone || '-'}<br />
-              <b>邮箱：</b> {d.tenant.contactEmail || '-'}
+              <b>聯繫電話：</b> {d.tenant.contactPhone || '-'}<br />
+              <b>郵箱：</b> {d.tenant.contactEmail || '-'}
             </div>
           </div>
         </div>
 
-        {/* 2. 套餐订购情况 */}
+        {/* 2. 套餐訂購情況 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">2</span>套餐订购情况</h2>
+          <h2 className="td-section-title"><span className="td-num">2</span>套餐訂購情況</h2>
           <div className="td-grid-2">
             <div className="td-card td-plan">
-              <div className="td-small">当前套餐</div>
+              <div className="td-small">當前套餐</div>
               <div className="td-plan-name">{d.plan?.planName || '未訂購'} <span className="td-tag" style={{ background: d.plan?.status === 'active' ? '#065f46' : '#7f1d1d', color: d.plan?.status === 'active' ? '#6ee7b7' : '#fca5a5' }}>{d.plan?.status === 'active' ? '正常' : '已過期'}</span></div>
               {d.plan ? (
                 <div className="td-meta">
-                  账号数量：{d.plan.accountQuantity ?? '-'}<br />
-                  增值服务：{d.plan.addonNames || '-'}<br />
-                  金额：${(d.plan.payableAmount ?? 0).toFixed(2)}<br />
-                  付款时间：{d.plan.paymentDate || '-'}<br />
-                  开通时间：{d.plan.createdAt || '-'}<br />
+                  帳號數量：{d.plan.accountQuantity ?? '-'}<br />
+                  增值服務：{d.plan.addonNames || '-'}<br />
+                  金額：${(d.plan.payableAmount ?? 0).toFixed(2)}<br />
+                  付款時間：{d.plan.paymentDate || '-'}<br />
+                  開通時間：{d.plan.createdAt || '-'}<br />
                   有效期：{d.plan.expiresAt}<br />
-                  剩余时间：<span style={{ fontSize: 22, color: '#2477ff', fontWeight: 500 }}>{d.plan.daysLeft}</span> 天
+                  剩餘時間：<span style={{ fontSize: 22, color: '#2477ff', fontWeight: 500 }}>{d.plan.daysLeft}</span> 天
                 </div>
-              ) : <div className="td-meta">暂无订购套餐</div>}
+              ) : <div className="td-meta">暫無訂購套餐</div>}
               <button className="td-btn" style={{ marginTop: 14 }} onClick={() => onNavigate?.('domain')}>我的套餐</button>
             </div>
             <div className="td-card td-panel" style={{ overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%', minWidth: '500px' }}>
-                <thead><tr><th>订单编号</th><th>套餐名称</th><th>状态</th><th>金额</th><th>到期日期</th></tr></thead>
+                <thead><tr><th>訂單编號</th><th>套餐名稱</th><th>狀態</th><th>金額</th><th>到期日期</th></tr></thead>
                 <tbody>
                   {(d.orderList || []).length === 0 ? (
-                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8' }}>暂无订单</td></tr>
+                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無訂單</td></tr>
                   ) : (d.orderList || []).map(o => (
                     <tr key={o.id}>
                       <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{o.orderNo}</td>
@@ -233,36 +233,36 @@ export default function TenantDashboard({ onNavigate }) {
           </div>
         </div>
 
-        {/* 3. 账号情况 */}
+        {/* 3. 帳號情況 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">3</span>已分配账号 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('tenant-account-management')}>账号管理</button></h2>
+          <h2 className="td-section-title"><span className="td-num">3</span>已分配帳號 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('tenant-account-management')}>帳號管理</button></h2>
           <div className="td-card td-panel">
             <div className="td-metrics-6">
-              <div className="td-metric small"><div className="td-m-label">总账号数</div><div className="td-m-value">{d.sipAccounts.total.toLocaleString()}</div></div>
-              <div className="td-metric small green"><div className="td-m-label">已启用</div><div className="td-m-value">{d.sipAccounts.enabled.toLocaleString()}</div></div>
-              <div className="td-metric small orange"><div className="td-m-label">已过期</div><div className="td-m-value">{d.sipAccounts.expired.toLocaleString()}</div></div>
-              <div className="td-metric small purple"><div className="td-m-label">即将过期</div><div className="td-m-value">{d.sipAccounts.expiring.toLocaleString()}</div></div>
-              <div className="td-metric small"><div className="td-m-label">未设置显示名</div><div className="td-m-value">{d.sipAccounts.noDisplayName.toLocaleString()}</div></div>
-              <div className="td-metric small"><div className="td-m-label">未设置邮箱</div><div className="td-m-value">{d.sipAccounts.noEmail.toLocaleString()}</div></div>
+              <div className="td-metric small"><div className="td-m-label">總帳號數</div><div className="td-m-value">{d.sipAccounts.total.toLocaleString()}</div></div>
+              <div className="td-metric small green"><div className="td-m-label">已啟用</div><div className="td-m-value">{d.sipAccounts.enabled.toLocaleString()}</div></div>
+              <div className="td-metric small orange"><div className="td-m-label">已過期</div><div className="td-m-value">{d.sipAccounts.expired.toLocaleString()}</div></div>
+              <div className="td-metric small purple"><div className="td-m-label">即將過期</div><div className="td-m-value">{d.sipAccounts.expiring.toLocaleString()}</div></div>
+              <div className="td-metric small"><div className="td-m-label">未設置顯示名</div><div className="td-m-value">{d.sipAccounts.noDisplayName.toLocaleString()}</div></div>
+              <div className="td-metric small"><div className="td-m-label">未設置郵箱</div><div className="td-m-value">{d.sipAccounts.noEmail.toLocaleString()}</div></div>
             </div>
             <div style={{ marginTop: 14, maxHeight: 260, overflow: 'auto', scrollbarWidth: 'none' }}>
               <style>{`.td-table-wrap::-webkit-scrollbar { display: none; }`}</style>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('username')}>账号<SortArrow col="username" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('displayName')}>显示名<SortArrow col="displayName" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('email')}>邮箱<SortArrow col="email" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('phone')}>电话<SortArrow col="phone" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('webAccount')}>Web账号<EcardSortArrow col="webAccount" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('contactBook')}>通讯录<SortArrow col="contactBook" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('status')}>状态<EcardSortArrow col="status" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('username')}>帳號<SortArrow col="username" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('displayName')}>顯示名<SortArrow col="displayName" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('email')}>郵箱<SortArrow col="email" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('phone')}>電話<SortArrow col="phone" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('webAccount')}>Web帳號<EcardSortArrow col="webAccount" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('contactBook')}>通讯錄<SortArrow col="contactBook" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('status')}>狀態<EcardSortArrow col="status" /></th>
                     <th style={{ cursor: 'pointer' }} onClick={() => handleSort('expiresAt')}>到期日期<SortArrow col="expiresAt" /></th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedList.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', color: '#94a3b8' }}>暂无数据</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無數據</td></tr>
                   ) : sortedList.map(a => (
                     <tr key={a.id}>
                       <td style={{ fontFamily: 'monospace' }}>{a.username}</td>
@@ -281,28 +281,28 @@ export default function TenantDashboard({ onNavigate }) {
           </div>
         </div>
 
-        {/* 4. Ecard 情况 */}
+        {/* 4. Ecard 情況 */}
         <div className="td-section" style={{ marginTop: 16 }}>
-          <h2 className="td-section-title"><span className="td-num">4</span>电子名片设置 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('ecard-styles-management')}>Ecard 设置</button></h2>
+          <h2 className="td-section-title"><span className="td-num">4</span>電子名片設置 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('ecard-styles-management')}>Ecard 設置</button></h2>
           <div className="td-card td-panel">
             <div className="td-metrics-6">
-              <div className="td-metric small"><div className="td-m-label">Ecard 总数</div><div className="td-m-value">{d.ecards.total.toLocaleString()}</div></div>
+              <div className="td-metric small"><div className="td-m-label">Ecard 總數</div><div className="td-m-value">{d.ecards.total.toLocaleString()}</div></div>
               <div className="td-metric small green"><div className="td-m-label">已配置</div><div className="td-m-value">{d.ecards.configured.toLocaleString()}</div></div>
               <div className="td-metric small orange"><div className="td-m-label">未配置</div><div className="td-m-value">{d.ecards.unconfigured.toLocaleString()}</div></div>
-              <div className="td-metric small purple"><div className="td-m-label">启用中</div><div className="td-m-value">{d.ecards.active.toLocaleString()}</div></div>
-              <div className="td-metric small orange"><div className="td-m-label">已过期</div><div className="td-m-value">{d.ecards.expired.toLocaleString()}</div></div>
-              <div className="td-metric small purple"><div className="td-m-label">即将过期</div><div className="td-m-value">{d.ecards.expiring.toLocaleString()}</div></div>
+              <div className="td-metric small purple"><div className="td-m-label">啟用中</div><div className="td-m-value">{d.ecards.active.toLocaleString()}</div></div>
+              <div className="td-metric small orange"><div className="td-m-label">已過期</div><div className="td-m-value">{d.ecards.expired.toLocaleString()}</div></div>
+              <div className="td-metric small purple"><div className="td-m-label">即將過期</div><div className="td-m-value">{d.ecards.expiring.toLocaleString()}</div></div>
             </div>
             <div style={{ marginTop: 14, maxHeight: 220, overflow: 'auto', scrollbarWidth: 'none' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleEcardSort('sipAccount')}>SIP 账号<EcardSortArrow col="sipAccount" /></th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleEcardSort('userName')}>用户名<EcardSortArrow col="userName" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("webAccount")}>Web 账号<EcardSortArrow col="webAccount" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("validFrom")}>有效期<EcardSortArrow col="validFrom" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("status")}>状态<EcardSortArrow col="status" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("createdAt")}>产生日期<EcardSortArrow col="createdAt" /></th></tr>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleEcardSort('sipAccount')}>SIP 帳號<EcardSortArrow col="sipAccount" /></th>
+                    <th style={{ cursor: 'pointer' }} onClick={() => handleEcardSort('userName')}>用戶名<EcardSortArrow col="userName" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("webAccount")}>Web 帳號<EcardSortArrow col="webAccount" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("validFrom")}>有效期<EcardSortArrow col="validFrom" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("status")}>狀態<EcardSortArrow col="status" /></th><th style={{ cursor: "pointer" }} onClick={() => handleEcardSort("createdAt")}>產生日期<EcardSortArrow col="createdAt" /></th></tr>
                 </thead>
                 <tbody>
                   {(d.ecards.list || []).length === 0 ? (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>暂无数据</td></tr>
+                    <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無數據</td></tr>
                   ) : sortedEcardList.map(e => (
                     <tr key={e.id}>
                       <td style={{ fontFamily: 'monospace' }}>{e.sipAccount}</td>
@@ -319,9 +319,9 @@ export default function TenantDashboard({ onNavigate }) {
           </div>
         </div>
 
-        {/* 5. 呼叫中心情况 */}
+        {/* 5. 呼叫中心情況 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">5</span>呼叫中心设置情况 <button className="td-btn" style={{ marginLeft: "auto" }} onClick={() => onNavigate?.("call-center")}>呼叫中心管理</button></h2>
+          <h2 className="td-section-title"><span className="td-num">5</span>呼叫中心設置情況 <button className="td-btn" style={{ marginLeft: "auto" }} onClick={() => onNavigate?.("call-center")}>呼叫中心管理</button></h2>
           <div className="td-card td-panel">
             <div className="td-metrics-6">
               <div className="td-metric small"><div className="td-m-label">呼叫中心總數</div><div className="td-m-value">{d.callCenter.total.toLocaleString()}</div></div>
@@ -329,16 +329,16 @@ export default function TenantDashboard({ onNavigate }) {
               <div className="td-metric small orange"><div className="td-m-label">已禁用</div><div className="td-m-value">{d.callCenter.disabled.toLocaleString()}</div></div>
               <div className="td-metric small purple"><div className="td-m-label">開啟訪客登記</div><div className="td-m-value">{d.callCenter.visitorEnabled.toLocaleString()}</div></div>
               <div className="td-metric small orange"><div className="td-m-label">即將到期</div><div className="td-m-value">{d.callCenter.expiring.toLocaleString()}</div></div>
-              <div className="td-metric small purple"><div className="td-m-label">坐席总数</div><div className="td-m-value">{d.callCenter.agents.toLocaleString()}</div></div>
+              <div className="td-metric small purple"><div className="td-m-label">坐席總數</div><div className="td-m-value">{d.callCenter.agents.toLocaleString()}</div></div>
             </div>
             <div style={{ marginTop: 14, maxHeight: 220, overflow: "auto", scrollbarWidth: "none" }}>
               <table className="td-table" style={{ width: "100%" }}>
                 <thead style={{ position: "sticky", top: 0, zIndex: 2 }}>
-                  <tr><th>名称</th><th>呼叫地址</th><th>访客登记</th><th>坐席数量</th><th>状态</th><th>创建时间</th></tr>
+                  <tr><th>名稱</th><th>呼叫地址</th><th>訪客登記</th><th>坐席數量</th><th>狀態</th><th>創建時間</th></tr>
                 </thead>
                 <tbody>
                   {(d.callCenter.list || []).length === 0 ? (
-                    <tr><td colSpan="6" style={{ textAlign: "center", color: "#94a3b8" }}>暂无数据</td></tr>
+                    <tr><td colSpan="6" style={{ textAlign: "center", color: "#94a3b8" }}>暫無數據</td></tr>
                   ) : (d.callCenter.list || []).map(r => (
                     <tr key={r.id}>
                       <td>{r.name || "-"}</td>
@@ -355,9 +355,9 @@ export default function TenantDashboard({ onNavigate }) {
           </div>
         </div>
 
-        {/* 6. 门禁系统设置情况 */}
+        {/* 6. 門禁係統設置情況 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">6</span>门禁系统设置情况 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('access-control')}>门禁系统管理</button></h2>
+          <h2 className="td-section-title"><span className="td-num">6</span>門禁係統設置情況 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('access-control')}>門禁係統管理</button></h2>
           <div className="td-card td-panel">
             <div className="td-metrics-5">
               <div className="td-metric small"><div className="td-m-label">社區總數</div><div className="td-m-value">{d.buildings.communities}</div></div>
@@ -369,11 +369,11 @@ export default function TenantDashboard({ onNavigate }) {
 <div style={{ marginTop: 14, maxHeight: 220, overflow: 'auto', scrollbarWidth: 'none' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                  <tr><th>社区名称</th><th>地址</th><th>状态</th><th>创建时间</th></tr>
+                  <tr><th>社區名稱</th><th>地址</th><th>狀態</th><th>創建時間</th></tr>
                 </thead>
                 <tbody>
                   {(d.buildings.list || []).length === 0 ? (
-                    <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8' }}>暂无数据</td></tr>
+                    <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無數據</td></tr>
                   ) : (d.buildings.list || []).map(c => (
                     <tr key={c.id}>
                       <td>{c.name || '-'}</td>
