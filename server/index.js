@@ -1179,6 +1179,7 @@ app.post("/api/auth/login", async (request, response) => {
 app.post("/api/auth/ai-login", async (request, response) => {
   const username = (request.body.username || "").trim();
   const password = String(request.body.password || "");
+  const device = (request.body.device || "").trim().slice(0, 32) || null;
 
   if (!username || !password) {
     return response.status(400).json({ message: "Please enter account and password." });
@@ -1202,18 +1203,28 @@ app.post("/api/auth/ai-login", async (request, response) => {
       return response.status(403).json({ message: "Account not activated." });
     }
 
-    // Delete old sessions for this SIP user before creating new one
-    await connection.query(
-      "DELETE FROM admin_sessions WHERE sip_user_id = ?",
-      [Number(user.id)],
-    );
+    // Delete old sessions for this SIP user before creating a new one.
+    // Sessions are scoped by device when provided (desktop), so Android and
+    // Desktop tokens can coexist without invalidating each other. Clients
+    // that don't send a device keep their legacy behavior (device IS NULL).
+    if (device) {
+      await connection.query(
+        "DELETE FROM admin_sessions WHERE sip_user_id = ? AND device = ?",
+        [Number(user.id), device],
+      );
+    } else {
+      await connection.query(
+        "DELETE FROM admin_sessions WHERE sip_user_id = ? AND device IS NULL",
+        [Number(user.id)],
+      );
+    }
 
     const { token, tokenHash } = createSessionToken();
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000);
 
     await connection.query(
-      "INSERT INTO admin_sessions (admin_user_id, user_type, sip_user_id, token_hash, expires_at) VALUES (NULL, 'sip', ?, ?, ?)",
-      [Number(user.id), tokenHash, expiresAt],
+      "INSERT INTO admin_sessions (admin_user_id, user_type, sip_user_id, token_hash, expires_at, device) VALUES (NULL, 'sip', ?, ?, ?, ?)",
+      [Number(user.id), tokenHash, expiresAt, device],
     );
 
     return response.json({ token, userType: "sip" });
