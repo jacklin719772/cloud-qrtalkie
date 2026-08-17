@@ -18609,6 +18609,88 @@ app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response
   }
 });
 
+// ── 门禁设备 API ─────────────────────────────────────────────
+
+// POST /api/external-api/get-door-info — 获取账号当前授权可用的门锁列表
+// 返回按社区分组的门锁：社区级门锁 + 社区内每栋楼宇的门锁
+// 认证方式与原 cc 接口一致（公开接口，按 sipAccount 查询）
+app.post("/api/external-api/get-door-info", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "Missing SIP accont info" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT
+         d.device_uuid AS lock_id,
+         d.relay_id,
+         d.subscribe_topic,
+         d.publish_topic,
+         e.name AS entrance_name,
+         e.building_id,
+         b.name AS building_name,
+         COALESCE(e.community_id, b.community_id) AS community_id,
+         c.name AS community_name
+       FROM sip_users s
+       JOIN access_rooms r ON r.sip_user_id = s.id
+       JOIN access_room_entrance_auth a ON a.room_id = r.id
+       JOIN access_entrances e ON e.id = a.entrance_id AND e.is_active = 1
+       JOIN gate_devices d ON d.id = e.device_id AND d.assignment_status = 'assigned'
+       LEFT JOIN access_buildings b ON b.id = e.building_id
+       LEFT JOIN access_communities c ON c.id = COALESCE(e.community_id, b.community_id)
+       WHERE s.username = ?`,
+      [sipAccount]
+    );
+
+    if (!rows.length) {
+      return response.status(404).json({ message: "Not found staff or room for given sip account" });
+    }
+
+    // 分组：社区 → communityLocks（社区级门锁） + buildings[].locks（楼宇门锁）
+    const communityMap = new Map();
+    for (const row of rows) {
+      const lockEntry = {
+        lockId: row.lock_id,
+        entranceName: row.entrance_name,
+        relayId: row.relay_id,
+        publicSubject: row.publish_topic,
+        subscriptionSubject: row.subscribe_topic,
+      };
+      let community = communityMap.get(row.community_id);
+      if (!community) {
+        community = { communityName: row.community_name, communityLocks: [], buildings: [] };
+        communityMap.set(row.community_id, community);
+      }
+      if (row.building_id == null) {
+        // 社区级门锁（入口直接挂在社区上）
+        if (!community.communityLocks.some((lock) => lock.lockId === lockEntry.lockId)) {
+          community.communityLocks.push(lockEntry);
+        }
+      } else {
+        // 楼宇门锁（入口挂在楼宇上）
+        let building = community.buildings.find((b) => b.buildingName === row.building_name);
+        if (!building) {
+          building = { buildingName: row.building_name, locks: [] };
+          community.buildings.push(building);
+        }
+        if (!building.locks.some((lock) => lock.lockId === lockEntry.lockId)) {
+          building.locks.push(lockEntry);
+        }
+      }
+    }
+
+    return response.json({ communities: Array.from(communityMap.values()) });
+  } catch (error) {
+    console.error("[get-door-info] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "Server error" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
 // Linphone SDK 版本检查
 // SDK 请求格式: GET {version_check_url_root}/{platform}/RELEASE
