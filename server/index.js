@@ -18704,6 +18704,28 @@ app.get("/api/external-api/device-status", async (request, response) => {
   return response.json({ success: true, data: status });
 });
 
+// POST /api/external-api/unlock-door — 开锁指令中转（SaaS 经本机 MQTT 发指令并等待设备响应）
+app.post("/api/external-api/unlock-door", async (request, response) => {
+  const lockId = sanitizeString(String(request.body?.lockId || ""), 120);
+  if (!lockId) {
+    return response.status(400).json({ success: false, message: "Missing lockId" });
+  }
+  const result = await deviceMqttService.unlockDevice(lockId);
+  if (result.ok) {
+    return response.json({ success: true, data: { result: "OK", status: result.status } });
+  }
+  if (result.reason === "not_found") {
+    return response.status(404).json({ success: false, message: "裝置不存在" });
+  }
+  if (result.reason === "mqtt_disconnected") {
+    return response.status(503).json({ success: false, message: "MQTT 未連接" });
+  }
+  if (result.reason === "timeout") {
+    return response.json({ success: true, data: { result: "TIMEOUT" } });
+  }
+  return response.status(500).json({ success: false, message: "開鎖指令失敗" });
+});
+
 // GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
 // Linphone SDK 版本检查
 // SDK 请求格式: GET {version_check_url_root}/{platform}/RELEASE

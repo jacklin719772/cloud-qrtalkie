@@ -106,6 +106,18 @@ async function handleDeviceMessage(topic, text) {
       const online = message.online === true;
       statusCache.set(lock, { online, updatedAt: new Date() });
       console.log(`[deviceMqtt] Status: lock=${lock} online=${online}`);
+      return;
+    }
+    if (message && message.Replytype !== undefined) {
+      // 开锁响应：任意消息也视为设备在线；路由到待决开锁请求
+      const locks = await findLocksByTopic(topic);
+      for (const lock of locks) {
+        statusCache.set(lock, { online: true, updatedAt: new Date() });
+      }
+      const ok = String(message.status || "").toUpperCase() === "OK";
+      resolvePendingUnlock(topic, ok, String(message.status || ""));
+      console.log(`[deviceMqtt] Unlock response: topic=${topic} status=${message.status}`);
+      return;
     }
   } catch {
     // 非 JSON 或非状态消息，忽略
@@ -115,25 +127,89 @@ async function handleDeviceMessage(topic, text) {
 let lockByTopicCache = null;
 let lockByTopicCacheTime = 0;
 
-async function findLockByTopic(topic) {
+async function loadLockTopicCache() {
   const now = Date.now();
-  if (!lockByTopicCache || now - lockByTopicCacheTime > 60000) {
-    lockByTopicCache = new Map();
-    let connection;
-    try {
-      connection = await pool.getConnection();
-      const rows = await connection.query(
-        `SELECT device_uuid, subscribe_topic FROM gate_devices WHERE subscribe_topic IS NOT NULL AND subscribe_topic <> ''`
-      );
-      for (const row of rows) lockByTopicCache.set(row.subscribe_topic, row.device_uuid);
-    } catch (error) {
-      console.error("[deviceMqtt] Topic lookup error:", error?.message || error);
-    } finally {
-      if (connection) connection.release();
+  if (lockByTopicCache && now - lockByTopicCacheTime <= 60000) return;
+  const newCache = new Map();
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT device_uuid, subscribe_topic FROM gate_devices WHERE subscribe_topic IS NOT NULL AND subscribe_topic <> ''`
+    );
+    for (const row of rows) {
+      if (!newCache.has(row.subscribe_topic)) newCache.set(row.subscribe_topic, []);
+      newCache.get(row.subscribe_topic).push(row.device_uuid);
     }
+    lockByTopicCache = newCache;
     lockByTopicCacheTime = now;
+  } catch (error) {
+    console.error("[deviceMqtt] Topic lookup error:", error?.message || error);
+  } finally {
+    if (connection) connection.release();
   }
-  return lockByTopicCache.get(topic) || null;
+}
+
+async function findLockByTopic(topic) {
+  await loadLockTopicCache();
+  const locks = lockByTopicCache.get(topic);
+  return locks && locks.length ? locks[0] : null;
+}
+
+async function findLocksByTopic(topic) {
+  await loadLockTopicCache();
+  return lockByTopicCache.get(topic) || [];
+}
+
+// ---- 开锁指令（方案 B 中转） ----
+
+// lockId -> { resolve, topic, timer }
+const pendingUnlocks = new Map();
+const UNLOCK_TIMEOUT_MS = 10000;
+
+function resolvePendingUnlock(topic, ok, status) {
+  for (const [lockId, pending] of pendingUnlocks) {
+    if (pending.topic !== topic) continue;
+    clearTimeout(pending.timer);
+    pendingUnlocks.delete(lockId);
+    pending.resolve({ ok, status });
+    return; // 一次只解决最早的待决请求
+  }
+}
+
+// 返回 { ok: bool, reason: 'ok'|'timeout'|'not_found'|'mqtt_disconnected', status?: string }
+async function unlockDevice(lockId) {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT device_uuid, relay_id, publish_topic, subscribe_topic
+       FROM gate_devices
+       WHERE device_uuid = ? AND assignment_status = 'assigned' LIMIT 1`,
+      [lockId]
+    );
+    const device = rows[0];
+    if (!device) return { ok: false, reason: "not_found" };
+    if (!device.relay_id || !device.publish_topic) return { ok: false, reason: "not_configured" };
+    if (!client?.connected) return { ok: false, reason: "mqtt_disconnected" };
+
+    console.log(`[deviceMqtt] Unlock publish: topic=${device.relay_id} payload=${device.publish_topic}`);
+    client.publish(device.relay_id, device.publish_topic, { qos: 0 });
+
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pendingUnlocks.delete(lockId);
+        console.log(`[deviceMqtt] Unlock timeout: lockId=${lockId}`);
+        resolve({ ok: false, reason: "timeout" });
+      }, UNLOCK_TIMEOUT_MS);
+      pendingUnlocks.set(lockId, { resolve, topic: device.subscribe_topic, timer });
+    });
+  } catch (error) {
+    console.error("[deviceMqtt] Unlock error:", error?.message || error);
+    return { ok: false, reason: "error" };
+  } finally {
+    if (connection) connection.release();
+  }
 }
 
 // lockId(device_uuid) -> { online: true|false|null, updatedAt: ISO string|null }
@@ -147,4 +223,4 @@ function isLockKnown(lockId) {
   return statusCache.has(lockId);
 }
 
-export default { start, getStatus, isLockKnown };
+export default { start, getStatus, isLockKnown, unlockDevice };
