@@ -43,6 +43,7 @@
     "lucide-react": "^0.561.0",
     "mariadb": "^3.4.1",
     "maxmind": "^5.0.6",
+    "mqtt": "^5.15.2",
     "nodemailer": "^8.0.7",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",

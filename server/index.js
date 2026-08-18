@@ -109,6 +109,7 @@ import {
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 import { getOrCreateSession, getMessages, sendMessage, deleteSession } from "./aiBotService.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
+import deviceMqttService from "./deviceMqttService.js";
 
 const app = express();
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -18691,6 +18692,18 @@ app.post("/api/external-api/get-door-info", async (request, response) => {
   }
 });
 
+// GET /api/external-api/device-status — 查询门禁设备在线状态（方案 A 缓存式）
+// 状态由 SaaS 常驻 MQTT 客户端订阅设备主题并缓存（deviceMqttService）
+app.get("/api/external-api/device-status", async (request, response) => {
+  const lockId = sanitizeString(String(request.query.lockId || ""), 120);
+  if (!lockId) {
+    return response.status(400).json({ success: false, message: "Missing lockId" });
+  }
+  // 设备未上报过状态但存在订阅主题时仍返回 online=null（未知）
+  const status = deviceMqttService.getStatus(lockId);
+  return response.json({ success: true, data: status });
+});
+
 // GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
 // Linphone SDK 版本检查
 // SDK 请求格式: GET {version_check_url_root}/{platform}/RELEASE
@@ -18876,6 +18889,8 @@ app.delete("/api/admin/releases/:id", requireAdmin, async (request, response) =>
     if (connection) connection.release();
   }
 });
+
+deviceMqttService.start();
 
 app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
