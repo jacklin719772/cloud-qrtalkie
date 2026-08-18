@@ -97,11 +97,11 @@ async function refreshSubscriptions() {
   }
 }
 
-function handleDeviceMessage(topic, text) {
+async function handleDeviceMessage(topic, text) {
   try {
     const message = JSON.parse(text);
     if (message && message.type === "status") {
-      const lock = findLockByTopic(topic);
+      const lock = await findLockByTopic(topic);
       if (!lock) return;
       const online = message.online === true;
       statusCache.set(lock, { online, updatedAt: new Date() });
