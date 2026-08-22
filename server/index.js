@@ -670,7 +670,27 @@ async function saveEcardImage(dataUrl, originalFileName) {
   await mkdir(ecardImagesDir, { recursive: true });
   const filename = `ecard-${Date.now()}-${randomUUID()}.${extension}`;
   await writeFile(path.join(ecardImagesDir, filename), buffer);
+  // 异步生成缩略图（原名-thumb.jpg，320px 宽；best-effort，不影响保存主流程）
+  generateEcardImageThumbnail(filename).catch((thumbError) => {
+    console.error("[saveEcardImage] thumbnail generation failed:", thumbError?.message || thumbError);
+  });
   return `/ecard-images/${filename}`;
+}
+
+// 用 ffmpeg 为原图生成 320px 宽缩略图：/ecard-images/xxx.png → /ecard-images/xxx-thumb.jpg
+// 缩略图 URL 由调用方按文件名规则拼接推导，无需单独存储
+async function generateEcardImageThumbnail(filename) {
+  const inputPath = path.join(ecardImagesDir, filename);
+  const outputName = filename.replace(/\.[^.]+$/, "") + "-thumb.jpg";
+  const outputPath = path.join(ecardImagesDir, outputName);
+  await new Promise((resolve, reject) => {
+    execSync(
+      `ffmpeg -y -loglevel error -i "${inputPath.replace(/"/g, '\\"')}" -vf "scale=320:-1" -q:v 6 "${outputPath.replace(/"/g, '\\"')}"`,
+      { timeout: 60000, stdio: "ignore" }
+    );
+    if (!existsSync(outputPath)) reject(new Error("thumbnail output missing"));
+    else resolve();
+  });
 }
 
 async function saveCallCenterImage(dataUrl, originalFileName) {
@@ -10525,7 +10545,8 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
         enabled: configured && row.ecard_status === 'active',
         validFrom: row.valid_from || "",
         validTo: row.valid_to || "",
-        downloadUrl: configured ? `${baseUrl}/d/${slug}` : "",
+        // 绝对地址：复制后可直接在浏览器下载（appUrl 为 cloud 平台域名，/api 反代到本服务）
+        downloadUrl: configured ? `${appUrl}/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(row.sip_account || "")}` : "",
         accessUrl: configured ? `${baseUrl}/u/${slug}` : "",
         createdBy: row.created_by || "",
         createdAt: row.created_at || "",
@@ -11106,9 +11127,10 @@ function resolveEcardProfileFromJson(ecardDataJson, sipUser) {
 // 构造 ecard 访问信息（含二维码 data URL，512px 适配桌面端与手机端显示）
 async function buildEcardAccessPayload(connection, sipUserId, tenantId) {
   const [ec] = await connection.query(
-    `SELECT access_slug, status
-     FROM tenant_ecards
-     WHERE sip_user_id = ? AND tenant_id = ?
+    `SELECT ec.access_slug, ec.status, su.username AS sip_account
+     FROM tenant_ecards ec
+     LEFT JOIN sip_users su ON su.id = ec.sip_user_id
+     WHERE ec.sip_user_id = ? AND ec.tenant_id = ?
      LIMIT 1`,
     [sipUserId, tenantId],
   );
@@ -11117,7 +11139,8 @@ async function buildEcardAccessPayload(connection, sipUserId, tenantId) {
   }
   const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
   const accessUrl = `${baseUrl}/u/${ec.access_slug}`;
-  const downloadUrl = `${baseUrl}/d/${ec.access_slug}`;
+  // 稳定下载地址：按账号键，slug 刷新后依然有效（与桌面版一致）
+  const downloadUrl = `${baseUrl}/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(ec.sip_account || "")}`;
   let qrcodeDataUrl = "";
   try {
     qrcodeDataUrl = await QRCode.toDataURL(accessUrl, {
@@ -11187,6 +11210,151 @@ app.get("/api/desktop/ecard", async (request, response) => {
   } catch (error) {
     console.error("[desktop/ecard] error:", error?.message || error);
     return response.status(500).json({ success: false, message: "取得電子名片連結失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ==================== 桌面版 ECard 设置：独立接口族（不改动其他应用依赖的接口） ====================
+
+// GET /api/desktop/ecard-settings — 页面数据包（一次渲染整个 ECard 设置页）
+// 认证模式与 /api/desktop/ecard 一致：username + domain 免认证查询
+app.get("/api/desktop/ecard-settings", async (request, response) => {
+  const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
+  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+  if (!username) {
+    return response.status(400).json({ success: false, message: "缺少 username 參數" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      `SELECT su.id, su.tenant_id, su.username, su.sip_domain,
+              DATE_FORMAT(su.activated_at, '%Y-%m-%d') AS activated_date,
+              DATE_FORMAT(su.service_expires_at, '%Y-%m-%d') AS expires_date,
+              t.name AS tenant_name
+       FROM sip_users su
+       LEFT JOIN tenants t ON t.id = su.tenant_id
+       WHERE su.username = ? AND su.sip_domain = ? LIMIT 1`,
+      [username, domain],
+    );
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+
+    const [ec] = await connection.query(
+      `SELECT ec.ecard_data_json, ec.card_data_json, ec.thumbnail_url, ec.avatar_url, ec.logo_url,
+              ec.access_slug, ec.status, ec.enable_video_call,
+              DATE_FORMAT(ec.valid_from, '%Y-%m-%d') AS valid_from,
+              DATE_FORMAT(ec.valid_to, '%Y-%m-%d') AS valid_to
+       FROM tenant_ecards ec
+       WHERE ec.sip_user_id = ? AND ec.tenant_id = ? LIMIT 1`,
+      [su.id, su.tenant_id],
+    );
+
+    const configured = !!ec;
+    // 展示/下载 URL 由 ECARD_APP_URL 推导；二维码不在数据包内生成（由 /api/desktop/ecard 单独提供，避免拖慢本接口）
+    const ecardAppBaseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+    const slug = ec?.access_slug || null;
+    const slugActive = slug && ec?.status === "active";
+
+    return response.json({
+      success: true,
+      data: {
+        sipAccount: su.username,
+        sipDomain: su.sip_domain || domain,
+        tenantName: su.tenant_name || "",
+        callPublicSlug: ec?.access_slug || null,
+        displayUrl: slugActive ? `${ecardAppBaseUrl}/u/${slug}` : null,
+        // 稳定下载地址（与 web 管理页/桌面版一致：按账号键，slug 刷新后仍有效）
+        downloadUrl: configured ? `${ecardAppBaseUrl}/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(su.username || "")}` : null,
+        qrcodeDataUrl: "",
+        validFrom: ec?.valid_from || su.activated_date || "",
+        validTo: ec?.valid_to || su.expires_date || "",
+        enableVideoCall: ec ? Boolean(ec.enable_video_call) : true,
+        configured,
+        status: ec?.status || null,
+        ecardDataJson: parseEcardPublicJson(ec?.ecard_data_json || ec?.card_data_json),
+        avatarUrl: ec?.avatar_url || null,
+        logoUrl: ec?.logo_url || null,
+        thumbnailUrl: ec?.thumbnail_url || null,
+      },
+    });
+  } catch (error) {
+    console.error("[desktop/ecard-settings] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "取得電子名片設定失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/desktop/ecard-styles — 租户模板/背景字典（含图片 URL，供设置页渲染）
+app.get("/api/desktop/ecard-styles", async (request, response) => {
+  const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
+  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+  if (!username) {
+    return response.status(400).json({ success: false, message: "缺少 username 參數" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      "SELECT id FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1",
+      [username, domain],
+    );
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+
+    // 样式字典为平台级共享数据（ecard_styles 无租户隔离），只返回 active 样式
+    const styles = await connection.query(
+      `SELECT id, style_code, style_name, style_type, company_name_enabled,
+              description, cover_image_url, status, sort_order
+       FROM ecard_styles
+       WHERE status = 'active'
+       ORDER BY sort_order ASC, id ASC`,
+    );
+
+    const formattedStyles = [];
+    if (styles.length > 0) {
+      const styleIds = styles.map((s) => s.id);
+      const placeholders = styleIds.map(() => "?").join(",");
+      const backgrounds = await connection.query(
+        `SELECT id, style_id, background_name, image_url, layout_json, default_style_json, display_config_json
+         FROM ecard_style_backgrounds
+         WHERE style_id IN (${placeholders})
+         ORDER BY sort_order ASC, id ASC`,
+        styleIds,
+      );
+
+      const bgMap = backgrounds.reduce((acc, bg) => {
+        const sid = Number(bg.style_id);
+        if (!acc[sid]) acc[sid] = [];
+        acc[sid].push({
+          id: Number(bg.id),
+          backgroundName: bg.background_name || "",
+          imageUrl: bg.image_url || "",
+          layoutJson: typeof bg.layout_json === "string" ? parseJsonMaybe(bg.layout_json, null) : (bg.layout_json || null),
+          defaultStyleJson: typeof bg.default_style_json === "string" ? parseJsonMaybe(bg.default_style_json, null) : (bg.default_style_json || null),
+          displayConfigJson: typeof bg.display_config_json === "string" ? parseJsonMaybe(bg.display_config_json, null) : (bg.display_config_json || null),
+        });
+        return acc;
+      }, {});
+
+      for (const row of styles) {
+        formattedStyles.push({
+          id: Number(row.id),
+          styleCode: row.style_code,
+          styleName: row.style_name,
+          styleType: row.style_type,
+          companyNameEnabled: Boolean(row.company_name_enabled),
+          description: row.description || "",
+          coverImageUrl: row.cover_image_url || "",
+          backgrounds: bgMap[Number(row.id)] || [],
+        });
+      }
+    }
+
+    return response.json({ success: true, styles: formattedStyles });
+  } catch (error) {
+    console.error("[desktop/ecard-styles] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "取得電子名片樣式失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -18724,6 +18892,317 @@ app.post("/api/external-api/unlock-door", async (request, response) => {
     return response.json({ success: true, data: { result: "TIMEOUT" } });
   }
   return response.status(500).json({ success: false, message: "開鎖指令失敗" });
+});
+
+// ==================== 独立外部接口：SIP 账号状态校验（ECard 前置校验） ====================
+
+// GET /api/external-api/sip-account-status?sipAccount=xxx
+// 返回 { valid: true } 或 { valid: false, reason: "not_found" | "inactive" | "expired" }
+app.get("/api/external-api/sip-account-status", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(
+      `SELECT status, service_expires_at FROM sip_users WHERE username = ? LIMIT 1`,
+      [sipAccount]
+    );
+    if (!su) {
+      return response.json({ success: true, valid: false, reason: "not_found" });
+    }
+    if (su.status !== "active") {
+      return response.json({ success: true, valid: false, reason: "inactive", status: su.status });
+    }
+    if (su.service_expires_at && new Date(su.service_expires_at) < new Date()) {
+      return response.json({ success: true, valid: false, reason: "expired" });
+    }
+    return response.json({ success: true, valid: true });
+  } catch (error) {
+    console.error("[external-api/sip-account-status] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "伺服器錯誤" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ==================== 独立外部接口：ECard（按 SIP 账号认证，不影响现有租户/管理 API） ====================
+
+// GET /api/external-api/ecard — 查询 SIP 账号当前的 ecard 数据
+app.get("/api/external-api/ecard", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [row] = await connection.query(
+      `SELECT ec.ecard_data_json, ec.card_data_json, ec.thumbnail_url, ec.avatar_url, ec.logo_url, ec.access_slug,
+              DATE_FORMAT(COALESCE(ec.valid_from, su.activated_at), '%Y-%m-%d') AS valid_from,
+              DATE_FORMAT(COALESCE(ec.valid_to, su.service_expires_at), '%Y-%m-%d') AS valid_to,
+              ec.status
+       FROM sip_users su
+       LEFT JOIN tenant_ecards ec ON ec.sip_user_id = su.id AND ec.tenant_id = su.tenant_id
+       WHERE su.username = ?`,
+      [sipAccount]
+    );
+    if (!row) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+    return response.json({
+      success: true,
+      data: {
+        ecardDataJson: parseEcardPublicJson(row.ecard_data_json || row.card_data_json),
+        thumbnailUrl: row.thumbnail_url || null,
+        avatarUrl: row.avatar_url || null,
+        logoUrl: row.logo_url || null,
+        accessSlug: row.access_slug || null,
+        validFrom: row.valid_from || null,
+        validTo: row.valid_to || null,
+        status: row.status || null,
+      },
+    });
+  } catch (error) {
+    console.error("[external-api/ecard] get error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "伺服器錯誤" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/external-api/ecard — 按 SIP 账号创建/更新 ecard
+// body: { sipAccount, ecardDataJson, avatarDataUrl?, logoDataUrl?, thumbnailDataUrl?, accessSlug?, enableVideoCall? }
+app.post("/api/external-api/ecard", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.body?.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  const payload = request.body || {};
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [su] = await connection.query(`SELECT id, tenant_id FROM sip_users WHERE username = ?`, [sipAccount]);
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+
+    let avatarUrl = payload.avatarDataUrl || "";
+    if (avatarUrl.startsWith("data:")) avatarUrl = await saveEcardImage(avatarUrl, "avatar.png");
+
+    let logoUrl = payload.logoDataUrl || "";
+    if (logoUrl.startsWith("data:")) logoUrl = await saveEcardImage(logoUrl, "logo.png");
+
+    let thumbnailUrl = payload.thumbnailDataUrl || "";
+    if (thumbnailUrl.startsWith("data:")) thumbnailUrl = await saveEcardImage(thumbnailUrl, "thumbnail.png");
+
+    // access_slug 处理：提供则校验，未提供则自动生成
+    let accessSlug = sanitizeString(String(payload.accessSlug || ""), 32);
+    if (accessSlug) {
+      if (!isValidEcardPublicSlug(accessSlug)) {
+        return response.status(400).json({ success: false, message: "accessSlug 格式無效" });
+      }
+      const [slugOwner] = await connection.query(
+        `SELECT sip_user_id FROM tenant_ecards WHERE access_slug = ? AND sip_user_id != ? LIMIT 1`,
+        [accessSlug, su.id]
+      );
+      if (slugOwner) {
+        return response.status(409).json({ success: false, message: "accessSlug 已被使用" });
+      }
+    } else {
+      const [existing] = await connection.query(
+        `SELECT access_slug FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1`, [su.id]
+      );
+      accessSlug = existing?.access_slug || `ec-${su.id}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    const ecardDataJson = payload.ecardDataJson || {};
+    ecardDataJson.avatarDataUrl = avatarUrl;
+    ecardDataJson.logoDataUrl = logoUrl;
+    const enableVideoCall = payload.enableVideoCall !== false;
+
+    await connection.query(
+      `INSERT INTO tenant_ecards (
+         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call,
+         ecard_data_json, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE
+         avatar_url = VALUES(avatar_url),
+         logo_url = VALUES(logo_url),
+         thumbnail_url = VALUES(thumbnail_url),
+         enable_video_call = VALUES(enable_video_call),
+         ecard_data_json = VALUES(ecard_data_json),
+         updated_at = NOW()`,
+      [
+        su.tenant_id,
+        su.id,
+        accessSlug,
+        avatarUrl || null,
+        logoUrl || null,
+        thumbnailUrl || null,
+        enableVideoCall ? 1 : 0,
+        JSON.stringify(ecardDataJson),
+      ]
+    );
+
+    return response.json({ success: true, message: "電子名片已儲存", accessSlug });
+  } catch (error) {
+    console.error("[external-api/ecard] save error:", error?.message || error);
+    const statusCode = error?.statusCode || 500;
+    return response.status(statusCode).json({ success: false, message: error?.message || "儲存失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/desktop/ecard/download-image — 稳定下载地址：始终输出该账号最新名片图片
+app.get("/api/desktop/ecard/download-image", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query(`SELECT id, tenant_id FROM sip_users WHERE username = ? LIMIT 1`, [sipAccount]);
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+    const [ec] = await connection.query(
+      `SELECT thumbnail_url FROM tenant_ecards WHERE sip_user_id = ? AND tenant_id = ? LIMIT 1`,
+      [su.id, su.tenant_id],
+    );
+    if (!ec || !ec.thumbnail_url) {
+      return response.status(404).json({ success: false, message: "名片圖片尚未生成" });
+    }
+    const imagePath = path.join(ecardImagesDir, path.basename(String(ec.thumbnail_url)));
+    if (!existsSync(imagePath)) {
+      return response.status(404).json({ success: false, message: "名片圖片檔案不存在" });
+    }
+    response.setHeader("Content-Type", "image/png");
+    response.setHeader("Content-Disposition", "attachment; filename=\"ecard.png\"");
+    return response.sendFile(imagePath);
+  } catch (error) {
+    console.error("[desktop/ecard/download-image] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "圖片下載失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/external-api/ecard/generate-image — 服务端生成名片图片（与 cloud 渲染模型一致）
+// body: { sipAccount } → 读取已保存的 ecard 数据 + 模板/背景三份 JSON → 渲染 PNG → 存储并更新 thumbnail_url
+app.post("/api/external-api/ecard/generate-image", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.body?.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [su] = await connection.query(`SELECT id, tenant_id FROM sip_users WHERE username = ? LIMIT 1`, [sipAccount]);
+    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
+
+    const [ec] = await connection.query(
+      `SELECT id, access_slug, avatar_url, logo_url, ecard_data_json, card_data_json
+       FROM tenant_ecards WHERE sip_user_id = ? AND tenant_id = ? LIMIT 1`,
+      [su.id, su.tenant_id],
+    );
+    if (!ec) return response.status(404).json({ success: false, message: "尚未保存名片，無法生成圖片" });
+
+    const ecardDataJson = parseEcardPublicJson(ec.ecard_data_json || ec.card_data_json);
+    const styleId = ecardDataJson.selectedTemplateId ?? ecardDataJson.templateId ?? null;
+    const bgId = ecardDataJson.selectedBackgroundId ?? ecardDataJson.backgroundId ?? null;
+
+    let bgRow = null;
+    let styleRow = null;
+    if (styleId) {
+      const [st] = await connection.query(`SELECT id, company_name_enabled FROM ecard_styles WHERE id = ? LIMIT 1`, [styleId]);
+      styleRow = st || null;
+      if (st) {
+        const bgRows = await connection.query(
+          `SELECT id, style_id, image_url, layout_json, default_style_json, display_config_json
+           FROM ecard_style_backgrounds WHERE style_id = ? ${bgId ? "AND id = ?" : ""}
+           ORDER BY sort_order ASC, id ASC LIMIT 1`,
+          bgId ? [styleId, bgId] : [styleId],
+        );
+        bgRow = bgRows[0] || null;
+        if (!bgRow && bgId) {
+          // 精确背景 ID 失效时回退该样式的第一个背景
+          const fallbackRows = await connection.query(
+            `SELECT id, style_id, image_url, layout_json, default_style_json, display_config_json
+             FROM ecard_style_backgrounds WHERE style_id = ?
+             ORDER BY sort_order ASC, id ASC LIMIT 1`,
+            [styleId],
+          );
+          bgRow = fallbackRows[0] || null;
+        }
+      }
+    }
+    if (!bgRow) {
+      return response.status(404).json({ success: false, message: "名片樣式或背景不存在，無法生成圖片" });
+    }
+
+    // 二维码：编码名片展示链接（与 /api/desktop/ecard 的二维码一致）
+    const ecardAppBaseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+    let qrDataUrl = "";
+    try {
+      qrDataUrl = await QRCode.toDataURL(`${ecardAppBaseUrl}/u/${ec.access_slug}`, {
+        width: 512, margin: 2, errorCorrectionLevel: "M",
+      });
+    } catch (qrError) {
+      console.error("[generate-image] QR generation failed:", qrError?.message || qrError);
+    }
+
+    const { renderEcard } = await import("./ecardRenderer.js");
+
+    const cardData = ecardDataJson.cardData || {};
+    // 兼容旧扁平数据（无 cardData 时从顶层字段取）
+    const mergedCardData = Object.keys(cardData).length > 0 ? cardData : {
+      name: ecardDataJson.fullName || ecardDataJson.name || "",
+      companyZh: ecardDataJson.company || "",
+    };
+
+    const backgroundImagePath = bgRow.image_url
+      ? path.join(ecardImagesDir, path.basename(String(bgRow.image_url)))
+      : null;
+
+    const pngBuffer = await renderEcard({
+      layoutJson: parseJsonMaybe(bgRow.layout_json, {}),
+      defaultStyleJson: parseJsonMaybe(bgRow.default_style_json, {}),
+      displayConfigJson: parseJsonMaybe(bgRow.display_config_json, {}),
+      cardData: mergedCardData,
+      localStyles: ecardDataJson.localStyles || {},
+      localDisplayConfig: ecardDataJson.localDisplayConfig || {},
+      // 相对路径转绝对文件路径（skia 加载需要；data: URL 原样透传）
+      avatarUrl: ec.avatar_url
+        ? (String(ec.avatar_url).startsWith("data:")
+          ? ec.avatar_url
+          : path.join(ecardImagesDir, path.basename(String(ec.avatar_url))))
+        : null,
+      logoUrl: ec.logo_url
+        ? (String(ec.logo_url).startsWith("data:")
+          ? ec.logo_url
+          : path.join(ecardImagesDir, path.basename(String(ec.logo_url))))
+        : null,
+      qrDataUrl,
+      showQrCode: ecardDataJson.showQrCode !== false,
+      companyNameEnabled: styleRow ? Boolean(styleRow.company_name_enabled) : true,
+      backgroundImagePath,
+    });
+
+    const filename = `ecard-${Date.now()}-${randomUUID()}.png`;
+    await writeFile(path.join(ecardImagesDir, filename), pngBuffer);
+    await connection.query(
+      `UPDATE tenant_ecards SET thumbnail_url = ?, updated_at = NOW() WHERE id = ?`,
+      [`/ecard-images/${filename}`, ec.id],
+    );
+
+    return response.json({ success: true, message: "名片圖片已生成", thumbnailUrl: `/ecard-images/${filename}` });
+  } catch (error) {
+    console.error("[external-api/ecard/generate-image] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "名片圖片生成失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 // GET /api/public/releases/check - App 版本检查（公开接口，无需认证）
