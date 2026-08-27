@@ -1335,7 +1335,9 @@ app.post("/api/ai/provider-config", async (request, response) => {
       [sipUserId],
     );
 
-    // API Key：已有可用 Key 则复用（明文不可恢复），否则新建并返回明文
+    // API Key：已有可用 Key 则复用（明文不可恢复），否则新建并返回明文；
+    // regenerateKey=true 时显式轮换：删除该账号全部 Key 后新建（旧 Key 立即失效）
+    const regenerateKey = request.body?.regenerateKey === true;
     const existing = await connection.query(
       `SELECT id FROM ai_api_keys
        WHERE sip_user_id = ? AND enabled = 1 AND (expires_at IS NULL OR expires_at > NOW())
@@ -1343,7 +1345,10 @@ app.post("/api/ai/provider-config", async (request, response) => {
       [sipUserId],
     );
     let apiKey = null;
-    if (existing.length === 0) {
+    if (regenerateKey) {
+      await connection.query(`DELETE FROM ai_api_keys WHERE sip_user_id = ?`, [sipUserId]);
+      apiKey = await createApiKey(sipUserId, "desktop-auto", connection);
+    } else if (existing.length === 0) {
       apiKey = await createApiKey(sipUserId, "desktop-auto", connection);
     }
 
