@@ -117,7 +117,7 @@ import { executeTool } from "./aiTools.js";
 import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey, touchApiKeyLastUsed } from "./aiApiKeyService.js";
 import { chat as aiChatPassthrough, currentModelName } from "./aiModelClient.js";
 import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
-import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
+import { ensureAiAllowed, AiError, incrementUsage } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
 const app = express();
