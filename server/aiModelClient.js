@@ -14,6 +14,10 @@ export function isGloballyEnabled() {
     return AI_BOT_ENABLED;
 }
 
+export function currentModelName() {
+    return AI_MODEL_NAME;
+}
+
 /**
  * Call the AI model chat API.
  * @param {Array<{role: string, content: string}>} messages
@@ -53,8 +57,8 @@ export async function chat(messages, options = {}) {
     const body = {
         model: AI_MODEL_NAME,
         messages: requestMessages,
-        max_tokens: AI_MODEL_MAX_TOKENS,
-        temperature: AI_MODEL_TEMPERATURE,
+        max_tokens: options.maxTokens || AI_MODEL_MAX_TOKENS,
+        temperature: options.temperature !== undefined ? options.temperature : AI_MODEL_TEMPERATURE,
     };
     const tools = Array.isArray(options.tools) ? options.tools : [];
     if (tools.length > 0) {
@@ -109,7 +113,7 @@ export async function chat(messages, options = {}) {
             : [];
         const tokenCount = data.usage?.total_tokens || 0;
 
-        return { ok: true, content, toolCalls, tokenCount };
+        return { ok: true, content, toolCalls, tokenCount, model: AI_MODEL_NAME };
     } catch (error) {
         clearTimeout(timeoutId);
 

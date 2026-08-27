@@ -114,6 +114,8 @@ import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKno
          listKbDocuments, addKbDocument, deleteKbDocument, testKbRetrieval } from "./aiKbService.js";
 import { getAiCapabilities } from "./aiCapabilitiesService.js";
 import { executeTool } from "./aiTools.js";
+import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey, touchApiKeyLastUsed } from "./aiApiKeyService.js";
+import { chat as aiChatPassthrough, currentModelName } from "./aiModelClient.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
@@ -867,6 +869,30 @@ async function requireSipUser(request, response, next) {
   } catch (error) {
     console.error("[requireSipUser] error:", error?.message || error);
     return response.status(500).json({ message: "Auth verification failed." });
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+// AI 助手 v2（只增不改）：个人 API Key 鉴权（OpenAI 兼容端点 /v1/* 用）
+async function requireAiApiKey(request, response, next) {
+  const token = getBearerToken(request);
+  if (!token) return response.status(401).json({ error: { message: "缺少 API Key" } });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const sipUserId = await verifyApiKey(token, connection);
+    if (sipUserId === null) {
+      return response.status(401).json({ error: { message: "API Key 無效或已停用" } });
+    }
+    request.admin = { id: sipUserId };
+    request.aiApiKey = token;
+    touchApiKeyLastUsed(token, connection);
+    next();
+  } catch (error) {
+    console.error("[requireAiApiKey] error:", error?.message || error);
+    return response.status(500).json({ error: { message: "Auth verification failed." } });
   } finally {
     if (connection) connection.release();
   }
@@ -19289,6 +19315,117 @@ app.post("/api/ai/tools/:name", requireSipUser, async (request, response) => {
     console.error("Failed to execute AI tool:", error);
     return response.status(500).json({ ok: false, message: "工具執行失敗" });
   }
+});
+
+// ── AI 助手 v2（只增不改）：个人 API Key 管理 ───────────────────
+
+// POST /api/ai/api-keys — 创建（明文仅返回一次）
+app.post("/api/ai/api-keys", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const name = sanitizeString(String(request.body?.name || ""), 100);
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const key = await createApiKey(sipUserId, name, connection);
+    return response.json({ ok: true, key });
+  } catch (error) {
+    console.error("Failed to create AI api key:", error);
+    return response.status(500).json({ message: "建立 API Key 失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/api-keys — 列表（脱敏）
+app.get("/api/ai/api-keys", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const keys = await listApiKeys(sipUserId, connection);
+    return response.json({ ok: true, keys });
+  } catch (error) {
+    console.error("Failed to list AI api keys:", error);
+    return response.status(500).json({ message: "獲取 API Key 失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/api-keys/:id — 删除
+app.delete("/api/ai/api-keys/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const keyId = parseInt(request.params.id, 10);
+  if (!keyId) return response.status(400).json({ message: "無效的 Key ID" });
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const deleted = await deleteApiKey(keyId, sipUserId, connection);
+    if (!deleted) return response.status(404).json({ message: "API Key 不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete AI api key:", error);
+    return response.status(500).json({ message: "刪除 API Key 失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ── AI 助手 v2（只增不改）：OpenAI 兼容端点（本地AI 以 provider 接入）──
+
+// POST /v1/chat/completions — 无状态转发上游模型（历史由客户端传入）
+app.post("/v1/chat/completions", requireAiApiKey, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const messages = Array.isArray(request.body?.messages) ? request.body.messages : [];
+  const maxTokens = Number(request.body?.max_tokens) > 0 ? Math.min(Number(request.body.max_tokens), 4000) : undefined;
+  const temperature = Number(request.body?.temperature);
+
+  if (messages.length === 0) {
+    return response.status(400).json({ error: { message: "messages 不能為空" } });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+
+    const result = await aiChatPassthrough(messages, maxTokens, temperature);
+
+    if (!result.ok) {
+      const msg = result.message || "AI 模型服務不可用";
+      return response.status(502).json({ error: { message: msg, type: "upstream_error" } });
+    }
+    await incrementUsage(sipUserId, connection);
+
+    return response.json({
+      id: `chatcmpl-${Date.now()}`,
+      object: "chat.completion",
+      created: Math.floor(Date.now() / 1000),
+      model: result.model,
+      choices: [{
+        index: 0,
+        message: { role: "assistant", content: result.content },
+        finish_reason: "stop",
+      }],
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: result.tokenCount || 0 },
+    });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json({ error: { message: error.toJSON().message || "配額不足" } });
+    }
+    console.error("Failed to serve /v1/chat/completions:", error);
+    return response.status(500).json({ error: { message: "服務內部錯誤" } });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /v1/models — 模型列表（当前配置模型）
+app.get("/v1/models", requireAiApiKey, (_request, response) => {
+  return response.json({
+    object: "list",
+    data: [{ id: currentModelName(), object: "model", owned_by: "qrtalkie" }],
+  });
 });
 
 // ── 门禁设备 API ─────────────────────────────────────────────
