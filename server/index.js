@@ -116,6 +116,7 @@ import { getAiCapabilities } from "./aiCapabilitiesService.js";
 import { executeTool } from "./aiTools.js";
 import { createApiKey, listApiKeys, deleteApiKey, verifyApiKey, touchApiKeyLastUsed } from "./aiApiKeyService.js";
 import { chat as aiChatPassthrough, currentModelName } from "./aiModelClient.js";
+import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
@@ -19472,6 +19473,9 @@ app.post("/v1/chat/completions", requireAiApiKey, async (request, response) => {
     connection = await pool.getConnection();
     await ensureAiAllowed(sipUserId, connection);
 
+    // 推理模型多轮回填：客户端传来的助手消息按内容哈希补 reasoning_content
+    await injectReasoning(sipUserId, messages, connection);
+
     const result = await aiChatPassthrough(messages, maxTokens, temperature);
 
     if (!result.ok) {
@@ -19479,6 +19483,15 @@ app.post("/v1/chat/completions", requireAiApiKey, async (request, response) => {
       return response.status(502).json({ error: { message: msg, type: "upstream_error" } });
     }
     await incrementUsage(sipUserId, connection);
+
+    // 推理模型：留存本次回复的 reasoning_content（失败仅降级，不影响回复）
+    if (result.reasoningContent) {
+      try {
+        await saveReasoning(sipUserId, result.content, result.reasoningContent, connection);
+      } catch (error) {
+        console.warn("[aiPassthrough] save reasoning failed:", error?.message || error);
+      }
+    }
 
     return response.json({
       id: `chatcmpl-${Date.now()}`,

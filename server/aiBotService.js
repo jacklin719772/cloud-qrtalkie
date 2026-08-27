@@ -5,6 +5,7 @@ import { chat as aiChat } from "./aiModelClient.js";
 import { ensureAiAllowed, incrementUsage } from "./aiEntitlementService.js";
 import { buildKbInjection, buildWebSearchInjection } from "./aiInjectionService.js";
 import { getEnabledToolDefinitions } from "./aiTools.js";
+import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
 
 const MAX_CONTEXT_MESSAGES = 10;
 const MAX_USER_MESSAGE_LENGTH = 2000;
@@ -127,6 +128,8 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
         { role: "system", content: SYSTEM_PROMPT },
         ...historyRows.map(r => ({ role: r.role, content: r.content })),
     ];
+    // 推理模型多轮回填：历史助手消息按内容哈希补 reasoning_content
+    await injectReasoning(sipUserId, messages, connection);
     // 注入后的用户消息覆盖历史中的原样消息（保证模型看到的是带参考资料的版本）
     if (injectedParts.length > 0) {
         messages.push({ role: "user", content: finalUserContent });
@@ -172,6 +175,15 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
          VALUES (?, 'assistant', ?, 'text', ?, 'completed')`,
         [sessionId, result.content, result.tokenCount]
     );
+
+    // 推理模型：留存本次回复的 reasoning_content（失败仅降级，不影响回复）
+    if (result.reasoningContent) {
+        try {
+            await saveReasoning(sipUserId, result.content, result.reasoningContent, connection);
+        } catch (error) {
+            console.warn("[aiBotService] save reasoning failed:", error?.message || error);
+        }
+    }
 
     await incrementUsage(sipUserId, connection);
 

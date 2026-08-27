@@ -104,6 +104,7 @@ export async function chat(messages, options = {}) {
 
         const message = data.choices[0].message;
         const content = String(message.content || "").trim();
+        const reasoningContent = String(message.reasoning_content || "").trim();
         const toolCalls = Array.isArray(message.tool_calls) && message.tool_calls.length > 0
             ? message.tool_calls.map((tc) => ({
                 id: String(tc.id || ""),
@@ -113,7 +114,7 @@ export async function chat(messages, options = {}) {
             : [];
         const tokenCount = data.usage?.total_tokens || 0;
 
-        return { ok: true, content, toolCalls, tokenCount, model: AI_MODEL_NAME };
+        return { ok: true, content, reasoningContent, toolCalls, tokenCount, model: AI_MODEL_NAME };
     } catch (error) {
         clearTimeout(timeoutId);
 
