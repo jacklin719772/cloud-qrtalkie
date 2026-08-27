@@ -1289,6 +1289,89 @@ app.post("/api/auth/ai-login", async (request, response) => {
   }
 });
 
+// POST /api/ai/provider-config — SIP 账号+密码自认证 → AI 权限校验 →
+// 有权限返回远端 provider 配置（baseUrl/model/apiKey）+ 配额信息。
+// 供本地AI 以 provider 方式接入 SaaS（apiKey 明文仅首次返回；已有可用 Key 则返回 null，客户端用已保存值）
+app.post("/api/ai/provider-config", async (request, response) => {
+  const username = String(request.body.username || "").trim();
+  const password = String(request.body.password || "");
+
+  if (!username || !password) {
+    return response.status(400).json({ ok: false, message: "請輸入帳號與密碼。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const rows = await connection.query(
+      "SELECT id, username, password_hash, status FROM sip_users WHERE username = ? LIMIT 1",
+      [username],
+    );
+    const user = rows[0];
+    if (!user || !(await verifyPassword(password, user.password_hash))) {
+      return response.status(401).json({ ok: false, message: "帳號或密碼錯誤。" });
+    }
+    if (user.status !== "active") {
+      return response.status(403).json({ ok: false, message: "帳號未啟用。" });
+    }
+    const sipUserId = Number(user.id);
+
+    // 权限校验（不扣配额；配额在 /v1/chat/completions 每次调用时扣减）
+    try {
+      await ensureAiAllowed(sipUserId, connection);
+    } catch (error) {
+      if (error instanceof AiError) {
+        return response.status(error.statusCode).json({ ok: false, message: error.message });
+      }
+      throw error;
+    }
+
+    // 配额信息（前端展示用）
+    const [ent] = await connection.query(
+      `SELECT daily_limit, monthly_limit, used_today, used_this_month
+       FROM ai_bot_account_entitlements WHERE sip_user_id = ? LIMIT 1`,
+      [sipUserId],
+    );
+
+    // API Key：已有可用 Key 则复用（明文不可恢复），否则新建并返回明文
+    const existing = await connection.query(
+      `SELECT id FROM ai_api_keys
+       WHERE sip_user_id = ? AND enabled = 1 AND (expires_at IS NULL OR expires_at > NOW())
+       ORDER BY created_at DESC LIMIT 1`,
+      [sipUserId],
+    );
+    let apiKey = null;
+    if (existing.length === 0) {
+      apiKey = await createApiKey(sipUserId, "desktop-auto", connection);
+    }
+
+    const proto = request.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+    const baseUrl = `${proto}://${request.get("host")}`;
+
+    return response.json({
+      ok: true,
+      provider: {
+        name: "SaaS AI",
+        baseUrl,
+        model: currentModelName(),
+        apiKey,
+      },
+      entitlement: ent ? {
+        dailyLimit: Number(ent.daily_limit || 0),
+        monthlyLimit: ent.monthly_limit != null ? Number(ent.monthly_limit) : null,
+        usedToday: Number(ent.used_today || 0),
+        usedThisMonth: Number(ent.used_this_month || 0),
+      } : null,
+    });
+  } catch (error) {
+    console.error("[provider-config] error:", error?.message || error);
+    return response.status(502).json({ ok: false, message: "Service unavailable." });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.post("/api/auth/sip-provision", async (request, response) => {
   const username = String(request.body.username || "").trim().toLowerCase();
   const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
