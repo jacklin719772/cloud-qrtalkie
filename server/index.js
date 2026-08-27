@@ -107,7 +107,11 @@ import {
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
-import { getOrCreateSession, getMessages, sendMessage, deleteSession } from "./aiBotService.js";
+import { getOrCreateSession, getMessages, sendMessage, deleteSession,
+         updateSession, searchSessions, duplicateSession, exportSession } from "./aiBotService.js";
+import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
+import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase,
+         listKbDocuments, addKbDocument, deleteKbDocument, testKbRetrieval } from "./aiKbService.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
@@ -136,6 +140,7 @@ const paymentProofsDir = path.join(projectRoot, "assets/payment-proofs");
 const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icons");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
 const callCenterImagesDir = path.join(projectRoot, "assets/call-center-images");
+const aiAttachmentsDir = path.join(projectRoot, "assets/ai-attachments");
 const ASTERISK_PATHS = (() => { try { return getAsteriskPathConfig(); } catch { return {}; } })();
 const WEBRTC_RUNTIME = (() => { try { return getWebrtcRuntimeConfig(); } catch { return {}; } })();
 const ECARD_CALL_SESSION_TTL_MS = 120000;
@@ -162,6 +167,7 @@ app.use("/payment-proofs", express.static(paymentProofsDir));
 app.use("/payment-method-icons", express.static(paymentMethodIconsDir));
 app.use("/ecard-images", express.static(ecardImagesDir));
 app.use("/call-center-images", express.static(callCenterImagesDir));
+app.use("/ai-attachments", express.static(aiAttachmentsDir));
 
 // 为前端 Vite Proxy 代理提供支持，挂载带 /api 前缀的静态资源路径
 app.use("/api/payment-proofs", express.static(paymentProofsDir));
@@ -18695,6 +18701,8 @@ app.get("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, re
 });
 
 // POST /api/ai/chat/sessions/:id/messages — 发送消息并获取 AI 回复
+// v2（只增不改）：新增可选字段 attachments[]/knowledgeBaseId/webSearch，
+// 旧客户端不传时行为与既有版本完全一致
 app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, response) => {
   const sipUserId = request.admin.id;
   const sessionId = parseInt(request.params.id, 10);
@@ -18703,11 +18711,18 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
   if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
   if (!content) return response.status(400).json({ message: "訊息不能為空" });
 
+  // 可选字段（只增）：全部带默认值，缺失时与旧版等价
+  const options = {
+    attachments: Array.isArray(request.body?.attachments) ? request.body.attachments : [],
+    knowledgeBaseId: Number(request.body?.knowledgeBaseId) > 0 ? Number(request.body.knowledgeBaseId) : null,
+    webSearch: request.body?.webSearch === true,
+  };
+
   let connection;
   try {
     connection = await pool.getConnection();
     await ensureAiAllowed(sipUserId, connection);
-    const result = await sendMessage(sessionId, sipUserId, content, connection);
+    const result = await sendMessage(sessionId, sipUserId, content, connection, options);
 
     if (result.error) {
       const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404
@@ -18773,6 +18788,456 @@ app.delete("/api/ai/chat/sessions/:id", requireSipUser, async (request, response
     }
     console.error("Failed to delete AI session:", error);
     return response.status(500).json({ message: "刪除會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ── AI 助手 v2（只增不改）：会话增强 API ────────────────────────
+// 注：/api/ai/conversations/* 与既有 /api/ai/chat/sessions/* 操作同一张表
+//（ai_bot_sessions），仅新增操作面，不改动既有路由。
+
+// PATCH /api/ai/conversations/:id — 重命名 / 收藏
+app.patch("/api/ai/conversations/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+
+  const title = request.body?.title !== undefined ? sanitizeString(String(request.body.title), 255) : undefined;
+  const isFavorite = request.body?.isFavorite !== undefined ? !!request.body.isFavorite : undefined;
+  if (title === undefined && isFavorite === undefined) {
+    return response.status(400).json({ message: "缺少要更新的欄位" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const updated = await updateSession(sessionId, sipUserId, { title, isFavorite }, connection);
+    if (updated === null) return response.status(404).json({ message: "會話不存在" });
+    return response.json({ ok: true, session: updated });
+  } catch (error) {
+    console.error("Failed to update AI session:", error);
+    return response.status(500).json({ message: "更新會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/conversations/search?q= — 搜索会话（标题 + 消息内容）
+app.get("/api/ai/conversations/search", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const q = sanitizeString(String(request.query.q || ""), 120);
+  if (!q) return response.status(400).json({ message: "缺少搜索關鍵字" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const results = await searchSessions(sipUserId, q, connection);
+    return response.json({ results });
+  } catch (error) {
+    console.error("Failed to search AI sessions:", error);
+    return response.status(500).json({ message: "搜索會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/conversations/:id/duplicate — 复制会话
+app.post("/api/ai/conversations/:id/duplicate", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const duplicated = await duplicateSession(sessionId, sipUserId, connection);
+    if (duplicated === null) return response.status(404).json({ message: "會話不存在" });
+    return response.json({ ok: true, session: duplicated });
+  } catch (error) {
+    console.error("Failed to duplicate AI session:", error);
+    return response.status(500).json({ message: "複製會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/conversations/:id/export — 导出会话文本
+app.get("/api/ai/conversations/:id/export", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const exported = await exportSession(sessionId, sipUserId, connection);
+    if (exported === null) return response.status(404).json({ message: "會話不存在" });
+    return response.json({ ok: true, title: exported.title, text: exported.text });
+  } catch (error) {
+    console.error("Failed to export AI session:", error);
+    return response.status(500).json({ message: "導出會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ── AI 助手 v2（只增不改）：提示词 API ──────────────────────────
+
+// GET /api/ai/prompts — 列表
+app.get("/api/ai/prompts", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const prompts = await listPrompts(sipUserId, connection);
+    return response.json({ prompts });
+  } catch (error) {
+    console.error("Failed to list AI prompts:", error);
+    return response.status(500).json({ message: "獲取提示詞失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/prompts — 新建
+app.post("/api/ai/prompts", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const title = sanitizeString(String(request.body?.title || ""), 100).trim();
+  const content = sanitizeString(String(request.body?.content || ""), 20000).trim();
+  if (!title) return response.status(400).json({ message: "提示詞標題不能為空" });
+  if (!content) return response.status(400).json({ message: "提示詞內容不能為空" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const prompt = await createPrompt(sipUserId, {
+      title,
+      content,
+      category: sanitizeString(String(request.body?.category || ""), 50),
+      shortcut: sanitizeString(String(request.body?.shortcut || ""), 50),
+    }, connection);
+    return response.json({ ok: true, prompt });
+  } catch (error) {
+    console.error("Failed to create AI prompt:", error);
+    return response.status(500).json({ message: "建立提示詞失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// PUT /api/ai/prompts/:id — 更新
+app.put("/api/ai/prompts/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const promptId = parseInt(request.params.id, 10);
+  if (!promptId) return response.status(400).json({ message: "無效的提示詞 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const prompt = await updatePrompt(promptId, sipUserId, {
+      title: request.body?.title !== undefined ? sanitizeString(String(request.body.title), 100) : undefined,
+      content: request.body?.content !== undefined ? sanitizeString(String(request.body.content), 20000) : undefined,
+      category: request.body?.category !== undefined ? sanitizeString(String(request.body.category), 50) : undefined,
+      shortcut: request.body?.shortcut !== undefined ? sanitizeString(String(request.body.shortcut), 50) : undefined,
+    }, connection);
+    if (prompt === null) return response.status(404).json({ message: "提示詞不存在" });
+    return response.json({ ok: true, prompt });
+  } catch (error) {
+    console.error("Failed to update AI prompt:", error);
+    return response.status(500).json({ message: "更新提示詞失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/prompts/:id — 删除
+app.delete("/api/ai/prompts/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const promptId = parseInt(request.params.id, 10);
+  if (!promptId) return response.status(400).json({ message: "無效的提示詞 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const deleted = await deletePrompt(promptId, sipUserId, connection);
+    if (!deleted) return response.status(404).json({ message: "提示詞不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete AI prompt:", error);
+    return response.status(500).json({ message: "刪除提示詞失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/prompts/:id/use — 使用次数 +1
+app.post("/api/ai/prompts/:id/use", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const promptId = parseInt(request.params.id, 10);
+  if (!promptId) return response.status(400).json({ message: "無效的提示詞 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const touched = await touchPromptUsage(promptId, sipUserId, connection);
+    if (!touched) return response.status(404).json({ message: "提示詞不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to touch AI prompt usage:", error);
+    return response.status(500).json({ message: "更新使用次數失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ── AI 助手 v2（只增不改）：附件上传 API ────────────────────────
+// 与既有上传约定一致：base64 JSON 上送，本地 assets 目录存储（当前部署无对象存储）
+
+const AI_ATTACHMENT_MAX_BYTES = 8 * 1024 * 1024; // 8MB（base64 后约 10.7MB，适配 12mb JSON 限制）
+const AI_ATTACHMENT_EXT_WHITELIST = [
+  "txt", "md", "markdown", "csv", "json", "log", "xml", "html", "htm",
+  "pdf", "docx", "xlsx", "pptx", "rtf", "png", "jpg", "jpeg", "webp", "bmp",
+];
+
+// POST /api/ai/uploads — 上传附件（文件/图片），返回 storage key 与元数据
+app.post("/api/ai/uploads", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const filename = sanitizeString(String(request.body?.filename || ""), 255);
+  const dataUrl = String(request.body?.data || "");
+
+  const match = dataUrl.match(/^data:([A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return response.status(400).json({ message: "無效的上傳資料格式" });
+  if (!filename) return response.status(400).json({ message: "缺少檔案名稱" });
+
+  const mimeType = match[1].toLowerCase();
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+  if (!AI_ATTACHMENT_EXT_WHITELIST.includes(ext)) {
+    return response.status(400).json({ message: "不支援的檔案類型" });
+  }
+
+  const buffer = Buffer.from(match[2], "base64");
+  if (buffer.length === 0 || buffer.length > AI_ATTACHMENT_MAX_BYTES) {
+    return response.status(400).json({ message: "檔案不可超過 8MB" });
+  }
+
+  try {
+    const userDir = path.join(aiAttachmentsDir, String(sipUserId));
+    await mkdir(userDir, { recursive: true });
+    const storedName = `att-${Date.now()}-${randomUUID()}.${ext}`;
+    await writeFile(path.join(userDir, storedName), buffer);
+
+    const kind = mimeType.startsWith("image/") ? "image" : "file";
+    return response.json({
+      ok: true,
+      key: `/ai-attachments/${sipUserId}/${storedName}`,
+      filename,
+      size: buffer.length,
+      kind,
+    });
+  } catch (error) {
+    console.error("Failed to save AI attachment:", error);
+    return response.status(500).json({ message: "上傳失敗" });
+  }
+});
+
+// ── AI 助手 v2（只增不改）：知识库 API ──────────────────────────
+// 文档解析/嵌入由阶段 C 独立服务完成；当前文档上传后保持 pending，test 返回空结果。
+
+const AI_KB_DOC_EXT_WHITELIST = ["txt", "md", "markdown", "csv", "json", "log", "xml", "html", "htm",
+  "pdf", "docx", "xlsx", "pptx", "rtf"];
+const aiKbDocsDir = path.join(projectRoot, "assets/ai-kb-docs");
+
+// POST /api/ai/knowledge-bases — 创建
+app.post("/api/ai/knowledge-bases", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const name = sanitizeString(String(request.body?.name || ""), 100).trim();
+  if (!name) return response.status(400).json({ message: "知識庫名稱不能為空" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const kb = await createKnowledgeBase(sipUserId, {
+      name,
+      description: sanitizeString(String(request.body?.description || ""), 500),
+    }, connection);
+    return response.json({ ok: true, knowledgeBase: kb });
+  } catch (error) {
+    console.error("Failed to create AI knowledge base:", error);
+    return response.status(500).json({ message: "建立知識庫失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/knowledge-bases — 列表
+app.get("/api/ai/knowledge-bases", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const items = await listKnowledgeBases(sipUserId, connection);
+    return response.json({ knowledgeBases: items });
+  } catch (error) {
+    console.error("Failed to list AI knowledge bases:", error);
+    return response.status(500).json({ message: "獲取知識庫失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// PATCH /api/ai/knowledge-bases/:id — 重命名/描述
+app.patch("/api/ai/knowledge-bases/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  if (!kbId) return response.status(400).json({ message: "無效的知識庫 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const kb = await updateKnowledgeBase(kbId, sipUserId, {
+      name: request.body?.name !== undefined ? sanitizeString(String(request.body.name), 100) : undefined,
+      description: request.body?.description !== undefined ? sanitizeString(String(request.body.description), 500) : undefined,
+    }, connection);
+    if (kb === null) return response.status(404).json({ message: "知識庫不存在" });
+    return response.json({ ok: true, knowledgeBase: kb });
+  } catch (error) {
+    console.error("Failed to update AI knowledge base:", error);
+    return response.status(500).json({ message: "更新知識庫失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/knowledge-bases/:id — 删除（级联文档/块）
+app.delete("/api/ai/knowledge-bases/:id", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  if (!kbId) return response.status(400).json({ message: "無效的知識庫 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const deleted = await deleteKnowledgeBase(kbId, sipUserId, connection);
+    if (!deleted) return response.status(404).json({ message: "知識庫不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete AI knowledge base:", error);
+    return response.status(500).json({ message: "刪除知識庫失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/knowledge-bases/:id/documents — 文档上传（base64，与附件上传同约定）
+app.post("/api/ai/knowledge-bases/:id/documents", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  if (!kbId) return response.status(400).json({ message: "無效的知識庫 ID" });
+
+  const filename = sanitizeString(String(request.body?.filename || ""), 255);
+  const dataUrl = String(request.body?.data || "");
+  const match = dataUrl.match(/^data:([A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return response.status(400).json({ message: "無效的上傳資料格式" });
+  if (!filename) return response.status(400).json({ message: "缺少檔案名稱" });
+
+  const ext = (filename.split(".").pop() || "").toLowerCase();
+  if (!AI_KB_DOC_EXT_WHITELIST.includes(ext)) {
+    return response.status(400).json({ message: "不支援的檔案類型" });
+  }
+
+  const buffer = Buffer.from(match[2], "base64");
+  if (buffer.length === 0 || buffer.length > AI_ATTACHMENT_MAX_BYTES) {
+    return response.status(400).json({ message: "檔案不可超過 8MB" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    // 先校验归属，再落文件
+    const [kb] = await connection.query(
+      `SELECT id FROM ai_knowledge_bases WHERE id = ? AND sip_user_id = ? LIMIT 1`,
+      [kbId, sipUserId]
+    );
+    if (!kb) return response.status(404).json({ message: "知識庫不存在" });
+
+    const kbDir = path.join(aiKbDocsDir, String(kbId));
+    await mkdir(kbDir, { recursive: true });
+    const storedName = `doc-${Date.now()}-${randomUUID()}.${ext}`;
+    await writeFile(path.join(kbDir, storedName), buffer);
+
+    const doc = await addKbDocument(kbId, sipUserId, {
+      filename,
+      storageKey: `/ai-kb-docs/${kbId}/${storedName}`,
+      fileSize: buffer.length,
+    }, connection);
+    return response.json({ ok: true, document: doc });
+  } catch (error) {
+    console.error("Failed to add AI KB document:", error);
+    return response.status(500).json({ message: "上傳文檔失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/ai/knowledge-bases/:id/documents — 文档列表（状态/分块数）
+app.get("/api/ai/knowledge-bases/:id/documents", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  if (!kbId) return response.status(400).json({ message: "無效的知識庫 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const documents = await listKbDocuments(kbId, sipUserId, connection);
+    if (documents === null) return response.status(404).json({ message: "知識庫不存在" });
+    return response.json({ documents });
+  } catch (error) {
+    console.error("Failed to list AI KB documents:", error);
+    return response.status(500).json({ message: "獲取文檔失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// DELETE /api/ai/knowledge-bases/:id/documents/:docId — 删除文档
+app.delete("/api/ai/knowledge-bases/:id/documents/:docId", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  const docId = parseInt(request.params.docId, 10);
+  if (!kbId || !docId) return response.status(400).json({ message: "無效的 ID" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const deleted = await deleteKbDocument(docId, kbId, sipUserId, connection);
+    if (!deleted) return response.status(404).json({ message: "文檔不存在" });
+    return response.json({ ok: true });
+  } catch (error) {
+    console.error("Failed to delete AI KB document:", error);
+    return response.status(500).json({ message: "刪除文檔失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/knowledge-bases/:id/test — RAG 测试检索（阶段 C 就位前返回空结果）
+app.post("/api/ai/knowledge-bases/:id/test", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const kbId = parseInt(request.params.id, 10);
+  const query = sanitizeString(String(request.body?.query || ""), 2000).trim();
+  if (!kbId) return response.status(400).json({ message: "無效的知識庫 ID" });
+  if (!query) return response.status(400).json({ message: "查詢不能為空" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const results = await testKbRetrieval(kbId, sipUserId, query, connection);
+    if (results === null) return response.status(404).json({ message: "知識庫不存在" });
+    return response.json({ ok: true, results });
+  } catch (error) {
+    console.error("Failed to test AI KB retrieval:", error);
+    return response.status(500).json({ message: "檢索失敗" });
   } finally {
     if (connection) connection.release();
   }
