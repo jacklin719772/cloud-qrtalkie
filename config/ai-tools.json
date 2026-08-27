@@ -1,0 +1,8 @@
+{
+  "_comment": "AI 助手 v2 工具启用清单。enabled: 启用的工具名；tools: 各工具参数。能力接口 /api/ai/capabilities 据此返回可用性。",
+  "enabled": ["web_search"],
+  "tools": {
+    "web_search": { "maxResults": 5 },
+    "rag_search": { "enabled": false, "maxResults": 4, "minScore": 0.5 }
+  }
+}

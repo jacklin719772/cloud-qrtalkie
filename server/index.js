@@ -112,6 +112,7 @@ import { getOrCreateSession, getMessages, sendMessage, deleteSession,
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
 import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase,
          listKbDocuments, addKbDocument, deleteKbDocument, testKbRetrieval } from "./aiKbService.js";
+import { getAiCapabilities } from "./aiCapabilitiesService.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
@@ -19240,6 +19241,20 @@ app.post("/api/ai/knowledge-bases/:id/test", requireSipUser, async (request, res
     return response.status(500).json({ message: "檢索失敗" });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// ── AI 助手 v2（只增不改）：能力探测 API ────────────────────────
+// 前端依据 capabilities 决定联网搜索/RAG/工具等功能的可用性与 UI 展示
+
+// GET /api/ai/capabilities — 服务端 AI 助手能力清单
+app.get("/api/ai/capabilities", requireSipUser, async (_request, response) => {
+  try {
+    const capabilities = await getAiCapabilities();
+    return response.json({ ok: true, capabilities });
+  } catch (error) {
+    console.error("Failed to get AI capabilities:", error);
+    return response.status(500).json({ message: "獲取能力清單失敗" });
   }
 });
 

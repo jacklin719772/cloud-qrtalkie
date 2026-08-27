@@ -5,36 +5,14 @@
 // 失败/超时/未配置 → 返回空结果（调用方降级为普通对话），绝不抛出。
 
 import "./loadEnv.js";
-import fs from "node:fs";
-import path from "node:path";
 import express from "express";
-import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, "..");
+import { loadSearchConfig } from "./aiSearchConfig.js";
 
 const PORT = Number(process.env.AI_SEARCH_PORT || 3006);
 const HOST = process.env.AI_SEARCH_HOST || "127.0.0.1";
 const DEFAULT_TIMEOUT_MS = 8000;
 const MAX_RESULTS = 10;
-
-// ── 配置加载 ───────────────────────────────────────────────────
-function loadConfig() {
-  const filePath = path.join(rootDir, "config", "ai-search.json");
-  try {
-    if (!fs.existsSync(filePath)) return { active: "none", timeoutMs: DEFAULT_TIMEOUT_MS, providers: {} };
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf8"));
-    return {
-      active: String(raw.active || "none"),
-      timeoutMs: Number(raw.timeoutMs) > 0 ? Number(raw.timeoutMs) : DEFAULT_TIMEOUT_MS,
-      providers: raw.providers && typeof raw.providers === "object" ? raw.providers : {},
-    };
-  } catch (error) {
-    console.error("[aiWebSearchService] config load failed:", error?.message || error);
-    return { active: "none", timeoutMs: DEFAULT_TIMEOUT_MS, providers: {} };
-  }
-}
 
 // ── 模板渲染（{{query}} / {{count}}，深度遍历对象与字符串）─────────
 function renderTemplate(value, context) {
@@ -102,7 +80,7 @@ function mapResults(provider, data) {
 
 // ── 单次搜索 ───────────────────────────────────────────────────
 async function doSearch(providerId, query, count) {
-  const config = loadConfig();
+  const config = loadSearchConfig();
   const provider = config.providers[providerId];
   if (!provider) return [];
 
@@ -163,7 +141,7 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_request, response) => {
-  const config = loadConfig();
+  const config = loadSearchConfig();
   response.json({ ok: true, active: config.active });
 });
 
@@ -172,7 +150,7 @@ app.post("/search", async (request, response) => {
   const count = Math.min(Math.max(Number(request.body?.count) || 5, 1), 10);
   if (!query) return response.status(400).json({ results: [] });
 
-  const config = loadConfig();
+  const config = loadSearchConfig();
   const providerId = config.active;
   if (providerId === "none" || !providerId) {
     return response.json({ results: [] }); // 未配置 → 空结果降级
