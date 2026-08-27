@@ -4,6 +4,7 @@
 import { chat as aiChat } from "./aiModelClient.js";
 import { ensureAiAllowed, incrementUsage } from "./aiEntitlementService.js";
 import { buildKbInjection, buildWebSearchInjection } from "./aiInjectionService.js";
+import { getEnabledToolDefinitions } from "./aiTools.js";
 
 const MAX_CONTEXT_MESSAGES = 10;
 const MAX_USER_MESSAGE_LENGTH = 2000;
@@ -131,8 +132,22 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
         messages.push({ role: "user", content: finalUserContent });
     }
 
-    // Call AI
-    const result = await aiChat(messages);
+    // Call AI（v2：可选 tools 循环——模型返回 tool_calls 时不落库回复，交由前端执行后回传）
+    const requestedTools = Array.isArray(options?.tools) ? options.tools.map(String) : [];
+    let toolDefs = [];
+    if (requestedTools.length > 0) {
+        try {
+            const enabled = await getEnabledToolDefinitions();
+            const reqSet = new Set(requestedTools);
+            toolDefs = enabled.filter((t) => reqSet.has(t.function.name));
+        } catch (error) {
+            console.warn("[aiBotService] tool definitions failed, degraded:", error?.message || error);
+        }
+    }
+    const result = await aiChat(messages, {
+        tools: toolDefs.length > 0 ? toolDefs : undefined,
+        toolResults: Array.isArray(options?.toolResults) ? options.toolResults : [],
+    });
 
     if (!result.ok) {
         await connection.query(
@@ -144,6 +159,11 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
             [sessionId, sessionId]
         );
         return { error: result.error, message: result.message };
+    }
+
+    // 模型请求工具：返回 tool_calls（不落库回复、不计配额，等前端回传结果后完成本轮）
+    if (result.toolCalls && result.toolCalls.length > 0) {
+        return { toolCalls: result.toolCalls };
     }
 
     // Save AI reply

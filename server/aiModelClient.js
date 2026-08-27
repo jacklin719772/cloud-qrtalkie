@@ -17,19 +17,51 @@ export function isGloballyEnabled() {
 /**
  * Call the AI model chat API.
  * @param {Array<{role: string, content: string}>} messages
- * @returns {Promise<{ok: boolean, content?: string, tokenCount?: number, error?: string, message?: string}>}
+ * @param {object} options - 可选：{ tools?: Array, toolResults?: Array<{toolCall, resultText}> }
+ *   tools: OpenAI function schema（启用 function calling）
+ *   toolResults: 前端工具执行结果（组装 assistant tool_calls + tool 角色消息）
+ * @returns {Promise<{ok: boolean, content?: string, toolCalls?: Array, tokenCount?: number, error?: string, message?: string}>}
  */
-export async function chat(messages) {
+export async function chat(messages, options = {}) {
     if (!Array.isArray(messages) || messages.length === 0) {
         return { ok: false, error: "AI_INVALID_INPUT", message: "訊息列表不能為空" };
     }
 
-    const body = JSON.stringify({
+    // 工具结果回填：按 OpenAI 循环格式组装消息（additive：无则跳过）
+    const requestMessages = [...messages];
+    const toolResults = Array.isArray(options.toolResults) ? options.toolResults : [];
+    toolResults.forEach((tr, i) => {
+        const tc = tr?.toolCall;
+        if (!tc) return;
+        const callId = String(tc.id || `call_${i}`);
+        requestMessages.push({
+            role: "assistant",
+            content: null,
+            tool_calls: [{
+                id: callId,
+                type: "function",
+                function: { name: String(tc.name || ""), arguments: String(tc.arguments || "{}") },
+            }],
+        });
+        requestMessages.push({
+            role: "tool",
+            tool_call_id: callId,
+            content: String(tr.resultText || ""),
+        });
+    });
+
+    const body = {
         model: AI_MODEL_NAME,
-        messages: messages,
+        messages: requestMessages,
         max_tokens: AI_MODEL_MAX_TOKENS,
         temperature: AI_MODEL_TEMPERATURE,
-    });
+    };
+    const tools = Array.isArray(options.tools) ? options.tools : [];
+    if (tools.length > 0) {
+        body.tools = tools;
+        body.tool_choice = "auto";
+    }
+    const bodyString = JSON.stringify(body);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), AI_MODEL_TIMEOUT_MS);
@@ -41,7 +73,7 @@ export async function chat(messages) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${AI_MODEL_API_KEY}`,
             },
-            body: body,
+            body: bodyString,
             signal: controller.signal,
         });
 
@@ -66,10 +98,18 @@ export async function chat(messages) {
             return { ok: false, error: "AI_MODEL_ERROR", message: "AI 模型返回格式異常" };
         }
 
-        const content = String(data.choices[0].message.content || "").trim();
+        const message = data.choices[0].message;
+        const content = String(message.content || "").trim();
+        const toolCalls = Array.isArray(message.tool_calls) && message.tool_calls.length > 0
+            ? message.tool_calls.map((tc) => ({
+                id: String(tc.id || ""),
+                name: String(tc.function?.name || ""),
+                arguments: String(tc.function?.arguments || "{}"),
+            }))
+            : [];
         const tokenCount = data.usage?.total_tokens || 0;
 
-        return { ok: true, content, tokenCount };
+        return { ok: true, content, toolCalls, tokenCount };
     } catch (error) {
         clearTimeout(timeoutId);
 

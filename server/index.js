@@ -113,6 +113,7 @@ import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage
 import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase,
          listKbDocuments, addKbDocument, deleteKbDocument, testKbRetrieval } from "./aiKbService.js";
 import { getAiCapabilities } from "./aiCapabilitiesService.js";
+import { executeTool } from "./aiTools.js";
 import { ensureAiAllowed, AiError } from "./aiEntitlementService.js";
 import deviceMqttService from "./deviceMqttService.js";
 
@@ -18717,6 +18718,8 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
     attachments: Array.isArray(request.body?.attachments) ? request.body.attachments : [],
     knowledgeBaseId: Number(request.body?.knowledgeBaseId) > 0 ? Number(request.body.knowledgeBaseId) : null,
     webSearch: request.body?.webSearch === true,
+    tools: Array.isArray(request.body?.tools) ? request.body.tools : [],
+    toolResults: Array.isArray(request.body?.toolResults) ? request.body.toolResults.slice(0, 10) : [],
   };
 
   let connection;
@@ -18729,6 +18732,11 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
       const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404
         : result.error === "AI_EMPTY_MESSAGE" ? 400 : 500;
       return response.status(statusCode).json({ ok: false, error: result.error, message: result.message });
+    }
+
+    // v2：模型请求工具 → 返回 tool_calls（前端执行后以 toolResults 回传完成本轮）
+    if (Array.isArray(result.toolCalls) && result.toolCalls.length > 0) {
+      return response.json({ ok: true, toolCalls: result.toolCalls });
     }
 
     return response.json({ ok: true, message: result.message });
@@ -19255,6 +19263,31 @@ app.get("/api/ai/capabilities", requireSipUser, async (_request, response) => {
   } catch (error) {
     console.error("Failed to get AI capabilities:", error);
     return response.status(500).json({ message: "獲取能力清單失敗" });
+  }
+});
+
+// ── AI 助手 v2（只增不改）：tools 执行 API ──────────────────────
+
+// POST /api/ai/tools/:name — 前端执行工具（能力探测 gate + 服务端校验）
+app.post("/api/ai/tools/:name", requireSipUser, async (request, response) => {
+  const name = String(request.params.name || "").trim();
+  // 参数两种形态兼容：{ arguments: {...} } 或直接 {...}
+  const args = request.body?.arguments !== undefined ? request.body.arguments : request.body;
+
+  try {
+    const caps = await getAiCapabilities();
+    const tool = caps.tools.find((t) => t.name === name);
+    if (!tool || !tool.enabled) {
+      return response.status(403).json({ ok: false, message: "工具不可用" });
+    }
+    const result = await executeTool(name, args);
+    if (result.error) {
+      return response.status(400).json({ ok: false, message: result.error });
+    }
+    return response.json({ ok: true, ...result });
+  } catch (error) {
+    console.error("Failed to execute AI tool:", error);
+    return response.status(500).json({ ok: false, message: "工具執行失敗" });
   }
 });
 
