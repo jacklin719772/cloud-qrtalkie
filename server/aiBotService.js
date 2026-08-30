@@ -12,6 +12,21 @@ const MAX_USER_MESSAGE_LENGTH = 2000;
 
 const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手。你可以回答各類問題，對 QRTalkie 相關問題（賬號設定、SIP 註冊、推送通知、閱後即焚、環境檢測、許可權設定等）尤為專業。請用簡潔友好的中文回答。`;
 
+// 会话列表（只增不改：AI 助手 v2 会话抽屉用；按最近更新倒序）
+export async function listSessions(sipUserId, connection) {
+    const rows = await connection.query(
+        `SELECT id, title, status, created_at, updated_at
+         FROM ai_bot_sessions
+         WHERE owner_sip_user_id = ? AND status = 'active'
+         ORDER BY updated_at DESC`,
+        [sipUserId]
+    );
+    return rows.map((s) => ({
+        id: Number(s.id), title: s.title, status: s.status,
+        created_at: s.created_at, updated_at: s.updated_at
+    }));
+}
+
 export async function getOrCreateSession(sipUserId, connection) {
     const rows = await connection.query(
         `SELECT id, title, status, created_at, updated_at

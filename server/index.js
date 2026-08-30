@@ -107,7 +107,7 @@ import {
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
-import { getOrCreateSession, getMessages, sendMessage, deleteSession,
+import { listSessions, getOrCreateSession, getMessages, sendMessage, deleteSession,
          updateSession, searchSessions, duplicateSession, exportSession } from "./aiBotService.js";
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
 import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase,
@@ -18765,6 +18765,22 @@ app.get("/api/chatroom/policies", async (request, response) => {
 });
 
 // ── AI Chat Bot API ──────────────────────────────────────────────
+
+// GET /api/ai/chat/sessions — 会话列表（v2 会话抽屉；按最近更新倒序）
+app.get("/api/ai/chat/sessions", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const sessions = await listSessions(sipUserId, connection);
+    return response.json({ ok: true, sessions });
+  } catch (error) {
+    console.error("Failed to list AI sessions:", error);
+    return response.status(500).json({ message: "獲取會話列表失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
 
 // POST /api/ai/chat/session — 创建或获取默认 AI 会话
 app.post("/api/ai/chat/session", requireSipUser, async (request, response) => {
