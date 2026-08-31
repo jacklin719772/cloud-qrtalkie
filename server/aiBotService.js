@@ -4,7 +4,7 @@
 import { chat as aiChat } from "./aiModelClient.js";
 import { ensureAiAllowed, incrementUsage } from "./aiEntitlementService.js";
 import { buildKbInjection, buildWebSearchInjection } from "./aiInjectionService.js";
-import { getEnabledToolDefinitions } from "./aiTools.js";
+import { getEnabledToolDefinitions, executeTool } from "./aiTools.js";
 import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
 
 const MAX_CONTEXT_MESSAGES = 10;
@@ -118,14 +118,7 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
             console.warn("[aiBotService] KB injection failed, degraded:", error?.message || error);
         }
     }
-    if (options?.webSearch === true) {
-        try {
-            const wsCtx = await buildWebSearchInjection(trimmed, connection);
-            if (wsCtx) injectedParts.push(wsCtx);
-        } catch (error) {
-            console.warn("[aiBotService] web search injection failed, degraded:", error?.message || error);
-        }
-    }
+    // webSearch 走工具路径（模型自主调用 web_search 工具），不再静默注入
     if (injectedParts.length > 0) {
         finalUserContent = `${injectedParts.join("\n\n")}\n\n以上是可能相關的參考資料，僅供參考：如與用戶問題無關請忽略，直接按用戶要求回答；如相關請參考並標註來源。\n\n[用戶問題]\n${trimmed}`;
     }
@@ -152,6 +145,10 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
 
     // Call AI（v2：可选 tools 循环——模型返回 tool_calls 时不落库回复，交由前端执行后回传）
     const requestedTools = Array.isArray(options?.tools) ? options.tools.map(String) : [];
+    // webSearch 开启时自动下发 web_search 工具定义（模型自主决定是否检索）
+    if (options?.webSearch === true && !requestedTools.includes("web_search")) {
+        requestedTools.push("web_search");
+    }
     let toolDefs = [];
     if (requestedTools.length > 0) {
         try {
@@ -162,11 +159,12 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
             console.warn("[aiBotService] tool definitions failed, degraded:", error?.message || error);
         }
     }
-    const result = await aiChat(messages, {
+
+    // 服务端 tools 循环：模型请求工具 → 执行 → 回填 → 继续，最多 3 轮
+    let result = await aiChat(messages, {
         tools: toolDefs.length > 0 ? toolDefs : undefined,
         toolResults: Array.isArray(options?.toolResults) ? options.toolResults : [],
     });
-
     if (!result.ok) {
         await connection.query(
             `UPDATE ai_bot_messages SET status = 'failed'
@@ -179,7 +177,41 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
         return { error: result.error, message: result.message };
     }
 
-    // 模型请求工具：返回 tool_calls（不落库回复、不计配额，等前端回传结果后完成本轮）
+    let toolLoopRounds = 0;
+    while (result.toolCalls && result.toolCalls.length > 0 && toolLoopRounds < 3) {
+        toolLoopRounds += 1;
+        console.log(`[aiBotService] model requested ${result.toolCalls.length} tool(s), round ${toolLoopRounds}`);
+        // 组装 assistant tool_calls 消息
+        const toolCallsMsg = {
+            role: "assistant",
+            content: null,
+            tool_calls: result.toolCalls.map((tc) => ({
+                id: String(tc.id || `call_${toolLoopRounds}_${Math.random().toString(36).slice(2)}`),
+                type: "function",
+                function: { name: String(tc.name || ""), arguments: String(tc.arguments || "{}") },
+            })),
+        };
+        messages.push(toolCallsMsg);
+        // 逐个执行工具
+        for (const tc of result.toolCalls) {
+            let args = {};
+            try { args = JSON.parse(String(tc.arguments || "{}")); } catch (_) {}
+            const execResult = await executeTool(String(tc.name || ""), args);
+            messages.push({
+                role: "tool",
+                tool_call_id: toolCallsMsg.tool_calls.find((c) => c.function.name === String(tc.name || ""))?.id || "",
+                content: typeof execResult === "string" ? execResult : JSON.stringify(execResult),
+            });
+        }
+        result = await aiChat(messages, {
+            tools: toolDefs.length > 0 ? toolDefs : undefined,
+        });
+        if (!result.ok) {
+            return { error: result.error, message: result.message };
+        }
+    }
+
+    // 模型请求工具但前端仍需回传时（仅在客户端显式传 tools 且服务端未配置执行时兜底）
     if (result.toolCalls && result.toolCalls.length > 0) {
         return { toolCalls: result.toolCalls };
     }
