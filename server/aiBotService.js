@@ -10,7 +10,8 @@ import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
 const MAX_CONTEXT_MESSAGES = 10;
 const MAX_USER_MESSAGE_LENGTH = 2000;
 
-const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手，一位知识广博、乐于助人的通用智能助手。你可以回答各种领域的問題（科技、學習、生活、編程、創作等），不局限於 QRTalkie 相關內容；同時對 QRTalkie 相關問題（賬號設定、SIP 註冊、推送通知、閱後即焚、環境檢測、許可權設定等）尤為專業。請用簡潔友好的中文回答。`;
+const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手，一位知识广博、乐于助人的通用智能助手。你可以回答各种领域的問題（科技、學習、生活、編程、創作等），不局限於 QRTalkie 相關內容；同時對 QRTalkie 相關問題（賬號設定、SIP 註冊、推送通知、閱後即焚、環境檢測、許可權設定等）尤為專業。請用簡潔友好的中文回答。
+你配備了聯網搜索工具（web_search）：當用戶詢問需要實時信息的話題（新聞、天氣、股價、賽事、最新動態、事實核查等）時，必須先調用 web_search 搜索獲取最新結果，再基於結果回答，不要聲稱自己無法聯網。`;
 
 // 会话列表（只增不改：AI 助手 v2 会话抽屉用；按最近更新倒序）
 export async function listSessions(sipUserId, connection) {
@@ -25,6 +26,21 @@ export async function listSessions(sipUserId, connection) {
         id: Number(s.id), title: s.title, status: s.status,
         created_at: s.created_at, updated_at: s.updated_at
     }));
+}
+
+// v2（只增）：跨端共享——桌面端"新建会话"创建真正的独立会话（可选标题）
+export async function createSession(sipUserId, title, connection) {
+    const t = String(title || "").trim().slice(0, 255);
+    const result = await connection.query(
+        `INSERT INTO ai_bot_sessions (owner_sip_user_id, title, status)
+         VALUES (?, ?, 'active')`,
+        [sipUserId, t.length > 0 ? t : 'AI 助手']
+    );
+    const [row] = await connection.query(
+        `SELECT id, title, status, created_at, updated_at FROM ai_bot_sessions WHERE id = ?`,
+        [Number(result.insertId)]
+    );
+    return { id: Number(row.id), title: row.title, status: row.status, created_at: row.created_at, updated_at: row.updated_at };
 }
 
 export async function getOrCreateSession(sipUserId, connection) {
@@ -68,6 +84,126 @@ export async function getMessages(sessionId, sipUserId, connection) {
         content: r.content, message_type: r.message_type,
         token_count: Number(r.token_count || 0), status: r.status, created_at: r.created_at
     }));
+}
+
+// ── 共用助手（sendMessage 与 regenerateLast 复用；只增不改） ──
+
+// 上下文组装：系统提示词 + 最近历史（带工具的请求跳过 reasoning 回填，见自证循环说明）
+async function buildContextMessages(sipUserId, sessionId, connection, options) {
+    const historyRows = await connection.query(
+        `SELECT role, content FROM ai_bot_messages
+         WHERE session_id = ? AND status = 'completed' AND message_type = 'text'
+         ORDER BY created_at DESC LIMIT ?`,
+        [sessionId, MAX_CONTEXT_MESSAGES]
+    );
+    historyRows.reverse();
+
+    const messages = [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...historyRows.map(r => ({ role: r.role, content: r.content })),
+    ];
+    // 带工具时跳过回填：留存的思维链可能包含"无法联网"等自述，回填后模型会
+    // 沿袭自己过去的推理、拒绝调用明明已下发的工具（自证循环）。
+    const hasToolsRequest = options?.webSearch === true ||
+        (Array.isArray(options?.tools) && options.tools.length > 0);
+    if (!hasToolsRequest) {
+        await injectReasoning(sipUserId, messages, connection);
+    }
+    return messages;
+}
+
+// 工具定义解析：webSearch 开启时自动下发 web_search 工具定义
+async function buildToolDefs(options) {
+    const requestedTools = Array.isArray(options?.tools) ? options.tools.map(String) : [];
+    if (options?.webSearch === true && !requestedTools.includes("web_search")) {
+        requestedTools.push("web_search");
+    }
+    let toolDefs = [];
+    if (requestedTools.length > 0) {
+        try {
+            const enabled = await getEnabledToolDefinitions();
+            const reqSet = new Set(requestedTools);
+            toolDefs = enabled.filter((t) => reqSet.has(t.function.name));
+        } catch (error) {
+            console.warn("[aiBotService] tool definitions failed, degraded:", error?.message || error);
+        }
+    }
+    return { requestedTools, toolDefs };
+}
+
+// 模型调用 + 服务端 tools 循环（最多 3 轮）
+async function callModelWithTools(messages, toolDefs, options) {
+    let result = await aiChat(messages, {
+        tools: toolDefs.length > 0 ? toolDefs : undefined,
+        toolResults: Array.isArray(options?.toolResults) ? options.toolResults : [],
+    });
+    if (!result.ok) return result;
+
+    let toolLoopRounds = 0;
+    while (result.toolCalls && result.toolCalls.length > 0 && toolLoopRounds < 3) {
+        toolLoopRounds += 1;
+        console.log(`[aiBotService] model requested ${result.toolCalls.length} tool(s), round ${toolLoopRounds}`);
+        // 组装 assistant tool_calls 消息（回传 reasoning_content 供推理模型校验）
+        const toolCallsMsg = {
+            role: "assistant",
+            content: null,
+            ...(result.reasoningContent ? { reasoning_content: result.reasoningContent } : {}),
+            tool_calls: result.toolCalls.map((tc) => ({
+                id: String(tc.id || `call_${toolLoopRounds}_${Math.random().toString(36).slice(2)}`),
+                type: "function",
+                function: { name: String(tc.name || ""), arguments: String(tc.arguments || "{}") },
+            })),
+        };
+        messages.push(toolCallsMsg);
+        // 逐个执行工具（按索引配对 tool_call_id，避免同名工具重复调用时 ID 冲突）
+        for (let ti = 0; ti < result.toolCalls.length; ti++) {
+            const tc = result.toolCalls[ti];
+            let args = {};
+            try { args = JSON.parse(String(tc.arguments || "{}")); } catch (_) {}
+            const execResult = await executeTool(String(tc.name || ""), args);
+            messages.push({
+                role: "tool",
+                tool_call_id: toolCallsMsg.tool_calls[ti]?.id || "",
+                content: typeof execResult === "string" ? execResult : JSON.stringify(execResult),
+            });
+        }
+        result = await aiChat(messages, {
+            tools: toolDefs.length > 0 ? toolDefs : undefined,
+        });
+        if (!result.ok) return result;
+    }
+    return result;
+}
+
+// 保存 AI 回复（落库 + 留存 reasoning + 计次）并返回消息对象
+async function saveAssistantReply(sessionId, sipUserId, result, connection) {
+    await connection.query(
+        `INSERT INTO ai_bot_messages (session_id, role, content, message_type, token_count, status)
+         VALUES (?, 'assistant', ?, 'text', ?, 'completed')`,
+        [sessionId, result.content, result.tokenCount]
+    );
+
+    // 推理模型：留存本次回复的 reasoning_content（失败仅降级，不影响回复）
+    if (result.reasoningContent) {
+        try {
+            await saveReasoning(sipUserId, result.content, result.reasoningContent, connection);
+        } catch (error) {
+            console.warn("[aiBotService] save reasoning failed:", error?.message || error);
+        }
+    }
+
+    await incrementUsage(sipUserId, connection);
+
+    const [aiMsg] = await connection.query(
+        `SELECT id, session_id, role, content, token_count, created_at
+         FROM ai_bot_messages WHERE session_id = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1`,
+        [sessionId]
+    );
+
+    return { message: {
+        id: Number(aiMsg.id), session_id: Number(aiMsg.session_id), role: aiMsg.role,
+        content: aiMsg.content, token_count: Number(aiMsg.token_count || 0), created_at: aiMsg.created_at
+    }};
 }
 
 export async function sendMessage(sessionId, sipUserId, content, connection, options = undefined) {
@@ -124,47 +260,19 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     }
 
     // Build context
-    const historyRows = await connection.query(
-        `SELECT role, content FROM ai_bot_messages
-         WHERE session_id = ? AND status = 'completed' AND message_type = 'text'
-         ORDER BY created_at DESC LIMIT ?`,
-        [sessionId, MAX_CONTEXT_MESSAGES]
-    );
-    historyRows.reverse();
-
-    const messages = [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...historyRows.map(r => ({ role: r.role, content: r.content })),
-    ];
-    // 推理模型多轮回填：历史助手消息按内容哈希补 reasoning_content
-    await injectReasoning(sipUserId, messages, connection);
+    const messages = await buildContextMessages(sipUserId, sessionId, connection, options);
     // 注入后的用户消息覆盖历史中的原样消息（保证模型看到的是带参考资料的版本）
     if (injectedParts.length > 0) {
         messages.push({ role: "user", content: finalUserContent });
     }
 
-    // Call AI（v2：可选 tools 循环——模型返回 tool_calls 时不落库回复，交由前端执行后回传）
-    const requestedTools = Array.isArray(options?.tools) ? options.tools.map(String) : [];
-    // webSearch 开启时自动下发 web_search 工具定义（模型自主决定是否检索）
-    if (options?.webSearch === true && !requestedTools.includes("web_search")) {
-        requestedTools.push("web_search");
-    }
-    let toolDefs = [];
-    if (requestedTools.length > 0) {
-        try {
-            const enabled = await getEnabledToolDefinitions();
-            const reqSet = new Set(requestedTools);
-            toolDefs = enabled.filter((t) => reqSet.has(t.function.name));
-        } catch (error) {
-            console.warn("[aiBotService] tool definitions failed, degraded:", error?.message || error);
-        }
-    }
+    // Call AI（v2：可选 tools 循环）
+    const { requestedTools, toolDefs } = await buildToolDefs(options);
 
-    // 服务端 tools 循环：模型请求工具 → 执行 → 回填 → 继续，最多 3 轮
-    let result = await aiChat(messages, {
-        tools: toolDefs.length > 0 ? toolDefs : undefined,
-        toolResults: Array.isArray(options?.toolResults) ? options.toolResults : [],
-    });
+    // v2 诊断日志（只增）：定位联网搜索工具未触发问题
+    console.log(JSON.stringify({ src: "aiBotToolDefs", requestedTools, toolDefs: toolDefs.map(t => t.function.name) }));
+
+    const result = await callModelWithTools(messages, toolDefs, options);
     if (!result.ok) {
         await connection.query(
             `UPDATE ai_bot_messages SET status = 'failed'
@@ -177,72 +285,80 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
         return { error: result.error, message: result.message };
     }
 
-    let toolLoopRounds = 0;
-    while (result.toolCalls && result.toolCalls.length > 0 && toolLoopRounds < 3) {
-        toolLoopRounds += 1;
-        console.log(`[aiBotService] model requested ${result.toolCalls.length} tool(s), round ${toolLoopRounds}`);
-        // 组装 assistant tool_calls 消息
-        const toolCallsMsg = {
-            role: "assistant",
-            content: null,
-            tool_calls: result.toolCalls.map((tc) => ({
-                id: String(tc.id || `call_${toolLoopRounds}_${Math.random().toString(36).slice(2)}`),
-                type: "function",
-                function: { name: String(tc.name || ""), arguments: String(tc.arguments || "{}") },
-            })),
-        };
-        messages.push(toolCallsMsg);
-        // 逐个执行工具
-        for (const tc of result.toolCalls) {
-            let args = {};
-            try { args = JSON.parse(String(tc.arguments || "{}")); } catch (_) {}
-            const execResult = await executeTool(String(tc.name || ""), args);
-            messages.push({
-                role: "tool",
-                tool_call_id: toolCallsMsg.tool_calls.find((c) => c.function.name === String(tc.name || ""))?.id || "",
-                content: typeof execResult === "string" ? execResult : JSON.stringify(execResult),
-            });
-        }
-        result = await aiChat(messages, {
-            tools: toolDefs.length > 0 ? toolDefs : undefined,
-        });
-        if (!result.ok) {
-            return { error: result.error, message: result.message };
-        }
-    }
-
     // 模型请求工具但前端仍需回传时（仅在客户端显式传 tools 且服务端未配置执行时兜底）
     if (result.toolCalls && result.toolCalls.length > 0) {
         return { toolCalls: result.toolCalls };
     }
 
     // Save AI reply
-    await connection.query(
-        `INSERT INTO ai_bot_messages (session_id, role, content, message_type, token_count, status)
-         VALUES (?, 'assistant', ?, 'text', ?, 'completed')`,
-        [sessionId, result.content, result.tokenCount]
+    return await saveAssistantReply(sessionId, sipUserId, result, connection);
+}
+
+// v2（只增）：重新生成最近一条 AI 回复（客户端气泡"刷新"按钮）
+export async function regenerateLast(sessionId, sipUserId, options = undefined, connection) {
+    const [session] = await connection.query(
+        `SELECT id FROM ai_bot_sessions WHERE id = ? AND owner_sip_user_id = ? LIMIT 1`,
+        [sessionId, sipUserId]
     );
+    if (!session) return { error: "AI_SESSION_NOT_FOUND", message: "會話不存在" };
 
-    // 推理模型：留存本次回复的 reasoning_content（失败仅降级，不影响回复）
-    if (result.reasoningContent) {
-        try {
-            await saveReasoning(sipUserId, result.content, result.reasoningContent, connection);
-        } catch (error) {
-            console.warn("[aiBotService] save reasoning failed:", error?.message || error);
-        }
-    }
+    const [lastUser] = await connection.query(
+        `SELECT id FROM ai_bot_messages
+         WHERE session_id = ? AND role = 'user' AND status = 'completed'
+         ORDER BY created_at DESC LIMIT 1`,
+        [sessionId]
+    );
+    if (!lastUser) return { error: "AI_NO_USER_MESSAGE", message: "沒有可重新生成的消息" };
 
-    await incrementUsage(sipUserId, connection);
-
-    const [aiMsg] = await connection.query(
-        `SELECT id, session_id, role, content, token_count, created_at
-         FROM ai_bot_messages WHERE session_id = ? AND role = 'assistant' ORDER BY created_at DESC LIMIT 1`,
+    // 删除最近一条 AI 回复（随后按原问题重新生成）
+    await connection.query(
+        `DELETE FROM ai_bot_messages
+         WHERE session_id = ? AND role = 'assistant'
+         ORDER BY created_at DESC LIMIT 1`,
         [sessionId]
     );
 
+    const messages = await buildContextMessages(sipUserId, sessionId, connection, options);
+    const { toolDefs } = await buildToolDefs(options);
+
+    const result = await callModelWithTools(messages, toolDefs, options);
+    if (!result.ok) {
+        return { error: result.error, message: result.message };
+    }
+    // 模型请求工具但前端仍需回传时兜底（与 sendMessage 一致）
+    if (result.toolCalls && result.toolCalls.length > 0) {
+        return { toolCalls: result.toolCalls };
+    }
+    return await saveAssistantReply(sessionId, sipUserId, result, connection);
+}
+
+// v2（只增）：跨端会话共享——桌面端用自己的模型生成后，把消息写入共享会话。
+// 仅落库、不触发 AI 生成、不计费。
+export async function appendMessage(sessionId, sipUserId, { role, content, tokenCount }, connection) {
+    const [session] = await connection.query(
+        `SELECT id FROM ai_bot_sessions WHERE id = ? AND owner_sip_user_id = ? LIMIT 1`,
+        [sessionId, sipUserId]
+    );
+    if (!session) return { error: "AI_SESSION_NOT_FOUND", message: "會話不存在" };
+
+    const r = role === "assistant" ? "assistant" : "user";
+    const text = String(content || "").trim().slice(0, 20000);
+    if (!text) return { error: "AI_EMPTY_MESSAGE", message: "訊息不能為空" };
+
+    const result = await connection.query(
+        `INSERT INTO ai_bot_messages (session_id, role, content, message_type, token_count, status)
+         VALUES (?, ?, ?, 'text', ?, 'completed')`,
+        [sessionId, r, text, Number(tokenCount) > 0 ? Number(tokenCount) : 0]
+    );
+
+    const [row] = await connection.query(
+        `SELECT id, session_id, role, content, token_count, created_at
+         FROM ai_bot_messages WHERE id = ?`,
+        [Number(result.insertId)]
+    );
     return { message: {
-        id: Number(aiMsg.id), session_id: Number(aiMsg.session_id), role: aiMsg.role,
-        content: aiMsg.content, token_count: Number(aiMsg.token_count || 0), created_at: aiMsg.created_at
+        id: Number(row.id), session_id: Number(row.session_id), role: row.role,
+        content: row.content, token_count: Number(row.token_count || 0), created_at: row.created_at
     }};
 }
 

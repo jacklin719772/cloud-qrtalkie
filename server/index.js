@@ -1,4 +1,15 @@
 ﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import "./loadEnv.js";
+import * as mariadb from "mariadb";
+
+// Flexisip AM（Laravel）账号库直连池：用于昵称等单字段安全更新（绕过 API 的副作用）
+const flexisipDbPool = mariadb.createPool({
+  host: process.env.FLEXISIP_DB_HOST || "127.0.0.1",
+  port: Number(process.env.FLEXISIP_DB_PORT || 3306),
+  database: process.env.FLEXISIP_DB_NAME || "flexisip",
+  user: process.env.FLEXISIP_DB_USER || "flexisip",
+  password: process.env.FLEXISIP_DB_PASSWORD || "",
+  connectionLimit: 3,
+});
 // Global crash protection: prevent silent death on unhandled errors
 process.on("unhandledRejection", (reason, promise) => {
   console.error("[FATAL] Unhandled Rejection at:", promise, "reason:", reason);
@@ -108,7 +119,7 @@ import {
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 import { listSessions, getOrCreateSession, getMessages, sendMessage, deleteSession,
-         updateSession, searchSessions, duplicateSession, exportSession } from "./aiBotService.js";
+         updateSession, searchSessions, duplicateSession, exportSession, regenerateLast, appendMessage, createSession } from "./aiBotService.js";
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
 import { listKnowledgeBases, createKnowledgeBase, updateKnowledgeBase, deleteKnowledgeBase,
          listKbDocuments, addKbDocument, deleteKbDocument, testKbRetrieval } from "./aiKbService.js";
@@ -159,7 +170,7 @@ function safeSecretSummary(value) {
   };
 }
 
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "40mb" }));
 app.use((request, response, next) => {
   const origin = request.get("origin") || request.get("referer")?.replace(/\/+$/, "").replace(/\/[^/]*$/, "") || "";
   if (origin) response.setHeader("Access-Control-Allow-Origin", origin);
@@ -18766,6 +18777,33 @@ app.get("/api/chatroom/policies", async (request, response) => {
 
 // ── AI Chat Bot API ──────────────────────────────────────────────
 
+// POST /api/ai/chat/sessions — 新建会话（v2 只增：桌面端跨端共享用，可选 title）
+app.post("/api/ai/chat/sessions", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const title = sanitizeString(String(request.body?.title || ""), 255);
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const session = await createSession(sipUserId, title, connection);
+    return response.json({
+      sessionId: Number(session.id),
+      title: session.title,
+      status: session.status,
+      createdAt: session.created_at,
+    });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to create AI session:", error);
+    return response.status(500).json({ message: "建立會話失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // GET /api/ai/chat/sessions — 会话列表（v2 会话抽屉；按最近更新倒序）
 app.get("/api/ai/chat/sessions", requireSipUser, async (request, response) => {
   const sipUserId = request.admin.id;
@@ -18852,6 +18890,8 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
     tools: Array.isArray(request.body?.tools) ? request.body.tools : [],
     toolResults: Array.isArray(request.body?.toolResults) ? request.body.toolResults.slice(0, 10) : [],
   };
+  // v2 诊断日志（只增）：定位联网搜索工具未触发问题
+  console.log(JSON.stringify({ src: "aiSendMessage", sessionId, webSearch: options.webSearch, kb: options.knowledgeBaseId, tools: options.tools.length, bodyKeys: Object.keys(request.body || {}) }));
 
   let connection;
   try {
@@ -18877,6 +18917,77 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
     }
     console.error("Failed to send AI message:", error);
     return response.status(500).json({ message: "傳送訊息失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/chat/sessions/:id/messages/regenerate — 重新生成最近一条 AI 回复（v2 只增）
+app.post("/api/ai/chat/sessions/:id/messages/regenerate", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+
+  // 可选字段（只增）：与发送消息路由一致
+  const options = {
+    knowledgeBaseId: Number(request.body?.knowledgeBaseId) > 0 ? Number(request.body.knowledgeBaseId) : null,
+    webSearch: request.body?.webSearch === true,
+    tools: Array.isArray(request.body?.tools) ? request.body.tools : [],
+    toolResults: Array.isArray(request.body?.toolResults) ? request.body.toolResults.slice(0, 10) : [],
+  };
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    const result = await regenerateLast(sessionId, sipUserId, options, connection);
+
+    if (result.error) {
+      const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404
+        : result.error === "AI_NO_USER_MESSAGE" ? 400 : 500;
+      return response.status(statusCode).json({ ok: false, error: result.error, message: result.message });
+    }
+
+    // v2：模型请求工具 → 返回 tool_calls（前端执行后以 toolResults 回传完成本轮）
+    if (Array.isArray(result.toolCalls) && result.toolCalls.length > 0) {
+      return response.json({ ok: true, toolCalls: result.toolCalls });
+    }
+
+    return response.json({ ok: true, message: result.message });
+  } catch (error) {
+    if (error instanceof AiError) {
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("Failed to regenerate AI reply:", error);
+    return response.status(500).json({ message: "重新生成失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/ai/chat/sessions/:id/messages/append — 跨端共享：桌面端模型生成后落库（v2 只增，不生成不计费）
+app.post("/api/ai/chat/sessions/:id/messages/append", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  const sessionId = parseInt(request.params.id, 10);
+  if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
+
+  const role = String(request.body?.role || "user");
+  const content = sanitizeString(String(request.body?.content || ""), 20000);
+  const tokenCount = Number(request.body?.tokenCount) > 0 ? Number(request.body.tokenCount) : 0;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const result = await appendMessage(sessionId, sipUserId, { role, content, tokenCount }, connection);
+    if (result.error) {
+      const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404 : 400;
+      return response.status(statusCode).json({ ok: false, error: result.error, message: result.message });
+    }
+    return response.json({ ok: true, message: result.message });
+  } catch (error) {
+    console.error("Failed to append AI message:", error);
+    return response.status(500).json({ message: "追加訊息失敗" });
   } finally {
     if (connection) connection.release();
   }
@@ -19624,6 +19735,373 @@ app.post("/api/external-api/get-door-info", async (request, response) => {
     return response.status(500).json({ success: false, message: "Server error" });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// POST /api/external-api/get-staff-info — 员工信息（临时空实现：验证客户端不再报 404，后续接真实数据）
+app.post("/api/external-api/get-staff-info", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "Missing sipAccount" });
+  }
+  return response.json({ assignedTo: "", community: "", staffs: [] });
+});
+
+// ── SIP 账号头像（只增 API：上传 / 查询 / 静态访问）──────────────────
+
+// POST /api/external-api/account-avatar — 上传账号头像（JSON base64）
+app.post("/api/external-api/account-avatar", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
+  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+  const imageBase64 = String((request.body && request.body.imageBase64) || "");
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "Missing sipAccount" });
+  }
+  if (!imageBase64 || imageBase64.length > 10 * 1024 * 1024) {
+    return response.status(400).json({ success: false, message: "Missing or too large imageBase64" });
+  }
+  try {
+    const buf = Buffer.from(imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, ""), "base64");
+    if (!buf.length) throw new Error("empty image");
+    const avatarDir = "/opt/saas/uploads/avatars";
+    if (!existsSync(avatarDir)) mkdirSync(avatarDir, { recursive: true });
+    const fileId = randomBytes(12).toString("hex");
+    const fileName = sipAccount + "-" + fileId + ".png";
+    writeFileSync(path.join(avatarDir, fileName), buf);
+
+    const avatarUrl = "https://cloud.qrtalkie.org/api/avatars/" + fileName;
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.query(
+        "UPDATE sip_users SET avatar_url = ? WHERE username = ? AND sip_domain = ?",
+        [avatarUrl, sipAccount, domain]
+      );
+      connection.release();
+    } catch (e) {
+      if (connection) connection.release();
+      console.error("[account-avatar] db update failed:", e?.message || e);
+    }
+
+    return response.json({ success: true, data: { avatarUrl } });
+  } catch (error) {
+    console.error("[account-avatar] upload failed:", error?.message || error);
+    return response.status(400).json({ success: false, message: "Invalid image data" });
+  }
+});
+
+// GET /api/external-api/account-avatar?sipAccount= — 查询头像 URL（无则 null）
+app.get("/api/external-api/account-avatar", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "Missing sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT avatar_url FROM sip_users WHERE username = ? AND sip_domain = ? LIMIT 1",
+      [sipAccount, domain]
+    );
+    connection.release();
+    return response.json({ success: true, data: { avatarUrl: (rows[0] && rows[0].avatar_url) || null } });
+  } catch (error) {
+    if (connection) connection.release();
+    console.error("[account-avatar] query failed:", error?.message || error);
+    return response.status(502).json({ success: false, message: "Query failed" });
+  }
+});
+
+// POST /api/external-api/account-avatars — 批量查询头像 URL（只增）
+app.post("/api/external-api/account-avatars", async (request, response) => {
+  const body = request.body || {};
+  let sipAccounts = [];
+  if (Array.isArray(body.sipAccounts)) {
+    sipAccounts = body.sipAccounts.map((x) => sanitizeString(String(x), 120)).filter(Boolean).slice(0, 500);
+  }
+  const domain = sanitizeString(String(request.query.domain || body.domain || ""), 255) || "sip.qrtalkie.org";
+  if (!sipAccounts.length) {
+    return response.status(400).json({ success: false, message: "Missing sipAccounts" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const placeholders = sipAccounts.map(() => "?").join(",");
+    const rows = await connection.query(
+      `SELECT username, avatar_url FROM sip_users WHERE username IN (${placeholders}) AND sip_domain = ?`,
+      [...sipAccounts, domain]
+    );
+    connection.release();
+    const avatars = {};
+    for (const row of rows) {
+      avatars[row.username] = row.avatar_url || "";
+    }
+    return response.json({ success: true, data: { avatars } });
+  } catch (error) {
+    if (connection) connection.release();
+    console.error("[account-avatars] query failed:", error?.message || error);
+    return response.status(502).json({ success: false, message: "Query failed" });
+  }
+});
+
+// POST /api/external-api/account-display-name — 同步账号昵称到 AM（只增）
+app.post("/api/external-api/account-display-name", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
+  const displayName = String((request.body && request.body.displayName) || "").trim().slice(0, 120);
+  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "Missing sipAccount" });
+  }
+  let fconn;
+  try {
+    // 直接更新 AM（Laravel）账号表：只改 display_name + updated_at，
+    // 不影响 activated 等其他字段（AM 的 PUT API 会重置激活状态，不可用）
+    fconn = await flexisipDbPool.getConnection();
+    const result = await fconn.query(
+      "UPDATE accounts SET display_name = ?, updated_at = NOW() WHERE username = ? AND domain = ?",
+      [displayName, sipAccount, domain]
+    );
+    fconn.release();
+    if (result.affectedRows === 0) {
+      return response.status(404).json({ success: false, message: "Account not found" });
+    }
+    return response.json({ success: true, data: { displayName } });
+  } catch (error) {
+    if (fconn) fconn.release();
+    console.error("[account-display-name] failed:", error?.message || error);
+    return response.status(502).json({ success: false, message: "Failed to update display name" });
+  }
+});
+
+// ── account-vcard：账号 vCard 读取/合并更新（AM vcards_storage 直连，只增）──
+
+function vcardEscape(value) {
+	return String(value).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,");
+}
+
+function vcardUnescape(value) {
+	return String(value).replace(/\\n/g, "\n").replace(/\\,/g, ",");
+}
+
+// 解析 vCard 文本：displayName(FN) / photoUrl(PHOTO) / phone(TEL) / company(ORG) / jobTitle(TITLE)
+// 兼容 RFC 6350 折行：行首空格/制表符的行是上一属性的续行
+function parseVcardText(text) {
+	const data = { displayName: "", photoUrl: "", phone: "", company: "", jobTitle: "" };
+	if (!text) return data;
+	let lastProp = null;
+	for (const rawLine of String(text).split(/\r?\n/)) {
+		if (!rawLine.length) continue;
+		if (rawLine[0] === " " || rawLine[0] === "\t") {
+			const cont = vcardUnescape(rawLine.slice(1));
+			if (lastProp === "FN") data.displayName += cont;
+			else if (lastProp === "PHOTO") data.photoUrl += cont;
+			else if (lastProp === "TEL") data.phone += cont;
+			else if (lastProp === "ORG") data.company += cont;
+			else if (lastProp === "TITLE") data.jobTitle += cont;
+			continue;
+		}
+		const line = rawLine.trim();
+		const idx = line.indexOf(":");
+		if (idx <= 0) continue;
+		const prop = line.slice(0, idx).toUpperCase();
+		const value = vcardUnescape(line.slice(idx + 1));
+		lastProp = null;
+		if (prop === "FN") { data.displayName = value; lastProp = "FN"; }
+		else if (prop.startsWith("PHOTO")) { data.photoUrl = value; lastProp = "PHOTO"; }
+		else if (prop.startsWith("TEL") && !data.phone) { data.phone = value.replace(/^tel:/i, ""); lastProp = "TEL"; }
+		else if (prop === "ORG") { data.company = value.split(";")[0]; lastProp = "ORG"; }
+		else if (prop === "TITLE") { data.jobTitle = value; lastProp = "TITLE"; }
+	}
+	return data;
+}
+
+// 合并式序列化：只更新传入字段，其余保留；无 UID 时生成新 UUID
+function mergeVcardText(existingText, username, domain, updates) {
+	const cur = parseVcardText(existingText);
+	const next = {
+		displayName: updates.displayName !== undefined ? updates.displayName : cur.displayName,
+		photoUrl: updates.photoUrl !== undefined ? updates.photoUrl : cur.photoUrl,
+		phone: updates.phone !== undefined ? updates.phone : cur.phone,
+		company: updates.company !== undefined ? updates.company : cur.company,
+		jobTitle: updates.jobTitle !== undefined ? updates.jobTitle : cur.jobTitle,
+	};
+	let uid = null;
+	if (existingText) {
+		const m = String(existingText).match(/^UID:(.+)$/m);
+		if (m && m[1]) uid = m[1].trim();
+	}
+	if (!uid) uid = "urn:uuid:" + randomUUID();
+	const lines = ["BEGIN:VCARD", "VERSION:4.0"];
+	lines.push("FN:" + vcardEscape(next.displayName || username));
+	lines.push("UID:" + uid);
+	lines.push("IMPP:sip:" + username + "@" + domain);
+	if (next.photoUrl) lines.push("PHOTO;VALUE=URI:" + next.photoUrl);
+	if (next.phone) lines.push("TEL;VALUE=URI:tel:" + vcardEscape(next.phone));
+	if (next.company) lines.push("ORG:" + vcardEscape(next.company));
+	if (next.jobTitle) lines.push("TITLE:" + vcardEscape(next.jobTitle));
+	lines.push("END:VCARD");
+	return { text: lines.join("\n") + "\n", uuid: uid };
+}
+
+// GET /api/external-api/account-vcard?sipAccount= — 读取账号 vCard（无则空字段）
+app.get("/api/external-api/account-vcard", async (request, response) => {
+	const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+	const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+	if (!sipAccount) {
+		return response.status(400).json({ success: false, message: "Missing sipAccount" });
+	}
+	let fconn;
+	try {
+		fconn = await flexisipDbPool.getConnection();
+		const rows = await fconn.query(
+			"SELECT v.vcard FROM vcards_storage v JOIN accounts a ON a.id = v.account_id WHERE a.username = ? AND a.domain = ? ORDER BY v.id ASC LIMIT 1",
+			[sipAccount, domain]
+		);
+		fconn.release();
+		return response.json({ success: true, data: parseVcardText(rows[0] ? rows[0].vcard : "") });
+	} catch (error) {
+		if (fconn) fconn.release();
+		console.error("[account-vcard] query failed:", error?.message || error);
+		return response.status(502).json({ success: false, message: "Query failed" });
+	}
+});
+
+// POST /api/external-api/account-vcard — 合并式更新账号 vCard（只增）
+app.post("/api/external-api/account-vcard", async (request, response) => {
+	const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
+	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+	if (!sipAccount) {
+		return response.status(400).json({ success: false, message: "Missing sipAccount" });
+	}
+	const body = request.body || {};
+	const updates = {};
+	if (body.displayName !== undefined) updates.displayName = String(body.displayName).trim().slice(0, 120);
+	if (body.photoUrl !== undefined) updates.photoUrl = sanitizeString(String(body.photoUrl), 2047);
+	if (body.phone !== undefined) updates.phone = sanitizeString(String(body.phone), 64);
+	if (body.company !== undefined) updates.company = sanitizeString(String(body.company), 120);
+	if (body.jobTitle !== undefined) updates.jobTitle = sanitizeString(String(body.jobTitle), 120);
+	let fconn;
+	try {
+		fconn = await flexisipDbPool.getConnection();
+		const accRows = await fconn.query(
+			"SELECT id FROM accounts WHERE username = ? AND domain = ? LIMIT 1",
+			[sipAccount, domain]
+		);
+		if (!accRows.length) {
+			fconn.release();
+			return response.status(404).json({ success: false, message: "Account not found" });
+		}
+		const accountId = accRows[0].id;
+		const vRows = await fconn.query(
+			"SELECT uuid, vcard FROM vcards_storage WHERE account_id = ? ORDER BY id ASC LIMIT 1",
+			[accountId]
+		);
+		const merged = mergeVcardText(vRows[0] ? String(vRows[0].vcard) : "", sipAccount, domain, updates);
+		if (vRows[0]) {
+			await fconn.query(
+				"UPDATE vcards_storage SET vcard = ?, updated_at = NOW() WHERE uuid = ? AND account_id = ?",
+				[merged.text, vRows[0].uuid, accountId]
+			);
+		} else {
+			const uuidPart = merged.uuid.startsWith("urn:uuid:") ? merged.uuid.slice(9) : merged.uuid;
+			await fconn.query(
+				"INSERT INTO vcards_storage (uuid, vcard, account_id, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
+				[uuidPart, merged.text, accountId]
+			);
+		}
+		fconn.release();
+		return response.json({ success: true, data: parseVcardText(merged.text) });
+	} catch (error) {
+		if (fconn) fconn.release();
+		console.error("[account-vcard] update failed:", error?.message || error);
+		return response.status(502).json({ success: false, message: "Failed to update vcard" });
+	}
+});
+
+// ── account-contacts-backup：通讯录个性化数据整包备份/恢复（只增）──
+// payload 结构由客户端定义：{version, starred, nameOverrides, vcardOverrides, photoOverrides, createdContacts}
+
+// POST /api/external-api/account-contacts-backup — 整包覆盖保存
+app.post("/api/external-api/account-contacts-backup", async (request, response) => {
+	const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
+	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+	const payload = request.body && request.body.payload;
+	if (!sipAccount) {
+		return response.status(400).json({ success: false, message: "Missing sipAccount" });
+	}
+	if (typeof payload !== "object" || payload === null) {
+		return response.status(400).json({ success: false, message: "Missing or invalid payload" });
+	}
+	let payloadStr;
+	try {
+		payloadStr = JSON.stringify(payload);
+	} catch (e) {
+		return response.status(400).json({ success: false, message: "Invalid payload" });
+	}
+	if (payloadStr.length > 30 * 1024 * 1024) {
+		return response.status(400).json({ success: false, message: "Payload too large" });
+	}
+	let conn;
+	try {
+		conn = await pool.getConnection();
+		await conn.query(
+			"INSERT INTO account_contacts_backup (username, domain, payload, updated_at) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE payload = VALUES(payload), updated_at = NOW()",
+			[sipAccount, domain, payloadStr]
+		);
+		conn.release();
+		return response.json({ success: true, data: { updatedAt: new Date().toISOString() } });
+	} catch (error) {
+		if (conn) conn.release();
+		console.error("[account-contacts-backup] save failed:", error?.message || error);
+		return response.status(502).json({ success: false, message: "Failed to save backup" });
+	}
+});
+
+// GET /api/external-api/account-contacts-backup?sipAccount= — 读取整包（无则空对象）
+app.get("/api/external-api/account-contacts-backup", async (request, response) => {
+	const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+	const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+	if (!sipAccount) {
+		return response.status(400).json({ success: false, message: "Missing sipAccount" });
+	}
+	let conn;
+	try {
+		conn = await pool.getConnection();
+		const rows = await conn.query(
+			"SELECT payload FROM account_contacts_backup WHERE username = ? AND domain = ? LIMIT 1",
+			[sipAccount, domain]
+		);
+		conn.release();
+		let data = {};
+		if (rows[0] && rows[0].payload) {
+			try {
+				data = JSON.parse(String(rows[0].payload));
+			} catch (e) {
+				data = {};
+			}
+		}
+		return response.json({ success: true, data });
+	} catch (error) {
+		if (conn) conn.release();
+		console.error("[account-contacts-backup] query failed:", error?.message || error);
+		return response.status(502).json({ success: false, message: "Query failed" });
+	}
+});
+
+// GET /api/avatars/:file — 静态访问头像文件
+app.get("/api/avatars/:file", (request, response) => {
+  const file = String(request.params.file || "").replace(/[^a-zA-Z0-9_.-]/g, "");
+  const filePath = "/opt/saas/uploads/avatars/" + file;
+  try {
+    if (existsSync(filePath)) {
+      response.setHeader("Content-Type", "image/png");
+      response.sendFile(filePath);
+    } else {
+      response.status(404).type("text/plain").send("Not found");
+    }
+  } catch (e) {
+    response.status(404).type("text/plain").send("Not found");
   }
 });
 
