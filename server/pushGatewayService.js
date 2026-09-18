@@ -63,9 +63,28 @@ async function readJsonFile(filePath) {
   return JSON.parse(text);
 }
 
-function resolveApnsHost(config) {
+// 临时沙箱测试分支（测试完需删除）：命中以下任一条件才走沙箱端点，其余一律生产不变
+//   1) 推送目标账号在 APNS_SANDBOX_USERS（逗号分隔）中
+//   2) 设备注册项带开发标记（pn-param/app_id 以 .dev 结尾，即开发签名构建）
+function isApnsSandboxTarget(context) {
+  if (!context) return false;
+  const toUri = trimText(context.toUri || context.to_uri || "", 256).toLowerCase();
+  const username = toUri.replace(/^sip:/, "").split("@")[0].split(";")[0];
+  const allowList = trimText(process.env.APNS_SANDBOX_USERS || "", 512)
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  if (username && allowList.includes(username)) return true;
+  const appId = trimText(context.appId || context.app_id || "", 256).toLowerCase();
+  return appId.endsWith(".dev");
+}
+
+function resolveApnsHost(config, context) {
   const env = trimText(config.apns?.environment || process.env.APNS_ENV || "production", 32).toLowerCase();
   if (env === "sandbox" || env === "development" || env === "dev") {
+    return "api.sandbox.push.apple.com";
+  }
+  if (isApnsSandboxTarget(context)) {
     return "api.sandbox.push.apple.com";
   }
   return "api.push.apple.com";
@@ -126,7 +145,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
     throw error;
   }
 
-  const host = resolveApnsHost(config);
+  const host = resolveApnsHost(config, context);
   const path = `/3/device/${deviceToken}`;
   const payload = providerName === "apns.voip"
     ? {
