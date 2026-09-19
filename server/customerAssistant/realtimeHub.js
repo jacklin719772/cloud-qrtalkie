@@ -24,6 +24,7 @@ import * as convs from "./conversationService.js";
 import * as msgs from "./messageService.js";
 import { isSameSipUserId } from "./auth.js";
 import { allowRequest } from "./rateLimit.js";
+import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 
 const TICKET_TTL_MS = 30_000;
 const HEARTBEAT_INTERVAL_MS = 25_000;
@@ -190,6 +191,14 @@ async function handleUpstream(socket, frame) {
       return sendFrame(socket, { ns: "ca", type: "ca.error", data: { code: "CONVERSATION_NOT_FOUND", message: "會話不存在" } });
     }
     if (scope.role === "agent" && !isSameSipUserId(conversation.sipUserId, scope.sipUserId)) {
+      logCaEvent({
+        action: CA_AUDIT_ACTIONS.FORBIDDEN_ACCESS,
+        actorType: "agent",
+        actorPublicId: String(scope.sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        meta: { via: "ws" },
+      });
       return sendFrame(socket, { ns: "ca", type: "ca.error", data: { code: "FORBIDDEN_CONVERSATION", message: "無權限操作該會話" } });
     }
     if (scope.role === "visitor" && !isSameSipUserId(conversation.visitorId, scope.visitorId)) {

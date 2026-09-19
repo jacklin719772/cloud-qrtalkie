@@ -3,6 +3,7 @@
 // ==========================================
 import { pool } from "./db.js";
 import { cleanupFlexisipCallLogs } from "./flexisipCallLogCleanupService.js";
+import { cleanupCustomerAssistantData } from "./customerAssistant/cleanupService.js";
 
 let timers = [];
 
@@ -13,6 +14,8 @@ export function startScheduler() {
   timers.push(setInterval(scanExpiringResources, 30 * 60 * 1000));
   // Run call log cleanup every 24 hours
   timers.push(setInterval(cleanupFlexisipCallLogs, 24 * 60 * 60 * 1000));
+  // Customer Assistant 过期令牌/访客/审计 清理（每日）
+  timers.push(setInterval(cleanupCustomerAssistantData, 24 * 60 * 60 * 1000));
   // Run initial cleanup after 60 seconds
   timers.push(setTimeout(cleanupFlexisipCallLogs, 60 * 1000));
 

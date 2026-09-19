@@ -16,6 +16,7 @@ import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
 import { issueTicket, isAgentAvailable, dispatchConversationEvent } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
+import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 
 const MAX_CONTENT_LENGTH = 4000;
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
@@ -169,6 +170,14 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           }
           if (Number(visitor.blocked) === 1) {
             await connection.rollback();
+            logCaEvent({
+              action: CA_AUDIT_ACTIONS.SESSION_BLOCKED,
+              actorType: "visitor",
+              actorPublicId: visitor.public_id,
+              targetType: "ecard",
+              targetPublicId: slug,
+              ip,
+            });
             return fail(response, 403, "VISITOR_BLOCKED", "目前無法發送訊息");
           }
           visitorId = Number(visitor.id);
@@ -219,6 +228,15 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
 
       // ③ 下发：默认 Cookie 模式，resumeToken 只进 Set-Cookie；模式 B 才回 body
       response.set("Set-Cookie", sessions.buildResumeCookie(issuedResumeToken, { path: `/api/ecard/public/${slug}/` }));
+      logCaEvent({
+        action: CA_AUDIT_ACTIONS.SESSION_ISSUED,
+        actorType: "visitor",
+        actorPublicId: visitorPublicId,
+        targetType: "ecard",
+        targetPublicId: slug,
+        ip,
+        meta: { conversationId: ensured.publicId, newVisitor: !presentedResume },
+      });
       const payload = {
         visitorId: visitorPublicId,
         accessToken: access.token,
@@ -405,6 +423,14 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     }
     if (!isSameSipUserId(conversation.sipUserId, sipUserId)) {
       fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在"); // 越权与不存在统一 404，避免枚举
+      logCaEvent({
+        action: CA_AUDIT_ACTIONS.FORBIDDEN_ACCESS,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: String(publicId || "").slice(0, 48),
+        ip: getClientIp(request),
+      });
       return null;
     }
     return conversation;
@@ -527,6 +553,14 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       await connection.beginTransaction();
       await convs.archiveConversation(connection, conversation.conversationId);
       await connection.commit();
+      logCaEvent({
+        action: CA_AUDIT_ACTIONS.CONVERSATION_ARCHIVED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        ip: getClientIp(request),
+      });
       return ok(response, { status: "archived" });
     } catch (error) {
       await connection.rollback().catch(() => {});
@@ -573,6 +607,14 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         `UPDATE ca_visitors SET blocked = ?, blocked_at = ${blocked ? "NOW()" : "NULL"} WHERE id = ?`,
         [blocked ? 1 : 0, Number(rows[0].id)],
       );
+      logCaEvent({
+        action: blocked ? CA_AUDIT_ACTIONS.VISITOR_BLOCKED : CA_AUDIT_ACTIONS.VISITOR_UNBLOCKED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "visitor",
+        targetPublicId: publicId,
+        ip: getClientIp(request),
+      });
       return ok(response, { visitorId: publicId, blocked: Boolean(blocked) });
     } catch (error) {
       console.error("[customerAssistant] block error:", error?.message || error);
