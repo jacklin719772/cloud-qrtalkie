@@ -191,7 +191,7 @@ async function handleUpstream(socket, frame) {
       return sendFrame(socket, { ns: "ca", type: "ca.error", data: { code: "CONVERSATION_NOT_FOUND", message: "會話不存在" } });
     }
     if (scope.role === "agent" && !isSameSipUserId(conversation.sipUserId, scope.sipUserId)) {
-      logCaEvent({
+      await logCaEvent({
         action: CA_AUDIT_ACTIONS.FORBIDDEN_ACCESS,
         actorType: "agent",
         actorPublicId: String(scope.sipUserId),

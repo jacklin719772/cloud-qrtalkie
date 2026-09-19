@@ -170,7 +170,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           }
           if (Number(visitor.blocked) === 1) {
             await connection.rollback();
-            logCaEvent({
+            await logCaEvent({
               action: CA_AUDIT_ACTIONS.SESSION_BLOCKED,
               actorType: "visitor",
               actorPublicId: visitor.public_id,
@@ -228,7 +228,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
 
       // ③ 下发：默认 Cookie 模式，resumeToken 只进 Set-Cookie；模式 B 才回 body
       response.set("Set-Cookie", sessions.buildResumeCookie(issuedResumeToken, { path: `/api/ecard/public/${slug}/` }));
-      logCaEvent({
+      await logCaEvent({
         action: CA_AUDIT_ACTIONS.SESSION_ISSUED,
         actorType: "visitor",
         actorPublicId: visitorPublicId,
@@ -423,7 +423,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     }
     if (!isSameSipUserId(conversation.sipUserId, sipUserId)) {
       fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在"); // 越权与不存在统一 404，避免枚举
-      logCaEvent({
+      await logCaEvent({
         action: CA_AUDIT_ACTIONS.FORBIDDEN_ACCESS,
         actorType: "agent",
         actorPublicId: String(sipUserId),
@@ -553,7 +553,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       await connection.beginTransaction();
       await convs.archiveConversation(connection, conversation.conversationId);
       await connection.commit();
-      logCaEvent({
+      await logCaEvent({
         action: CA_AUDIT_ACTIONS.CONVERSATION_ARCHIVED,
         actorType: "agent",
         actorPublicId: String(sipUserId),
@@ -607,7 +607,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         `UPDATE ca_visitors SET blocked = ?, blocked_at = ${blocked ? "NOW()" : "NULL"} WHERE id = ?`,
         [blocked ? 1 : 0, Number(rows[0].id)],
       );
-      logCaEvent({
+      await logCaEvent({
         action: blocked ? CA_AUDIT_ACTIONS.VISITOR_BLOCKED : CA_AUDIT_ACTIONS.VISITOR_UNBLOCKED,
         actorType: "agent",
         actorPublicId: String(sipUserId),
