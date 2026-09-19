@@ -34,6 +34,7 @@ async function req(method, path, { token, cookie, body } = {}) {
 const conn = await pool.getConnection();
 let visitorPublicId = null;
 let agentSessionId = null;
+let conversationId = null; // finally 清理审计行要用
 const extraVisitors = []; // 本次运行创建的所有访客（清理用）
 
 try {
@@ -58,7 +59,7 @@ try {
     /ca_resume=/.test(v1.setCookie) && /HttpOnly/i.test(v1.setCookie) && /SameSite=Lax/i.test(v1.setCookie));
   check("V1 body 不含 resumeToken（默认 Cookie 模式）", v1.json?.resumeToken === undefined);
   const accessToken = v1.json?.accessToken;
-  const conversationId = v1.json?.conversationId;
+  conversationId = v1.json?.conversationId;
   visitorPublicId = v1.json?.visitorId;
   check("V1 返回 accessToken / conversationId / visitorId",
     typeof accessToken === "string" && /^conv_[0-9a-f]{32}$/.test(conversationId || "") && /^vis_[0-9a-f]{32}$/.test(visitorPublicId || ""),
@@ -152,7 +153,7 @@ try {
     await conn.query("DELETE FROM ca_ecard_settings WHERE ecard_id = ?", [ECARD_ID]);
     if (agentSessionId) await conn.query("DELETE FROM admin_sessions WHERE id = ?", [agentSessionId]);
     for (const pid of [visitorPublicId, ...extraVisitors].filter(Boolean)) {
-      await conn.query("DELETE FROM ca_audit_log WHERE target_public_id = ? OR actor_public_id = ?", [pid, pid]);
+      await conn.query("DELETE FROM ca_audit_log WHERE target_public_id IN (?, ?) OR actor_public_id = ?", [pid, conversationId || "", pid]);
     }
 
     const left = await conn.query(
