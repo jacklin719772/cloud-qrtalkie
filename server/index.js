@@ -119,6 +119,7 @@ import {
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 import { registerCustomerAssistantRoutes } from "./customerAssistant/routes.js";
+import { attachCustomerAssistantWebSocketServer } from "./customerAssistant/realtimeHub.js";
 import { listSessions, getOrCreateSession, getMessages, sendMessage, deleteSession,
          updateSession, searchSessions, duplicateSession, exportSession, regenerateLast, appendMessage, createSession } from "./aiBotService.js";
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
@@ -20641,9 +20642,11 @@ app.delete("/api/admin/releases/:id", requireAdmin, async (request, response) =>
 
 deviceMqttService.start();
 
-app.listen(port, () => {
+const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
 });
+// Customer Assistant 实时通道（/ca/ws）；单实例内存实现，扩展边界见 10 §8.2
+attachCustomerAssistantWebSocketServer(httpServer);
   startScheduler();
   startWebrtcPresencePolling({ domain: webrtcDomain });
   initGeoLookup().catch((err) => console.error("GeoIP init failed:", err.message));

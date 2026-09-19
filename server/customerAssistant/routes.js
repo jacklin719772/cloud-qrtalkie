@@ -14,6 +14,7 @@ import * as convs from "./conversationService.js";
 import * as msgs from "./messageService.js";
 import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
+import { issueTicket, isAgentAvailable, dispatchConversationEvent } from "./realtimeHub.js";
 
 const MAX_CONTENT_LENGTH = 4000;
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
@@ -26,8 +27,23 @@ const ALLOW_BODY_RESUME = RESUME_DELIVERY === "body" || RESUME_DELIVERY === "bot
  * 消息落库提交后的副作用挂载点（步骤 8 realtimeHub / 步骤 9 pushNotifier 在此接入）。
  * 现在为空实现——保证「先落库、后通知」的顺序纪律从第一天就成立。
  */
-async function afterMessageCommitted(/* { conversation, message, senderType, duplicate } */) {
+async function afterMessageCommitted({ conversation, message, duplicate }) {
+  if (duplicate) return undefined; // 幂等命中不重复通知（评审意见 ⑬）
+  dispatchConversationEvent({
+    conversationId: conversation.id,
+    conversationPublicId: conversation.publicId,
+    sipUserId: conversation.sipUserId,
+    seq: message.seq,
+    frame: { type: "ca.message.new", data: message },
+  });
   return undefined;
+}
+
+/** CA 可用状态（§8.3：来自 Agent WS 连接 + 手动 away，而非 SIP presence） */
+function buildAgentStatus(sipUserId, settings) {
+  const manual = settings?.online_status || "auto";
+  const available = manual === "away" ? false : isAgentAvailable(sipUserId);
+  return { state: available ? "available" : "unavailable", manual };
 }
 
 function fail(response, status, code, message) {
@@ -202,8 +218,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         conversationId: ensured.publicId,
         displayName: settings?.display_name || null,
         welcomeMessage: settings?.welcome_message || null,
-        // CA 可用状态（非 SIP presence）；步骤 8 接入 realtimeHub 后改为真实在线判定
-        agentStatus: { state: "unknown", manual: settings?.online_status || "auto" },
+        agentStatus: buildAgentStatus(ecard.sipUserId, settings),
       };
       if (ALLOW_BODY_RESUME) payload.resumeToken = issuedResumeToken;
       return ok(response, payload);
@@ -247,7 +262,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           unreadForVisitor: conversation.unreadForVisitor,
         },
         messages,
-        agentStatus: { state: "unknown", manual: settings?.online_status || "auto" },
+        agentStatus: buildAgentStatus(loaded.ecard.sipUserId, settings),
       });
     } catch (error) {
       console.error("[customerAssistant] visitor chat load error:", error?.message || error);
@@ -340,9 +355,33 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     }
   });
 
-  // V5 WS ticket（步骤 8 realtimeHub 接入前明确返回未就绪，避免客户端误判）
-  app.get("/api/ecard/public/:slug/chat/ticket", requireVisitorAuth, async (_request, response) => {
-    return fail(response, 501, "WS_NOT_READY", "即時通道尚未上線");
+  // V5 WS ticket：一次性、TTL 30s、内含 role 与作用域（§8.1）
+  app.get("/api/ecard/public/:slug/chat/ticket", requireVisitorAuth, async (request, response) => {
+    const slug = String(request.params.slug || "").trim();
+    const connection = await pool.getConnection();
+    try {
+      const loaded = await loadEcardBySlug(connection, slug);
+      if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
+      const rows = await connection.query(
+        `SELECT id, public_id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1`,
+        [loaded.ecard.id, request.caVisitor.visitorId],
+      );
+      if (!rows[0]) return fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在");
+      const issued = issueTicket({
+        role: "visitor",
+        visitorId: request.caVisitor.visitorId,
+        ecardId: loaded.ecard.id,
+        conversationId: Number(rows[0].id),
+        conversationPublicId: rows[0].public_id,
+        sipUserId: loaded.ecard.sipUserId,
+      });
+      return ok(response, { ticket: issued.ticket, expiresAt: issued.expiresAt, wsPath: "/ca/ws" });
+    } catch (error) {
+      console.error("[customerAssistant] visitor ticket error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
   });
 
   /* ==================================================================
@@ -618,8 +657,10 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     }
   });
 
-  // A9 客服侧 WS ticket（步骤 8 接入前返回未就绪）
-  app.get("/api/visitor-assistant/ticket", requireCaAgent, async (_request, response) => {
-    return fail(response, 501, "WS_NOT_READY", "即時通道尚未上線");
+  // A9 客服侧 WS ticket：作用域 = 该客服名下全部会话（§8.1）
+  app.get("/api/visitor-assistant/ticket", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const issued = issueTicket({ role: "agent", sipUserId });
+    return ok(response, { ticket: issued.ticket, expiresAt: issued.expiresAt, wsPath: "/ca/ws" });
   });
 }

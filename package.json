@@ -53,6 +53,7 @@
     "remark-gfm": "^4.0.1",
     "skia-canvas": "^3.0.8",
     "typescript": "^5.9.3",
+    "ws": "^8.21.3",
     "vite": "^7.2.7"
   }
 }
