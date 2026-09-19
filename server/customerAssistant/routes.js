@@ -17,8 +17,11 @@ import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "
 import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
+import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream } from "./attachmentService.js";
 
 const MAX_CONTENT_LENGTH = 4000;
+/** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
+const ALLOWED_CONTENT_TYPES = new Set(["text", "file", "audio", "sticker"]);
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
 
 /** 模式 B（显式存储）开关。默认 cookie：resumeToken 只经 HttpOnly Cookie 下发，不进 JSON body（评审意见 ⑭） */
@@ -361,9 +364,26 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     const contentType = String(request.body?.contentType || "text");
     const clientMsgId = request.body?.clientMsgId ? String(request.body.clientMsgId).slice(0, 64) : null;
 
-    if (typeof content !== "string" || !content.trim()) return fail(response, 400, "EMPTY_CONTENT", "訊息不能為空");
-    if (content.length > MAX_CONTENT_LENGTH) return fail(response, 413, "CONTENT_TOO_LONG", `訊息長度上限 ${MAX_CONTENT_LENGTH} 字`);
-    if (contentType !== "text") return fail(response, 400, "UNSUPPORTED_CONTENT_TYPE", "目前僅支援文字訊息");
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) return fail(response, 400, "UNSUPPORTED_CONTENT_TYPE", "\u4e0d\u652f\u63f4\u7684\u8a0a\u606f\u985e\u578b");
+    const isTextMessage = contentType === "text";
+    if (isTextMessage && (typeof content !== "string" || !content.trim())) return fail(response, 400, "EMPTY_CONTENT", "\u8a0a\u606f\u4e0d\u80fd\u70ba\u7a7a");
+    if (typeof content === "string" && content.length > MAX_CONTENT_LENGTH) {
+      return fail(response, 413, "CONTENT_TOO_LONG", `\u8a0a\u606f\u9577\u5ea6\u4e0a\u9650 ${MAX_CONTENT_LENGTH} \u5b57`);
+    }
+    let visitorAttachment = null;
+    if (!isTextMessage) {
+      const key = String(request.body?.attachment?.key || "");
+      const stat = await statAttachmentByKey(key);
+      if (!stat) return fail(response, 400, "ATTACHMENT_INVALID", "\u9644\u4ef6\u7121\u6548\u6216\u5df2\u904e\u671f");
+      visitorAttachment = {
+        storageKey: key,
+        kind: stat.kind,
+        fileName: request.body?.attachment?.fileName || stat.fileName,
+        mimeType: stat.mimeType,
+        fileSize: stat.size,
+        durationMs: request.body?.attachment?.durationMs ?? null,
+      };
+    }
 
     const verdict = allowRequest(`visitor-msg:${request.caVisitor.visitorId}`, CA_RATE_LIMITS.visitorMessage);
     if (!verdict.allowed) return rateLimitedResponse(response, verdict.retryAfterMs);
@@ -387,10 +407,12 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       });
       const appended = await msgs.appendMessage(connection, {
         conversationId: ensured.conversationId,
+        conversationPublicId: ensured.publicId,
         senderType: "visitor",
         content,
         contentType,
         clientMsgId,
+        attachment: visitorAttachment,
       });
       await connection.commit();
 
@@ -431,6 +453,70 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] visitor read error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // V6 访客上传附件/语音（base64 → 落盘；key 绑定本会话）
+  app.post("/api/ecard/public/:slug/chat/uploads", requireVisitorAuth, async (request, response) => {
+    const slug = String(request.params.slug || "").trim();
+    const verdict = allowRequest(`upload:${request.caVisitor.visitorId}`, CA_RATE_LIMITS.history);
+    if (!verdict.allowed) return rateLimitedResponse(response, verdict.retryAfterMs);
+
+    const connection = await pool.getConnection();
+    try {
+      const loaded = await loadEcardBySlug(connection, slug);
+      if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
+      const rows = await connection.query(
+        `SELECT id, public_id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1`,
+        [loaded.ecard.id, request.caVisitor.visitorId],
+      );
+      if (!rows[0]) return fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在");
+
+      const saved = await saveAttachmentBuffer({
+        ecardId: loaded.ecard.id,
+        conversationPublicId: rows[0].public_id,
+        fileName: request.body?.filename,
+        mimeType: request.body?.mimeType,
+        durationMs: request.body?.durationMs,
+        buffer: decodeUploadData(request.body?.data),
+      });
+      if (saved.error) return fail(response, saved.error.status, saved.error.code, saved.error.message);
+      return ok(response, { key: saved.storageKey, kind: saved.kind, fileName: saved.fileName, mimeType: saved.mimeType, fileSize: saved.fileSize });
+    } catch (error) {
+      console.error("[customerAssistant] visitor upload error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // V7 访客下载附件（鉴权：必须属于本访客的会话；目录不静态暴露）
+  app.get("/api/ecard/public/:slug/chat/attachments/:id", requireVisitorAuth, async (request, response) => {
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT a.id, a.storage_key, a.file_name, a.mime_type, c.visitor_id
+           FROM ca_attachments a
+           JOIN ca_messages m ON m.id = a.message_id
+           JOIN ca_conversations c ON c.id = m.conversation_id
+          WHERE a.id = ? LIMIT 1`,
+        [Number(request.params.id) || 0],
+      );
+      const row = rows[0];
+      if (!row || !isSameSipUserId(row.visitor_id, request.caVisitor.visitorId)) {
+        return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
+      }
+      const opened = await openAttachmentStream(row.storage_key);
+      if (!opened) return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
+      response.set("Content-Type", row.mime_type || "application/octet-stream");
+      response.set("Content-Length", String(opened.size));
+      response.set("Content-Disposition", "inline; filename=\"" + encodeURIComponent(row.file_name || "file") + "\"");
+      return opened.stream.pipe(response);
+    } catch (error) {
+      console.error("[customerAssistant] visitor download error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();
@@ -539,9 +625,26 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     const contentType = String(request.body?.contentType || "text");
     const clientMsgId = request.body?.clientMsgId ? String(request.body.clientMsgId).slice(0, 64) : null;
 
-    if (typeof content !== "string" || !content.trim()) return fail(response, 400, "EMPTY_CONTENT", "訊息不能為空");
-    if (content.length > MAX_CONTENT_LENGTH) return fail(response, 413, "CONTENT_TOO_LONG", `訊息長度上限 ${MAX_CONTENT_LENGTH} 字`);
-    if (contentType !== "text") return fail(response, 400, "UNSUPPORTED_CONTENT_TYPE", "目前僅支援文字訊息");
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) return fail(response, 400, "UNSUPPORTED_CONTENT_TYPE", "\u4e0d\u652f\u63f4\u7684\u8a0a\u606f\u985e\u578b");
+    const isTextMessage = contentType === "text";
+    if (isTextMessage && (typeof content !== "string" || !content.trim())) return fail(response, 400, "EMPTY_CONTENT", "\u8a0a\u606f\u4e0d\u80fd\u70ba\u7a7a");
+    if (typeof content === "string" && content.length > MAX_CONTENT_LENGTH) {
+      return fail(response, 413, "CONTENT_TOO_LONG", `\u8a0a\u606f\u9577\u5ea6\u4e0a\u9650 ${MAX_CONTENT_LENGTH} \u5b57`);
+    }
+    let agentAttachment = null;
+    if (!isTextMessage) {
+      const key = String(request.body?.attachment?.key || "");
+      const stat = await statAttachmentByKey(key);
+      if (!stat) return fail(response, 400, "ATTACHMENT_INVALID", "\u9644\u4ef6\u7121\u6548\u6216\u5df2\u904e\u671f");
+      agentAttachment = {
+        storageKey: key,
+        kind: stat.kind,
+        fileName: request.body?.attachment?.fileName || stat.fileName,
+        mimeType: stat.mimeType,
+        fileSize: stat.size,
+        durationMs: request.body?.attachment?.durationMs ?? null,
+      };
+    }
 
     const verdict = allowRequest(`agent-msg:${sipUserId}`, CA_RATE_LIMITS.agentMessage);
     if (!verdict.allowed) return rateLimitedResponse(response, verdict.retryAfterMs);
@@ -554,11 +657,13 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       await connection.beginTransaction();
       const appended = await msgs.appendMessage(connection, {
         conversationId: conversation.conversationId,
+        conversationPublicId: conversation.publicId,
         senderType: "agent",
         senderSipUserId: sipUserId,
         content,
         contentType,
         clientMsgId,
+        attachment: agentAttachment,
       });
       await connection.commit();
 
@@ -640,6 +745,62 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] unarchive error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A11b 客服上传附件/语音（指定会话并校验归属）
+  app.post("/api/visitor-assistant/uploads", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const conversation = await loadOwnedConversation(connection, request.body?.conversationId, sipUserId, response);
+      if (!conversation) return undefined;
+      const saved = await saveAttachmentBuffer({
+        ecardId: conversation.ecardId,
+        conversationPublicId: conversation.publicId,
+        fileName: request.body?.filename,
+        mimeType: request.body?.mimeType,
+        durationMs: request.body?.durationMs,
+        buffer: decodeUploadData(request.body?.data),
+      });
+      if (saved.error) return fail(response, saved.error.status, saved.error.code, saved.error.message);
+      return ok(response, { key: saved.storageKey, kind: saved.kind, fileName: saved.fileName, mimeType: saved.mimeType, fileSize: saved.fileSize });
+    } catch (error) {
+      console.error("[customerAssistant] agent upload error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A11c 客服下载附件（鉴权：必须属于本客服的会话）
+  app.get("/api/visitor-assistant/attachments/:id", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT a.id, a.storage_key, a.file_name, a.mime_type, c.sip_user_id
+           FROM ca_attachments a
+           JOIN ca_messages m ON m.id = a.message_id
+           JOIN ca_conversations c ON c.id = m.conversation_id
+          WHERE a.id = ? LIMIT 1`,
+        [Number(request.params.id) || 0],
+      );
+      const row = rows[0];
+      if (!row || !isSameSipUserId(row.sip_user_id, sipUserId)) {
+        return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
+      }
+      const opened = await openAttachmentStream(row.storage_key);
+      if (!opened) return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
+      response.set("Content-Type", row.mime_type || "application/octet-stream");
+      response.set("Content-Length", String(opened.size));
+      response.set("Content-Disposition", "inline; filename=\"" + encodeURIComponent(row.file_name || "file") + "\"");
+      return opened.stream.pipe(response);
+    } catch (error) {
+      console.error("[customerAssistant] agent download error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();

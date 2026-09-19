@@ -28,7 +28,20 @@ function toPreview(content) {
   return String(content).replace(/\s+/g, " ").trim().slice(0, PREVIEW_MAX_LEN) || null;
 }
 
+function mapAttachmentFromRow(row) {
+  if (!row?.attachment_id) return undefined;
+  return {
+    id: Number(row.attachment_id),
+    kind: row.attachment_kind,
+    fileName: row.attachment_file_name,
+    mimeType: row.attachment_mime_type,
+    fileSize: Number(row.attachment_file_size || 0),
+    durationMs: row.attachment_duration_ms === null || row.attachment_duration_ms === undefined ? null : Number(row.attachment_duration_ms),
+  };
+}
+
 function mapMessageRow(row) {
+  const attachment = mapAttachmentFromRow(row);
   return {
     id: Number(row.id),
     seq: Number(row.seq),
@@ -41,6 +54,7 @@ function mapMessageRow(row) {
     deliveredAt: row.delivered_at,
     readAt: row.read_at,
     createdAt: row.created_at,
+    ...(attachment ? { attachment } : {}),
   };
 }
 
@@ -50,11 +64,13 @@ function mapMessageRow(row) {
  */
 export async function appendMessage(connection, {
   conversationId,
+  conversationPublicId = null,
   senderType,
   senderSipUserId = null,
   content = null,
   contentType = "text",
   clientMsgId = null,
+  attachment = null,
 }) {
   // ① 会话行锁：事务内第一条语句（锁顺序：先会话行、后子表）
   const lockedRows = await connection.query(
@@ -125,6 +141,32 @@ export async function appendMessage(connection, {
     [nextSeq, insertResult.insertId, toPreview(content), senderType, senderType, senderType, senderType, conversationId],
   );
 
+  // 附件（可选，纯增量）：key 必须属于本会话的公开 id 前缀，防止把别人的文件挂到自己消息上
+  let attachmentRow = null;
+  if (attachment?.storageKey) {
+    const expectedPrefix = `${conversationPublicId}/`;
+    if (!String(attachment.storageKey).startsWith(expectedPrefix)) {
+      const error = new Error("attachment key not owned by this conversation");
+      error.code = "CA_ATTACHMENT_NOT_OWNED";
+      throw error;
+    }
+    const inserted = await connection.query(
+      `INSERT INTO ca_attachments (message_id, kind, file_name, mime_type, file_size, duration_ms, storage_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [insertResult.insertId, String(attachment.kind || "file").slice(0, 32), attachment.fileName || null,
+       attachment.mimeType || null, Number(attachment.fileSize || 0) || null,
+       attachment.durationMs ? Number(attachment.durationMs) : null, String(attachment.storageKey).slice(0, 255)],
+    );
+    attachmentRow = {
+      id: Number(inserted.insertId),
+      kind: attachment.kind || "file",
+      fileName: attachment.fileName || null,
+      mimeType: attachment.mimeType || null,
+      fileSize: Number(attachment.fileSize || 0),
+      durationMs: attachment.durationMs ?? null,
+    };
+  }
+
   const rows = await connection.query(
     `SELECT id, seq, sender_type, sender_sip_user_id, content_type, content, client_msg_id,
             status, delivered_at, read_at, created_at
@@ -132,7 +174,8 @@ export async function appendMessage(connection, {
     [insertResult.insertId],
   );
 
-  return { duplicate: false, message: mapMessageRow(rows[0]) };
+  const message = mapMessageRow(rows[0]);
+  return { duplicate: false, message: attachmentRow ? { ...message, attachment: attachmentRow } : message };
 }
 
 /**
@@ -157,11 +200,14 @@ export async function listMessages(connection, conversationId, { before = null, 
   params.push(size);
 
   const rows = await connection.query(
-    `SELECT id, seq, sender_type, sender_sip_user_id, content_type, content, client_msg_id,
-            status, delivered_at, read_at, created_at
-       FROM ca_messages
-      WHERE ${where}
-      ORDER BY ${order}
+    `SELECT m.id, m.seq, m.sender_type, m.sender_sip_user_id, m.content_type, m.content, m.client_msg_id,
+            m.status, m.delivered_at, m.read_at, m.created_at,
+            a.id AS attachment_id, a.kind AS attachment_kind, a.file_name AS attachment_file_name,
+            a.mime_type AS attachment_mime_type, a.file_size AS attachment_file_size
+       FROM ca_messages m
+       LEFT JOIN ca_attachments a ON a.message_id = m.id
+      WHERE ${where.replace(/conversation_id/g, "m.conversation_id").replace(/seq/g, "m.seq")}
+      ORDER BY ${order.replace(/seq/g, "m.seq")}
       LIMIT ?`,
     params,
   );
