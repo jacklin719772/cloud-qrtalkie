@@ -23,6 +23,9 @@ export const CA_AUDIT_ACTIONS = {
   VISITOR_BLOCKED: "visitor_blocked",
   VISITOR_UNBLOCKED: "visitor_unblocked",
   FORBIDDEN_ACCESS: "forbidden_access",
+  VISITOR_REGISTERED: "visitor_registered",
+  CONVERSATION_MESSAGES_CLEARED: "conversation_messages_cleared",
+  CONVERSATION_DELETED: "conversation_deleted",
 };
 
 /**

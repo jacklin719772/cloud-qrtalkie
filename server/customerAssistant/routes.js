@@ -14,7 +14,7 @@ import * as convs from "./conversationService.js";
 import * as msgs from "./messageService.js";
 import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
-import { issueTicket, isAgentAvailable, dispatchConversationEvent } from "./realtimeHub.js";
+import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 
@@ -134,7 +134,12 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
    * ================================================================== */
 
   // V1 取票：默认 Cookie 模式（resumeToken 经 Set-Cookie 下发，不进 body）；首次调用即建立唯一会话并插入欢迎语
-  app.post("/api/ecard/public/:slug/chat-session", async (request, response) => {
+  /**
+   * 取票（V1）与登记（V0=chat-register）共用实现。
+   * requireContact=true 时（登记接口）要求 body 带姓名/邮箱，并把登记信息写入访客行
+   * （同时把 display_name 设为姓名 —— 会话名的来源，R3）。
+   */
+  async function handleVisitorSession(request, response, { requireContact = false } = {}) {
     const slug = String(request.params.slug || "").trim();
     const ip = getClientIp(request);
     const verdict = allowRequest(`session:${ip}`, CA_RATE_LIMITS.session);
@@ -189,18 +194,50 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         }
       }
 
+      // 登记信息（R1）：登记接口必填姓名/邮箱；取票接口若带 contact 也一并写入（用于"编辑资料"）
+      let contact = null;
+      if (requireContact || request.body?.contact) {
+        const raw = request.body?.contact || {};
+        const name = String(raw.name || "").trim().slice(0, 120);
+        const email = String(raw.email || "").trim().slice(0, 128);
+        const phone = String(raw.phone || "").trim().slice(0, 64);
+        const subject = String(raw.subject || "").trim().slice(0, 200);
+        if (requireContact && (!name || !email)) {
+          return fail(response, 400, "CONTACT_REQUIRED", "請填寫姓名與電子郵件");
+        }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return fail(response, 400, "INVALID_EMAIL", "電子郵件格式不正確");
+        }
+        contact = { name, email, phone, subject };
+      }
+
       if (!visitorId) {
         visitorPublicId = newPublicId("vis");
         const inserted = await connection.query(
-          `INSERT INTO ca_visitors (ecard_id, public_id, display_name, first_ip, last_ip, last_user_agent)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [ecard.id, visitorPublicId, null, ip, ip, String(request.headers?.["user-agent"] || "").slice(0, 1000) || null],
+          `INSERT INTO ca_visitors (ecard_id, public_id, display_name, contact_name, contact_email, contact_phone, subject, first_ip, last_ip, last_user_agent)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            ecard.id, visitorPublicId,
+            contact?.name || null, contact?.name || null, contact?.email || null, contact?.phone || null, contact?.subject || null,
+            ip, ip, String(request.headers?.["user-agent"] || "").slice(0, 1000) || null,
+          ],
         );
         visitorId = Number(inserted.insertId);
       } else {
         await connection.query(
-          `UPDATE ca_visitors SET last_seen_at = NOW(), last_ip = ?, last_user_agent = ? WHERE id = ?`,
-          [ip, String(request.headers?.["user-agent"] || "").slice(0, 1000) || null, visitorId],
+          `UPDATE ca_visitors
+              SET last_seen_at = NOW(), last_ip = ?, last_user_agent = ?,
+                  contact_name = COALESCE(?, contact_name),
+                  contact_email = COALESCE(?, contact_email),
+                  contact_phone = COALESCE(?, contact_phone),
+                  subject = COALESCE(?, subject),
+                  display_name = COALESCE(?, display_name)
+            WHERE id = ?`,
+          [
+            ip, String(request.headers?.["user-agent"] || "").slice(0, 1000) || null,
+            contact?.name || null, contact?.email || null, contact?.phone || null, contact?.subject || null,
+            contact?.name || null, visitorId,
+          ],
         );
       }
 
@@ -228,6 +265,17 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
 
       // ③ 下发：默认 Cookie 模式，resumeToken 只进 Set-Cookie；模式 B 才回 body
       response.set("Set-Cookie", sessions.buildResumeCookie(issuedResumeToken, { path: `/api/ecard/public/${slug}/` }));
+      if (contact?.name) {
+        await logCaEvent({
+          action: CA_AUDIT_ACTIONS.VISITOR_REGISTERED,
+          actorType: "visitor",
+          actorPublicId: visitorPublicId,
+          targetType: "ecard",
+          targetPublicId: slug,
+          ip,
+          meta: { name: contact.name, email: contact.email },
+        });
+      }
       await logCaEvent({
         action: CA_AUDIT_ACTIONS.SESSION_ISSUED,
         actorType: "visitor",
@@ -255,7 +303,15 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } finally {
       connection.release();
     }
-  });
+  }
+
+  // V1 取票（已登记访客：凭 Cookie 续期；也可带 contact 更新资料）
+  app.post("/api/ecard/public/:slug/chat-session", (request, response) => handleVisitorSession(request, response));
+
+  // V0 登记 + 取票（新访客首次进入：先登记姓名/邮箱，必要时电话/主题）
+  app.post("/api/ecard/public/:slug/chat-register", (request, response) =>
+    handleVisitorSession(request, response, { requireContact: true }),
+  );
 
   // V2 取当前会话 + 历史
   app.get("/api/ecard/public/:slug/chat", requireVisitorAuth, async (request, response) => {
@@ -584,6 +640,70 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] unarchive error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A12 清空聊天内容（R4）：删消息、保留会话；last_seq 不回退（避免 seq 复用）
+  app.delete("/api/visitor-assistant/conversations/:id/messages", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const conversation = await loadOwnedConversation(connection, request.params.id, sipUserId, response);
+      if (!conversation) return undefined;
+      await connection.beginTransaction();
+      const removed = await convs.clearConversationMessages(connection, conversation.conversationId);
+      await connection.commit();
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.CONVERSATION_MESSAGES_CLEARED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        ip: getClientIp(request),
+        meta: { removed },
+      });
+      return ok(response, { cleared: removed });
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      console.error("[customerAssistant] clear messages error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A13 删除整个访客会话（R4）：级联删消息/附件；**访客身份保留**（下次再访新建会话）
+  app.delete("/api/visitor-assistant/conversations/:id", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const conversation = await loadOwnedConversation(connection, request.params.id, sipUserId, response);
+      if (!conversation) return undefined;
+      await connection.beginTransaction();
+      await convs.deleteConversation(connection, conversation.conversationId);
+      await connection.commit();
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.CONVERSATION_DELETED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        ip: getClientIp(request),
+        meta: { visitorId: conversation.publicId ? undefined : undefined },
+      });
+      // 访客侧感知：告知会话已结束（其下次发消息会自动开新会话）
+      dispatchToVisitor(conversation.conversationId, {
+        type: "ca.conversation.deleted",
+        conv: conversation.publicId,
+        data: {},
+      });
+      return ok(response, { deleted: true });
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      console.error("[customerAssistant] delete conversation error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();

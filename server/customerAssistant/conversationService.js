@@ -214,3 +214,30 @@ export async function countUnreadForAgent(connection, sipUserId) {
   );
   return Number(rows[0]?.total || 0);
 }
+
+/**
+ * 清空会话内容（R4）：删消息（附件随 FK 级联），**会话保留**；
+ * last_seq **不回退**（避免 seq 复用），未读清零、游标推到最新。
+ * 返回删除的消息条数。
+ */
+export async function clearConversationMessages(connection, conversationId) {
+  const result = await connection.query(`DELETE FROM ca_messages WHERE conversation_id = ?`, [conversationId]);
+  await connection.query(
+    `UPDATE ca_conversations
+        SET unread_for_agent = 0, unread_for_visitor = 0,
+            agent_last_read_seq = last_seq, visitor_last_read_seq = last_seq,
+            last_message_id = NULL, last_message_at = NULL, last_message_preview = NULL
+      WHERE id = ?`,
+    [conversationId],
+  );
+  return Number(result.affectedRows || 0);
+}
+
+/**
+ * 删除整个访客会话（R4）：级联删消息/附件；**访客身份保留** ——
+ * 访客下次再访时按 UNIQUE(ecard_id, visitor_id) 新建一条会话。
+ */
+export async function deleteConversation(connection, conversationId) {
+  const result = await connection.query(`DELETE FROM ca_conversations WHERE id = ?`, [conversationId]);
+  return Number(result.affectedRows || 0);
+}
