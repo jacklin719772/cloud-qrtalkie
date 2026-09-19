@@ -15,6 +15,7 @@ import * as msgs from "./messageService.js";
 import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
 import { issueTicket, isAgentAvailable, dispatchConversationEvent } from "./realtimeHub.js";
+import { notifyVisitorMessage } from "./pushNotifier.js";
 
 const MAX_CONTENT_LENGTH = 4000;
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
@@ -36,6 +37,13 @@ async function afterMessageCommitted({ conversation, message, duplicate }) {
     seq: message.seq,
     frame: { type: "ca.message.new", data: message },
   });
+
+  // 推送（§9）：仅访客消息、COMMIT 之后触发、异步不阻塞 HTTP 响应
+  if (String(message.senderType) === "visitor") {
+    notifyVisitorMessage({ conversation, message }).catch((error) =>
+      console.error("[customerAssistant][push] 触发失败:", error?.message || error),
+    );
+  }
   return undefined;
 }
 

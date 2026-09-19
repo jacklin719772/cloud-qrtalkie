@@ -147,7 +147,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
 
   const host = resolveApnsHost(config, context);
   const path = `/3/device/${deviceToken}`;
-  const payload = providerName === "apns.voip"
+  let payload = providerName === "apns.voip"
     ? {
         aps: {
           alert: context.fromUri
@@ -184,6 +184,27 @@ async function sendApnsLiveNotification(context, config, providerName) {
         sound: context.sound || "",
       };
 
+  // Customer Assistant（ECard 访客聊天，additive）：type=ca_message 专用 payload；
+  // 未传 context.caMessage 时行为与既有呼叫/消息推送完全一致
+  if (context.caMessage) {
+    payload = {
+      aps: {
+        alert: { title: context.caMessage.title || "訪客訊息", body: context.caMessage.preview || "" },
+        badge: Number(context.caMessage.unread) || 1,
+        sound: context.sound || "default",
+        "content-available": 1,
+        "mutable-content": 1,
+        ...(context.caMessage.conversationId ? { "thread-id": context.caMessage.conversationId } : {}),
+      },
+      type: "ca_message",
+      conversation_id: context.caMessage.conversationId || "",
+      visitor_id: context.caMessage.visitorId || "",
+      preview: context.caMessage.preview || "",
+      unread: Number(context.caMessage.unread) || 0,
+      ts: context.caMessage.ts || "",
+    };
+  }
+
   const pushType = providerName === "apns.voip" ? "voip" : "alert";
   const tokenMasked = deviceToken.length > 12 ? `${deviceToken.slice(0, 6)}…${deviceToken.slice(-6)}` : deviceToken;
 
@@ -197,6 +218,8 @@ async function sendApnsLiveNotification(context, config, providerName) {
     "apns-push-type": pushType,
     "apns-priority": "10",
     "apns-expiration": String(Math.floor(Date.now() / 1000) + 90),
+    // Customer Assistant：同会话通知折叠（additive，仅当调用方传入 collapseId）
+    ...(context.collapseId ? { "apns-collapse-id": String(context.collapseId).slice(0, 64) } : {}),
   };
 
   if (usePemAuth) {
@@ -463,6 +486,16 @@ async function sendFcmLiveNotification(context, config) {
     message: {
       token: context.tokenValue,
       data: {
+        // Customer Assistant（additive）：type=ca_message 时附带会话与访客标识
+        ...(context.caMessage
+          ? {
+              type: "ca_message",
+              conversation_id: context.caMessage.conversationId || "",
+              visitor_id: context.caMessage.visitorId || "",
+              preview: context.caMessage.preview || "",
+              unread: String(context.caMessage.unread ?? ""),
+            }
+          : {}),
         event: context.event,
         call_id: context.callId || "",
         msgid: context.msgid || "",
@@ -1192,6 +1225,16 @@ class JPushProvider extends BasePushProvider {
     const isCustomMessage = payloadMode === "custom_message";
 
     const extras = {
+      // Customer Assistant（additive）
+      ...(context.caMessage
+        ? {
+            type: "ca_message",
+            conversation_id: context.caMessage.conversationId || "",
+            visitor_id: context.caMessage.visitorId || "",
+            preview: context.caMessage.preview || "",
+            unread: String(context.caMessage.unread ?? ""),
+          }
+        : {}),
       event: context.event,
       call_id: callId,
       msgid,
@@ -1232,8 +1275,12 @@ class JPushProvider extends BasePushProvider {
     if (!isCustomMessage) {
       descriptor.notification = {
         android: {
-          alert: context.event === "call" ? "Incoming call" : (context.body || "New message"),
-          title: context.event === "call" ? "來電" : "新訊息",
+          alert: context.caMessage
+            ? (context.caMessage.preview || "訪客訊息")
+            : (context.event === "call" ? "Incoming call" : (context.body || "New message")),
+          title: context.caMessage
+            ? (context.caMessage.title || "訪客訊息")
+            : (context.event === "call" ? "來電" : "新訊息"),
           priority: 2,
           extras,
         },
