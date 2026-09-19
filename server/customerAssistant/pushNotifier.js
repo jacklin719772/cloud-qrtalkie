@@ -74,9 +74,16 @@ async function resolveFromPushDevices(connection, { sipUsername, sipDomain }) {
 
 /** Contact 头里的 RFC8599 push 参数（pn-provider / pn-param / pn-prid） */
 function parsePushParamsFromContact(contactValue) {
+  // 注意：pn-prid 的多令牌用 `&` 连接（"<token>:voip&<token>:remote"），
+  // 因此取值时**不能**把 `&` 当终止符，否则只会拿到第一条（voip）。
   const pick = (name) => {
-    const match = new RegExp(`${name}=([^;?&]*)"?`, "i").exec(contactValue);
-    return match ? match[1].replace(/^"|"$/g, "").trim() : "";
+    const raw = String(contactValue || "");
+    const idx = raw.toLowerCase().indexOf(`${name.toLowerCase()}=`);
+    if (idx < 0) return "";
+    let rest = raw.slice(idx + name.length + 1);
+    const end = rest.search(/[;?]/); // 值里允许 &（多令牌/多服务），只以 ; 或 ? 结束
+    if (end >= 0) rest = rest.slice(0, end);
+    return rest.replace(/^"|"$/g, "").trim();
   };
   const provider = pick("pn-provider");
   const param = pick("pn-param");
@@ -92,7 +99,7 @@ function parsePushParamsFromContact(contactValue) {
     .filter((p) => p.token);
   if (!parts.length) return null;
   const chosen = parts.find((p) => p.service === "remote") || parts[0];
-  return { provider, param, token: chosen.token, services: parts.map((p) => p.service) };
+  return { provider, param, token: chosen.token, service: chosen.service, services: parts.map((p) => p.service) };
 }
 
 /** ② Flexisip 注册信息：iOS（不上报 push_devices）与未上报的 Android 都在这里 */
@@ -120,6 +127,7 @@ async function resolveFromFlexisipRegistrar({ sipUsername, sipDomain }) {
       channel: isApns ? "apns" : normalizeChannel(provider, ""),
       token: parsed.token,
       provider,
+      service: parsed.service,
       source: "flexisip",
       // apns.dev=开发构建 → 沙箱端点；apns=发布构建 → 生产端点（与推送网关的环境判定口径一致）
       appId: `com.qrtalkie.qrtalkie.remote${provider.endsWith(".dev") ? ".dev" : ".prod"}`,
@@ -247,7 +255,7 @@ export async function notifyVisitorMessage({ conversation, message, liveTest = p
           result.status || (result.ok ? "sent" : "failed"),
           result.errorCode || "",
           JSON.stringify(result.providerResponse || {}).slice(0, 60000),
-          JSON.stringify({ source: target.source, conversationId: row.public_id, liveTest, unread: caMessage.unread }).slice(0, 60000),
+          JSON.stringify({ source: target.source, service: target.service || null, conversationId: row.public_id, liveTest, unread: caMessage.unread }).slice(0, 60000),
         ],
       );
     }
