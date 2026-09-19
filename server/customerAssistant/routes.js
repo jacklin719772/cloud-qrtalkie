@@ -429,7 +429,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         actorPublicId: String(sipUserId),
         targetType: "conversation",
         targetPublicId: String(publicId || "").slice(0, 48),
-        ip: getClientIp(request),
+        ip: getClientIp(response.req), // 注意：本函数没有 request 参数，用 Express 的 response.req
       });
       return null;
     }
