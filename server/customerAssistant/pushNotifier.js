@@ -7,10 +7,11 @@
  *        窗口**按会话隔离**；**主人已读该会话 → 窗口重置**；主人前台正在看（WS 在线且已读到最新）→ 不推送
  *   §9.3 payload：{ type:"ca_message", conversationId, visitorId, preview, unread, ts }；APNs 用 apns-collapse-id 折叠
  *
- * 目标解析顺序（按现有平台事实）：
- *   ① `push_devices`（Android 上报：用于决定走 Google/FCM 还是极光 JPush）
- *   ② 回退 **Flexisip 注册信息**（Redis registrar，iOS 不上报 token，全部走 APNs；token 在 pn-prid 里）
- *   ③ 按设备类型决定通道：ios→apns（按 pn-provider 的 .dev/.prod 选择沙箱或生产端点）、android→fcm/jpush
+ * 目标解析（**两源并集**，因为同一 SIP 账号允许多台设备同时注册，必须全部推送）：
+ *   ① `push_devices`（Android 上报：用于**逐设备**决定走 Google/FCM 还是极光 JPush）
+ *   ② **Flexisip 注册信息**（Redis registrar；iOS 不上报 SaaS，token 在 pn-prid 里）
+ *   ③ 逐设备按类型定通道：ios→apns（pn-provider 的 .dev/.prod 决定沙箱/生产）、android→fcm/jpush
+ *   ④ 去重口径 (channel, token)；桌面端无推送通道（只有 WS/前台提示），不会出现在目标里
  *
  * 单实例假设（§8.2）：leading-edge 窗口在内存中；多实例下会退化为"每节点一份窗口"（重复推送），
  * 迁移目标为 Redis 键 + TTL。
@@ -127,10 +128,30 @@ async function resolveFromFlexisipRegistrar({ sipUsername, sipDomain }) {
   return targets;
 }
 
+/**
+ * 目标 = **两源并集**（同一 SIP 账号可多设备同时注册，必须全部推送）：
+ *   ① push_devices（Android 上报，用于逐设备决定 FCM/JPush 通道）
+ *   ② Flexisip 注册信息（iOS 不上报 SaaS，注册项里带 pn-prid）
+ * 混用场景（如 Android 已上报 + iOS 只在 Flexisip）必须两边都推，因此**不能**用"有空则回退"。
+ * 去重口径：(channel, token) —— 同一设备在两会话源出现时只推一次。
+ * 桌面端没有推送通道（无 FCM/APNs，只有 WS/前台提示），解析结果里自然不会出现。
+ */
 export async function resolvePushTargets(connection, { sipUsername, sipDomain }) {
-  const fromDevices = await resolveFromPushDevices(connection, { sipUsername, sipDomain });
-  if (fromDevices.length) return fromDevices;
-  return resolveFromFlexisipRegistrar({ sipUsername, sipDomain });
+  const [fromDevices, fromRegistrar] = await Promise.all([
+    resolveFromPushDevices(connection, { sipUsername, sipDomain }),
+    resolveFromFlexisipRegistrar({ sipUsername, sipDomain }),
+  ]);
+
+  const seen = new Set();
+  const merged = [];
+  for (const target of [...fromDevices, ...fromRegistrar]) {
+    if (!target?.token) continue;
+    const key = `${target.channel}:${target.token}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(target);
+  }
+  return merged;
 }
 
 /* ------------------------------------------------------------------ *
