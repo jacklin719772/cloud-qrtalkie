@@ -692,7 +692,6 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         targetType: "conversation",
         targetPublicId: conversation.publicId,
         ip: getClientIp(request),
-        meta: { visitorId: conversation.publicId ? undefined : undefined },
       });
       // 访客侧感知：告知会话已结束（其下次发消息会自动开新会话）
       dispatchToVisitor(conversation.conversationId, {
