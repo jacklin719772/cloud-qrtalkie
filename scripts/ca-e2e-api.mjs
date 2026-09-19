@@ -131,7 +131,11 @@ try {
   check("A1 无 token → 401", (await req("GET", "/api/visitor-assistant/conversations")).status === 401);
   check("V2 无 token → 401", (await req("GET", `/api/ecard/public/${SLUG}/chat`)).status === 401);
   check("A2 不存在的会话 → 404", (await req("GET", "/api/visitor-assistant/conversations/conv_ffffffffffffffffffffffffffffffff/messages", { token: agentToken })).status === 404);
-  check("V5 / A9 WS ticket → 501 未就绪", (await req("GET", `/api/ecard/public/${SLUG}/chat/ticket`, { token: visitorToken })).status === 501 && (await req("GET", "/api/visitor-assistant/ticket", { token: agentToken })).status === 501);
+  const v5t = await req("GET", `/api/ecard/public/${SLUG}/chat/ticket`, { token: visitorToken });
+  const a9t = await req("GET", "/api/visitor-assistant/ticket", { token: agentToken });
+  check("V5 / A9 签发一次性 WS ticket",
+    v5t.status === 200 && typeof v5t.json?.ticket === "string" && a9t.status === 200 && typeof a9t.json?.ticket === "string",
+    `v5=${v5t.status} a9=${a9t.status}`);
 
   // ---------- 既有功能回归（公开 ecard 页仍正常）----------
   const legacy = await fetch(`${BASE}/api/ecard/public/${SLUG}`);
@@ -147,6 +151,9 @@ try {
     }
     await conn.query("DELETE FROM ca_ecard_settings WHERE ecard_id = ?", [ECARD_ID]);
     if (agentSessionId) await conn.query("DELETE FROM admin_sessions WHERE id = ?", [agentSessionId]);
+    for (const pid of [visitorPublicId, ...extraVisitors].filter(Boolean)) {
+      await conn.query("DELETE FROM ca_audit_log WHERE target_public_id = ? OR actor_public_id = ?", [pid, pid]);
+    }
 
     const left = await conn.query(
       `SELECT
@@ -154,12 +161,13 @@ try {
          (SELECT COUNT(*) FROM ca_conversations WHERE ecard_id = ?) AS conversations,
          (SELECT COUNT(*) FROM ca_messages m JOIN ca_conversations c ON c.id = m.conversation_id WHERE c.ecard_id = ?) AS messages,
          (SELECT COUNT(*) FROM ca_ecard_settings WHERE ecard_id = ?) AS settings,
-         (SELECT COUNT(*) FROM admin_sessions WHERE device = 'ca-e2e') AS sessions`,
+         (SELECT COUNT(*) FROM admin_sessions WHERE device = 'ca-e2e') AS sessions,
+         (SELECT COUNT(*) FROM ca_audit_log) AS audit`,
       [ECARD_ID, ECARD_ID, ECARD_ID, ECARD_ID],
     );
     const l = left[0];
     const clean = Object.values(l).every((n) => Number(n) === 0);
-    console.log(`\n# 清理核对：visitors=${l.visitors} conversations=${l.conversations} messages=${l.messages} settings=${l.settings} sessions=${l.sessions}`);
+    console.log(`\n# 清理核对：visitors=${l.visitors} conversations=${l.conversations} messages=${l.messages} settings=${l.settings} sessions=${l.sessions} audit=${l.audit}`);
     check("测试数据已清理干净（0 残留）", clean);
   } catch (cleanupError) {
     console.log(`CLEANUP ERROR | ${cleanupError?.message || cleanupError}`);
