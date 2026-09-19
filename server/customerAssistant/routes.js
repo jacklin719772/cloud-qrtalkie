@@ -17,7 +17,7 @@ import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "
 import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
-import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream } from "./attachmentService.js";
+import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, statAttachmentByKey } from "./attachmentService.js";
 
 const MAX_CONTENT_LENGTH = 4000;
 /** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
