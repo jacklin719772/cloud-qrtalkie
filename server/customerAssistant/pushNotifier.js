@@ -150,13 +150,16 @@ export async function resolvePushTargets(connection, { sipUsername, sipDomain })
     resolveFromFlexisipRegistrar({ sipUsername, sipDomain }),
   ]);
 
-  const seen = new Set();
+  // 去重按 **token**（而非 通道+token）：同一台设备可能同时出现在两处，
+  // 且两处声明的通道未必一致（Android 在 push_devices 里按设备能力声明 jpush/fcm，
+  // 而 SIP 注册里的 pn-provider 可能写死为 fcm）。以 push_devices 为准（先入列、不被覆盖），
+  // 否则会用同一个 token 在两个通道各推一次，其中一个必然失败。
+  const seenTokens = new Set();
   const merged = [];
   for (const target of [...fromDevices, ...fromRegistrar]) {
     if (!target?.token) continue;
-    const key = `${target.channel}:${target.token}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (seenTokens.has(target.token)) continue;
+    seenTokens.add(target.token);
     merged.push(target);
   }
   return merged;
