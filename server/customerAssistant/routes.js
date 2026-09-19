@@ -21,7 +21,7 @@ import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream } from "./
 
 const MAX_CONTENT_LENGTH = 4000;
 /** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
-const ALLOWED_CONTENT_TYPES = new Set(["text", "file", "audio", "sticker"]);
+const ALLOWED_CONTENT_TYPES = new Set(["text", "image", "file", "audio", "sticker"]);
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
 
 /** 模式 B（显式存储）开关。默认 cookie：resumeToken 只经 HttpOnly Cookie 下发，不进 JSON body（评审意见 ⑭） */
