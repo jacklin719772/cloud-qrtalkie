@@ -25,6 +25,7 @@ export const CA_AUDIT_ACTIONS = {
   FORBIDDEN_ACCESS: "forbidden_access",
   VISITOR_REGISTERED: "visitor_registered",
   CONVERSATION_MESSAGES_CLEARED: "conversation_messages_cleared",
+  MESSAGE_DELETED: "message_deleted",
   CONVERSATION_DELETED: "conversation_deleted",
 };
 

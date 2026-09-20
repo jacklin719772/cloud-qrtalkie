@@ -12,6 +12,7 @@
  */
 
 import { newPublicId } from "./ids.js";
+import { toPreview } from "./messageService.js";
 
 /**
  * 取（或创建）该 ecard 下该访客的唯一会话。
@@ -231,6 +232,51 @@ export async function clearConversationMessages(connection, conversationId) {
     [conversationId],
   );
   return Number(result.affectedRows || 0);
+}
+
+/**
+ * 删除单条消息（R4 细化）：删消息（附件行级联）+ 重算未读与列表摘要。
+ * last_seq **不回退**（避免 seq 复用，与 clearConversationMessages 同口径）。
+ * 返回 { deleted, storageKey }；storageKey 由调用方负责删磁盘文件。
+ */
+export async function deleteMessage(connection, conversationId, messageId) {
+  const rows = await connection.query(
+    `SELECT m.id, a.storage_key
+       FROM ca_messages m
+       LEFT JOIN ca_attachments a ON a.message_id = m.id
+      WHERE m.id = ? AND m.conversation_id = ? LIMIT 1`,
+    [messageId, conversationId],
+  );
+  const row = rows[0];
+  if (!row) return { deleted: false, storageKey: null };
+
+  await connection.query(`DELETE FROM ca_messages WHERE id = ?`, [messageId]);
+
+  // 未读重算：与 appendMessage 的累加口径一致（访客消息计入客服未读，客服消息计入访客未读）
+  await connection.query(
+    `UPDATE ca_conversations c
+        SET unread_for_agent = (
+              SELECT COUNT(*) FROM ca_messages m
+               WHERE m.conversation_id = c.id AND m.sender_type = 'visitor' AND m.seq > c.agent_last_read_seq),
+            unread_for_visitor = (
+              SELECT COUNT(*) FROM ca_messages m
+               WHERE m.conversation_id = c.id AND m.sender_type = 'agent' AND m.seq > c.visitor_last_read_seq)
+      WHERE c.id = ?`,
+    [conversationId],
+  );
+
+  // 列表摘要回退到剩余最新一条（删的不是最后一条时结果不变）
+  const newestRows = await connection.query(
+    `SELECT id, created_at, content FROM ca_messages WHERE conversation_id = ? ORDER BY seq DESC LIMIT 1`,
+    [conversationId],
+  );
+  const newest = newestRows[0];
+  await connection.query(
+    `UPDATE ca_conversations SET last_message_id = ?, last_message_at = ?, last_message_preview = ? WHERE id = ?`,
+    [newest?.id ?? null, newest?.created_at ?? null, toPreview(newest?.content), conversationId],
+  );
+
+  return { deleted: true, storageKey: row.storage_key || null };
 }
 
 /**

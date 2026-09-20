@@ -17,7 +17,8 @@ import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "
 import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
-import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, statAttachmentByKey } from "./attachmentService.js";
+import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, resolveStoragePath, statAttachmentByKey } from "./attachmentService.js";
+import { rm } from "node:fs/promises";
 
 const MAX_CONTENT_LENGTH = 4000;
 /** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
@@ -839,6 +840,46 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] clear messages error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A12b 删除单条消息（含其附件：DB 行级联 + 磁盘文件；last_seq 不回退）
+  app.delete("/api/visitor-assistant/conversations/:id/messages/:messageId", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const conversation = await loadOwnedConversation(connection, request.params.id, sipUserId, response);
+      if (!conversation) return undefined;
+      const messageId = Number(request.params.messageId) || 0;
+      await connection.beginTransaction();
+      const deleted = await convs.deleteMessage(connection, conversation.conversationId, messageId);
+      await connection.commit();
+      if (!deleted.deleted) return fail(response, 404, "MESSAGE_NOT_FOUND", "訊息不存在");
+      // 磁盘文件（DB 行已随消息级联删除，文件需显式清理；失败不影响接口结果）
+      if (deleted.storageKey) {
+        const absolute = resolveStoragePath(deleted.storageKey);
+        if (absolute) {
+          await rm(absolute, { force: true }).catch((error) =>
+            console.error("[customerAssistant] delete attachment file failed:", error?.message || error),
+          );
+        }
+      }
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.MESSAGE_DELETED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        ip: getClientIp(request),
+        meta: { messageId },
+      });
+      return ok(response, { deleted: true });
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      console.error("[customerAssistant] delete message error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();

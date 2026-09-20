@@ -203,6 +203,34 @@ try {
   check("V7 访客可下载该附件（inline）",
     dlImgVisitor.status === 200 && /^inline/i.test(dlImgVisitor.headers.get("content-disposition") || ""));
 
+  // ---------- A12b 删除单条消息（含附件文件清理与未读重算）----------
+  const fileMessageId = a3file.json?.message?.id;
+  const delMsg = await req("DELETE", `/api/visitor-assistant/conversations/${conversationId}/messages/${fileMessageId}`, { token: agentToken });
+  check("A12b 删除单条消息 → 200", delMsg.status === 200 && delMsg.json?.deleted === true, `status=${delMsg.status}`);
+
+  const historyAfterDelete = await req("GET", `/api/visitor-assistant/conversations/${conversationId}/messages`, { token: agentToken });
+  check("A12b 该消息已不在历史中", !(historyAfterDelete.json?.messages || []).some((m) => m.id === fileMessageId));
+
+  const dlDeleted = await fetch(`${BASE}/api/visitor-assistant/attachments/${fileAtt?.id}`, {
+    headers: { authorization: `Bearer ${agentToken}` },
+  });
+  check("A12b 附件随消息删除 → 404（行级联 + 磁盘清理）", dlDeleted.status === 404, `status=${dlDeleted.status}`);
+
+  check("A12b 重复删除同一条 → 404",
+    (await req("DELETE", `/api/visitor-assistant/conversations/${conversationId}/messages/${fileMessageId}`, { token: agentToken })).status === 404);
+
+  const delVisitorMsg = await req("POST", `/api/ecard/public/${SLUG}/chat/messages`, {
+    token: visitorToken,
+    body: { clientMsgId: "e2e-del-1", content: "这条访客消息会被客服删除" },
+  });
+  const unreadBeforeDelete = (await req("GET", "/api/visitor-assistant/conversations", { token: agentToken }))
+    .json?.conversations?.find((c) => c.conversationId === conversationId)?.unreadForAgent;
+  await req("DELETE", `/api/visitor-assistant/conversations/${conversationId}/messages/${delVisitorMsg.json?.message?.id}`, { token: agentToken });
+  const unreadAfterDelete = (await req("GET", "/api/visitor-assistant/conversations", { token: agentToken }))
+    .json?.conversations?.find((c) => c.conversationId === conversationId)?.unreadForAgent;
+  check("A12b 删掉未读消息后客服未读重算", unreadBeforeDelete === 1 && unreadAfterDelete === 0,
+    `${unreadBeforeDelete} → ${unreadAfterDelete}`);
+
   // ---------- A5 归档 → 访客再发 → 自动回 active ----------
   const a5 = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive`, { token: agentToken });
   const a1arch = await req("GET", "/api/visitor-assistant/conversations?status=archived", { token: agentToken });

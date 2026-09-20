@@ -23,7 +23,7 @@
 
 const PREVIEW_MAX_LEN = 120;
 
-function toPreview(content) {
+export function toPreview(content) {
   if (content === null || content === undefined) return null;
   return String(content).replace(/\s+/g, " ").trim().slice(0, PREVIEW_MAX_LEN) || null;
 }
