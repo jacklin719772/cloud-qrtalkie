@@ -241,7 +241,7 @@ export async function clearConversationMessages(connection, conversationId) {
  */
 export async function deleteMessage(connection, conversationId, messageId) {
   const rows = await connection.query(
-    `SELECT m.id, a.storage_key
+    `SELECT m.id, m.seq, a.storage_key
        FROM ca_messages m
        LEFT JOIN ca_attachments a ON a.message_id = m.id
       WHERE m.id = ? AND m.conversation_id = ? LIMIT 1`,
@@ -276,7 +276,7 @@ export async function deleteMessage(connection, conversationId, messageId) {
     [newest?.id ?? null, newest?.created_at ?? null, toPreview(newest?.content), conversationId],
   );
 
-  return { deleted: true, storageKey: row.storage_key || null };
+  return { deleted: true, storageKey: row.storage_key || null, seq: Number(row.seq) };
 }
 
 /**

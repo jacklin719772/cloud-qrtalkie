@@ -876,6 +876,12 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         ip: getClientIp(request),
         meta: { messageId },
       });
+      // 对端感知：撤回/删除后访客页面实时移除（P3 Web 面板按此事件处理）
+      dispatchToVisitor(conversation.conversationId, {
+        type: "ca.message.deleted",
+        conv: conversation.publicId,
+        data: { messageId, seq: deleted.seq },
+      });
       return ok(response, { deleted: true });
     } catch (error) {
       await connection.rollback().catch(() => {});
