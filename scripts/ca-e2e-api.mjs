@@ -42,7 +42,8 @@ const extraVisitors = []; // 本次运行创建的所有访客（清理用）
 try {
   // ---------- setup ----------
   await conn.query(
-    `INSERT INTO ca_ecard_settings (ecard_id, enabled, welcome_message, display_name) VALUES (?, 1, ?, ?)`,
+    `INSERT INTO ca_ecard_settings (ecard_id, enabled, welcome_message, display_name) VALUES (?, 1, ?, ?)
+     ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), welcome_message = VALUES(welcome_message), display_name = VALUES(display_name)`,
     [ECARD_ID, "您好，這裡是線上客服，請直接留言。", "30010001 客服"],
   );
   const agentToken = randomBytes(32).toString("hex");
