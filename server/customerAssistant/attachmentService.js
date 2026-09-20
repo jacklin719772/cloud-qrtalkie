@@ -32,18 +32,52 @@ export const CA_ATTACHMENT_LIMITS = {
     { mime: "audio/opus", ext: "opus", kind: "audio" },
     { mime: "audio/ogg", ext: "ogg", kind: "audio" },
   ],
+  // 除下列可执行/脚本类外，任意文件类型都按通用 file 处理
+  deniedExtensions: [
+    "apk", "aab", "exe", "msi", "bat", "cmd", "com", "scr", "cpl",
+    "dll", "so", "dex", "jar", "sh", "bash", "ps1", "vbs", "js", "jse",
+    "wsf", "hta", "reg", "app", "dmg", "pkg", "deb", "rpm", "iso", "img",
+  ],
 };
+
+/** 常见扩展名 → MIME（兜底类型用；statAttachmentByKey 也依赖它还原 mime） */
+const MIME_BY_EXT = {
+  txt: "text/plain", log: "text/plain", md: "text/markdown", csv: "text/csv",
+  json: "application/json", xml: "application/xml", yml: "application/x-yaml", yaml: "application/x-yaml",
+  zip: "application/zip", rar: "application/vnd.rar", "7z": "application/x-7z-compressed",
+  tar: "application/x-tar", gz: "application/gzip",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  mp3: "audio/mpeg", wav: "audio/wav", amr: "audio/amr",
+  mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
+  mkv: "video/x-matroska", webm: "video/webm", "3gp": "video/3gpp",
+};
+
+/** 扩展名白名单化：小写、仅 [a-z0-9]、最长 8 位；无扩展名回退 bin */
+export function sanitizeExtension(fileName) {
+  const raw = String(fileName || "").trim().toLowerCase();
+  const dot = raw.lastIndexOf(".");
+  const ext = dot >= 0 ? raw.slice(dot + 1).replace(/[^a-z0-9]/g, "").slice(0, 8) : "";
+  return ext || "bin";
+}
 
 const STORAGE_ROOT = path.resolve(process.cwd(), "assets", "ca-attachments");
 
-/** 依据 MIME（优先）或扩展名判断是否允许，并返回 { mime, ext, kind } */
+/** 依据 MIME（优先）或扩展名判断类型；可执行类返回 null（调用方 415） */
 export function resolveAttachmentKind(fileName, mimeType) {
   const mime = String(mimeType || "").toLowerCase().split(";")[0].trim();
+  const ext = sanitizeExtension(fileName);
+  if (CA_ATTACHMENT_LIMITS.deniedExtensions.includes(ext)) return null;
   const hit = CA_ATTACHMENT_LIMITS.allowed.find((item) => item.mime === mime);
   if (hit) return hit;
-  const ext = String(fileName || "").toLowerCase().split(".").pop();
   const byExt = CA_ATTACHMENT_LIMITS.allowed.find((item) => item.ext === ext);
-  return byExt ? { ...byExt, mime: mime || byExt.mime } : null;
+  if (byExt) return { ...byExt, mime: mime || byExt.mime };
+  // 兜底：任意类型按通用文件
+  return { mime: mime || MIME_BY_EXT[ext] || "application/octet-stream", ext, kind: "file" };
 }
 
 /** 解析 dataURL / 原始 base64 → Buffer；失败返回 null */

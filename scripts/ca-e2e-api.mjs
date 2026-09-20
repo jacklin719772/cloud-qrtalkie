@@ -8,6 +8,8 @@
  */
 import { pool } from "../server/db.js";
 import { createHash, randomBytes } from "node:crypto";
+import { rm } from "node:fs/promises";
+import path from "node:path";
 
 const BASE = "http://127.0.0.1:3001";
 const SLUG = process.env.CA_TEST_SLUG || "ec-28-ffx9i5";
@@ -118,6 +120,89 @@ try {
   const v2c = await req("GET", `/api/ecard/public/${SLUG}/chat`, { token: visitorToken });
   check("V4 访客已读 → 访客侧未读归零", v4.status === 200 && v2c.json?.conversation?.unreadForVisitor === 0);
 
+  // ---------- A11/A12 附件：任意类型放开 + 可执行拒绝 + 下载语义 ----------
+  const b64 = (text) => Buffer.from(text, "utf8").toString("base64");
+  const a11txt = await req("POST", "/api/visitor-assistant/uploads", {
+    token: agentToken,
+    body: { conversationId, filename: "说明.txt", mimeType: "text/plain", data: b64("hello attachment") },
+  });
+  check("A11 上传任意类型（txt → kind=file）", a11txt.status === 200 && a11txt.json?.kind === "file",
+    `kind=${a11txt.json?.kind}`);
+
+  const a11unknown = await req("POST", "/api/visitor-assistant/uploads", {
+    token: agentToken,
+    body: { conversationId, filename: "数据.xyzzy", mimeType: "", data: b64("unknown type") },
+  });
+  check("A11 未登记类型兜底为 file（不拒绝）", a11unknown.status === 200 && a11unknown.json?.kind === "file");
+
+  const a11docx = await req("POST", "/api/visitor-assistant/uploads", {
+    token: agentToken,
+    body: {
+      conversationId,
+      filename: "报告.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      data: b64("PKfake-docx"),
+    },
+  });
+  check("A11 Office 文档保留 MIME（docx）",
+    a11docx.status === 200 && /wordprocessingml/.test(a11docx.json?.mimeType || ""),
+    `mime=${a11docx.json?.mimeType}`);
+
+  const a11apk = await req("POST", "/api/visitor-assistant/uploads", {
+    token: agentToken,
+    body: { conversationId, filename: "evil.apk", mimeType: "application/vnd.android.package-archive", data: b64("MZ") },
+  });
+  check("A11 拒绝可执行类型（apk → 415）", a11apk.status === 415, `status=${a11apk.status}`);
+
+  const a3file = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/messages`, {
+    token: agentToken,
+    body: {
+      clientMsgId: "e2e-file-1",
+      content: "",
+      contentType: "file",
+      attachment: { key: a11txt.json?.key, fileName: "说明.txt" },
+    },
+  });
+  const fileAtt = a3file.json?.message?.attachment;
+  check("A3 带附件发送 → 201（kind/size 以服务端磁盘为准）",
+    a3file.status === 201 && fileAtt?.kind === "file" && fileAtt?.fileSize === 16, `size=${fileAtt?.fileSize}`);
+
+  const dlFile = await fetch(`${BASE}/api/visitor-assistant/attachments/${fileAtt?.id}`, {
+    headers: { authorization: `Bearer ${agentToken}` },
+  });
+  const dlFileBody = await dlFile.text();
+  check("A12 下载：非图片强制 attachment + 内容一致",
+    dlFile.status === 200 && /^attachment/i.test(dlFile.headers.get("content-disposition") || "") &&
+    dlFileBody === "hello attachment");
+
+  const png1x1 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+  const a11png = await req("POST", "/api/visitor-assistant/uploads", {
+    token: agentToken,
+    body: { conversationId, filename: "dot.png", mimeType: "image/png", data: png1x1 },
+  });
+  check("A11 图片 → kind=image", a11png.status === 200 && a11png.json?.kind === "image");
+
+  const a3img = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/messages`, {
+    token: agentToken,
+    body: {
+      clientMsgId: "e2e-file-2",
+      content: "",
+      contentType: "image",
+      attachment: { key: a11png.json?.key, fileName: "dot.png" },
+    },
+  });
+  const imgAtt = a3img.json?.message?.attachment;
+  const dlImg = await fetch(`${BASE}/api/visitor-assistant/attachments/${imgAtt?.id}`, {
+    headers: { authorization: `Bearer ${agentToken}` },
+  });
+  check("A12 图片内联（inline）", dlImg.status === 200 && /^inline/i.test(dlImg.headers.get("content-disposition") || ""));
+
+  const dlImgVisitor = await fetch(`${BASE}/api/ecard/public/${SLUG}/chat/attachments/${imgAtt?.id}`, {
+    headers: { authorization: `Bearer ${visitorToken}` },
+  });
+  check("V7 访客可下载该附件（inline）",
+    dlImgVisitor.status === 200 && /^inline/i.test(dlImgVisitor.headers.get("content-disposition") || ""));
+
   // ---------- A5 归档 → 访客再发 → 自动回 active ----------
   const a5 = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive`, { token: agentToken });
   const a1arch = await req("GET", "/api/visitor-assistant/conversations?status=archived", { token: agentToken });
@@ -152,6 +237,13 @@ try {
     }
     await conn.query("DELETE FROM ca_ecard_settings WHERE ecard_id = ?", [ECARD_ID]);
     if (agentSessionId) await conn.query("DELETE FROM admin_sessions WHERE id = ?", [agentSessionId]);
+    // 附件落盘文件（DB 行随访客级联删除，磁盘目录需显式清理）
+    if (conversationId) {
+      await rm(path.resolve(process.cwd(), "assets", "ca-attachments", String(ECARD_ID), conversationId), {
+        recursive: true,
+        force: true,
+      });
+    }
     for (const pid of [visitorPublicId, ...extraVisitors].filter(Boolean)) {
       await conn.query("DELETE FROM ca_audit_log WHERE target_public_id IN (?, ?) OR actor_public_id = ?", [pid, conversationId || "", pid]);
     }

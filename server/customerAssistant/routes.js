@@ -58,10 +58,19 @@ function buildAgentStatus(sipUserId, settings) {
   return { state: available ? "available" : "unavailable", manual };
 }
 
+/**
+ * 附件下载的 Content-Disposition：仅图片/音频内联，其余一律 attachment。
+ * 任意类型放开后，未知类型内联渲染会有 XSS/执行风险（如 HTML/SVG），故默认强制下载。
+ */
+function contentDispositionFor(mimeType, fileName) {
+  const mime = String(mimeType || "").toLowerCase();
+  const inline = /^image\/(jpeg|png|webp|gif)$/.test(mime) || /^audio\//.test(mime);
+  return `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(String(fileName || "file"))}"`;
+}
+
 function fail(response, status, code, message) {
   return response.status(status).json({ success: false, code, message });
 }
-
 function ok(response, payload = {}) {
   return response.json({ success: true, ...payload });
 }
@@ -513,7 +522,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       if (!opened) return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
       response.set("Content-Type", row.mime_type || "application/octet-stream");
       response.set("Content-Length", String(opened.size));
-      response.set("Content-Disposition", "inline; filename=\"" + encodeURIComponent(row.file_name || "file") + "\"");
+      response.set("Content-Disposition", contentDispositionFor(row.mime_type, row.file_name));
       return opened.stream.pipe(response);
     } catch (error) {
       console.error("[customerAssistant] visitor download error:", error?.message || error);
@@ -797,7 +806,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       if (!opened) return fail(response, 404, "ATTACHMENT_NOT_FOUND", "檔案不存在");
       response.set("Content-Type", row.mime_type || "application/octet-stream");
       response.set("Content-Length", String(opened.size));
-      response.set("Content-Disposition", "inline; filename=\"" + encodeURIComponent(row.file_name || "file") + "\"");
+      response.set("Content-Disposition", contentDispositionFor(row.mime_type, row.file_name));
       return opened.stream.pipe(response);
     } catch (error) {
       console.error("[customerAssistant] agent download error:", error?.message || error);
