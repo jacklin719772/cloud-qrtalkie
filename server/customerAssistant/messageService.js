@@ -138,7 +138,13 @@ export async function appendMessage(connection, {
             status      = IF(? = 'visitor', 'active', status),
             archived_at = IF(? = 'visitor', NULL,     archived_at)
       WHERE id = ?`,
-    [nextSeq, insertResult.insertId, toPreview(content), senderType, senderType, senderType, senderType, conversationId],
+    [
+      nextSeq,
+      insertResult.insertId,
+      // 附件消息 content 为空：回退用文件名做预览（否则列表显示“暂无消息”）
+      toPreview(content) || (attachment?.fileName ? String(attachment.fileName).slice(0, PREVIEW_MAX_LEN) : null),
+      senderType, senderType, senderType, senderType, conversationId,
+    ],
   );
 
   // 附件（可选，纯增量）：key 必须属于本会话的公开 id 前缀，防止把别人的文件挂到自己消息上

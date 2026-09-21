@@ -119,10 +119,14 @@ export async function listConversationsForAgent(connection, sipUserId, { status 
             v.public_id AS visitor_public_id, v.display_name AS visitor_display_name,
             v.blocked AS visitor_blocked,
             v.contact_name, v.contact_email, v.contact_phone, v.subject,
-            a.archived_at AS content_archived_at
+            a.archived_at AS content_archived_at,
+            lm.content_type AS last_message_type,
+            la.kind AS last_attachment_kind, la.file_name AS last_attachment_name
        FROM ca_conversations c
        JOIN ca_visitors v ON v.id = c.visitor_id
        LEFT JOIN ca_archives a ON a.conversation_public_id = c.public_id AND a.revoked_at IS NULL
+       LEFT JOIN ca_messages lm ON lm.id = c.last_message_id
+       LEFT JOIN ca_attachments la ON la.message_id = lm.id
       WHERE ${where}
       ORDER BY c.last_message_at IS NULL, c.last_message_at DESC, c.id DESC
       LIMIT ?`,
@@ -147,6 +151,10 @@ export async function listConversationsForAgent(connection, sipUserId, { status 
     // 已归档过（内容归档）→ 列表上标一个图标；未归档不影响其在未归档列表中出现
     contentArchived: Boolean(row.content_archived_at),
     contentArchivedAt: row.content_archived_at || null,
+    // 最后一条消息的类型/附件（列表摘要按类型本地化展示：[图片]/[文件] xxx/语音…）
+    lastMessageType: row.last_message_type || null,
+    lastAttachmentKind: row.last_attachment_kind || null,
+    lastAttachmentName: row.last_attachment_name || null,
   }));
 }
 
