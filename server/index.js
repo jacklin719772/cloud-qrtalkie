@@ -13804,7 +13804,7 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
 
 // GET /api/sip-account/status - 查詢指定 SIP 帳號即時狀態（註冊 + 通話），資料源為 Flexisip
 const SIP_ACCOUNT_STATUS_RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const SIP_ACCOUNT_STATUS_RATE_LIMIT_MAX = 120;
+const SIP_ACCOUNT_STATUS_RATE_LIMIT_MAX = 300;
 const sipAccountStatusRateLimitStore = new Map();
 
 function isSipAccountStatusAllowedByRateLimit(request) {

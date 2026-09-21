@@ -6,6 +6,9 @@ import ConfirmModal from './ConfirmModal';
 import { ensureJsSIPLoaded } from './loadJsSIP';
 import './ecardVisitorTheme.css';
 
+// SIP 狀態輪詢間隔（毫秒）：縮短以便「通話中」與「通話結束」都能及時反映
+const SIP_STATUS_POLL_MS = 3000;
+
 function isValidSlug(slug) {
   return typeof slug === 'string' && /^[A-Za-z0-9_-]+$/.test(String(slug).trim());
 }
@@ -132,7 +135,6 @@ export default function ECardVisitorPage({ slug }) {
     || (ecardData?.sipRegistrationStatus === 'online'
       ? 'online_idle'
       : ecardData?.sipRegistrationStatus === 'offline' ? 'offline' : 'unknown');
-  const sipOnline = sipState === 'online_idle' || sipState === 'online_busy';
   const sipToneClass = sipState === 'online_idle'
     ? 'is-ok'
     : sipState === 'online_busy' ? 'is-busy' : sipState === 'offline' ? 'is-bad' : 'is-warn';
@@ -162,6 +164,24 @@ export default function ECardVisitorPage({ slug }) {
       return null;
     }
   }, []);
+
+  // SIP 狀態輪詢：只更新狀態本身（不重載頁面、不影響 Web 帳號註冊與通話），
+  // 頁面隱藏時暫停，切回來立刻補查一次
+  useEffect(() => {
+    const account = String(ecardData?.sipAccount || '').trim();
+    if (!account) return undefined;
+    const domain = ecardData?.sipAccountInfo?.domain;
+    const tick = () => {
+      if (document.visibilityState === 'hidden') return;
+      loadSipStatus(account, domain);
+    };
+    const timer = setInterval(tick, SIP_STATUS_POLL_MS);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [ecardData?.sipAccount, ecardData?.sipAccountInfo?.domain, loadSipStatus]);
 
   useEffect(() => {
     function handleBeforeUnload() {
@@ -671,11 +691,15 @@ export default function ECardVisitorPage({ slug }) {
     if (registrationStatus !== 'registered') return;
     if (isPreparingCall || callBusy) return;
     if (!callSessionRef.current || !uaRef.current) return;
-    if (sipState === 'online_busy') {
+
+    // 放行前實時復查一次：輪詢結果可能已過期（例如對方剛開始通話）
+    const fresh = await loadSipStatus(ecardData.sipAccount, ecardData.sipAccountInfo?.domain);
+    const freshState = fresh?.state || sipState;
+    if (freshState === 'online_busy') {
       setSipBusyHint(true);
       return;
     }
-    if (!sipOnline) {
+    if (freshState !== 'online_idle') {
       setSipOfflineHint(true);
       return;
     }
