@@ -27,6 +27,8 @@ export const CA_AUDIT_ACTIONS = {
   CONVERSATION_MESSAGES_CLEARED: "conversation_messages_cleared",
   MESSAGE_DELETED: "message_deleted",
   CONVERSATION_DELETED: "conversation_deleted",
+  CONTENT_ARCHIVED: "content_archived",
+  CONTENT_ARCHIVE_REVOKED: "content_archive_revoked",
 };
 
 /**

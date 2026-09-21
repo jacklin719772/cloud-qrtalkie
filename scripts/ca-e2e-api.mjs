@@ -232,7 +232,39 @@ try {
   check("A12b 删掉未读消息后客服未读重算", unreadBeforeDelete === 1 && unreadAfterDelete === 0,
     `${unreadBeforeDelete} → ${unreadAfterDelete}`);
 
-  // ---------- A5 归档 → 访客再发 → 自动回 active ----------
+  // ---------- A14/A15/A16 内容归档：打包 + 公开预览/下载 + 覆盖换链 + 撤销 ----------
+  const a14 = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive-content`, { token: agentToken });
+  const token1 = ((a14.json?.shareUrl || "").match(/ca-archive\/([A-Za-z0-9_-]{43})$/) || [])[1];
+  check("A14 归档 → 200 且返回分享链接", a14.status === 200 && Boolean(token1), `status=${a14.status}`);
+  check("A14 归档包统计含消息与附件", (a14.json?.messageCount || 0) >= 6 && (a14.json?.attachmentCount || 0) >= 2,
+    `msgs=${a14.json?.messageCount} atts=${a14.json?.attachmentCount}`);
+
+  const preview = await fetch(`${BASE}/api/public/ca-archive/${token1}`);
+  const previewHtml = await preview.text();
+  check("公开预览页 200 且含归档内容", preview.status === 200 && /聊天记录归档/.test(previewHtml) && /hello attachment|你好/.test(previewHtml));
+
+  const zipResp = await fetch(`${BASE}/api/public/ca-archive/${token1}/zip`);
+  const zipBuf = Buffer.from(await zipResp.arrayBuffer());
+  check("公开 ZIP 下载 200（PK 头 + 体积与登记一致）",
+    zipResp.status === 200 && zipBuf.slice(0, 2).toString() === "PK" && zipBuf.length === a14.json?.fileSize,
+    `size=${zipBuf.length}/${a14.json?.fileSize}`);
+
+  const a14b = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive-content`, { token: agentToken });
+  const token2 = ((a14b.json?.shareUrl || "").match(/ca-archive\/([A-Za-z0-9_-]{43})$/) || [])[1];
+  check("再次归档 = 覆盖换链（新 token ≠ 旧）", a14b.status === 200 && Boolean(token2) && token2 !== token1);
+  check("旧链接立即失效（404）", (await fetch(`${BASE}/api/public/ca-archive/${token1}`)).status === 404);
+
+  const a15 = await req("GET", "/api/visitor-assistant/archives", { token: agentToken });
+  const archiveRow = (a15.json?.archives || []).find((a) => a.conversationId === conversationId);
+  check("A15 归档列表含摘要（访客名/时间/统计）",
+    a15.status === 200 && Boolean(archiveRow?.visitorName) && Boolean(archiveRow?.archivedAt),
+    `name=${archiveRow?.visitorName}`);
+
+  const a16 = await req("DELETE", `/api/visitor-assistant/archives/${archiveRow?.id}`, { token: agentToken });
+  check("A16 撤销归档 → 链接立即失效",
+    a16.status === 200 && (await fetch(`${BASE}/api/public/ca-archive/${token2}`)).status === 404);
+
+
   const a5 = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive`, { token: agentToken });
   const a1arch = await req("GET", "/api/visitor-assistant/conversations?status=archived", { token: agentToken });
   check("A5 归档生效（archived 列表可见）", a5.status === 200 && (a1arch.json?.conversations || []).some((c) => c.conversationId === conversationId));
@@ -266,6 +298,12 @@ try {
     }
     await conn.query("DELETE FROM ca_ecard_settings WHERE ecard_id = ?", [ECARD_ID]);
     if (agentSessionId) await conn.query("DELETE FROM admin_sessions WHERE id = ?", [agentSessionId]);
+    // 归档：DB 行 + 落盘 ZIP/HTML（归档是快照，不随会话级联删除，需显式清理）
+    await conn.query("DELETE FROM ca_archives WHERE ecard_id = ?", [ECARD_ID]);
+    if (conversationId) {
+      await rm(path.resolve(process.cwd(), "assets", "ca-archives", String(ECARD_ID), `${conversationId}.zip`), { force: true });
+      await rm(path.resolve(process.cwd(), "assets", "ca-archives", String(ECARD_ID), `${conversationId}.html`), { force: true });
+    }
     // 附件落盘文件（DB 行随访客级联删除，磁盘目录需显式清理）
     if (conversationId) {
       await rm(path.resolve(process.cwd(), "assets", "ca-attachments", String(ECARD_ID), conversationId), {
@@ -284,8 +322,9 @@ try {
          (SELECT COUNT(*) FROM ca_messages m JOIN ca_conversations c ON c.id = m.conversation_id WHERE c.ecard_id = ?) AS messages,
          (SELECT COUNT(*) FROM ca_ecard_settings WHERE ecard_id = ?) AS settings,
          (SELECT COUNT(*) FROM admin_sessions WHERE device = 'ca-e2e') AS sessions,
+         (SELECT COUNT(*) FROM ca_archives WHERE ecard_id = ?) AS archives,
          (SELECT COUNT(*) FROM ca_audit_log) AS audit`,
-      [ECARD_ID, ECARD_ID, ECARD_ID, ECARD_ID],
+      [ECARD_ID, ECARD_ID, ECARD_ID, ECARD_ID, ECARD_ID],
     );
     const l = left[0];
     const clean = Object.values(l).every((n) => Number(n) === 0);

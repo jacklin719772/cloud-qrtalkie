@@ -19,6 +19,14 @@ import { notifyVisitorMessage } from "./pushNotifier.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, resolveStoragePath, statAttachmentByKey } from "./attachmentService.js";
 import { rm } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
+import {
+  buildConversationArchive,
+  isValidShareToken,
+  openArchiveStream,
+  removeArchiveFiles,
+  saveArchiveFiles,
+} from "./archiveService.js";
 
 const MAX_CONTENT_LENGTH = 4000;
 /** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
@@ -920,6 +928,228 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] delete conversation error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  /* ------------------------------------------------------------------ *
+   * A14–A16 内容归档（打包 ZIP + 只读预览页 + 分享链接）
+   *   · 归档 = 快照：会话删除/清空都不影响归档包（不做级联删除）
+   *   · 重复归档 = 覆盖：旧文件删除、新 token 生成（旧链接立即失效）
+   *   · 公开访问只凭不可猜 token（免登录），预览页禁止脚本（CSP）
+   * ------------------------------------------------------------------ */
+
+  const publicBaseUrl = String(process.env.APP_URL || "https://cloud.qrtalkie.org").replace(/\/+$/, "");
+
+  function archiveSummary(row) {
+    return {
+      id: Number(row.id),
+      conversationId: row.conversation_public_id,
+      visitorName: row.visitor_name || null,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      archivedAt: row.archived_at,
+      fileSize: Number(row.file_size) || 0,
+      messageCount: Number(row.message_count) || 0,
+      attachmentCount: Number(row.attachment_count) || 0,
+      shareUrl: `${publicBaseUrl}/api/public/ca-archive/${row.share_token}`,
+    };
+  }
+
+  // A14 归档内容：打包消息 + 双方附件 → ZIP，登记并生成分享链接；同一会话覆盖
+  app.post("/api/visitor-assistant/conversations/:id/archive-content", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const conversation = await loadOwnedConversation(connection, request.params.id, sipUserId, response);
+      if (!conversation) return undefined;
+
+      const rows = await connection.query(
+        `SELECT m.seq, m.sender_type, m.content_type, m.content, m.created_at,
+                a.id AS attachment_id, a.storage_key, a.file_name, a.file_size, a.mime_type
+           FROM ca_messages m
+           LEFT JOIN ca_attachments a ON a.message_id = m.id
+          WHERE m.conversation_id = ?
+          ORDER BY m.seq ASC`,
+        [conversation.conversationId],
+      );
+      if (!rows.length) return fail(response, 400, "EMPTY_CONVERSATION", "沒有可歸檔的訊息");
+
+      const visitorRows = await connection.query(
+        `SELECT public_id, contact_name, contact_email, contact_phone, contact_subject FROM ca_visitors WHERE id = ? LIMIT 1`,
+        [conversation.visitorId],
+      );
+      const built = await buildConversationArchive({
+        rows,
+        visitor: visitorRows[0],
+        ecardId: conversation.ecardId,
+        conversationPublicId: conversation.publicId,
+      });
+
+      await removeArchiveFiles(conversation.ecardId, conversation.publicId); // 覆盖：先清旧文件
+      await saveArchiveFiles(conversation.ecardId, conversation.publicId, built);
+
+      const shareToken = randomBytes(32).toString("base64url"); // 43 字符，不可猜
+      await connection.query(
+        `INSERT INTO ca_archives
+           (ecard_id, conversation_id, conversation_public_id, sip_user_id, visitor_public_id, visitor_name,
+            share_token, file_size, message_count, attachment_count, started_at, ended_at, archived_at, revoked_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NULL)
+         ON DUPLICATE KEY UPDATE
+           share_token = VALUES(share_token), file_size = VALUES(file_size),
+           message_count = VALUES(message_count), attachment_count = VALUES(attachment_count),
+           started_at = VALUES(started_at), ended_at = VALUES(ended_at),
+           archived_at = NOW(), revoked_at = NULL`,
+        [
+          conversation.ecardId,
+          conversation.conversationId,
+          conversation.publicId,
+          sipUserId,
+          visitorRows[0]?.public_id || null,
+          (visitorRows[0]?.contact_name || "").slice(0, 128) || null,
+          shareToken,
+          built.zip.length,
+          built.messageCount,
+          built.attachmentCount,
+          built.startedAt,
+          built.endedAt,
+        ],
+      );
+      // 归档同时把会话移入「已归档」（列表筛选口径统一）
+      await connection.query(`UPDATE ca_conversations SET status = 'archived' WHERE id = ?`, [conversation.conversationId]);
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.CONTENT_ARCHIVED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: conversation.publicId,
+        ip: getClientIp(request),
+        meta: { messageCount: built.messageCount, attachmentCount: built.attachmentCount, fileSize: built.zip.length, skipped: built.skipped },
+      });
+      return ok(response, {
+        conversationId: conversation.publicId,
+        visitorName: (visitorRows[0]?.contact_name || "").slice(0, 128) || null,
+        startedAt: built.startedAt,
+        endedAt: built.endedAt,
+        archivedAt: new Date().toISOString(),
+        fileSize: built.zip.length,
+        messageCount: built.messageCount,
+        attachmentCount: built.attachmentCount,
+        shareUrl: `${publicBaseUrl}/api/public/ca-archive/${shareToken}`,
+      });
+    } catch (error) {
+      console.error("[customerAssistant] archive content error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A15 归档记录列表（列表页「已归档」用）
+  app.get("/api/visitor-assistant/archives", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT id, conversation_public_id, visitor_name, share_token, file_size, message_count,
+                attachment_count, started_at, ended_at, archived_at
+           FROM ca_archives
+          WHERE sip_user_id = ? AND revoked_at IS NULL
+          ORDER BY archived_at DESC
+          LIMIT 200`,
+        [sipUserId],
+      );
+      return ok(response, { archives: rows.map(archiveSummary) });
+    } catch (error) {
+      console.error("[customerAssistant] list archives error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A16 撤销归档：删除归档包与记录（分享链接立即失效）
+  app.delete("/api/visitor-assistant/archives/:id", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const archiveId = Number(request.params.id) || 0;
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT id, ecard_id, conversation_public_id, sip_user_id FROM ca_archives WHERE id = ? LIMIT 1`,
+        [archiveId],
+      );
+      const row = rows[0];
+      if (!row || !isSameSipUserId(row.sip_user_id, sipUserId)) {
+        return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      }
+      await connection.query(`DELETE FROM ca_archives WHERE id = ?`, [archiveId]);
+      await removeArchiveFiles(row.ecard_id, row.conversation_public_id).catch((error) =>
+        console.error("[customerAssistant] remove archive files failed:", error?.message || error),
+      );
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.CONTENT_ARCHIVE_REVOKED,
+        actorType: "agent",
+        actorPublicId: String(sipUserId),
+        targetType: "conversation",
+        targetPublicId: row.conversation_public_id,
+        ip: getClientIp(request),
+      });
+      return ok(response, { revoked: true });
+    } catch (error) {
+      console.error("[customerAssistant] revoke archive error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // 公开：归档预览页（免登录，凭 token；禁脚本）
+  app.get("/api/public/ca-archive/:token", async (request, response) => {
+    const token = String(request.params.token || "");
+    if (!isValidShareToken(token)) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT ecard_id, conversation_public_id FROM ca_archives WHERE share_token = ? AND revoked_at IS NULL LIMIT 1`,
+        [token],
+      );
+      if (!rows[0]) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      const opened = await openArchiveStream("html", rows[0].ecard_id, rows[0].conversation_public_id);
+      if (!opened) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      response.set("Content-Type", "text/html; charset=utf-8");
+      response.set("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'");
+      response.set("X-Content-Type-Options", "nosniff");
+      return opened.stream.pipe(response);
+    } catch (error) {
+      console.error("[customerAssistant] public archive preview error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // 公开：归档 ZIP 下载（免登录，凭 token）
+  app.get("/api/public/ca-archive/:token/zip", async (request, response) => {
+    const token = String(request.params.token || "");
+    if (!isValidShareToken(token)) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT ecard_id, conversation_public_id, visitor_name FROM ca_archives WHERE share_token = ? AND revoked_at IS NULL LIMIT 1`,
+        [token],
+      );
+      if (!rows[0]) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      const opened = await openArchiveStream("zip", rows[0].ecard_id, rows[0].conversation_public_id);
+      if (!opened) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      const name = `${(rows[0].visitor_name || "visitor").slice(0, 40)}_chat_archive.zip`;
+      response.set("Content-Type", "application/zip");
+      response.set("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+      response.set("X-Content-Type-Options", "nosniff");
+      return opened.stream.pipe(response);
+    } catch (error) {
+      console.error("[customerAssistant] public archive download error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();
