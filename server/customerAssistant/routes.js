@@ -978,7 +978,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       if (!rows.length) return fail(response, 400, "EMPTY_CONVERSATION", "沒有可歸檔的訊息");
 
       const visitorRows = await connection.query(
-        `SELECT public_id, contact_name, contact_email, contact_phone, contact_subject FROM ca_visitors WHERE id = ? LIMIT 1`,
+        `SELECT public_id, contact_name, contact_email, contact_phone, subject FROM ca_visitors WHERE id = ? LIMIT 1`,
         [conversation.visitorId],
       );
       const built = await buildConversationArchive({

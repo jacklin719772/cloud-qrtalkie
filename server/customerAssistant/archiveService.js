@@ -197,7 +197,7 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
           name: visitor.contact_name || visitor.display_name || null,
           email: visitor.contact_email || null,
           phone: visitor.contact_phone || null,
-          subject: visitor.contact_subject || null,
+          subject: visitor.subject || null,
         }
       : null,
     messageCount: rows.length,
