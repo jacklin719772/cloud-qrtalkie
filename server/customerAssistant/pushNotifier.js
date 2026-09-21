@@ -217,6 +217,7 @@ export async function notifyVisitorMessage({ conversation, message, liveTest = p
     const caMessage = {
       title: "访客消息",
       body: visitorName ? `访客${visitorName}给您发送了一条消息` : "有访客给您发送了一条消息",
+      visitorName,
       conversationId: row.public_id,
       visitorId: row.visitor_public_id,
       unread: Number(row.unread_for_agent || 0),

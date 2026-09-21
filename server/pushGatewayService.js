@@ -199,7 +199,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
       type: "ca_message",
       conversation_id: context.caMessage.conversationId || "",
       visitor_id: context.caMessage.visitorId || "",
-      preview: context.caMessage.preview || "",
+      visitor_name: context.caMessage.visitorName || "",
       unread: Number(context.caMessage.unread) || 0,
       ts: context.caMessage.ts || "",
     };
@@ -492,7 +492,7 @@ async function sendFcmLiveNotification(context, config) {
               type: "ca_message",
               conversation_id: context.caMessage.conversationId || "",
               visitor_id: context.caMessage.visitorId || "",
-              preview: context.caMessage.preview || "",
+              visitor_name: context.caMessage.visitorName || "",
               unread: String(context.caMessage.unread ?? ""),
             }
           : {}),
