@@ -1026,8 +1026,8 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           built.endedAt,
         ],
       );
-      // 归档同时把会话移入「已归档」（列表筛选口径统一）
-      await connection.query(`UPDATE ca_conversations SET status = 'archived' WHERE id = ?`, [conversation.conversationId]);
+      // 注意：内容归档**不改变会话状态**（用户 2026-09-21 口径）：
+      // 会话继续留在「未归档」列表，仅由列表接口的 contentArchived 标记显示"已归档"图标
       await logCaEvent({
         action: CA_AUDIT_ACTIONS.CONTENT_ARCHIVED,
         actorType: "agent",

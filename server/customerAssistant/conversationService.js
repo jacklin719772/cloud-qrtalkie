@@ -117,9 +117,12 @@ export async function listConversationsForAgent(connection, sipUserId, { status 
     `SELECT c.id, c.public_id, c.status, c.last_seq, c.last_message_at, c.last_message_preview,
             c.unread_for_agent, c.visitor_id,
             v.public_id AS visitor_public_id, v.display_name AS visitor_display_name,
-            v.blocked AS visitor_blocked
+            v.blocked AS visitor_blocked,
+            v.contact_name, v.contact_email, v.contact_phone, v.subject,
+            a.archived_at AS content_archived_at
        FROM ca_conversations c
        JOIN ca_visitors v ON v.id = c.visitor_id
+       LEFT JOIN ca_archives a ON a.conversation_public_id = c.public_id AND a.revoked_at IS NULL
       WHERE ${where}
       ORDER BY c.last_message_at IS NULL, c.last_message_at DESC, c.id DESC
       LIMIT ?`,
@@ -136,6 +139,14 @@ export async function listConversationsForAgent(connection, sipUserId, { status 
     lastMessageAt: row.last_message_at,
     lastMessagePreview: row.last_message_preview,
     unreadForAgent: Number(row.unread_for_agent),
+    // 访客登记信息（详情用；未登记过则为 null）
+    contactName: row.contact_name || row.visitor_display_name || null,
+    contactEmail: row.contact_email || null,
+    contactPhone: row.contact_phone || null,
+    subject: row.subject || null,
+    // 已归档过（内容归档）→ 列表上标一个图标；未归档不影响其在未归档列表中出现
+    contentArchived: Boolean(row.content_archived_at),
+    contentArchivedAt: row.content_archived_at || null,
   }));
 }
 
