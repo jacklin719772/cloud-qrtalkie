@@ -212,10 +212,11 @@ export async function notifyVisitorMessage({ conversation, message, liveTest = p
     if (!targets.length) return { skipped: "no_targets" };
 
     const config = getGatewayConfig();
-    const preview = String(message.content || "").replace(/\s+/g, " ").trim().slice(0, 40);
+    // 通知文案「去内容化」：只告知"有访客消息"，不带消息正文（避免被判营销推送封禁）
+    const visitorName = String(row.visitor_display_name || "").trim();
     const caMessage = {
-      title: row.agent_display_name || "訪客訊息",
-      preview,
+      title: "访客消息",
+      body: visitorName ? `访客${visitorName}给您发送了一条消息` : "有访客给您发送了一条消息",
       conversationId: row.public_id,
       visitorId: row.visitor_public_id,
       unread: Number(row.unread_for_agent || 0),
@@ -242,6 +243,8 @@ export async function notifyVisitorMessage({ conversation, message, liveTest = p
         appId: target.appId,
         collapseId: `ca-${row.public_id}`,
         caMessage,
+        // 通知模式：厂商通道（华为）只能投递通知消息；透传在后台必被系统杀
+        jpush_payload_mode: "notification",
       });
       if (result.ok && result.status !== "skipped") sent += 1;
       else if (!result.ok) failed += 1;

@@ -189,7 +189,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
   if (context.caMessage) {
     payload = {
       aps: {
-        alert: { title: context.caMessage.title || "訪客訊息", body: context.caMessage.preview || "" },
+        alert: { title: context.caMessage.title || "访客消息", body: context.caMessage.body || context.caMessage.preview || "" },
         badge: Number(context.caMessage.unread) || 1,
         sound: context.sound || "default",
         "content-available": 1,
@@ -1231,7 +1231,6 @@ class JPushProvider extends BasePushProvider {
             type: "ca_message",
             conversation_id: context.caMessage.conversationId || "",
             visitor_id: context.caMessage.visitorId || "",
-            preview: context.caMessage.preview || "",
             unread: String(context.caMessage.unread ?? ""),
           }
         : {}),
@@ -1276,13 +1275,37 @@ class JPushProvider extends BasePushProvider {
       descriptor.notification = {
         android: {
           alert: context.caMessage
-            ? (context.caMessage.preview || "訪客訊息")
+            ? (context.caMessage.body || context.caMessage.preview || "访客消息")
             : (context.event === "call" ? "Incoming call" : (context.body || "New message")),
           title: context.caMessage
-            ? (context.caMessage.title || "訪客訊息")
+            ? (context.caMessage.title || "访客消息")
             : (context.event === "call" ? "來電" : "新訊息"),
           priority: 2,
           extras,
+        },
+      };
+    }
+
+    // Customer Assistant 访客消息：厂商通道（华为）只能投递通知消息，
+    // 因此无论 payloadMode 都补上 notification；文案已在服务层去内容化。
+    if (context.event === "message" && context.caMessage) {
+      descriptor.notification = {
+        android: {
+          alert: context.caMessage.body || context.caMessage.title || "访客消息",
+          title: context.caMessage.title || "访客消息",
+          priority: 2,
+          category: "IM",
+          alert_type: -1,
+          extras,
+        },
+      };
+      descriptor.options = {
+        ...descriptor.options,
+        third_party_channel: {
+          huawei: {
+            importance: "NORMAL",
+            category: "IM",
+          },
         },
       };
     }
