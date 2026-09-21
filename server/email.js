@@ -176,3 +176,45 @@ export async function queueLoginEmailChangeCode(connection, { email, code }) {
 
   console.log(`Development login email change code for ${email}: ${code}`);
 }
+
+/**
+ * 访客「聊天码」邮件：首次咨询后把码发给访客（屏幕已展示，邮件作为备份）。
+ * 与其它 queue* 一致：先落 email_outbox，再尝试发送并回写状态。
+ */
+export async function queueVisitorResumeCodeEmail(connection, { email, code, agentName = "" }) {
+  const subject = "QRTalkie 線上客服 · 您的諮詢碼";
+  const body = [
+    "您好，",
+    "",
+    `您與${agentName || "客服"}的線上諮詢已開始。這是您的諮詢碼：`,
+    "",
+    `    ${code}`,
+    "",
+    "下次換裝置或清除瀏覽器資料後，在諮詢頁輸入此碼即可繼續本次對話（請勿轉發給他人）。",
+    "",
+    "若您未發起諮詢，請忽略此郵件。",
+  ].join("\n");
+
+  const result = await connection.query(
+    `INSERT INTO email_outbox (recipient_email, subject, body)
+     VALUES (?, ?, ?)`,
+    [email, subject, body],
+  );
+
+  try {
+    const delivery = await sendMail({ to: email, subject, text: body });
+    if (delivery.sent) {
+      await connection.query(
+        `UPDATE email_outbox SET status = 'sent', sent_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [Number(result.insertId)],
+      );
+    }
+    return delivery;
+  } catch (error) {
+    await connection.query(
+      `UPDATE email_outbox SET status = 'failed', error_message = ? WHERE id = ?`,
+      [String(error?.message || error).slice(0, 500), Number(result.insertId)],
+    );
+    return { sent: false, reason: error?.message || String(error) };
+  }
+}

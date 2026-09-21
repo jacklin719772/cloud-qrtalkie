@@ -29,6 +29,10 @@ export const CA_AUDIT_ACTIONS = {
   CONVERSATION_DELETED: "conversation_deleted",
   CONTENT_ARCHIVED: "content_archived",
   CONTENT_ARCHIVE_REVOKED: "content_archive_revoked",
+  RESUME_CODE_ISSUED: "resume_code_issued",
+  RESUME_CODE_USED: "resume_code_used",
+  RESUME_CODE_ROTATED: "resume_code_rotated",
+  RESUME_CODE_INVALID: "resume_code_invalid",
 };
 
 /**

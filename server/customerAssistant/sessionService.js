@@ -38,6 +38,38 @@ export const CA_SESSION_CONFIG = {
  * 纯函数：token 生成 / 哈希 / Cookie 拼装与解析
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * 访客「聊天码」：QT-XXXX-XXXX（8 位 base32 去易混字符）
+ *   · 只存哈希（sha256，前缀 "ca-resume-code:" 防跨用途复用）
+ *   · 输入容错：大小写、分隔符、可省略 QT- 前缀
+ * ------------------------------------------------------------------ */
+
+const RESUME_CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ"; // 去掉 0/O/1/I/L/U
+const RESUME_CODE_LENGTH = 8;
+
+export function generateResumeCode() {
+  const random = randomBytes(RESUME_CODE_LENGTH);
+  const chars = Array.from(random, (b) => RESUME_CODE_ALPHABET[b % RESUME_CODE_ALPHABET.length]);
+  return `QT-${chars.slice(0, 4).join("")}-${chars.slice(4).join("")}`;
+}
+
+/** 规范化用户输入；非法（长度/字符不符）返回 null */
+export function normalizeResumeCode(input) {
+  const raw = String(input || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+  const body = raw.startsWith("QT") && raw.length > RESUME_CODE_LENGTH ? raw.slice(2) : raw;
+  if (body.length !== RESUME_CODE_LENGTH) return null;
+  for (const ch of body) {
+    if (!RESUME_CODE_ALPHABET.includes(ch)) return null;
+  }
+  return body;
+}
+
+/** 聊天码哈希（存库/查询用）；输入非法返回 null */
+export function hashResumeCode(input) {
+  const normalized = normalizeResumeCode(input);
+  return normalized ? hashToken(`ca-resume-code:${normalized}`) : null;
+}
+
 /** 256bit 随机 token（base64url，无 padding） */
 export function newToken() {
   return randomBytes(32).toString("base64url");

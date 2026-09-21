@@ -16,6 +16,7 @@ import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
 import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
+import { queueVisitorResumeCodeEmail } from "../email.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, resolveStoragePath, statAttachmentByKey } from "./attachmentService.js";
 import { rm } from "node:fs/promises";
@@ -37,6 +38,8 @@ const MAX_CONTENT_LENGTH = 4000;
 /** 允许的消息类型（P2 第二批新增 file/audio/sticker；text 行为不变） */
 const ALLOWED_CONTENT_TYPES = new Set(["text", "image", "file", "audio", "sticker"]);
 const SLUG_PATTERN = /^[A-Za-z0-9_-]+$/; // 与 server/index.js:11143 isValidEcardPublicSlug 同规则
+/** 聊天码有效期（天，滑动：每次成功使用顺延） */
+const CA_RESUME_CODE_TTL_DAYS = Math.max(1, Number(process.env.CA_RESUME_CODE_TTL_DAYS || 180));
 
 /** 模式 B（显式存储）开关。默认 cookie：resumeToken 只经 HttpOnly Cookie 下发，不进 JSON body（评审意见 ⑭） */
 const RESUME_DELIVERY = String(process.env.CA_RESUME_DELIVERY || "cookie").toLowerCase();
@@ -190,6 +193,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       let visitorId = null;
       let visitorPublicId = null;
       let issuedResumeToken = null;
+      let newResumeCode = null; // 仅首次创建访客时生成，随响应返回一次
       if (presentedResume) {
         const redeemed = await sessions.redeemResumeToken(connection, presentedResume);
         if (redeemed.ok) {
@@ -249,6 +253,15 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           ],
         );
         visitorId = Number(inserted.insertId);
+        // 首次咨询：生成「聊天码」（只存哈希；屏幕展示 + 填了邮箱则邮件备份）
+        newResumeCode = sessions.generateResumeCode();
+        await connection.query(
+          `UPDATE ca_visitors
+              SET resume_code_hash = ?, resume_code_created_at = NOW(),
+                  resume_code_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY)
+            WHERE id = ?`,
+          [sessions.hashResumeCode(newResumeCode), CA_RESUME_CODE_TTL_DAYS, visitorId],
+        );
       } else {
         await connection.query(
           `UPDATE ca_visitors
@@ -311,6 +324,25 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         ip,
         meta: { conversationId: ensured.publicId, newVisitor: !presentedResume },
       });
+      if (newResumeCode) {
+        await logCaEvent({
+          action: CA_AUDIT_ACTIONS.RESUME_CODE_ISSUED,
+          actorType: "visitor",
+          actorPublicId: visitorPublicId,
+          targetType: "ecard",
+          targetPublicId: slug,
+          ip,
+        });
+        if (contact?.email) {
+          queueVisitorResumeCodeEmail(connection, {
+            email: contact.email,
+            code: newResumeCode,
+            agentName: settings?.display_name || "",
+          }).catch((error) =>
+            console.error("[customerAssistant][email] resume code mail failed:", error?.message || error),
+          );
+        }
+      }
       const payload = {
         visitorId: visitorPublicId,
         accessToken: access.token,
@@ -321,6 +353,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         agentStatus: buildAgentStatus(ecard.sipUserId, settings),
       };
       if (ALLOW_BODY_RESUME) payload.resumeToken = issuedResumeToken;
+      if (newResumeCode) payload.resumeCode = newResumeCode; // 仅首次创建时返回一次，供页面展示
       return ok(response, payload);
     } catch (error) {
       await connection.rollback().catch(() => {});
@@ -339,7 +372,148 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
     handleVisitorSession(request, response, { requireContact: true }),
   );
 
-  // V2 取当前会话 + 历史
+  /**
+   * V1b 凭「聊天码」恢复身份（跨浏览器/设备；无需 Cookie）。
+   * 语义：无 Cookie 且未输入/输错码 → 由前端引导「当作一次新咨询」；
+   *       输错码不静默新建，返回 RESUME_CODE_INVALID，由页面给「重试 / 以新访客开始」两个出口。
+   */
+  app.post("/api/ecard/public/:slug/chat-resume", async (request, response) => {
+    const slug = String(request.params.slug || "").trim();
+    const ip = getClientIp(request);
+    const userAgent = String(request.headers?.["user-agent"] || "").slice(0, 1000) || null;
+    const codeHash = sessions.hashResumeCode(request.body?.code);
+    if (!codeHash) return fail(response, 400, "RESUME_CODE_INVALID", "聊天碼格式不正確，請檢查後重試");
+
+    const ipVerdict = allowRequest(`resume:ip:${ip}`, CA_RATE_LIMITS.resumeByIp);
+    if (!ipVerdict.allowed) return rateLimitedResponse(response, ipVerdict.retryAfterMs);
+    const codeVerdict = allowRequest(`resume:code:${codeHash}`, CA_RATE_LIMITS.resumeByCode);
+    if (!codeVerdict.allowed) return rateLimitedResponse(response, codeVerdict.retryAfterMs);
+
+    const connection = await pool.getConnection();
+    try {
+      const loaded = await loadEcardBySlug(connection, slug);
+      if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
+      const { ecard } = loaded;
+
+      const settings = await loadEcardSettings(connection, ecard.id);
+      if (!isChatEnabled(settings)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
+
+      const rows = await connection.query(
+        `SELECT id, public_id, display_name, contact_name, contact_email, contact_phone, subject, blocked
+           FROM ca_visitors
+          WHERE ecard_id = ? AND resume_code_hash = ?
+            AND (resume_code_expires_at IS NULL OR resume_code_expires_at > NOW())
+          LIMIT 1`,
+        [ecard.id, codeHash],
+      );
+      const visitor = rows[0];
+      if (!visitor) {
+        await logCaEvent({
+          action: CA_AUDIT_ACTIONS.RESUME_CODE_INVALID,
+          actorType: "visitor",
+          targetType: "ecard",
+          targetPublicId: slug,
+          ip,
+        });
+        return fail(response, 401, "RESUME_CODE_INVALID", "聊天碼無效或已過期");
+      }
+      if (Number(visitor.blocked) === 1) {
+        await logCaEvent({
+          action: CA_AUDIT_ACTIONS.SESSION_BLOCKED,
+          actorType: "visitor",
+          actorPublicId: visitor.public_id,
+          targetType: "ecard",
+          targetPublicId: slug,
+          ip,
+          meta: { via: "resume-code" },
+        });
+        return fail(response, 403, "VISITOR_BLOCKED", "此訪客已被封鎖");
+      }
+
+      const visitorId = Number(visitor.id);
+      await connection.beginTransaction();
+      await connection.query(
+        `UPDATE ca_visitors
+            SET resume_code_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY), last_seen_at = NOW()
+          WHERE id = ?`,
+        [CA_RESUME_CODE_TTL_DAYS, visitorId],
+      );
+      const ensured = await convs.ensureConversation(connection, {
+        ecardId: ecard.id,
+        visitorId,
+        sipUserId: ecard.sipUserId,
+      });
+      const access = await sessions.issueAccessToken(connection, visitorId, { ip, userAgent });
+      const resume = await sessions.issueResumeToken(connection, visitorId);
+      await connection.commit();
+
+      response.set("Set-Cookie", sessions.buildResumeCookie(resume.token, { path: `/api/ecard/public/${slug}/` }));
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.RESUME_CODE_USED,
+        actorType: "visitor",
+        actorPublicId: visitor.public_id,
+        targetType: "conversation",
+        targetPublicId: ensured.publicId,
+        ip,
+      });
+
+      const payload = {
+        visitorId: visitor.public_id,
+        accessToken: access.token,
+        expiresAt: access.expiresAt,
+        conversationId: ensured.publicId,
+        displayName: settings?.display_name || null,
+        welcomeMessage: settings?.welcome_message || null,
+        agentStatus: buildAgentStatus(ecard.sipUserId, settings),
+        resumed: true,
+        nickname: visitor.contact_name || visitor.display_name || null,
+      };
+      if (ALLOW_BODY_RESUME) payload.resumeToken = resume.token;
+      return ok(response, payload);
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      console.error("[customerAssistant] chat resume error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  /**
+   * V1c 更换聊天码（需访客登录态）：旧码立即失效，新码只返回一次。
+   * 说明：服务端只存哈希 → 无法"查看原码"，丢失只能更换（会话与历史不受影响）。
+   */
+  app.post("/api/ecard/public/:slug/chat/resume-code", requireVisitorAuth, async (request, response) => {
+    const visitorId = request.caVisitor.visitorId;
+    const connection = await pool.getConnection();
+    try {
+      const code = sessions.generateResumeCode();
+      await connection.query(
+        `UPDATE ca_visitors
+            SET resume_code_hash = ?, resume_code_created_at = NOW(),
+                resume_code_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY), last_seen_at = NOW()
+          WHERE id = ?`,
+        [sessions.hashResumeCode(code), CA_RESUME_CODE_TTL_DAYS, visitorId],
+      );
+      const rows = await connection.query(`SELECT public_id FROM ca_visitors WHERE id = ? LIMIT 1`, [visitorId]);
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.RESUME_CODE_ROTATED,
+        actorType: "visitor",
+        actorPublicId: rows[0]?.public_id || null,
+        targetType: "ecard",
+        targetPublicId: String(request.params.slug || "").slice(0, 48),
+        ip: getClientIp(request),
+      });
+      return ok(response, { resumeCode: code });
+    } catch (error) {
+      console.error("[customerAssistant] rotate resume code error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // V2 取票 + 历史
   app.get("/api/ecard/public/:slug/chat", requireVisitorAuth, async (request, response) => {
     const slug = String(request.params.slug || "").trim();
     const verdict = allowRequest(`history:${request.caVisitor.visitorId}`, CA_RATE_LIMITS.history);

@@ -16,6 +16,8 @@ const DEFAULT_LIMITS = {
   agentMessage: { limit: 10, windowMs: 5_000 }, // ≈2 条/秒，突发 10（按客服）
   history: { limit: 30, windowMs: 60_000 }, // 历史拉取（按会话/访客）
   publicLookup: { limit: 60, windowMs: 60_000 }, // 公开 id 查询（按 IP，防枚举）
+  resumeByIp: { limit: 10, windowMs: 3_600_000 }, // 聊天码找回（按 IP，防枚举）
+  resumeByCode: { limit: 5, windowMs: 3_600_000 }, // 聊天码找回（按码哈希，防暴力猜测）
 };
 
 function envLimit(name, fallback) {

@@ -81,6 +81,34 @@ try {
 
   const visitorToken = v1b.json?.accessToken || accessToken;
 
+  // ---------- V1b/V1c 聊天码：首次下发 → 凭码找回 → 更换后旧码失效 ----------
+  const firstResumeCode = v1.json?.resumeCode;
+  check("V1 首次会话下发聊天码（QT-XXXX-XXXX）",
+    typeof firstResumeCode === "string" && /^QT-[0-9A-Z]{4}-[0-9A-Z]{4}$/.test(firstResumeCode),
+    String(firstResumeCode));
+
+  const v1resume = await req("POST", `/api/ecard/public/${SLUG}/chat-resume`, { body: { code: firstResumeCode } });
+  check("凭聊天码找回同一访客与会话（resumed=true）",
+    v1resume.status === 200 && v1resume.json?.visitorId === visitorPublicId &&
+    v1resume.json?.conversationId === conversationId && v1resume.json?.resumed === true,
+    `status=${v1resume.status}`);
+  check("找回时下发新的 accessToken 与 resume Cookie",
+    typeof v1resume.json?.accessToken === "string" && /ca_resume=/.test(v1resume.setCookie));
+
+  const wrongCode = await req("POST", `/api/ecard/public/${SLUG}/chat-resume`, { body: { code: "QT-AAAA-BBBB" } });
+  check("错误聊天码 → 401 RESUME_CODE_INVALID（不静默新建）",
+    wrongCode.status === 401 && wrongCode.json?.code === "RESUME_CODE_INVALID",
+    `status=${wrongCode.status}`);
+
+  const rotate = await req("POST", `/api/ecard/public/${SLUG}/chat/resume-code`, { token: visitorToken });
+  const rotatedCode = rotate.json?.resumeCode;
+  check("更换聊天码 → 返回新码", rotate.status === 200 && /^QT-[0-9A-Z]{4}-[0-9A-Z]{4}$/.test(rotatedCode || ""),
+    String(rotatedCode));
+  const oldCodeAfterRotate = await req("POST", `/api/ecard/public/${SLUG}/chat-resume`, { body: { code: firstResumeCode } });
+  check("更换后旧码立即失效", oldCodeAfterRotate.status === 401);
+  const newCodeResume = await req("POST", `/api/ecard/public/${SLUG}/chat-resume`, { body: { code: rotatedCode } });
+  check("新码可用且指向同一访客", newCodeResume.status === 200 && newCodeResume.json?.visitorId === visitorPublicId);
+
   // ---------- V2 会话 + 历史（应含欢迎语）----------
   const v2a = await req("GET", `/api/ecard/public/${SLUG}/chat`, { token: visitorToken });
   check("V2 返回会话与欢迎语（system 消息）",
