@@ -978,7 +978,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       if (!rows.length) return fail(response, 400, "EMPTY_CONVERSATION", "沒有可歸檔的訊息");
 
       const visitorRows = await connection.query(
-        `SELECT public_id, contact_name, contact_email, contact_phone, subject FROM ca_visitors WHERE id = ? LIMIT 1`,
+        `SELECT public_id, contact_name, display_name, contact_email, contact_phone, subject FROM ca_visitors WHERE id = ? LIMIT 1`,
         [conversation.visitorId],
       );
       const built = await buildConversationArchive({
@@ -1008,7 +1008,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
           conversation.publicId,
           sipUserId,
           visitorRows[0]?.public_id || null,
-          (visitorRows[0]?.contact_name || "").slice(0, 128) || null,
+          (visitorRows[0]?.contact_name || visitorRows[0]?.display_name || "").slice(0, 128) || null,
           shareToken,
           built.zip.length,
           built.messageCount,
@@ -1030,7 +1030,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       });
       return ok(response, {
         conversationId: conversation.publicId,
-        visitorName: (visitorRows[0]?.contact_name || "").slice(0, 128) || null,
+        visitorName: (visitorRows[0]?.contact_name || visitorRows[0]?.display_name || "").slice(0, 128) || null,
         startedAt: built.startedAt,
         endedAt: built.endedAt,
         archivedAt: new Date().toISOString(),

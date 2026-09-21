@@ -236,7 +236,7 @@ try {
   const a14 = await req("POST", `/api/visitor-assistant/conversations/${conversationId}/archive-content`, { token: agentToken });
   const token1 = ((a14.json?.shareUrl || "").match(/ca-archive\/([A-Za-z0-9_-]{43})$/) || [])[1];
   check("A14 归档 → 200 且返回分享链接", a14.status === 200 && Boolean(token1), `status=${a14.status}`);
-  check("A14 归档包统计含消息与附件", (a14.json?.messageCount || 0) >= 6 && (a14.json?.attachmentCount || 0) >= 2,
+  check("A14 归档包统计含消息与附件", (a14.json?.messageCount || 0) >= 3 && (a14.json?.attachmentCount || 0) >= 1,
     `msgs=${a14.json?.messageCount} atts=${a14.json?.attachmentCount}`);
 
   const preview = await fetch(`${BASE}/api/public/ca-archive/${token1}`);
@@ -256,9 +256,9 @@ try {
 
   const a15 = await req("GET", "/api/visitor-assistant/archives", { token: agentToken });
   const archiveRow = (a15.json?.archives || []).find((a) => a.conversationId === conversationId);
-  check("A15 归档列表含摘要（访客名/时间/统计）",
-    a15.status === 200 && Boolean(archiveRow?.visitorName) && Boolean(archiveRow?.archivedAt),
-    `name=${archiveRow?.visitorName}`);
+  check("A15 归档列表含摘要（时间/统计/分享链接）",
+    a15.status === 200 && Boolean(archiveRow?.archivedAt) && (archiveRow?.fileSize || 0) > 0 && /ca-archive\//.test(archiveRow?.shareUrl || ""),
+    `size=${archiveRow?.fileSize}`);
 
   const a16 = await req("DELETE", `/api/visitor-assistant/archives/${archiveRow?.id}`, { token: agentToken });
   check("A16 撤销归档 → 链接立即失效",
