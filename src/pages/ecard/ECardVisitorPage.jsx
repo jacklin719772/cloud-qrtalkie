@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Mail, Phone, UserRound, Headphones, Video, LoaderCircle, RefreshCw, Info, HelpCircle } from 'lucide-react';
 import apiClient from '../../apiClient';
 import CallModal from './CallModal';
@@ -92,6 +92,7 @@ export default function ECardVisitorPage({ slug }) {
   const [callBusy, setCallBusy] = useState(false);
   const [isReRegistering, setIsReRegistering] = useState(false);
   const [isSipRefreshing, setIsSipRefreshing] = useState(false);
+  const [sipStatus, setSipStatus] = useState(null);
   const [idleSeconds, setIdleSeconds] = useState(0);
   const [sipOfflineHint, setSipOfflineHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -123,6 +124,39 @@ export default function ECardVisitorPage({ slug }) {
   }, [ecardData?.avatar]);
 
   const companyName = ecardData?.tenantName || 'QRTalkie';
+
+  // SIP 狀態由 /api/sip-account/status 提供（四態：online_idle / online_busy / offline / unknown），
+  // 取不到時退回名片公開資料裡的 sipRegistrationStatus（僅兩態）
+  const sipState = sipStatus?.state
+    || (ecardData?.sipRegistrationStatus === 'online'
+      ? 'online_idle'
+      : ecardData?.sipRegistrationStatus === 'offline' ? 'offline' : 'unknown');
+  const sipOnline = sipState === 'online_idle' || sipState === 'online_busy';
+  const sipToneClass = sipState === 'online_idle'
+    ? 'is-ok'
+    : sipState === 'online_busy' ? 'is-busy' : sipState === 'offline' ? 'is-bad' : 'is-warn';
+  const sipStateText = sipState === 'online_idle'
+    ? 'SIP 線上'
+    : sipState === 'online_busy' ? 'SIP 通話中' : sipState === 'offline' ? 'SIP 離線' : 'SIP 未知';
+  const sipStateTitle = sipState === 'online_idle'
+    ? '帳號已註冊且空閒'
+    : sipState === 'online_busy' ? '帳號正在通話中' : sipState === 'offline' ? '離線' : '未知';
+
+  const loadSipStatus = useCallback(async (accountValue, domainValue) => {
+    const account = String(accountValue || '').trim();
+    if (!account) return null;
+    try {
+      const res = await apiClient.get('/sip-account/status', {
+        params: domainValue ? { account, domain: domainValue } : { account },
+      });
+      const data = res?.data || null;
+      if (!data?.state) return null;
+      setSipStatus(data);
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     function handleBeforeUnload() {
@@ -164,7 +198,9 @@ export default function ECardVisitorPage({ slug }) {
           return;
         }
         setPublicData(res.data || null);
-        setEcardData(mapPublicDataToCard(res.data || {}));
+        const mapped = mapPublicDataToCard(res.data || {});
+        setEcardData(mapped);
+        loadSipStatus(mapped.sipAccount, mapped.sipAccountInfo?.domain);
       } catch (err) {
         if (cancelled) return;
         setErrorInfo({
@@ -630,7 +666,7 @@ export default function ECardVisitorPage({ slug }) {
     if (registrationStatus !== 'registered') return;
     if (isPreparingCall || callBusy) return;
     if (!callSessionRef.current || !uaRef.current) return;
-    if (ecardData.sipRegistrationStatus !== 'online') {
+    if (!sipOnline) {
       setSipOfflineHint(true);
       return;
     }
@@ -905,8 +941,8 @@ export default function ECardVisitorPage({ slug }) {
                   </div>
                   <div className="ecard-statusActions">
                     <div
-                      className={`ecard-statusDot ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}
-                      title={ecardData.sipRegistrationStatus === 'online' ? '線上' : ecardData.sipRegistrationStatus === 'offline' ? '離線' : '未知'}
+                      className={`ecard-statusDot ${sipToneClass}`}
+                      title={sipStateTitle}
                     />
                     <button
                       type="button"
@@ -915,11 +951,8 @@ export default function ECardVisitorPage({ slug }) {
                         setIsSipRefreshing(true);
                         setSipOfflineHint(false);
                         try {
-                          const res = await apiClient.get(`/ecard/public/${slug}`);
-                          if (res?.data?.sipRegistrationStatus) {
-                            setEcardData(prev => ({ ...prev, sipRegistrationStatus: res.data.sipRegistrationStatus }));
-                          }
-                        } catch {} finally { setIsSipRefreshing(false); }
+                          await loadSipStatus(ecardData.sipAccount, ecardData.sipAccountInfo?.domain);
+                        } finally { setIsSipRefreshing(false); }
                       }}
                       disabled={isSipRefreshing}
                       title="重新獲取 SIP 狀態"
@@ -933,8 +966,8 @@ export default function ECardVisitorPage({ slug }) {
                     </button>
                   </div>
               </div>
-              <div className={`ecard-statusPill ${ecardData.sipRegistrationStatus === 'online' ? 'is-ok' : ecardData.sipRegistrationStatus === 'offline' ? 'is-bad' : 'is-warn'}`}>
-                {ecardData.sipRegistrationStatus === 'online' ? 'SIP 線上' : ecardData.sipRegistrationStatus === 'offline' ? 'SIP 離線' : 'SIP 未知'}
+              <div className={`ecard-statusPill ${sipToneClass}`}>
+                {sipStateText}
               </div>
             </div>
             </div>
@@ -1084,7 +1117,8 @@ export default function ECardVisitorPage({ slug }) {
                 <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>SIP 帳號狀態</h3>
                 <p style={{ color: '#9ca3af', margin: 0 }}>顯示名片持有人的 SIP 帳號是否在線：</p>
                 <ul style={{ color: '#9ca3af', margin: '8px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <li><span style={{ color: '#27c267', fontWeight: 700 }}>綠色</span> — SIP 在線，可接收來電</li>
+                  <li><span style={{ color: '#27c267', fontWeight: 700 }}>綠色</span> — SIP 在線且空閒，可接收來電</li>
+                  <li><span style={{ color: '#f97316', fontWeight: 700 }}>橙色</span> — SIP 在線但正在通話中，仍可呼叫</li>
                   <li><span style={{ color: '#ef5350', fontWeight: 700 }}>紅色</span> — SIP 離線，無法接通</li>
                   <li><span style={{ color: '#f59e0b', fontWeight: 700 }}>黃色</span> — 狀態未知</li>
                 </ul>

@@ -303,6 +303,11 @@
   box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.10);
 }
 
+.ecard-statusDot.is-busy {
+  background: #f97316;
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.10);
+}
+
 .ecard-statusDot.is-warn {
   background: #f59e0b;
   box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.10);
@@ -356,6 +361,12 @@
   color: #fef3c7;
   border: 1px solid rgba(245, 158, 11, 0.22);
   background: rgba(245, 158, 11, 0.12);
+}
+
+.ecard-statusPill.is-busy {
+  color: #ffe4cc;
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  background: rgba(249, 115, 22, 0.12);
 }
 
 .ecard-legend {
