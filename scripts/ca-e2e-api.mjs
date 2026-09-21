@@ -243,6 +243,18 @@ try {
   const previewHtml = await preview.text();
   check("公开预览页 200 且含归档内容", preview.status === 200 && /聊天记录归档/.test(previewHtml) && /hello attachment|你好/.test(previewHtml));
 
+  const fileLink = (previewHtml.match(/href="(\/api\/public\/ca-archive\/[^"]+\/file\?path=[^"]+)"/) || [])[1];
+  check("预览页附件链接指向按文件下载端点", Boolean(fileLink), String(fileLink).slice(0, 60));
+  if (fileLink) {
+    const fileResp = await fetch(`${BASE}${fileLink}`);
+    const fileBody = await fileResp.text();
+    check("按文件下载 200 且内容一致（hello attachment）",
+      fileResp.status === 200 && fileBody === "hello attachment", `status=${fileResp.status}`);
+  } else {
+    check("按文件下载 200 且内容一致（hello attachment）", false, "无附件链接");
+  }
+  check("预览页含「下载完整归档 ZIP」入口", /ca-archive\/[^"]+\/zip/.test(previewHtml));
+
   const zipResp = await fetch(`${BASE}/api/public/ca-archive/${token1}/zip`);
   const zipBuf = Buffer.from(await zipResp.arrayBuffer());
   check("公开 ZIP 下载 200（PK 头 + 体积与登记一致）",

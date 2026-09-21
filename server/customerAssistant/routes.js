@@ -21,9 +21,14 @@ import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, resolveSt
 import { rm } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import {
+  ARCHIVE_FILE_LINK_PLACEHOLDER,
+  ARCHIVE_ZIP_LINK_PLACEHOLDER,
   buildConversationArchive,
+  isValidArchiveEntryName,
   isValidShareToken,
   openArchiveStream,
+  readArchiveZipBuffer,
+  readZipEntry,
   removeArchiveFiles,
   saveArchiveFiles,
 } from "./archiveService.js";
@@ -989,9 +994,13 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       });
 
       await removeArchiveFiles(conversation.ecardId, conversation.publicId); // 覆盖：先清旧文件
-      await saveArchiveFiles(conversation.ecardId, conversation.publicId, built);
 
       const shareToken = randomBytes(32).toString("base64url"); // 43 字符，不可猜
+      // 预览页里的附件/整包链接需要 token → 打包时用占位符，这里替换成真实端点
+      const previewHtml = String(built.previewHtml)
+        .split(ARCHIVE_FILE_LINK_PLACEHOLDER).join(`/api/public/ca-archive/${shareToken}/file?path=`)
+        .split(ARCHIVE_ZIP_LINK_PLACEHOLDER).join(`/api/public/ca-archive/${shareToken}/zip`);
+      await saveArchiveFiles(conversation.ecardId, conversation.publicId, { zip: built.zip, previewHtml });
       await connection.query(
         `INSERT INTO ca_archives
            (ecard_id, conversation_id, conversation_public_id, sip_user_id, visitor_public_id, visitor_name,
@@ -1150,6 +1159,55 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       return opened.stream.pipe(response);
     } catch (error) {
       console.error("[customerAssistant] public archive download error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // 公开：归档内单个附件下载（预览页的附件链接；凭 token，从归档包内取，快照语义）
+  app.get("/api/public/ca-archive/:token/file", async (request, response) => {
+    const token = String(request.params.token || "");
+    const entryName = String(request.query.path || "");
+    if (!isValidShareToken(token) || !isValidArchiveEntryName(entryName)) {
+      return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+    }
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT ecard_id, conversation_public_id FROM ca_archives WHERE share_token = ? AND revoked_at IS NULL LIMIT 1`,
+        [token],
+      );
+      if (!rows[0]) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      const zipBuffer = await readArchiveZipBuffer(rows[0].ecard_id, rows[0].conversation_public_id);
+      if (!zipBuffer) return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      const data = readZipEntry(zipBuffer, entryName);
+      if (!data) return fail(response, 404, "ARCHIVE_NOT_FOUND", "檔案不存在");
+      const fileName = entryName.split("/").pop();
+      const ext = String(fileName).toLowerCase().split(".").pop();
+      const mimeByExt = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif",
+        pdf: "application/pdf", txt: "text/plain; charset=utf-8", csv: "text/csv",
+        doc: "application/msword",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xls: "application/vnd.ms-excel",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ppt: "application/vnd.ms-powerpoint",
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        zip: "application/zip", m4a: "audio/mp4", mp3: "audio/mpeg", ogg: "audio/ogg", opus: "audio/opus",
+      };
+      const mime = mimeByExt[ext] || "application/octet-stream";
+      const inline = /^(image\/(jpeg|png|webp|gif)|text\/plain|audio\/)/.test(mime);
+      response.set("Content-Type", mime);
+      response.set("Content-Length", String(data.length));
+      response.set(
+        "Content-Disposition",
+        `${inline ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      );
+      response.set("X-Content-Type-Options", "nosniff");
+      return response.send(data);
+    } catch (error) {
+      console.error("[customerAssistant] public archive file error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();

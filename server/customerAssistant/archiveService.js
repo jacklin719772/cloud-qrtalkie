@@ -11,7 +11,7 @@
  * 无第三方依赖：ZIP 32 位格式自实现（deflateRaw + 手写头部，UTF-8 文件名）。
  */
 
-import { deflateRawSync } from "node:zlib";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -109,6 +109,39 @@ export function buildZip(entries) {
   eocd.writeUInt32LE(offset, 16);
   eocd.writeUInt16LE(0, 20);
   return Buffer.concat([...parts, centralBuf, eocd]);
+}
+
+/** 从 ZIP 缓冲中取出单个条目（只认自家写出的格式：store/deflateRaw） */
+export function readZipEntry(zipBuffer, entryName) {
+  const eocdSignature = Buffer.from([0x50, 0x4b, 0x05, 0x06]);
+  const eocdIndex = zipBuffer.lastIndexOf(eocdSignature);
+  if (eocdIndex < 0) return null;
+  const count = zipBuffer.readUInt16LE(eocdIndex + 10);
+  let offset = zipBuffer.readUInt32LE(eocdIndex + 16);
+  for (let i = 0; i < count; i += 1) {
+    if (offset + 46 > zipBuffer.length || zipBuffer.readUInt32LE(offset) !== 0x02014b50) return null;
+    const method = zipBuffer.readUInt16LE(offset + 10);
+    const compressedSize = zipBuffer.readUInt32LE(offset + 20);
+    const nameLength = zipBuffer.readUInt16LE(offset + 28);
+    const extraLength = zipBuffer.readUInt16LE(offset + 30);
+    const commentLength = zipBuffer.readUInt16LE(offset + 32);
+    const localOffset = zipBuffer.readUInt32LE(offset + 42);
+    const name = zipBuffer.slice(offset + 46, offset + 46 + nameLength).toString("utf8");
+    if (name === entryName) {
+      const localNameLength = zipBuffer.readUInt16LE(localOffset + 26);
+      const localExtraLength = zipBuffer.readUInt16LE(localOffset + 28);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const raw = zipBuffer.slice(dataStart, dataStart + compressedSize);
+      return method === 8 ? inflateRawSync(raw) : raw;
+    }
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return null;
+}
+
+/** 归档条目名合法性（只允许 files/ 下的普通文件名，防目录穿越） */
+export function isValidArchiveEntryName(name) {
+  return /^files\/[0-9]{3}_[^/\\]{1,120}$/.test(String(name || ""));
 }
 
 /* ------------------------------------------------------------------ *
@@ -227,7 +260,7 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
     })),
   };
 
-  const previewHtml = renderPreviewHtml({ info, attachmentRows, embedded: false });
+  const previewHtml = renderPreviewHtml({ info, attachmentRows });
 
   // chat.html：ZIP 内可离线阅读（附件用相对路径）
   const chatHtml = renderChatHtml({ info, attachmentRows, embedded: false });
@@ -246,12 +279,24 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
   };
 }
 
-/** 预览页（内联图片，便于直接看；ZIP 下载单独给） */
+/**
+ * 预览页（内联小图）。附件链接走占位符，路由层拿到 share_token 后替换为按文件下载端点；
+ * ZIP 内 chat.html 不走这里（用相对路径）。
+ */
+export const ARCHIVE_FILE_LINK_PLACEHOLDER = "__ARCHIVE_FILE_BASE__";
+export const ARCHIVE_ZIP_LINK_PLACEHOLDER = "__ARCHIVE_ZIP_BASE__";
+
 export function renderPreviewHtml({ info, attachmentRows }) {
-  return renderChatHtml({ info, attachmentRows, embedded: true });
+  return renderChatHtml({
+    info,
+    attachmentRows,
+    embedded: true,
+    fileLinkBase: ARCHIVE_FILE_LINK_PLACEHOLDER,
+    zipLink: ARCHIVE_ZIP_LINK_PLACEHOLDER,
+  });
 }
 
-function renderChatHtml({ info, attachmentRows, embedded }) {
+function renderChatHtml({ info, attachmentRows, embedded, fileLinkBase = "", zipLink = "" }) {
   const visitor = info.visitor || {};
   const title = `${escapeHtml(visitor.name || "访客")} · 聊天记录归档`;
   const rows = [];
@@ -271,7 +316,10 @@ function renderChatHtml({ info, attachmentRows, embedded }) {
       if (embedded && att.inlined) {
         body.push(`<div class="att"><img src="${att.inlined}" alt="${escapeHtml(att.fileName)}" /><div class="meta">${escapeHtml(att.fileName)} · ${size}</div></div>`);
       } else if (att.zipName) {
-        body.push(`<div class="att"><a href="${escapeHtml(att.zipName)}">${escapeHtml(att.fileName)}</a> · ${size}</div>`);
+        const href = embedded
+          ? `${fileLinkBase}${encodeURIComponent(att.zipName)}`
+          : escapeHtml(att.zipName);
+        body.push(`<div class="att"><a href="${href}">${escapeHtml(att.fileName)}</a> · ${size}</div>`);
       } else {
         body.push(`<div class="att missing">${escapeHtml(att.fileName)} · ${size}（归档时文件缺失）</div>`);
       }
@@ -312,6 +360,8 @@ function renderChatHtml({ info, attachmentRows, embedded }) {
  h2{font-size:15px;max-width:760px;margin:24px auto 8px}
  ul{max-width:760px;margin:0 auto;font-size:13px;color:#22334d;line-height:1.9}
  code{background:#e8eef3;border-radius:4px;padding:1px 5px}
+ a{color:#1f6feb}
+ a.zip{display:inline-block;margin-top:8px;padding:6px 12px;background:#1f6feb;color:#fff;border-radius:8px;text-decoration:none;font-size:13px}
 </style></head>
 <body>
 <div class="head">
@@ -321,6 +371,7 @@ function renderChatHtml({ info, attachmentRows, embedded }) {
     ${visitor.subject ? `主题：${escapeHtml(visitor.subject)}<br>` : ""}
     沟通时间：${escapeHtml(toLocalText(info.startedAt))} ~ ${escapeHtml(toLocalText(info.endedAt))}<br>
     归档时间：${escapeHtml(toLocalText(info.archivedAt))} · 消息 ${info.messageCount} 条 · 附件 ${info.attachmentCount} 个
+    ${zipLink ? `<br><a class="zip" href="${zipLink}">下载完整归档 ZIP</a>` : ""}
   </div>
 </div>
 <div class="wrap">${rows.join("\n")}</div>
@@ -359,6 +410,13 @@ export async function removeArchiveFiles(ecardId, conversationPublicId) {
   const paths = archivePaths(ecardId, conversationPublicId);
   await rm(paths.zip, { force: true });
   await rm(paths.html, { force: true });
+}
+
+/** 读取归档 ZIP 缓冲（公开按文件下载用） */
+export async function readArchiveZipBuffer(ecardId, conversationPublicId) {
+  const paths = archivePaths(ecardId, conversationPublicId);
+  if (!existsSync(paths.zip)) return null;
+  return readFile(paths.zip);
 }
 
 export function isValidShareToken(token) {
