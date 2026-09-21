@@ -312,7 +312,10 @@ try {
     await conn.query("DELETE FROM ca_ecard_settings WHERE ecard_id = ?", [ECARD_ID]);
     if (agentSessionId) await conn.query("DELETE FROM admin_sessions WHERE id = ?", [agentSessionId]);
     // 归档：DB 行 + 落盘 ZIP/HTML（归档是快照，不随会话级联删除，需显式清理）
-    await conn.query("DELETE FROM ca_archives WHERE ecard_id = ?", [ECARD_ID]);
+    // 只删本次运行创建的归档（按会话 public id），不要动该 ecard 的其它归档
+    if (conversationId) {
+      await conn.query("DELETE FROM ca_archives WHERE conversation_public_id = ?", [conversationId]);
+    }
     if (conversationId) {
       await rm(path.resolve(process.cwd(), "assets", "ca-archives", String(ECARD_ID), `${conversationId}.zip`), { force: true });
       await rm(path.resolve(process.cwd(), "assets", "ca-archives", String(ECARD_ID), `${conversationId}.html`), { force: true });
