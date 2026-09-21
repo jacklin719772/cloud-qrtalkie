@@ -95,6 +95,7 @@ export default function ECardVisitorPage({ slug }) {
   const [sipStatus, setSipStatus] = useState(null);
   const [idleSeconds, setIdleSeconds] = useState(0);
   const [sipOfflineHint, setSipOfflineHint] = useState(false);
+  const [sipBusyHint, setSipBusyHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
   const uaRef = useRef(null);
@@ -152,6 +153,10 @@ export default function ECardVisitorPage({ slug }) {
       const data = res?.data || null;
       if (!data?.state) return null;
       setSipStatus(data);
+      if (data.state === 'online_idle') {
+        setSipBusyHint(false);
+        setSipOfflineHint(false);
+      }
       return data;
     } catch {
       return null;
@@ -666,6 +671,10 @@ export default function ECardVisitorPage({ slug }) {
     if (registrationStatus !== 'registered') return;
     if (isPreparingCall || callBusy) return;
     if (!callSessionRef.current || !uaRef.current) return;
+    if (sipState === 'online_busy') {
+      setSipBusyHint(true);
+      return;
+    }
     if (!sipOnline) {
       setSipOfflineHint(true);
       return;
@@ -950,6 +959,7 @@ export default function ECardVisitorPage({ slug }) {
                         if (isSipRefreshing) return;
                         setIsSipRefreshing(true);
                         setSipOfflineHint(false);
+                        setSipBusyHint(false);
                         try {
                           await loadSipStatus(ecardData.sipAccount, ecardData.sipAccountInfo?.domain);
                         } finally { setIsSipRefreshing(false); }
@@ -984,6 +994,19 @@ export default function ECardVisitorPage({ slug }) {
                 {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動登出 Web 帳號，請點選重新整理按鈕重新註冊'
                   : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已登出，請點選重新整理按鈕重新註冊'
                   : registrationMessage}
+              </div>
+            )}
+
+            {sipBusyHint && registrationStatus === 'registered' && (
+              <div className="ecard-registrationMessage" style={{
+                marginTop: 2,
+                marginBottom: 4,
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: '#fdba74',
+                fontWeight: 600,
+              }}>
+                SIP 帳號忙線中（正在通話），請稍後再試
               </div>
             )}
 
@@ -1118,7 +1141,7 @@ export default function ECardVisitorPage({ slug }) {
                 <p style={{ color: '#9ca3af', margin: 0 }}>顯示名片持有人的 SIP 帳號是否在線：</p>
                 <ul style={{ color: '#9ca3af', margin: '8px 0 0', paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <li><span style={{ color: '#27c267', fontWeight: 700 }}>綠色</span> — SIP 在線且空閒，可接收來電</li>
-                  <li><span style={{ color: '#f97316', fontWeight: 700 }}>橙色</span> — SIP 在線但正在通話中，仍可呼叫</li>
+                  <li><span style={{ color: '#f97316', fontWeight: 700 }}>橙色</span> — SIP 在線但正在通話中（忙線），暫無法呼叫，請稍後再試</li>
                   <li><span style={{ color: '#ef5350', fontWeight: 700 }}>紅色</span> — SIP 離線，無法接通</li>
                   <li><span style={{ color: '#f59e0b', fontWeight: 700 }}>黃色</span> — 狀態未知</li>
                 </ul>
