@@ -314,7 +314,9 @@ function renderChatHtml({ info, attachmentRows, embedded, fileLinkBase = "", zip
     if (att) {
       const size = formatBytes(att.fileSize);
       if (embedded && att.inlined) {
-        body.push(`<div class="att"><img src="${att.inlined}" alt="${escapeHtml(att.fileName)}" /><div class="meta">${escapeHtml(att.fileName)} · ${size}</div></div>`);
+        // 内联小图：同时给一个原图下载入口（否则预览页没法单独取原图）
+        const original = att.zipName ? ` · <a href="${fileLinkBase}${encodeURIComponent(att.zipName)}">下载原图</a>` : "";
+        body.push(`<div class="att"><img src="${att.inlined}" alt="${escapeHtml(att.fileName)}" /><div class="meta">${escapeHtml(att.fileName)} · ${size}${original}</div></div>`);
       } else if (att.zipName) {
         const href = embedded
           ? `${fileLinkBase}${encodeURIComponent(att.zipName)}`
