@@ -63,6 +63,7 @@ import {
   getAccountRegistrationDetail,
 } from "./flexisipRegistrationStatusService.js";
 import { readRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
+import { SipAccountStatusError, getSipAccountStatus } from "./sipAccountStatusService.js";
 import {
   FlexisipCallLogQueryError,
   isValidIsoDateTime as isValidFlexisipCallLogIsoDateTime,
@@ -13798,6 +13799,52 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
     response.status(500).json({ message: "刪除樓宇失敗，請稍後再試。" });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// GET /api/sip-account/status - 查詢指定 SIP 帳號即時狀態（註冊 + 通話），資料源為 Flexisip
+const SIP_ACCOUNT_STATUS_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const SIP_ACCOUNT_STATUS_RATE_LIMIT_MAX = 120;
+const sipAccountStatusRateLimitStore = new Map();
+
+function isSipAccountStatusAllowedByRateLimit(request) {
+  const now = Date.now();
+  for (const [key, item] of sipAccountStatusRateLimitStore.entries()) {
+    if (!item || !item.windowEndsAt || item.windowEndsAt <= now) {
+      sipAccountStatusRateLimitStore.delete(key);
+    }
+  }
+  const forwardedFor = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwardedFor
+    || String(request.headers["x-real-ip"] || "").trim()
+    || String(request.ip || request.socket?.remoteAddress || "").trim()
+    || "unknown";
+  const current = sipAccountStatusRateLimitStore.get(ip);
+  if (!current || current.windowEndsAt <= now) {
+    sipAccountStatusRateLimitStore.set(ip, { windowEndsAt: now + SIP_ACCOUNT_STATUS_RATE_LIMIT_WINDOW_MS, count: 1 });
+    return true;
+  }
+  if (current.count >= SIP_ACCOUNT_STATUS_RATE_LIMIT_MAX) return false;
+  current.count += 1;
+  return true;
+}
+
+app.get("/api/sip-account/status", async (request, response) => {
+  if (!isSipAccountStatusAllowedByRateLimit(request)) {
+    return response.status(429).json({ code: "RATE_LIMITED", message: "請求過於頻繁，請稍後再試。" });
+  }
+  try {
+    const data = await getSipAccountStatus({
+      account: request.query.account,
+      domain: request.query.domain,
+    });
+    return response.json({ data });
+  } catch (error) {
+    if (error instanceof SipAccountStatusError) {
+      return response.status(error.statusCode || 400).json({ code: error.code, message: error.message });
+    }
+    console.error("查詢 SIP 帳號狀態失敗:", error);
+    return response.status(500).json({ message: "查詢 SIP 帳號狀態失敗。" });
   }
 });
 
