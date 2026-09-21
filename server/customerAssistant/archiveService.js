@@ -160,12 +160,20 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
     const absolute = storageKey ? resolveStoragePath(storageKey) : null;
     const zipName = `files/${String(index).padStart(3, "0")}_${safeFilePart(row.file_name)}`;
     let inlined = null;
+    let included = false;
     if (absolute && existsSync(absolute)) {
-      const data = await readFile(absolute);
-      entries.push({ name: zipName, data, mtime: row.created_at instanceof Date ? row.created_at : undefined });
-      attachmentsInZip.push({ seq: Number(row.seq), fileName: row.file_name, zipName, fileSize: data.length });
-      if (/^image\//.test(String(row.mime_type || "")) && data.length <= MAX_PREVIEW_ATTACHMENT_INLINE_BYTES) {
-        inlined = `data:${row.mime_type};base64,${data.toString("base64")}`;
+      // 单个附件读失败只跳过该文件，绝不让整个归档失败（容错跳过）
+      try {
+        const data = await readFile(absolute);
+        entries.push({ name: zipName, data, mtime: row.created_at instanceof Date ? row.created_at : undefined });
+        attachmentsInZip.push({ seq: Number(row.seq), fileName: row.file_name, zipName, fileSize: data.length });
+        if (/^image\//.test(String(row.mime_type || "")) && data.length <= MAX_PREVIEW_ATTACHMENT_INLINE_BYTES) {
+          inlined = `data:${row.mime_type};base64,${data.toString("base64")}`;
+        }
+        included = true;
+      } catch (error) {
+        skipped += 1;
+        console.error("[customerAssistant][archive] attachment read failed, skipped:", row.file_name, error?.message || error);
       }
     } else {
       skipped += 1;
@@ -176,7 +184,7 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
       fileName: row.file_name,
       fileSize: Number(row.file_size) || 0,
       mimeType: row.mime_type || null,
-      zipName: absolute && existsSync(absolute) ? zipName : null,
+      zipName: included ? zipName : null,
       inlined,
       createdAt: row.created_at,
     });
