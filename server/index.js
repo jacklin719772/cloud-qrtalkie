@@ -20646,7 +20646,8 @@ const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
 });
 // Customer Assistant 实时通道（/ca/ws）；单实例内存实现，扩展边界见 10 §8.2
-attachCustomerAssistantWebSocketServer(httpServer);
+// /api/ca/ws 供外网使用（Apache 只反代 /api 与 /v1）；/ca/ws 保留给服务器本机脚本
+attachCustomerAssistantWebSocketServer(httpServer, { extraPaths: ["/api/ca/ws"] });
   startScheduler();
   startWebrtcPresencePolling({ domain: webrtcDomain });
   initGeoLookup().catch((err) => console.error("GeoIP init failed:", err.message));

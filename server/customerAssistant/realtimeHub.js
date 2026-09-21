@@ -297,8 +297,22 @@ function unregisterSocket(socket) {
  * 挂载 WS 服务：wss://<host>/ca/ws?ticket=…&since=<seq>
  * 单实例内存实现（§8.2）。
  */
-export function attachCustomerAssistantWebSocketServer(httpServer, { path = "/ca/ws" } = {}) {
-  const wss = new WebSocketServer({ server: httpServer, path });
+export function attachCustomerAssistantWebSocketServer(httpServer, { path = "/ca/ws", extraPaths = [] } = {}) {
+  // 多路径（默认 /ca/ws，生产另有 /api/ca/ws —— Apache 只反代 /api 与 /v1）：
+  // 用 noServer + 手动 upgrade，避免多次挂载导致心跳定时器等重复实例。
+  const acceptedPaths = new Set([path, ...extraPaths].filter(Boolean));
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on("upgrade", (request, socket, head) => {
+    let pathname = "";
+    try {
+      pathname = new URL(request.url, "http://localhost").pathname;
+    } catch {
+      pathname = "";
+    }
+    if (!acceptedPaths.has(pathname)) return; // 非本模块路径：不处理，留给其它 upgrade 监听（当前无）
+    wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request));
+  });
 
   wss.on("connection", async (socket, request) => {
     const url = new URL(request.url, "http://localhost");
