@@ -144,7 +144,8 @@ export function useVisitorChat(slug) {
     }
   }, [slug, sending, fetchHistory]);
 
-  /** 更换聊天码（旧码立即失效；服务端只存哈希，无法再次下发） */  const rotateCode = useCallback(async () => {
+  /** 更换聊天码（旧码立即失效；服务端只存哈希，无法再次下发） */
+  const rotateCode = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) return;
     try {
@@ -263,8 +264,8 @@ export function useVisitorChat(slug) {
 
   const statusTone = agentStatus === 'available' ? 'is-ok' : 'is-warn';
   const statusText = agentStatus === 'available'
-    ? '客服在線'
-    : agentStatus === 'unavailable' ? '客服離線，可先留言' : '狀態未知';
+    ? '在線'
+    : agentStatus === 'unavailable' ? '離線，可先留言' : '狀態未知';
 
   return {
     dialogOpen, openDialog, closeDialog, start,

@@ -103,7 +103,7 @@ export default function ECardChatRegisterDialog({ slug, defaultContact, defaultC
         </div>
 
         <div className="ecard-chatDialogBody">
-          <p className="ecard-chatDialogIntro">請先留下聯絡方式，方便客服回覆您。</p>
+          <p className="ecard-chatDialogIntro">請先留下聯絡方式，方便對方回覆您。</p>
 
           <label className="ecard-chatField">
             <span className="ecard-chatFieldLabel">

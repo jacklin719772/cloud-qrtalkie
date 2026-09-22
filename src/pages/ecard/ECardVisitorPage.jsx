@@ -961,7 +961,7 @@ export default function ECardVisitorPage({ slug }) {
           <Suspense fallback={null}>
             <ECardChatPanel
               ecardData={ecardData}
-              displayName={chat.session?.displayName || ecardData?.name}
+              displayName={ecardData?.name || chat.session?.displayName}
               statusTone={chat.statusTone}
               statusText={chat.statusText}
               avatarUrl={displayAvatar}
