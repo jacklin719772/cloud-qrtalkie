@@ -49,6 +49,7 @@ export default function ECardChatPanel({
   onLoadAudio,
   onRecall,
   onHideMessage,
+  onDownloadAttachment,
   uploadProgress,
   onGetCode,
   connection = 'idle',
@@ -357,7 +358,7 @@ export default function ECardChatPanel({
                   ) : isImage ? (
                     <ImageBubble message={item} onLoadAttachment={onLoadAudio} />
                   ) : isFile ? (
-                    <FileBubble message={item} onLoadAttachment={onLoadAudio} />
+                    <FileBubble message={item} onLoadAttachment={onLoadAudio} onDownloadAttachment={onDownloadAttachment} />
                   ) : (
                     <div className="ecard-chatBubble">{item.content}</div>
                   )}
@@ -659,16 +660,27 @@ function ImageBubble({ message, onLoadAttachment }) {
 }
 
 /** 文件气泡：类型徽标 + 文件名 + 大小，点击下载 */
-function FileBubble({ message, onLoadAttachment }) {
-  const [busy, setBusy] = useState(false);
+function FileBubble({ message, onLoadAttachment, onDownloadAttachment }) {
+  const [state, setState] = useState('idle'); // idle | downloading | done | error
+  const [percent, setPercent] = useState(0);
   const attachment = message.attachment || {};
   const ext = String(attachment.fileName || '').split('.').pop()?.slice(0, 4).toUpperCase() || 'FILE';
 
   async function handleOpen() {
-    if (busy) return;
-    setBusy(true);
+    if (state === 'downloading') return;
+    setState('downloading');
+    setPercent(0);
     try {
-      const url = await onLoadAttachment?.(message);
+      // 优先走带进度的下载；没有该回调时退回缓存取回
+      const blob = onDownloadAttachment
+        ? await onDownloadAttachment(message, (value) => setPercent(value))
+        : null;
+      let url = '';
+      if (blob) {
+        url = URL.createObjectURL(blob);
+      } else {
+        url = await onLoadAttachment?.(message);
+      }
       if (!url) throw new Error('missing');
       const link = document.createElement('a');
       link.href = url;
@@ -676,19 +688,31 @@ function FileBubble({ message, onLoadAttachment }) {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      if (blob) setTimeout(() => { try { URL.revokeObjectURL(url); } catch { /* 忽略 */ } }, 60000);
+      setState('done');
+      setTimeout(() => setState('idle'), 4000);
     } catch {
-      /* 失败保持原样，用户可再点 */
-    } finally {
-      setBusy(false);
+      setState('error');
+      setTimeout(() => setState('idle'), 4000);
     }
   }
+
+  const statusText = state === 'downloading'
+    ? `下載中 ${percent}%`
+    : state === 'done'
+      ? '已下載（見瀏覽器下載項目）'
+      : state === 'error'
+        ? '下載失敗，點擊重試'
+        : formatSize(attachment.fileSize);
 
   return (
     <button type="button" className="ecard-chatFileChip" onClick={handleOpen}>
       <span className="ecard-chatFileBadge">{ext}</span>
       <span className="ecard-chatFileMain">
         <span className="ecard-chatFileName">{attachment.fileName || '檔案'}</span>
-        <span className="ecard-chatFileSize">{busy ? '下載中…' : formatSize(attachment.fileSize)}</span>
+        <span className={`ecard-chatFileSize${state === 'done' ? ' is-done' : state === 'error' ? ' is-error' : ''}`}>
+          {statusText}
+        </span>
       </span>
     </button>
   );

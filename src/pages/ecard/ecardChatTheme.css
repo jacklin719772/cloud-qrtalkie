@@ -316,6 +316,9 @@
 
 .ecard-chatMsg.is-visitor .ecard-chatFileSize { color: #e8c9a8; }
 
+.ecard-chatFileSize.is-done { color: #7ee2a8; }
+.ecard-chatFileSize.is-error { color: #ff9a9a; }
+
 /* ── 消息回执（✓/✓✓）── */
 .ecard-chatMeta {
   display: inline-flex;

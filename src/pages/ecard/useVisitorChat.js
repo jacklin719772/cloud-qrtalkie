@@ -106,8 +106,8 @@ export function useVisitorChat(slug) {
           // 对方撤回/删除：本地实时移除
           const removedId = Number(frame.data.messageId);
           setServerMessages((prev) => prev.filter((item) => item.id !== removedId));
-        } else if (frame.type === 'ca.message.read') {
-          // 对方已读到 uptoSeq：把自己发的消息回执刷新为已读
+        } else if (frame.type === 'ca.message.read' && frame.data?.by === 'agent') {
+          // 只有「客服读了」才把我发的消息刷成已读（自己读的不能算）
           const upto = Number(frame.data?.uptoSeq) || 0;
           if (upto > 0) {
             const stamp = new Date().toISOString();
@@ -117,7 +117,8 @@ export function useVisitorChat(slug) {
                 : item
             )));
           }
-        } else if (frame.type === 'ca.message.delivered') {
+        } else if (frame.type === 'ca.message.delivered' && frame.data?.by === 'agent') {
+          // 同上：送达也只认客服侧的回执
           const upto = Number(frame.data?.uptoSeq) || 0;
           if (upto > 0) {
             const stamp = new Date().toISOString();
@@ -296,6 +297,13 @@ export function useVisitorChat(slug) {
     }
   }, [slug, sending, fetchHistory]);
 
+  /** 下载附件（带进度）：返回 blob，由面板触发保存 */
+  const downloadAttachment = useCallback(async (message, onProgress) => {
+    const attachmentId = Number(message?.attachment?.id) || 0;
+    if (!attachmentId) return null;
+    return chatApi.downloadAttachment(slug, tokenRef.current, attachmentId, { onProgress });
+  }, [slug]);
+
   /** 语音气泡播放：附件需带 Bearer 取回，转成 objectURL 并缓存（卸载时释放） */
   const loadAudioUrl = useCallback(async (message) => {
     const attachmentId = message?.attachment?.id;
@@ -334,7 +342,7 @@ export function useVisitorChat(slug) {
     dialogOpen, openDialog, closeDialog, start,
     session, messages, loading, sending, hasMore, loadMore, send, sendVoice, sendAttachment, loadAudioUrl,
     connection, agentStatus, code, rotateCode, error, uploadProgress,
-    recallMessage, hideMessage,
+    recallMessage, hideMessage, downloadAttachment,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),
     storedCode: loadStoredCode(slug),

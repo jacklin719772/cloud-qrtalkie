@@ -149,6 +149,29 @@ export const chatApi = {
       body: { contentType, attachment: { key, fileName, mimeType }, content: '', clientMsgId },
     }),
 
+  /** 下载附件（带进度）：XHR 取 blob，再由调用方触发保存 */
+  downloadAttachment: (slug, token, attachmentId, { onProgress } = {}) =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', `/api/ecard/public/${encodeURIComponent(slug)}/chat/attachments/${Number(attachmentId) || 0}`);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.withCredentials = true;
+      xhr.responseType = 'blob';
+      xhr.timeout = 300000;
+      xhr.onprogress = (event) => {
+        if (event.lengthComputable && onProgress) {
+          try { onProgress(Math.round((event.loaded / event.total) * 100)); } catch { /* 忽略 */ }
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else reject(new Error(`下載失敗（${xhr.status}）`));
+      };
+      xhr.onerror = () => reject(new Error('網路連線失敗，請重試'));
+      xhr.ontimeout = () => reject(new Error('下載逾時，請換個網路再試'));
+      xhr.send();
+    }),
+
   /** 取附件二进制（需 Bearer，故用 fetch 取 blob，不能直接给 <audio src>） */
   fetchAttachmentBlob: async (slug, token, attachmentId) => {
     const response = await fetch(`/api/ecard/public/${encodeURIComponent(slug)}/chat/attachments/${attachmentId}`, {

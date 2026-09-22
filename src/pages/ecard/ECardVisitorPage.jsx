@@ -980,6 +980,7 @@ export default function ECardVisitorPage({ slug }) {
               onLoadAudio={chat.loadAudioUrl}
               onRecall={chat.recallMessage}
               onHideMessage={chat.hideMessage}
+              onDownloadAttachment={chat.downloadAttachment}
               uploadProgress={chat.uploadProgress}
               chatCode={chat.code}
               onGetCode={() => setRotateConfirmOpen(true)}
