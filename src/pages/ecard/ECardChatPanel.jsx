@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Camera, Headphones, Image as ImageIcon, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Video } from 'lucide-react';
+import { ArrowLeft, Camera, Check, CheckCheck, Copy, Download, Headphones, Image as ImageIcon, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Undo2, Video } from 'lucide-react';
 import './ecardChatTheme.css';
 
 const MAX_RECORD_MS = 60000;
@@ -47,6 +47,8 @@ export default function ECardChatPanel({
   onSendVoice,
   onSendAttachment,
   onLoadAudio,
+  onRecall,
+  onHideMessage,
   uploadProgress,
   onGetCode,
   connection = 'idle',
@@ -60,6 +62,7 @@ export default function ECardChatPanel({
   const [recordError, setRecordError] = useState('');
   const [attachMenuOpen, setAttachMenuOpen] = useState(false);
   const [localError, setLocalError] = useState('');
+  const [actionMessage, setActionMessage] = useState(null);
   const listRef = useRef(null);
   const copyTimerRef = useRef(null);
   const recorderRef = useRef(null);
@@ -126,6 +129,23 @@ export default function ECardChatPanel({
   }, [connection]);
 
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+
+  // 长按（触屏）/ 右键（PC）打开消息操作菜单
+  const longPressRef = useRef(null);
+  const longPressOpenedRef = useRef(false);
+
+  function startLongPress(item) {
+    longPressOpenedRef.current = false;
+    clearTimeout(longPressRef.current);
+    longPressRef.current = setTimeout(() => {
+      longPressOpenedRef.current = true;
+      setActionMessage(item);
+    }, 480);
+  }
+
+  function cancelLongPress() {
+    clearTimeout(longPressRef.current);
+  }
 
   async function handleSend() {
     const text = draft.trim();
@@ -323,7 +343,15 @@ export default function ECardChatPanel({
               const isImage = !isAudio && item.attachment && (item.attachment.kind === 'image' || item.attachment.kind === 'sticker');
               const isFile = !isAudio && !isImage && item.attachment;
               return (
-                <div key={item.id} className={`ecard-chatMsg ${isVisitor ? 'is-visitor' : 'is-agent'}`}>
+                <div
+                  key={item.id}
+                  className={`ecard-chatMsg ${isVisitor ? 'is-visitor' : 'is-agent'}`}
+                  onContextMenu={(event) => { event.preventDefault(); setActionMessage(item); }}
+                  onTouchStart={() => startLongPress(item)}
+                  onTouchEnd={cancelLongPress}
+                  onTouchMove={cancelLongPress}
+                  onTouchCancel={cancelLongPress}
+                >
                   {isAudio ? (
                     <AudioBubble message={item} onLoadAudio={onLoadAudio} />
                   ) : isImage ? (
@@ -333,7 +361,17 @@ export default function ECardChatPanel({
                   ) : (
                     <div className="ecard-chatBubble">{item.content}</div>
                   )}
-                  <div className="ecard-chatMeta">{formatTime(item.createdAt)}</div>
+                  <div className="ecard-chatMeta">
+                    {formatTime(item.createdAt)}
+                    {/* 仅自己发的消息显示回执：单勾=已发送，双勾=已送达，双勾高亮=对方已读 */}
+                    {isVisitor && !isSystem ? (
+                      item.readAt
+                        ? <CheckCheck size={13} className="ecard-chatReceipt is-read" />
+                        : item.deliveredAt
+                          ? <CheckCheck size={13} className="ecard-chatReceipt" />
+                          : <Check size={13} className="ecard-chatReceipt" />
+                    ) : null}
+                  </div>
                 </div>
               );
             })
@@ -452,6 +490,68 @@ export default function ECardChatPanel({
             </>
           )}
         </div>
+
+        {actionMessage ? (
+          <>
+            <div className="ecard-chatActionBackdrop" onClick={() => setActionMessage(null)} />
+            <div className="ecard-chatActionSheet">
+              {actionMessage.content && !actionMessage.attachment ? (
+                <button
+                  type="button"
+                  className="ecard-chatActionItem"
+                  onClick={async () => {
+                    const text = actionMessage.content || '';
+                    setActionMessage(null);
+                    try { await navigator.clipboard.writeText(text); } catch { /* 剪贴板不可用时忽略 */ }
+                  }}
+                >
+                  <Copy size={16} />
+                  複製
+                </button>
+              ) : null}
+              {actionMessage.attachment ? (
+                <button
+                  type="button"
+                  className="ecard-chatActionItem"
+                  onClick={async () => {
+                    const message = actionMessage;
+                    setActionMessage(null);
+                    try { await downloadAttachment(message, onLoadAttachment); } catch { /* 失败保持原状 */ }
+                  }}
+                >
+                  <Download size={16} />
+                  下載
+                </button>
+              ) : null}
+              {actionMessage.senderType === 'visitor' ? (
+                <button
+                  type="button"
+                  className="ecard-chatActionItem is-danger"
+                  onClick={async () => {
+                    const message = actionMessage;
+                    setActionMessage(null);
+                    await onRecall?.(message);
+                  }}
+                >
+                  <Undo2 size={16} />
+                  撤回（雙方不可見）
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="ecard-chatActionItem is-danger"
+                onClick={() => {
+                  const message = actionMessage;
+                  setActionMessage(null);
+                  onHideMessage?.(message);
+                }}
+              >
+                <Trash2 size={16} />
+                刪除（僅自己隱藏）
+              </button>
+            </div>
+          </>
+        ) : null}
 
         {recordError ? <div className="ecard-chatConnBar is-error">{recordError}</div> : null}
         {localError ? <div className="ecard-chatConnBar is-error">{localError}</div> : null}
@@ -592,6 +692,18 @@ function FileBubble({ message, onLoadAttachment }) {
       </span>
     </button>
   );
+}
+
+/** 附件下载：附件需带 Bearer 取回，先换 objectURL 再触发下载 */
+async function downloadAttachment(message, onLoadAttachment) {
+  const url = await onLoadAttachment?.(message);
+  if (!url) throw new Error('附件載入失敗');
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = message.attachment?.fileName || 'file';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
 }
 
 function formatSize(bytes) {

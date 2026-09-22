@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   chatApi,
   createVisitorChatSocket,
+  loadHiddenIds,
   loadStoredCode,
   loadStoredContact,
+  saveHiddenIds,
   saveStoredCode,
   saveStoredContact,
 } from './ecardChatApi';
@@ -17,7 +19,8 @@ const PAGE_SIZE = 50;
 export function useVisitorChat(slug) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [session, setSession] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [serverMessages, setServerMessages] = useState([]);
+  const [hiddenIds, setHiddenIds] = useState(() => loadHiddenIds(slug));
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -35,6 +38,7 @@ export function useVisitorChat(slug) {
 
   useEffect(() => {
     setCode(loadStoredCode(slug));
+    setHiddenIds(loadHiddenIds(slug));
   }, [slug]);
 
   /** 登记弹窗完成后进入聊天（session 来自 chat-register / chat-resume） */
@@ -60,7 +64,7 @@ export function useVisitorChat(slug) {
       const data = await chatApi.history(slug, token, before ? { before, limit: PAGE_SIZE } : { limit: PAGE_SIZE });
       const list = Array.isArray(data?.messages) ? data.messages : [];
       if (data?.agentStatus?.state) setAgentStatus(data.agentStatus.state);
-      setMessages((prev) => (before ? [...list, ...prev] : list));
+      setServerMessages((prev) => (before ? [...list, ...prev] : list));
       setHasMore(list.length >= PAGE_SIZE);
       if (!before) {
         oldestSeqRef.current = list.length ? Number(list[0].seq) || 0 : 0;
@@ -93,10 +97,35 @@ export function useVisitorChat(slug) {
         if (cancelled) return;
         if (frame.type === 'ca.message.new' && frame.data) {
           const incoming = frame.data;
-          setMessages((prev) => (prev.some((item) => item.id === incoming.id) ? prev : [...prev, incoming]));
+          setServerMessages((prev) => (prev.some((item) => item.id === incoming.id) ? prev : [...prev, incoming]));
           const seq = Number(incoming.seq) || 0;
           if (seq > 0 && incoming.senderType !== 'visitor') {
             chatApi.markRead(slug, tokenRef.current, seq).catch(() => {});
+          }
+        } else if (frame.type === 'ca.message.deleted' && frame.data?.messageId) {
+          // 对方撤回/删除：本地实时移除
+          const removedId = Number(frame.data.messageId);
+          setServerMessages((prev) => prev.filter((item) => item.id !== removedId));
+        } else if (frame.type === 'ca.message.read') {
+          // 对方已读到 uptoSeq：把自己发的消息回执刷新为已读
+          const upto = Number(frame.data?.uptoSeq) || 0;
+          if (upto > 0) {
+            const stamp = new Date().toISOString();
+            setServerMessages((prev) => prev.map((item) => (
+              item.senderType === 'visitor' && Number(item.seq) <= upto && !item.readAt
+                ? { ...item, readAt: stamp }
+                : item
+            )));
+          }
+        } else if (frame.type === 'ca.message.delivered') {
+          const upto = Number(frame.data?.uptoSeq) || 0;
+          if (upto > 0) {
+            const stamp = new Date().toISOString();
+            setServerMessages((prev) => prev.map((item) => (
+              item.senderType === 'visitor' && Number(item.seq) <= upto && !item.deliveredAt
+                ? { ...item, deliveredAt: stamp }
+                : item
+            )));
           }
         } else if (frame.type === 'ca.agent.available') {
           setAgentStatus('available');
@@ -130,7 +159,7 @@ export function useVisitorChat(slug) {
       const result = await chatApi.send(slug, token, { content, clientMsgId });
       const message = result?.message;
       if (message) {
-        setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
+        setServerMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
       } else {
         await fetchHistory();
       }
@@ -143,6 +172,40 @@ export function useVisitorChat(slug) {
       setSending(false);
     }
   }, [slug, sending, fetchHistory]);
+
+  /** 撤回自己的消息：服务端真删（双方不可见）+ 本地移除 */
+  const recallMessage = useCallback(async (message) => {
+    const token = tokenRef.current;
+    const messageId = Number(message?.id) || 0;
+    if (!token || !messageId) return false;
+    try {
+      await chatApi.recallMessage(slug, token, messageId);
+      setServerMessages((prev) => prev.filter((item) => item.id !== messageId));
+      setError('');
+      return true;
+    } catch (err) {
+      setError(err?.message || '撤回失敗');
+      return false;
+    }
+  }, [slug]);
+
+  /** 删除（仅对自己隐藏）：本地记 id，对方仍可见；重新进入也保持隐藏 */
+  const hideMessage = useCallback((message) => {
+    const messageId = Number(message?.id) || 0;
+    if (!messageId) return;
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(messageId);
+      saveHiddenIds(slug, next);
+      return next;
+    });
+  }, [slug]);
+
+  /** 对外可见的消息列表（过滤掉仅自己隐藏的） */
+  const messages = useMemo(
+    () => serverMessages.filter((item) => !hiddenIds.has(Number(item.id))),
+    [serverMessages, hiddenIds],
+  );
 
   /** 更换聊天码（旧码立即失效；服务端只存哈希，无法再次下发） */
   const rotateCode = useCallback(async () => {
@@ -191,7 +254,7 @@ export function useVisitorChat(slug) {
       });
       const message = result?.message;
       if (message) {
-        setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
+        setServerMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
       } else {
         await fetchHistory();
       }
@@ -219,7 +282,7 @@ export function useVisitorChat(slug) {
       const result = await chatApi.sendVoice(slug, token, { key, fileName, durationMs, clientMsgId });
       const message = result?.message;
       if (message) {
-        setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
+        setServerMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
       } else {
         await fetchHistory();
       }
@@ -271,6 +334,7 @@ export function useVisitorChat(slug) {
     dialogOpen, openDialog, closeDialog, start,
     session, messages, loading, sending, hasMore, loadMore, send, sendVoice, sendAttachment, loadAudioUrl,
     connection, agentStatus, code, rotateCode, error, uploadProgress,
+    recallMessage, hideMessage,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),
     storedCode: loadStoredCode(slug),

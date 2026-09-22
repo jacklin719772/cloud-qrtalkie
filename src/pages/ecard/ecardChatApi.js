@@ -111,6 +111,10 @@ export const chatApi = {
 
   markRead: (slug, token, uptoSeq) => request(`${chatBase(slug)}/read`, { method: 'POST', token, body: { uptoSeq } }),
 
+  /** 撤回自己的消息（服务端真删，双方不可见） */
+  recallMessage: (slug, token, messageId) =>
+    request(`${chatBase(slug)}/messages/${Number(messageId) || 0}`, { method: 'DELETE', token }),
+
   ticket: (slug, token) => request(`${chatBase(slug)}/ticket`, { token }),
 
   /** 更换聊天码：旧码立即失效，新码只返回一次 */
@@ -180,6 +184,24 @@ export function loadStoredCode(slug) {
   } catch {
     return '';
   }
+}
+
+const HIDDEN_STORE_PREFIX = 'ecardChatHidden:';
+
+/** 「删除」= 仅对自己隐藏：本地记录消息 id（不通知服务端，对方仍可见） */
+export function loadHiddenIds(slug) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIDDEN_STORE_PREFIX + slug) || '[]');
+    return new Set(Array.isArray(raw) ? raw.map(Number) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function saveHiddenIds(slug, ids) {
+  try {
+    localStorage.setItem(HIDDEN_STORE_PREFIX + slug, JSON.stringify(Array.from(ids || [])));
+  } catch { /* 忽略 */ }
 }
 
 export function saveStoredCode(slug, code) {

@@ -646,7 +646,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       const loaded = await loadEcardBySlug(connection, slug);
       if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
       const rows = await connection.query(
-        `SELECT id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1`,
+        `SELECT id, public_id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1`,
         [loaded.ecard.id, request.caVisitor.visitorId],
       );
       if (!rows[0]) return fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在");
@@ -654,10 +654,84 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       await connection.beginTransaction();
       await convs.markRead(connection, Number(rows[0].id), "visitor", request.body?.uptoSeq);
       await connection.commit();
+      // 通知客服端：访客已读到 uptoSeq，让安卓端回执实时变「已读」
+      dispatchConversationEvent({
+        conversationId: Number(rows[0].id),
+        conversationPublicId: rows[0].public_id,
+        sipUserId: loaded.ecard.sipUserId,
+        frame: { type: "ca.message.read", data: { uptoSeq: Number(request.body?.uptoSeq) || 0, by: "visitor" } },
+      });
       return ok(response, {});
     } catch (error) {
       await connection.rollback().catch(() => {});
       console.error("[customerAssistant] visitor read error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // V8 访客撤回自己的消息（仅本人消息；服务端真删 + 通知客服端移除）
+  app.delete("/api/ecard/public/:slug/chat/messages/:messageId", requireVisitorAuth, async (request, response) => {
+    const slug = String(request.params.slug || "").trim();
+    const messageId = Number(request.params.messageId) || 0;
+    const connection = await pool.getConnection();
+    try {
+      const loaded = await loadEcardBySlug(connection, slug);
+      if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
+
+      const rows = await connection.query(
+        `SELECT id, public_id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1`,
+        [loaded.ecard.id, request.caVisitor.visitorId],
+      );
+      if (!rows[0]) return fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在");
+      const conversationId = Number(rows[0].id);
+
+      const owner = await connection.query(
+        `SELECT id, sender_type FROM ca_messages WHERE id = ? AND conversation_id = ? LIMIT 1`,
+        [messageId, conversationId],
+      );
+      if (!owner[0]) return fail(response, 404, "MESSAGE_NOT_FOUND", "訊息不存在");
+      // 只能撤回自己发的（客服/系统消息不可撤回）
+      if (String(owner[0].sender_type) !== "visitor") {
+        return fail(response, 403, "RECALL_FORBIDDEN", "只能撤回自己發送的訊息");
+      }
+
+      await connection.beginTransaction();
+      const deleted = await convs.deleteMessage(connection, conversationId, messageId);
+      await connection.commit();
+      if (!deleted.deleted) return fail(response, 404, "MESSAGE_NOT_FOUND", "訊息不存在");
+
+      if (deleted.storageKey) {
+        const absolute = resolveStoragePath(deleted.storageKey);
+        if (absolute) {
+          await rm(absolute, { force: true }).catch((error) =>
+            console.error("[customerAssistant] delete attachment file failed:", error?.message || error),
+          );
+        }
+      }
+
+      await logCaEvent({
+        action: CA_AUDIT_ACTIONS.MESSAGE_DELETED,
+        actorType: "visitor",
+        actorPublicId: String(request.caVisitor.visitorId),
+        targetType: "conversation",
+        targetPublicId: rows[0].public_id,
+        ip: getClientIp(request),
+        meta: { messageId },
+      });
+
+      // 客服端与访客其余标签页实时移除该条
+      dispatchConversationEvent({
+        conversationId,
+        conversationPublicId: rows[0].public_id,
+        sipUserId: loaded.ecard.sipUserId,
+        frame: { type: "ca.message.deleted", data: { messageId, seq: deleted.seq } },
+      });
+      return ok(response, { deleted: true, messageId });
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      console.error("[customerAssistant] visitor recall error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();
@@ -899,6 +973,13 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       await connection.beginTransaction();
       await convs.markRead(connection, conversation.conversationId, "agent", request.body?.uptoSeq);
       await connection.commit();
+      // 让访客端（网页/App）实时把「已读」回执刷出来
+      dispatchConversationEvent({
+        conversationId: conversation.conversationId,
+        conversationPublicId: conversation.publicId,
+        sipUserId,
+        frame: { type: "ca.message.read", data: { uptoSeq: Number(request.body?.uptoSeq) || 0, by: "agent" } },
+      });
       return ok(response, {});
     } catch (error) {
       await connection.rollback().catch(() => {});
