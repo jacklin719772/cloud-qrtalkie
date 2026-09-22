@@ -85,19 +85,19 @@ export const chatApi = {
   uploadVoice: (slug, token, { blob, fileName, mimeType, durationMs }) =>
     chatApi.uploadAttachment(slug, token, { blob, fileName, mimeType, durationMs }),
 
-  sendVoice: (slug, token, { key, durationMs, clientMsgId }) =>
+  sendVoice: (slug, token, { key, fileName, durationMs, clientMsgId }) =>
     request(`${chatBase(slug)}/messages`, {
       method: 'POST',
       token,
-      body: { contentType: 'audio', attachment: { key, durationMs }, content: '', clientMsgId },
+      body: { contentType: 'audio', attachment: { key, fileName, durationMs }, content: '', clientMsgId },
     }),
 
-  /** 图片 / 文件消息 */
-  sendAttachment: (slug, token, { key, contentType, clientMsgId }) =>
+  /** 图片 / 文件消息：带上原始文件名，避免落库/展示成随机存储名 */
+  sendAttachment: (slug, token, { key, fileName, mimeType, contentType, clientMsgId }) =>
     request(`${chatBase(slug)}/messages`, {
       method: 'POST',
       token,
-      body: { contentType, attachment: { key }, content: '', clientMsgId },
+      body: { contentType, attachment: { key, fileName, mimeType }, content: '', clientMsgId },
     }),
 
   /** 取附件二进制（需 Bearer，故用 fetch 取 blob，不能直接给 <audio src>） */

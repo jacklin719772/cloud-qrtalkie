@@ -168,7 +168,14 @@ export function useVisitorChat(slug) {
       if (!key) throw new Error('檔案上傳失敗');
       const contentType = uploaded?.kind === 'image' || uploaded?.kind === 'sticker' ? 'image' : 'file';
       const clientMsgId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const result = await chatApi.sendAttachment(slug, token, { key, contentType, clientMsgId });
+      const result = await chatApi.sendAttachment(slug, token, {
+        key,
+        // 展示端（App/网页）看到的是这里传的原始文件名，不传就会退回随机存储名
+        fileName,
+        mimeType,
+        contentType,
+        clientMsgId,
+      });
       const message = result?.message;
       if (message) {
         setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
@@ -195,7 +202,7 @@ export function useVisitorChat(slug) {
       const key = uploaded?.key;
       if (!key) throw new Error('語音上傳失敗');
       const clientMsgId = `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const result = await chatApi.sendVoice(slug, token, { key, durationMs, clientMsgId });
+      const result = await chatApi.sendVoice(slug, token, { key, fileName, durationMs, clientMsgId });
       const message = result?.message;
       if (message) {
         setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));

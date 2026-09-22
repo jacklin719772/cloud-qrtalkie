@@ -582,7 +582,8 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       visitorAttachment = {
         storageKey: key,
         kind: stat.kind,
-        fileName: request.body?.attachment?.fileName || stat.fileName,
+        // 客户端可覆盖展示名（原始文件名）；截断到与 DB 列一致，避免超长名插入失败
+        fileName: String(request.body?.attachment?.fileName || stat.fileName || "").slice(0, 255) || stat.fileName,
         mimeType: stat.mimeType,
         fileSize: stat.size,
         durationMs: request.body?.attachment?.durationMs ?? null,
