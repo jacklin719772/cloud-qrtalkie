@@ -164,7 +164,7 @@ export function useVisitorChat(slug) {
 
   return {
     dialogOpen, openDialog, closeDialog, start,
-    session, messages, loading, sending, hasMore, loadMore,
+    session, messages, loading, sending, hasMore, loadMore, send,
     connection, agentStatus, code, rotateCode, error,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),
