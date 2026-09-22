@@ -209,7 +209,8 @@ export async function listMessages(connection, conversationId, { before = null, 
     `SELECT m.id, m.seq, m.sender_type, m.sender_sip_user_id, m.content_type, m.content, m.client_msg_id,
             m.status, m.delivered_at, m.read_at, m.created_at,
             a.id AS attachment_id, a.kind AS attachment_kind, a.file_name AS attachment_file_name,
-            a.mime_type AS attachment_mime_type, a.file_size AS attachment_file_size
+            a.mime_type AS attachment_mime_type, a.file_size AS attachment_file_size,
+            a.duration_ms AS attachment_duration_ms
        FROM ca_messages m
        LEFT JOIN ca_attachments a ON a.message_id = m.id
       WHERE ${where.replace(/conversation_id/g, "m.conversation_id").replace(/seq/g, "m.seq")}
