@@ -364,7 +364,7 @@ export default function ECardChatPanel({
                   <div className="ecard-chatMeta">
                     {formatTime(item.createdAt)}
                     {/* 仅自己发的消息显示回执：单勾=已发送，双勾=已送达，双勾高亮=对方已读 */}
-                    {isVisitor && !isSystem ? (
+                    {isVisitor ? (
                       item.readAt
                         ? <CheckCheck size={13} className="ecard-chatReceipt is-read" />
                         : item.deliveredAt
