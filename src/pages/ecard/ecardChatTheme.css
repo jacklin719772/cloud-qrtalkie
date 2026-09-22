@@ -298,26 +298,6 @@
   box-shadow: none;
 }
 
-/* ── 名片页的聊天入口按钮（次要样式，整行铺满按钮网格）── */
-.ecard-chatEntryButton {
-  grid-column: 1 / -1;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(212, 175, 55, 0.24);
-  background: rgba(255, 255, 255, 0.03);
-  color: #f1d37a;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-
-.ecard-chatEntryButton:hover { background: rgba(212, 175, 55, 0.10); }
-
 /* ── 响应式：窄屏收掉左栏，聊天占满 ── */
 @media (max-width: 900px) {
   .ecard-chatBody { grid-template-columns: 1fr; }

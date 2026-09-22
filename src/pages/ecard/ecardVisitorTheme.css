@@ -249,6 +249,28 @@
   font-size: 11px;
 }
 
+/* 聊天入口：次要样式，整行铺满呼叫按钮网格（样式必须常驻本文件，
+   不能放进懒加载的 ecardChatTheme.css，否则首屏渲染时按钮无样式） */
+.ecard-chatEntryButton {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f1d37a;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.ecard-chatEntryButton:hover { background: rgba(212, 175, 55, 0.10); }
+
 .ecard-statusCard {
   width: 100%;
   display: flex;
