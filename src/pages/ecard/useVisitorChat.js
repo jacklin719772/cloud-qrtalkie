@@ -25,6 +25,7 @@ export function useVisitorChat(slug) {
   const [agentStatus, setAgentStatus] = useState('unknown'); // available | unavailable | unknown
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(null); // null=无上传；0~100 上传中
 
   const socketRef = useRef(null);
   const tokenRef = useRef('');
@@ -170,8 +171,11 @@ export function useVisitorChat(slug) {
       return false;
     }
     setSending(true);
+    setUploadProgress(0);
     try {
-      const uploaded = await chatApi.uploadAttachment(slug, token, { blob, fileName, mimeType });
+      const uploaded = await chatApi.uploadAttachment(slug, token, {
+        blob, fileName, mimeType, onProgress: (percent) => setUploadProgress(percent),
+      });
       const key = uploaded?.key;
       if (!key) throw new Error('檔案上傳失敗');
       const contentType = uploaded?.kind === 'image' || uploaded?.kind === 'sticker' ? 'image' : 'file';
@@ -197,6 +201,7 @@ export function useVisitorChat(slug) {
       return false;
     } finally {
       setSending(false);
+      setUploadProgress(null);
     }
   }, [slug, sending, fetchHistory]);
 
@@ -264,7 +269,7 @@ export function useVisitorChat(slug) {
   return {
     dialogOpen, openDialog, closeDialog, start,
     session, messages, loading, sending, hasMore, loadMore, send, sendVoice, sendAttachment, loadAudioUrl,
-    connection, agentStatus, code, rotateCode, error,
+    connection, agentStatus, code, rotateCode, error, uploadProgress,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),
     storedCode: loadStoredCode(slug),

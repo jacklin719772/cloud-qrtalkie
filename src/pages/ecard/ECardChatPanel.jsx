@@ -47,6 +47,7 @@ export default function ECardChatPanel({
   onSendVoice,
   onSendAttachment,
   onLoadAudio,
+  uploadProgress,
   onGetCode,
   connection = 'idle',
   error = '',
@@ -70,6 +71,15 @@ export default function ECardChatPanel({
   const cameraInputRef = useRef(null);
   const albumInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const iosInputRef = useRef(null);
+
+  // iOS Safari 对任何 file input 都会弹系统来源菜单（照片图库/拍照或录像/选取文件），
+  // 与自绘菜单重复 → iOS 直接唤起系统菜单，不再画自己的
+  const isIos = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1);
+  }, []);
 
   // 手机端才提供「拍照」（PC 浏览器会忽略 capture，退化成选文件，故直接禁用）
   const cameraSupported = useMemo(() => {
@@ -366,7 +376,10 @@ export default function ECardChatPanel({
                 <button
                   type="button"
                   className="ecard-chatIconButton"
-                  onClick={() => setAttachMenuOpen((open) => !open)}
+                  onClick={() => {
+                    if (isIos) { iosInputRef.current?.click(); return; }
+                    setAttachMenuOpen((open) => !open);
+                  }}
                   title="傳送圖片或檔案"
                 >
                   <Paperclip size={16} />
@@ -407,6 +420,8 @@ export default function ECardChatPanel({
               />
               <input ref={albumInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePickedFiles} />
               <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handlePickedFiles} />
+              {/* iOS 专用：不设 accept/capture，系统菜单自带 照片图库/拍照或录像/选取文件 */}
+              <input ref={iosInputRef} type="file" style={{ display: 'none' }} onChange={handlePickedFiles} />
               <button
                 type="button"
                 className="ecard-chatIconButton"
@@ -440,6 +455,9 @@ export default function ECardChatPanel({
 
         {recordError ? <div className="ecard-chatConnBar is-error">{recordError}</div> : null}
         {localError ? <div className="ecard-chatConnBar is-error">{localError}</div> : null}
+        {uploadProgress != null ? (
+          <div className="ecard-chatConnBar is-info">正在上傳… {uploadProgress}%（請保持頁面開啟）</div>
+        ) : null}
       </section>
     </div>
   );
@@ -587,7 +605,7 @@ function formatSize(bytes) {
  * 手机原图动辄几 MB（且 iOS 相册常为 HEIC，服务端不认），上传前先在本地压缩成 JPEG：
  * 最长边 ≤1600px、质量 0.85，通常缩到几百 KB；解码失败（老引擎/异常格式）则原样上传。
  */
-async function downscaleImage(file, maxEdge = 1600, quality = 0.85) {
+async function downscaleImage(file, maxEdge = 1280, quality = 0.72) {
   const type = String(file?.type || '').toLowerCase();
   if (!type.startsWith('image/') || type === 'image/gif') return file;
   const url = URL.createObjectURL(file);

@@ -172,6 +172,12 @@
   text-align: center;
 }
 
+.ecard-chatConnBar.is-info {
+  border-top-color: rgba(212, 175, 55, 0.22);
+  background: rgba(212, 175, 55, 0.10);
+  color: #f1d37a;
+}
+
 .ecard-chatConnBar.is-error {
   border-top-color: rgba(239, 83, 80, 0.22);
   background: rgba(239, 83, 80, 0.12);

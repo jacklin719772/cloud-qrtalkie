@@ -67,6 +67,36 @@ function blobToDataUrl(blob) {
   });
 }
 
+/** XHR 版请求：可回报上传进度（慢速上行时用户能看到"正在上传 45%"） */
+function uploadWithProgress(path, { token, body, onProgress, timeoutMs = 300000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', path);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.withCredentials = true;
+    xhr.timeout = timeoutMs;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
+        try { onProgress(Math.round((event.loaded / event.total) * 100)); } catch { /* 忽略 */ }
+      }
+    };
+    xhr.onload = () => {
+      let payload = null;
+      try { payload = JSON.parse(xhr.responseText); } catch { payload = null; }
+      if (xhr.status >= 200 && xhr.status < 300 && payload?.success !== false) {
+        resolve(payload?.data ?? payload);
+      } else {
+        reject(new Error(payload?.message || `請求失敗（${xhr.status}）`));
+      }
+    };
+    xhr.onerror = () => reject(new Error('網路連線失敗，請重試'));
+    xhr.ontimeout = () => reject(new Error('上傳逾時，請換個網路再試'));
+    xhr.onabort = () => reject(new Error('上傳已取消'));
+    xhr.send(JSON.stringify(body));
+  });
+}
+
 export const chatApi = {
   /** 登记（姓名/邮箱必填）→ 建访客 + 会话 + 首次返回聊天码 */
   register: (slug, contact) => request(`${chatBase(slug)}-register`, { method: 'POST', body: { contact } }),
@@ -87,11 +117,12 @@ export const chatApi = {
   rotateCode: (slug, token) => request(`${chatBase(slug)}/resume-code`, { method: 'POST', token }),
 
   /** 上传附件（图片/文件/语音通用）：返回 { key, kind, fileName, mimeType, fileSize } */
-  uploadAttachment: async (slug, token, { blob, fileName, mimeType, durationMs }) =>
-    request(`${chatBase(slug)}/uploads`, {
-      method: 'POST',
+  uploadAttachment: async (slug, token, { blob, fileName, mimeType, durationMs, onProgress }) =>
+    // 走 XHR：慢速上行时能拿到上传进度，避免"看起来没反应"
+    uploadWithProgress(`${chatBase(slug)}/uploads`, {
       token,
-      timeoutMs: 120000, // 附件可能较大，给更长的上传窗口
+      timeoutMs: 300000,
+      onProgress,
       body: { filename: fileName, mimeType, durationMs: durationMs ?? null, data: await blobToDataUrl(blob) },
     }),
 
