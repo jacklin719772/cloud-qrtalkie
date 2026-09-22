@@ -178,6 +178,138 @@
   color: #ffdada;
 }
 
+/* ── 附件菜单（📎）── */
+.ecard-chatAttachWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ecard-chatAttachBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+}
+
+.ecard-chatAttachMenu {
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  z-index: 6;
+  min-width: 168px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(180deg, rgba(24, 29, 36, 0.99), rgba(12, 15, 19, 0.99));
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.ecard-chatAttachItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #f5efe3;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ecard-chatAttachItem:hover:not(:disabled) { background: rgba(212, 175, 55, 0.10); }
+.ecard-chatAttachItem:disabled { color: #6b7280; cursor: not-allowed; }
+.ecard-chatAttachItem svg { color: #f1d37a; flex-shrink: 0; }
+.ecard-chatAttachItem:disabled svg { color: #6b7280; }
+.ecard-chatAttachItem em { color: #6b7280; font-size: 10.5px; font-style: normal; }
+
+/* ── 图片气泡 ── */
+.ecard-chatImage {
+  display: block;
+  max-width: 220px;
+  max-height: 260px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  object-fit: cover;
+  cursor: zoom-in;
+  background: #11151b;
+}
+
+.ecard-chatImagePlaceholder {
+  min-width: 160px;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: #8b8f96;
+  font-size: 12px;
+}
+
+/* ── 文件气泡 ── */
+.ecard-chatFileChip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+  max-width: 100%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: linear-gradient(180deg, rgba(32, 38, 47, 0.96), rgba(18, 22, 27, 0.96));
+  color: #f5efe3;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatFileChip {
+  border-color: rgba(241, 211, 122, 0.22);
+  background: linear-gradient(180deg, #7d1010 0%, #4c0a0a 100%);
+}
+
+.ecard-chatFileBadge {
+  flex-shrink: 0;
+  min-width: 34px;
+  padding: 6px 6px;
+  border-radius: 9px;
+  background: rgba(241, 211, 122, 0.14);
+  color: #f1d37a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.ecard-chatFileMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ecard-chatFileName {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+
+.ecard-chatFileSize {
+  font-size: 11px;
+  color: #9aa1a9;
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatFileSize { color: #e8c9a8; }
+
 /* ── 录音中状态条 ── */
 .ecard-chatRecDot {
   width: 10px;

@@ -1,8 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Headphones, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Video } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Camera, Headphones, Image as ImageIcon, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Video } from 'lucide-react';
 import './ecardChatTheme.css';
 
 const MAX_RECORD_MS = 60000;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 与服务端一致
+const EXT_BY_MIME = {
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif',
+  'image/heic': 'heic', 'image/heif': 'heif',
+};
 
 /** 录音容器优先级：mp4/AAC（iPhone 也能播）→ webm/opus（Android 兜底） */
 function pickRecorderMime() {
@@ -40,6 +45,7 @@ export default function ECardChatPanel({
   onLoadMore,
   onSend,
   onSendVoice,
+  onSendAttachment,
   onLoadAudio,
   onGetCode,
   connection = 'idle',
@@ -51,6 +57,8 @@ export default function ECardChatPanel({
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [recordError, setRecordError] = useState('');
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const [localError, setLocalError] = useState('');
   const listRef = useRef(null);
   const copyTimerRef = useRef(null);
   const recorderRef = useRef(null);
@@ -59,6 +67,35 @@ export default function ECardChatPanel({
   const recordStartRef = useRef(0);
   const sendOnStopRef = useRef(false);
   const streamRef = useRef(null);
+  const cameraInputRef = useRef(null);
+  const albumInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // 手机端才提供「拍照」（PC 浏览器会忽略 capture，退化成选文件，故直接禁用）
+  const cameraSupported = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+    return Boolean(coarse || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''));
+  }, []);
+
+  async function handlePickedFiles(event) {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // 允许再次选同一文件
+    setAttachMenuOpen(false);
+    if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setLocalError(`檔案過大（上限 ${Math.round(MAX_UPLOAD_BYTES / 1048576)}MB）`);
+      return;
+    }
+    setLocalError('');
+    const ext = EXT_BY_MIME[String(file.type || '').toLowerCase()] || 'jpg';
+    const fileName = file.name && file.name.trim() ? file.name : `photo-${Date.now()}.${ext}`;
+    await onSendAttachment?.({
+      blob: file,
+      fileName,
+      mimeType: file.type || 'application/octet-stream',
+    });
+  }
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -269,10 +306,16 @@ export default function ECardChatPanel({
               }
               const isVisitor = item.senderType === 'visitor';
               const isAudio = item.contentType === 'audio' && item.attachment;
+              const isImage = !isAudio && item.attachment && (item.attachment.kind === 'image' || item.attachment.kind === 'sticker');
+              const isFile = !isAudio && !isImage && item.attachment;
               return (
                 <div key={item.id} className={`ecard-chatMsg ${isVisitor ? 'is-visitor' : 'is-agent'}`}>
                   {isAudio ? (
                     <AudioBubble message={item} onLoadAudio={onLoadAudio} />
+                  ) : isImage ? (
+                    <ImageBubble message={item} onLoadAttachment={onLoadAudio} />
+                  ) : isFile ? (
+                    <FileBubble message={item} onLoadAttachment={onLoadAudio} />
                   ) : (
                     <div className="ecard-chatBubble">{item.content}</div>
                   )}
@@ -315,9 +358,52 @@ export default function ECardChatPanel({
             </>
           ) : (
             <>
-              <button type="button" className="ecard-chatIconButton" disabled title="附件（待接入）">
-                <Paperclip size={16} />
-              </button>
+              <div className="ecard-chatAttachWrap">
+                <button
+                  type="button"
+                  className="ecard-chatIconButton"
+                  onClick={() => setAttachMenuOpen((open) => !open)}
+                  disabled={sending}
+                  title="傳送圖片或檔案"
+                >
+                  <Paperclip size={16} />
+                </button>
+                {attachMenuOpen && (
+                  <>
+                    <div className="ecard-chatAttachBackdrop" onClick={() => setAttachMenuOpen(false)} />
+                    <div className="ecard-chatAttachMenu" role="menu">
+                      <button
+                        type="button"
+                        className="ecard-chatAttachItem"
+                        disabled={!cameraSupported}
+                        onClick={() => cameraInputRef.current?.click()}
+                      >
+                        <Camera size={16} />
+                        <span>拍照</span>
+                        {!cameraSupported && <em>（手機端可用）</em>}
+                      </button>
+                      <button type="button" className="ecard-chatAttachItem" onClick={() => albumInputRef.current?.click()}>
+                        <ImageIcon size={16} />
+                        <span>打開相冊</span>
+                      </button>
+                      <button type="button" className="ecard-chatAttachItem" onClick={() => fileInputRef.current?.click()}>
+                        <Paperclip size={16} />
+                        <span>選擇文件</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handlePickedFiles}
+              />
+              <input ref={albumInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePickedFiles} />
+              <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handlePickedFiles} />
               <button
                 type="button"
                 className="ecard-chatIconButton"
@@ -350,6 +436,7 @@ export default function ECardChatPanel({
         </div>
 
         {recordError ? <div className="ecard-chatConnBar is-error">{recordError}</div> : null}
+        {localError ? <div className="ecard-chatConnBar is-error">{localError}</div> : null}
       </section>
     </div>
   );
@@ -417,6 +504,80 @@ function formatDuration(ms) {
   const minutes = Math.floor(total / 60);
   const seconds = String(total % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+/** 图片气泡：带 token 取回后内联显示，点击在新标签打开原图 */
+function ImageBubble({ message, onLoadAttachment }) {
+  const [url, setUrl] = useState('');
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await onLoadAttachment?.(message);
+        if (!cancelled && loaded) setUrl(loaded);
+        else if (!cancelled) setFailed(true);
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [message, onLoadAttachment]);
+
+  if (failed) return <div className="ecard-chatFileChip"><span>圖片載入失敗</span></div>;
+  if (!url) return <div className="ecard-chatImagePlaceholder">載入中…</div>;
+  return (
+    <img
+      className="ecard-chatImage"
+      src={url}
+      alt={message.attachment?.fileName || '圖片'}
+      onClick={() => { try { window.open(url, '_blank'); } catch { /* 忽略 */ } }}
+    />
+  );
+}
+
+/** 文件气泡：类型徽标 + 文件名 + 大小，点击下载 */
+function FileBubble({ message, onLoadAttachment }) {
+  const [busy, setBusy] = useState(false);
+  const attachment = message.attachment || {};
+  const ext = String(attachment.fileName || '').split('.').pop()?.slice(0, 4).toUpperCase() || 'FILE';
+
+  async function handleOpen() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const url = await onLoadAttachment?.(message);
+      if (!url) throw new Error('missing');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = attachment.fileName || 'file';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      /* 失败保持原样，用户可再点 */
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button type="button" className="ecard-chatFileChip" onClick={handleOpen}>
+      <span className="ecard-chatFileBadge">{ext}</span>
+      <span className="ecard-chatFileMain">
+        <span className="ecard-chatFileName">{attachment.fileName || '檔案'}</span>
+        <span className="ecard-chatFileSize">{busy ? '下載中…' : formatSize(attachment.fileSize)}</span>
+      </span>
+    </button>
+  );
+}
+
+function formatSize(bytes) {
+  const value = Number(bytes) || 0;
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  return `${(value / 1048576).toFixed(1)} MB`;
 }
 
 function callButtonStyle(enabled) {  return {

@@ -157,6 +157,34 @@ export function useVisitorChat(slug) {
     }
   }, [slug]);
 
+  /** 图片/文件：上传后按服务端判定的 kind 发 image/file 消息 */
+  const sendAttachment = useCallback(async ({ blob, fileName, mimeType }) => {
+    const token = tokenRef.current;
+    if (!token || !blob || sending) return false;
+    setSending(true);
+    try {
+      const uploaded = await chatApi.uploadAttachment(slug, token, { blob, fileName, mimeType });
+      const key = uploaded?.key;
+      if (!key) throw new Error('檔案上傳失敗');
+      const contentType = uploaded?.kind === 'image' || uploaded?.kind === 'sticker' ? 'image' : 'file';
+      const clientMsgId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const result = await chatApi.sendAttachment(slug, token, { key, contentType, clientMsgId });
+      const message = result?.message;
+      if (message) {
+        setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
+      } else {
+        await fetchHistory();
+      }
+      setError('');
+      return true;
+    } catch (err) {
+      setError(err?.message || '檔案發送失敗');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  }, [slug, sending, fetchHistory]);
+
   /** 语音消息：上传录音（base64）→ 发 contentType=audio 的消息 */
   const sendVoice = useCallback(async ({ blob, mimeType, fileName, durationMs }) => {
     const token = tokenRef.current;
@@ -210,7 +238,7 @@ export function useVisitorChat(slug) {
 
   return {
     dialogOpen, openDialog, closeDialog, start,
-    session, messages, loading, sending, hasMore, loadMore, send, sendVoice, loadAudioUrl,
+    session, messages, loading, sending, hasMore, loadMore, send, sendVoice, sendAttachment, loadAudioUrl,
     connection, agentStatus, code, rotateCode, error,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),

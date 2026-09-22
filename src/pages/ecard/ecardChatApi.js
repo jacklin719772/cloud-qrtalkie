@@ -73,19 +73,31 @@ export const chatApi = {
   /** 更换聊天码：旧码立即失效，新码只返回一次 */
   rotateCode: (slug, token) => request(`${chatBase(slug)}/resume-code`, { method: 'POST', token }),
 
-  /** 语音消息：先上传录音，再用返回的 key 发一条 contentType=audio 的消息 */
-  uploadVoice: async (slug, token, { blob, fileName, mimeType, durationMs }) =>
+  /** 上传附件（图片/文件/语音通用）：返回 { key, kind, fileName, mimeType, fileSize } */
+  uploadAttachment: async (slug, token, { blob, fileName, mimeType, durationMs }) =>
     request(`${chatBase(slug)}/uploads`, {
       method: 'POST',
       token,
-      body: { filename: fileName, mimeType, durationMs, data: await blobToDataUrl(blob) },
+      body: { filename: fileName, mimeType, durationMs: durationMs ?? null, data: await blobToDataUrl(blob) },
     }),
+
+  /** 语音消息：先上传录音，再用返回的 key 发一条 contentType=audio 的消息 */
+  uploadVoice: (slug, token, { blob, fileName, mimeType, durationMs }) =>
+    chatApi.uploadAttachment(slug, token, { blob, fileName, mimeType, durationMs }),
 
   sendVoice: (slug, token, { key, durationMs, clientMsgId }) =>
     request(`${chatBase(slug)}/messages`, {
       method: 'POST',
       token,
       body: { contentType: 'audio', attachment: { key, durationMs }, content: '', clientMsgId },
+    }),
+
+  /** 图片 / 文件消息 */
+  sendAttachment: (slug, token, { key, contentType, clientMsgId }) =>
+    request(`${chatBase(slug)}/messages`, {
+      method: 'POST',
+      token,
+      body: { contentType, attachment: { key }, content: '', clientMsgId },
     }),
 
   /** 取附件二进制（需 Bearer，故用 fetch 取 blob，不能直接给 <audio src>） */
