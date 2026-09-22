@@ -29,6 +29,7 @@ export function useVisitorChat(slug) {
   const socketRef = useRef(null);
   const tokenRef = useRef('');
   const oldestSeqRef = useRef(0);
+  const audioUrlRef = useRef(new Map());
   tokenRef.current = session?.accessToken || '';
 
   useEffect(() => {
@@ -142,8 +143,7 @@ export function useVisitorChat(slug) {
     }
   }, [slug, sending, fetchHistory]);
 
-  /** 更换聊天码（旧码立即失效；服务端只存哈希，无法再次下发） */
-  const rotateCode = useCallback(async () => {
+  /** 更换聊天码（旧码立即失效；服务端只存哈希，无法再次下发） */  const rotateCode = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) return;
     try {
@@ -157,6 +157,52 @@ export function useVisitorChat(slug) {
     }
   }, [slug]);
 
+  /** 语音消息：上传录音（base64）→ 发 contentType=audio 的消息 */
+  const sendVoice = useCallback(async ({ blob, mimeType, fileName, durationMs }) => {
+    const token = tokenRef.current;
+    if (!token || !blob || sending) return false;
+    setSending(true);
+    try {
+      const uploaded = await chatApi.uploadVoice(slug, token, { blob, fileName, mimeType, durationMs });
+      const key = uploaded?.key;
+      if (!key) throw new Error('語音上傳失敗');
+      const clientMsgId = `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const result = await chatApi.sendVoice(slug, token, { key, durationMs, clientMsgId });
+      const message = result?.message;
+      if (message) {
+        setMessages((prev) => (prev.some((item) => item.id === message.id) ? prev : [...prev, message]));
+      } else {
+        await fetchHistory();
+      }
+      setError('');
+      return true;
+    } catch (err) {
+      setError(err?.message || '語音發送失敗');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  }, [slug, sending, fetchHistory]);
+
+  /** 语音气泡播放：附件需带 Bearer 取回，转成 objectURL 并缓存（卸载时释放） */
+  const loadAudioUrl = useCallback(async (message) => {
+    const attachmentId = message?.attachment?.id;
+    if (!attachmentId) return null;
+    const cached = audioUrlRef.current.get(attachmentId);
+    if (cached) return cached;
+    const blob = await chatApi.fetchAttachmentBlob(slug, tokenRef.current, attachmentId);
+    const url = URL.createObjectURL(blob);
+    audioUrlRef.current.set(attachmentId, url);
+    return url;
+  }, [slug]);
+
+  useEffect(() => () => {
+    for (const url of audioUrlRef.current.values()) {
+      try { URL.revokeObjectURL(url); } catch { /* 忽略 */ }
+    }
+    audioUrlRef.current.clear();
+  }, []);
+
   const statusTone = agentStatus === 'available' ? 'is-ok' : 'is-warn';
   const statusText = agentStatus === 'available'
     ? '客服在線'
@@ -164,7 +210,7 @@ export function useVisitorChat(slug) {
 
   return {
     dialogOpen, openDialog, closeDialog, start,
-    session, messages, loading, sending, hasMore, loadMore, send,
+    session, messages, loading, sending, hasMore, loadMore, send, sendVoice, loadAudioUrl,
     connection, agentStatus, code, rotateCode, error,
     statusTone, statusText,
     storedContact: loadStoredContact(slug),

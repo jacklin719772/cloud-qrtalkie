@@ -31,6 +31,9 @@ export const CA_ATTACHMENT_LIMITS = {
     { mime: "audio/aac", ext: "aac", kind: "audio" },
     { mime: "audio/opus", ext: "opus", kind: "audio" },
     { mime: "audio/ogg", ext: "ogg", kind: "audio" },
+    // Chromium 的 MediaRecorder 預設容器：用 IANA 的 .weba 擴展名，
+    // 避免與 video/webm 走「按擴展名回退」時撞車被判成音訊
+    { mime: "audio/webm", ext: "weba", kind: "audio" },
   ],
   // 除下列可执行/脚本类外，任意文件类型都按通用 file 处理
   deniedExtensions: [

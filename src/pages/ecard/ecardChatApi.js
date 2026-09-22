@@ -45,6 +45,15 @@ async function request(path, { method = 'GET', token, body, params } = {}) {
 
 const chatBase = (slug) => `/api/ecard/public/${encodeURIComponent(slug)}/chat`;
 
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('錄音資料讀取失敗'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export const chatApi = {
   /** 登记（姓名/邮箱必填）→ 建访客 + 会话 + 首次返回聊天码 */
   register: (slug, contact) => request(`${chatBase(slug)}-register`, { method: 'POST', body: { contact } }),
@@ -63,6 +72,31 @@ export const chatApi = {
 
   /** 更换聊天码：旧码立即失效，新码只返回一次 */
   rotateCode: (slug, token) => request(`${chatBase(slug)}/resume-code`, { method: 'POST', token }),
+
+  /** 语音消息：先上传录音，再用返回的 key 发一条 contentType=audio 的消息 */
+  uploadVoice: async (slug, token, { blob, fileName, mimeType, durationMs }) =>
+    request(`${chatBase(slug)}/uploads`, {
+      method: 'POST',
+      token,
+      body: { filename: fileName, mimeType, durationMs, data: await blobToDataUrl(blob) },
+    }),
+
+  sendVoice: (slug, token, { key, durationMs, clientMsgId }) =>
+    request(`${chatBase(slug)}/messages`, {
+      method: 'POST',
+      token,
+      body: { contentType: 'audio', attachment: { key, durationMs }, content: '', clientMsgId },
+    }),
+
+  /** 取附件二进制（需 Bearer，故用 fetch 取 blob，不能直接给 <audio src>） */
+  fetchAttachmentBlob: async (slug, token, attachmentId) => {
+    const response = await fetch(`/api/ecard/public/${encodeURIComponent(slug)}/chat/attachments/${attachmentId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'same-origin',
+    });
+    if (!response.ok) throw new Error(`附件讀取失敗（${response.status}）`);
+    return response.blob();
+  },
 };
 
 /* ------------------------------------------------------------------ *

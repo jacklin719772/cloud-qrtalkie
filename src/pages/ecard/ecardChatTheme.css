@@ -178,6 +178,112 @@
   color: #ffdada;
 }
 
+/* ── 录音中状态条 ── */
+.ecard-chatRecDot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  margin-bottom: 15px;
+  border-radius: 999px;
+  background: #ef5350;
+  box-shadow: 0 0 0 4px rgba(239, 83, 80, 0.14);
+  animation: ecard-rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ecard-rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.ecard-chatRecTime {
+  margin-bottom: 11px;
+  color: #fff7df;
+  font-size: 14px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.ecard-chatRecHint {
+  flex: 1;
+  margin-bottom: 13px;
+  color: #8b8f96;
+  font-size: 11px;
+}
+
+/* ── 语音气泡 ── */
+.ecard-chatVoice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 168px;
+  padding: 8px 12px;
+  border-radius: 14px;
+}
+
+.ecard-chatMsg.is-agent .ecard-chatVoice {
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-top-left-radius: 6px;
+  background: linear-gradient(180deg, rgba(32, 38, 47, 0.96), rgba(18, 22, 27, 0.96));
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatVoice {
+  border: 1px solid rgba(241, 211, 122, 0.22);
+  border-top-right-radius: 6px;
+  background: linear-gradient(180deg, #7d1010 0%, #4c0a0a 100%);
+}
+
+.ecard-chatVoiceButton {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1d37a;
+  cursor: pointer;
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatVoiceButton {
+  border-color: rgba(241, 211, 122, 0.35);
+  background: rgba(0, 0, 0, 0.18);
+  color: #ffe8b0;
+}
+
+.ecard-chatVoiceBar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.ecard-chatVoiceProgress {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: currentColor;
+  color: #f1d37a;
+  transition: width 0.15s linear;
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatVoiceProgress { color: #ffe8b0; }
+
+.ecard-chatVoiceTime {
+  flex-shrink: 0;
+  color: #d6c59c;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ecard-chatMsg.is-visitor .ecard-chatVoiceTime { color: #ffd9b0; }
+
 /* ── 消息区 ── */
 .ecard-chatMessages {
   flex: 1;

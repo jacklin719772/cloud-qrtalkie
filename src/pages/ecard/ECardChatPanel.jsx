@@ -1,6 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Headphones, KeyRound, MessageSquareDashed, Paperclip, Send, Video } from 'lucide-react';
+import { ArrowLeft, Headphones, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Video } from 'lucide-react';
 import './ecardChatTheme.css';
+
+const MAX_RECORD_MS = 60000;
+
+/** 录音容器优先级：mp4/AAC（iPhone 也能播）→ webm/opus（Android 兜底） */
+function pickRecorderMime() {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidates = [
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/webm;codecs=opus',
+    'audio/webm',
+  ];
+  return candidates.find((type) => {
+    try { return MediaRecorder.isTypeSupported(type); } catch { return false; }
+  }) || '';
+}
 
 /**
  * 名片页内的访客聊天面板（PC 两栏 / 窄屏单栏）。
@@ -23,6 +39,8 @@ export default function ECardChatPanel({
   hasMore = false,
   onLoadMore,
   onSend,
+  onSendVoice,
+  onLoadAudio,
   onGetCode,
   connection = 'idle',
   error = '',
@@ -30,8 +48,17 @@ export default function ECardChatPanel({
   const [draft, setDraft] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
   const [connIssue, setConnIssue] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [recordError, setRecordError] = useState('');
   const listRef = useRef(null);
   const copyTimerRef = useRef(null);
+  const recorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recordTimerRef = useRef(null);
+  const recordStartRef = useRef(0);
+  const sendOnStopRef = useRef(false);
+  const streamRef = useRef(null);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -73,6 +100,82 @@ export default function ECardChatPanel({
     clearTimeout(copyTimerRef.current);
     copyTimerRef.current = setTimeout(() => setCodeCopied(false), 1500);
   }
+
+  function releaseRecorder() {
+    clearInterval(recordTimerRef.current);
+    recordTimerRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => { try { track.stop(); } catch { /* 忽略 */ } });
+    streamRef.current = null;
+    recorderRef.current = null;
+    chunksRef.current = [];
+    setRecording(false);
+    setRecordSeconds(0);
+  }
+
+  async function startRecording() {
+    if (recording || sending) return;
+    setRecordError('');
+    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setRecordError('此瀏覽器不支援錄音，請改用文字訊息');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mimeType = pickRecorderMime();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const elapsed = Math.min(Date.now() - recordStartRef.current, MAX_RECORD_MS);
+        const type = recorder.mimeType || mimeType || 'audio/webm';
+        const shouldSend = sendOnStopRef.current;
+        const blob = new Blob(chunksRef.current, { type });
+        releaseRecorder();
+        if (!shouldSend || !blob.size) return;
+        const baseMime = String(type).split(';')[0].trim();
+        const fileName = baseMime === 'audio/mp4' ? `voice-${Date.now()}.m4a` : `voice-${Date.now()}.weba`;
+        await onSendVoice?.({ blob, mimeType: baseMime, fileName, durationMs: elapsed });
+      };
+
+      recordStartRef.current = Date.now();
+      sendOnStopRef.current = false;
+      recorder.start();
+      setRecording(true);
+      setRecordSeconds(0);
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = setInterval(() => {
+        const seconds = Math.floor((Date.now() - recordStartRef.current) / 1000);
+        setRecordSeconds(seconds);
+        if (Date.now() - recordStartRef.current >= MAX_RECORD_MS) stopRecording(true);
+      }, 250);
+    } catch (err) {
+      releaseRecorder();
+      setRecordError(err?.name === 'NotAllowedError'
+        ? '麥克風權限被拒絕，請在瀏覽器設定中允許後重試'
+        : '無法啟動錄音，請確認裝置麥克風可用');
+    }
+  }
+
+  function stopRecording(shouldSend) {
+    sendOnStopRef.current = Boolean(shouldSend);
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === 'inactive') {
+      releaseRecorder();
+      return;
+    }
+    try { recorder.stop(); } catch { releaseRecorder(); }
+  }
+
+  useEffect(() => () => {
+    clearInterval(recordTimerRef.current);
+    try { recorderRef.current?.state === 'recording' && recorderRef.current.stop(); } catch { /* 忽略 */ }
+    streamRef.current?.getTracks().forEach((track) => { try { track.stop(); } catch { /* 忽略 */ } });
+  }, []);
 
   return (
     <div className="ecard-chatBody">
@@ -165,9 +268,14 @@ export default function ECardChatPanel({
                 return <div key={item.id} className="ecard-chatSystem">{item.content}</div>;
               }
               const isVisitor = item.senderType === 'visitor';
+              const isAudio = item.contentType === 'audio' && item.attachment;
               return (
                 <div key={item.id} className={`ecard-chatMsg ${isVisitor ? 'is-visitor' : 'is-agent'}`}>
-                  <div className="ecard-chatBubble">{item.content}</div>
+                  {isAudio ? (
+                    <AudioBubble message={item} onLoadAudio={onLoadAudio} />
+                  ) : (
+                    <div className="ecard-chatBubble">{item.content}</div>
+                  )}
                   <div className="ecard-chatMeta">{formatTime(item.createdAt)}</div>
                 </div>
               );
@@ -182,35 +290,136 @@ export default function ECardChatPanel({
         {error ? <div className="ecard-chatConnBar is-error">{error}</div> : null}
 
         <div className="ecard-chatComposer">
-          <button type="button" className="ecard-chatIconButton" disabled title="附件（待接入）">
-            <Paperclip size={16} />
-          </button>
-          <textarea
-            className="ecard-chatInput"
-            rows={1}
-            value={draft}
-            placeholder="輸入訊息…"
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              // 手机键盘弹出后视口变矮，延迟一点再滚到底，保证输入框与最新消息可见
-              setTimeout(() => {
-                if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-              }, 250);
-            }}
-          />
-          <button type="button" className="ecard-chatSend" disabled={!draft.trim() || sending} onClick={handleSend}>
-            <Send size={15} style={{ marginRight: 6 }} />
-            發送
-          </button>
+          {recording ? (
+            <>
+              <span className="ecard-chatRecDot" />
+              <span className="ecard-chatRecTime">{formatDuration(recordSeconds * 1000)}</span>
+              <span className="ecard-chatRecHint">錄音中，最多 60 秒</span>
+              <button
+                type="button"
+                className="ecard-chatIconButton"
+                onClick={() => stopRecording(false)}
+                title="取消錄音"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button
+                type="button"
+                className="ecard-chatSend"
+                onClick={() => stopRecording(true)}
+                disabled={recordSeconds < 1}
+              >
+                <Send size={15} style={{ marginRight: 6 }} />
+                發送
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="ecard-chatIconButton" disabled title="附件（待接入）">
+                <Paperclip size={16} />
+              </button>
+              <button
+                type="button"
+                className="ecard-chatIconButton"
+                onClick={startRecording}
+                disabled={sending}
+                title="按住說話（錄音發送）"
+              >
+                <Mic size={16} />
+              </button>
+              <textarea
+                className="ecard-chatInput"
+                rows={1}
+                value={draft}
+                placeholder="輸入訊息…"
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => {
+                  // 手机键盘弹出后视口变矮，延迟一点再滚到底，保证输入框与最新消息可见
+                  setTimeout(() => {
+                    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+                  }, 250);
+                }}
+              />
+              <button type="button" className="ecard-chatSend" disabled={!draft.trim() || sending} onClick={handleSend}>
+                <Send size={15} style={{ marginRight: 6 }} />
+                發送
+              </button>
+            </>
+          )}
         </div>
+
+        {recordError ? <div className="ecard-chatConnBar is-error">{recordError}</div> : null}
       </section>
     </div>
   );
 }
 
-function callButtonStyle(enabled) {
-  return {
+/** 语音气泡：播放/暂停 + 进度条 + 时长（附件需带 token 取回，这里走 onLoadAudio） */
+function AudioBubble({ message, onLoadAudio }) {
+  const [state, setState] = useState('idle'); // idle | loading | playing | error
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef(null);
+  const urlRef = useRef('');
+
+  const durationMs = Number(message?.attachment?.durationMs || 0) || 0;
+
+  async function handleToggle() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (state === 'playing') {
+      audio.pause();
+      return;
+    }
+    try {
+      if (!urlRef.current) {
+        setState('loading');
+        const url = await onLoadAudio?.(message);
+        if (!url) throw new Error('missing url');
+        urlRef.current = url;
+        audio.src = url;
+      }
+      await audio.play();
+    } catch {
+      setState('error');
+    }
+  }
+
+  return (
+    <div className="ecard-chatVoice">
+      <button type="button" className="ecard-chatVoiceButton" onClick={handleToggle} aria-label="播放語音">
+        {state === 'playing' ? <Pause size={15} /> : <Play size={15} />}
+      </button>
+      <span className="ecard-chatVoiceBar">
+        <span className="ecard-chatVoiceProgress" style={{ width: `${Math.round(progress * 100)}%` }} />
+      </span>
+      <span className="ecard-chatVoiceTime">
+        {state === 'error' ? '載入失敗' : formatDuration(durationMs)}
+      </span>
+      <audio
+        ref={audioRef}
+        preload="none"
+        onPlay={() => setState('playing')}
+        onPause={() => setState('idle')}
+        onEnded={() => { setState('idle'); setProgress(0); }}
+        onTimeUpdate={(e) => {
+          const el = e.currentTarget;
+          if (el.duration && Number.isFinite(el.duration)) setProgress(el.currentTime / el.duration);
+        }}
+        onError={() => setState('error')}
+      />
+    </div>
+  );
+}
+
+function formatDuration(ms) {
+  const total = Math.max(0, Math.round(Number(ms) / 1000));
+  const minutes = Math.floor(total / 60);
+  const seconds = String(total % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
+
+function callButtonStyle(enabled) {  return {
     minHeight: 40,
     borderRadius: 12,
     border: '1px solid rgba(212, 175, 55, 0.24)',

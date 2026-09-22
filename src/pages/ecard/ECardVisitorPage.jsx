@@ -975,6 +975,8 @@ export default function ECardVisitorPage({ slug }) {
               hasMore={chat.hasMore}
               onLoadMore={chat.loadMore}
               onSend={chat.send}
+              onSendVoice={chat.sendVoice}
+              onLoadAudio={chat.loadAudioUrl}
               chatCode={chat.code}
               onGetCode={() => setRotateConfirmOpen(true)}
               connection={chat.connection}
