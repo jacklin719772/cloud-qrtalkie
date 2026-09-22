@@ -1,3 +1,11 @@
+/* 加载旋转动画（此前 .spin 一直被引用但从未定义，图标不会转） */
+@keyframes ecard-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin { animation: ecard-spin 1s linear infinite; }
+
 .ecard-visitor-page {
   min-height: 100vh;
   padding: 16px 20px;

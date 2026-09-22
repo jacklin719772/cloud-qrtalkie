@@ -4,10 +4,7 @@ import './ecardChatTheme.css';
 
 /**
  * 名片页内的访客聊天面板（PC 两栏 / 窄屏单栏）。
- *
- * 当前为样式阶段：渲染结构、配色、气泡与输入区都按最终形态呈现，
- * 但消息与发送尚未接后端（见 previewMessages / handleSend 的临时本地回显）。
- * 接线时替换为 chat-session → 历史 → WS 即可，DOM 与样式不动。
+ * 纯呈现：消息、发送、聊天码、连接状态都由 ECardVisitorPage 注入。
  */
 export default function ECardChatPanel({
   ecardData,
@@ -20,29 +17,32 @@ export default function ECardChatPanel({
   callEnabled = false,
   onBack,
   onCall,
-  previewMessages = [],
+  messages = [],
+  loading = false,
+  sending = false,
+  hasMore = false,
+  onLoadMore,
+  onSend,
+  onGetCode,
+  connection = 'idle',
+  error = '',
 }) {
-  const [messages, setMessages] = useState(previewMessages);
   const [draft, setDraft] = useState('');
+  const [codeCopied, setCodeCopied] = useState(false);
   const listRef = useRef(null);
-
-  useEffect(() => {
-    setMessages(previewMessages);
-  }, [previewMessages]);
+  const copyTimerRef = useRef(null);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages]);
+  }, [messages.length]);
 
-  // 临时本地回显：接线后改为 POST /chat/messages + WS 回执
+  useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+
   function handleSend() {
     const text = draft.trim();
-    if (!text) return;
-    setMessages((prev) => [
-      ...prev,
-      { id: `local-${Date.now()}`, senderType: 'visitor', content: text, createdAt: new Date().toISOString() },
-    ]);
+    if (!text || sending) return;
     setDraft('');
+    onSend?.(text);
   }
 
   function handleKeyDown(event) {
@@ -53,9 +53,13 @@ export default function ECardChatPanel({
   }
 
   async function handleCopyCode() {
+    if (!chatCode) return;
     try {
       await navigator.clipboard.writeText(chatCode);
-    } catch { /* 剪貼板不可用時靜默 */ }
+    } catch { /* 剪貼板不可用時仍給出提示 */ }
+    setCodeCopied(true);
+    clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCodeCopied(false), 1500);
   }
 
   return (
@@ -94,23 +98,11 @@ export default function ECardChatPanel({
         </div>
 
         <div className="ecard-callButtons">
-          <button
-            type="button"
-            className="ecard-callButton"
-            disabled={!callEnabled}
-            onClick={() => onCall?.(false)}
-            style={callButtonStyle(callEnabled)}
-          >
+          <button type="button" className="ecard-callButton" disabled={!callEnabled} onClick={() => onCall?.(false)} style={callButtonStyle(callEnabled)}>
             <Headphones size={16} style={{ marginRight: 6 }} />
             語音
           </button>
-          <button
-            type="button"
-            className="ecard-callButton"
-            disabled={!callEnabled}
-            onClick={() => onCall?.(true)}
-            style={callButtonStyle(callEnabled)}
-          >
+          <button type="button" className="ecard-callButton" disabled={!callEnabled} onClick={() => onCall?.(true)} style={callButtonStyle(callEnabled)}>
             <Video size={16} style={{ marginRight: 6 }} />
             視頻
           </button>
@@ -133,23 +125,32 @@ export default function ECardChatPanel({
           {chatCode ? (
             <button type="button" className="ecard-chatCode" onClick={handleCopyCode} title="點擊複製聊天碼">
               <KeyRound size={13} />
-              {chatCode}
+              {codeCopied ? '已複製' : chatCode}
             </button>
-          ) : null}
+          ) : (
+            <button type="button" className="ecard-chatCode is-empty" onClick={onGetCode} title="取得聊天碼（用於換裝置後找回本次對話）">
+              <KeyRound size={13} />
+              取得聊天碼
+            </button>
+          )}
         </header>
 
         <div className="ecard-chatMessages" ref={listRef}>
+          {hasMore ? (
+            <button type="button" className="ecard-chatLoadMore" onClick={onLoadMore} disabled={loading}>
+              {loading ? '載入中…' : '載入更早的訊息'}
+            </button>
+          ) : null}
+
           {messages.length === 0 ? (
             <div className="ecard-chatEmpty">
               <MessageSquareDashed size={30} />
-              <div>尚無訊息，輸入您的問題即可開始諮詢</div>
+              <div>{loading ? '載入中…' : '尚無訊息，輸入您的問題即可開始諮詢'}</div>
             </div>
           ) : (
             messages.map((item) => {
               if (item.senderType === 'system') {
-                return (
-                  <div key={item.id} className="ecard-chatSystem">{item.content}</div>
-                );
+                return <div key={item.id} className="ecard-chatSystem">{item.content}</div>;
               }
               const isVisitor = item.senderType === 'visitor';
               return (
@@ -161,6 +162,12 @@ export default function ECardChatPanel({
             })
           )}
         </div>
+
+        {connection === 'disconnected' ? (
+          <div className="ecard-chatConnBar">連線中斷，正在重新連線…</div>
+        ) : null}
+
+        {error ? <div className="ecard-chatConnBar is-error">{error}</div> : null}
 
         <div className="ecard-chatComposer">
           <button type="button" className="ecard-chatIconButton" disabled title="附件（待接入）">
@@ -174,7 +181,7 @@ export default function ECardChatPanel({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button type="button" className="ecard-chatSend" disabled={!draft.trim()} onClick={handleSend}>
+          <button type="button" className="ecard-chatSend" disabled={!draft.trim() || sending} onClick={handleSend}>
             <Send size={15} style={{ marginRight: 6 }} />
             發送
           </button>

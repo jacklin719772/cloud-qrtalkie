@@ -4,6 +4,8 @@ import apiClient from '../../apiClient';
 import CallModal from './CallModal';
 import ConfirmModal from './ConfirmModal';
 import { ensureJsSIPLoaded } from './loadJsSIP';
+import ECardChatRegisterDialog from './ECardChatRegisterDialog';
+import { useVisitorChat } from './useVisitorChat';
 import './ecardVisitorTheme.css';
 
 // 聊天面板按需加载：名片页首屏不带聊天代码
@@ -11,14 +13,6 @@ const ECardChatPanel = lazy(() => import('./ECardChatPanel'));
 
 // SIP 狀態輪詢間隔（毫秒）：縮短以便「通話中」與「通話結束」都能及時反映
 const SIP_STATUS_POLL_MS = 3000;
-
-// 樣式階段用的示例訊息（聊天接後端後刪除）
-const CHAT_PREVIEW_MESSAGES = [
-  { id: 'p1', senderType: 'system', content: '您好，這裡是線上諮詢。請直接輸入您的問題，我們會盡快回覆。', createdAt: new Date().toISOString() },
-  { id: 'p2', senderType: 'agent', content: '您好，請問需要什麼協助？', createdAt: new Date().toISOString() },
-  { id: 'p3', senderType: 'visitor', content: '您好，想詢問社區訪客登記的流程。', createdAt: new Date().toISOString() },
-  { id: 'p4', senderType: 'agent', content: '訪客可先在此留言，我們核對後會通知您前往接待大廳辦理登記。', createdAt: new Date().toISOString() },
-];
 
 function isValidSlug(slug) {
   return typeof slug === 'string' && /^[A-Za-z0-9_-]+$/.test(String(slug).trim());
@@ -119,6 +113,8 @@ export default function ECardVisitorPage({ slug }) {
     return params.get('chat') === '1' || window.location.hash.replace('#', '') === 'chat';
   }, []);
   const isChatView = view === 'chat';
+  const chat = useVisitorChat(slug);
+  const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -160,9 +156,6 @@ export default function ECardVisitorPage({ slug }) {
   const sipStateText = sipState === 'online_idle'
     ? 'SIP 線上'
     : sipState === 'online_busy' ? 'SIP 通話中' : sipState === 'offline' ? 'SIP 離線' : 'SIP 未知';
-  const sipShortText = sipState === 'online_idle'
-    ? '線上'
-    : sipState === 'online_busy' ? '通話中' : sipState === 'offline' ? '離線' : '未知';
   const sipStateTitle = sipState === 'online_idle'
     ? '帳號已註冊且空閒'
     : sipState === 'online_busy' ? '帳號正在通話中' : sipState === 'offline' ? '離線' : '未知';
@@ -934,15 +927,24 @@ export default function ECardVisitorPage({ slug }) {
           <Suspense fallback={null}>
             <ECardChatPanel
               ecardData={ecardData}
-              displayName={ecardData?.name}
-              statusTone={sipToneClass}
-              statusText={sipShortText}
+              displayName={chat.session?.displayName || ecardData?.name}
+              statusTone={chat.statusTone}
+              statusText={chat.statusText}
               avatarUrl={displayAvatar}
               fallbackAvatar={fallbackAvatar}
               callEnabled={registrationStatus === 'registered' && !callBusy}
               onBack={() => setView('card')}
               onCall={(video) => handleCallClick(video)}
-              previewMessages={CHAT_PREVIEW_MESSAGES}
+              messages={chat.messages}
+              loading={chat.loading}
+              sending={chat.sending}
+              hasMore={chat.hasMore}
+              onLoadMore={chat.loadMore}
+              onSend={chat.send}
+              chatCode={chat.code}
+              onGetCode={() => setRotateConfirmOpen(true)}
+              connection={chat.connection}
+              error={chat.error}
             />
           </Suspense>
         ) : (
@@ -1143,7 +1145,7 @@ export default function ECardVisitorPage({ slug }) {
                 <button
                   type="button"
                   className="ecard-chatEntryButton"
-                  onClick={() => setView('chat')}
+                  onClick={chat.openDialog}
                 >
                   <MessageCircle size={18} />
                   線上諮詢
@@ -1182,6 +1184,30 @@ export default function ECardVisitorPage({ slug }) {
         roomName={ecardData.name}
         avatarUrl={displayAvatar}
         videoRefs={{ remoteVideoRef, localVideoRef }}
+      />
+
+      {chat.dialogOpen && (
+        <ECardChatRegisterDialog
+          slug={slug}
+          defaultContact={chat.storedContact}
+          defaultCode={chat.storedCode}
+          onClose={chat.closeDialog}
+          onReady={(payload) => {
+            chat.start(payload);
+            setView('chat');
+          }}
+        />
+      )}
+
+      <ConfirmModal
+        isOpen={rotateConfirmOpen}
+        type="warning"
+        title="更換聊天碼"
+        message="將產生一組新的聊天碼，舊碼立即失效。若您已把舊碼告知他人，請勿繼續。確定更換嗎？"
+        confirmText="確定更換"
+        cancelText="取消"
+        onClose={() => setRotateConfirmOpen(false)}
+        onConfirm={() => { setRotateConfirmOpen(false); chat.rotateCode(); }}
       />
 
       {showHelp && (

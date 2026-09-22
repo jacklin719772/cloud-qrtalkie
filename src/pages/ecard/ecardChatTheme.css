@@ -145,6 +145,39 @@
   background: rgba(212, 175, 55, 0.12);
 }
 
+.ecard-chatCode.is-empty {
+  border-style: dashed;
+  color: #d6c59c;
+}
+
+.ecard-chatLoadMore {
+  align-self: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  background: rgba(255, 255, 255, 0.02);
+  color: #8b8f96;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ecard-chatLoadMore:disabled { opacity: 0.6; cursor: default; }
+
+.ecard-chatConnBar {
+  padding: 5px 12px;
+  border-top: 1px solid rgba(245, 158, 11, 0.18);
+  background: rgba(245, 158, 11, 0.10);
+  color: #fef3c7;
+  font-size: 11px;
+  text-align: center;
+}
+
+.ecard-chatConnBar.is-error {
+  border-top-color: rgba(239, 83, 80, 0.22);
+  background: rgba(239, 83, 80, 0.12);
+  color: #ffdada;
+}
+
 /* ── 消息区 ── */
 .ecard-chatMessages {
   flex: 1;

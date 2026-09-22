@@ -467,6 +467,13 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         agentStatus: buildAgentStatus(ecard.sipUserId, settings),
         resumed: true,
         nickname: visitor.contact_name || visitor.display_name || null,
+        // 聊天碼已驗證訪客身份 → 回傳上次登記資訊，供登記頁回填
+        contact: {
+          name: visitor.contact_name || "",
+          email: visitor.contact_email || "",
+          phone: visitor.contact_phone || "",
+          subject: visitor.subject || "",
+        },
       };
       if (ALLOW_BODY_RESUME) payload.resumeToken = resume.token;
       return ok(response, payload);

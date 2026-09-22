@@ -1,0 +1,203 @@
+/* ECard 访客登记弹窗（聊天入口必经），沿用名片页的深色 + 金边设计语言 */
+
+.ecard-chatDialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.ecard-chatDialog {
+  width: min(460px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: linear-gradient(180deg, rgba(24, 29, 36, 0.98), rgba(12, 15, 19, 0.98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  overflow: hidden;
+}
+
+.ecard-chatDialogHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 18px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.14);
+}
+
+.ecard-chatDialogTitle {
+  color: #fff7df;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.ecard-chatDialogClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: #11151b;
+  color: #f1d37a;
+  cursor: pointer;
+}
+
+.ecard-chatDialogBody {
+  padding: 16px 18px 6px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.35) rgba(10, 12, 15, 0.8);
+}
+
+.ecard-chatDialogIntro {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.ecard-chatField {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ecard-chatFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #8b8f96;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ecard-chatFieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ecard-chatDialogInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: #11151b;
+  color: #f5efe3;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.ecard-chatDialogInput::placeholder { color: #6b7280; }
+.ecard-chatDialogInput:focus { border-color: rgba(241, 211, 122, 0.45); }
+
+.ecard-chatCodeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ecard-chatCodeInput {
+  flex: 1;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+
+.ecard-chatVerifyButton {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background: rgba(125, 16, 16, 0.14);
+  color: #f1d37a;
+  cursor: pointer;
+}
+
+.ecard-chatVerifyButton:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.ecard-chatHint {
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.ecard-chatHint.is-ok {
+  color: #d6ffe7;
+  border: 1px solid rgba(39, 194, 103, 0.22);
+  background: rgba(39, 194, 103, 0.12);
+}
+
+.ecard-chatHint.is-error {
+  color: #ffdada;
+  border: 1px solid rgba(239, 83, 80, 0.22);
+  background: rgba(239, 83, 80, 0.12);
+}
+
+.ecard-chatDialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(212, 175, 55, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ecard-chatDialogCancel {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: #11151b;
+  color: #f5efe3;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ecard-chatDialogSubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(241, 211, 122, 0.24);
+  background: linear-gradient(180deg, #7d1010 0%, #4c0a0a 100%);
+  color: #fff4dd;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+}
+
+.ecard-chatDialogSubmit:disabled {
+  background: linear-gradient(180deg, #343941 0%, #23272f 100%);
+  color: #8a93a3;
+  cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .ecard-chatFieldRow { grid-template-columns: 1fr; }
+}
