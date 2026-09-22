@@ -49,11 +49,12 @@ export default function ECardChatPanel({
 
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
 
-  function handleSend() {
+  async function handleSend() {
     const text = draft.trim();
     if (!text || sending) return;
-    setDraft('');
-    onSend?.(text);
+    // 发送成功才清空：失败时保留文案（错误条会说明原因），避免静默丢消息
+    const ok = await onSend?.(text);
+    if (ok) setDraft('');
   }
 
   function handleKeyDown(event) {

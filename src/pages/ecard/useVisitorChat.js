@@ -113,10 +113,15 @@ export function useVisitorChat(slug) {
     };
   }, [session?.accessToken, slug, fetchHistory]);
 
+  /** 发送成功返回 true（由面板决定是否清空输入框，失败时保留文案并给出错误） */
   const send = useCallback(async (text) => {
     const token = tokenRef.current;
     const content = String(text || '').trim();
-    if (!token || !content || sending) return;
+    if (!content || sending) return false;
+    if (!token) {
+      setError('連線已過期，請重新整理頁面後再試');
+      return false;
+    }
     setSending(true);
     try {
       const clientMsgId = `w-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -128,8 +133,10 @@ export function useVisitorChat(slug) {
         await fetchHistory();
       }
       setError('');
+      return true;
     } catch (err) {
       setError(err?.message || '訊息發送失敗');
+      return false;
     } finally {
       setSending(false);
     }
