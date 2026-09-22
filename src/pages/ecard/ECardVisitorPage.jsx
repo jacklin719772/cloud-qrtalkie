@@ -115,6 +115,7 @@ export default function ECardVisitorPage({ slug }) {
   const isChatView = view === 'chat';
   const chat = useVisitorChat(slug);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
+  const [chatFocusCode, setChatFocusCode] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -886,7 +887,10 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   return (
-    <div className="ecard-visitor-page" style={pageStyle}>
+    <div
+      className={`ecard-visitor-page${isChatView ? ' is-chat-page' : ''}`}
+      style={isChatView ? { ...pageStyle, padding: 0 } : pageStyle}
+    >
       <div className={`ecard-shell${isChatView ? ' is-chat' : ''}`}>
         <div className="ecard-shellHeader">
           <div className="ecard-brandTitle">
@@ -1151,6 +1155,17 @@ export default function ECardVisitorPage({ slug }) {
                   線上諮詢
                 </button>
               )}
+              {chatEntryVisible && (
+                <div className="ecard-chatRecoverRow">
+                  <button
+                    type="button"
+                    className="ecard-chatRecoverLink"
+                    onClick={() => { setChatFocusCode(true); chat.openDialog(); }}
+                  >
+                    已有聊天碼？點此找回上次對話
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1191,8 +1206,10 @@ export default function ECardVisitorPage({ slug }) {
           slug={slug}
           defaultContact={chat.storedContact}
           defaultCode={chat.storedCode}
-          onClose={chat.closeDialog}
+          focusCode={chatFocusCode}
+          onClose={() => { setChatFocusCode(false); chat.closeDialog(); }}
           onReady={(payload) => {
+            setChatFocusCode(false);
             chat.start(payload);
             setView('chat');
           }}

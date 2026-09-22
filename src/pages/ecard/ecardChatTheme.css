@@ -340,20 +340,74 @@
 }
 
 @media (max-width: 760px) {
+  /* 手机端：聊天即整屏（无卡片留白/圆角），顶部栏与输入栏常驻，消息区独立滚动 */
   .ecard-shell.is-chat {
-    height: calc(100dvh - 24px);
-    max-height: calc(100dvh - 24px);
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    margin: 0;
   }
 
-  .ecard-chatBody { padding: 8px; gap: 8px; }
+  .ecard-shell.is-chat .ecard-shellHeader { display: none; }
 
-  .ecard-chatHeader { padding: 8px 10px; }
+  .ecard-chatBody { padding: 0; gap: 0; }
 
-  .ecard-chatTitle { font-size: 13px; }
+  .ecard-chatMain {
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .ecard-chatHeader {
+    padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
+    flex-shrink: 0;
+  }
 
   .ecard-chatComposer {
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
   }
 
+  .ecard-chatTitle { font-size: 13px; }
   .ecard-chatMsg { max-width: 86%; }
+  .ecard-chatInput { font-size: 16px; } /* ≥16px 避免 iOS 聚焦时自动放大页面 */
 }
+
+@media (max-width: 480px) {
+  .ecard-chatCode {
+    padding: 0 9px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    gap: 4px;
+  }
+
+  .ecard-chatCode svg:first-child { display: none; }
+  .ecard-chatBack { padding: 0 8px 0 6px; font-size: 11px; }
+  .ecard-chatSend { padding: 0 12px; }
+}
+
+/* ── 名片页：聊天码找回入口（次要文字链）── */
+.ecard-chatRecoverRow {
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  text-align: center;
+}
+
+.ecard-chatRecoverLink {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  color: #8b8f96;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(212, 175, 55, 0.35);
+  text-underline-offset: 3px;
+}
+
+.ecard-chatRecoverLink:hover { color: #f1d37a; }

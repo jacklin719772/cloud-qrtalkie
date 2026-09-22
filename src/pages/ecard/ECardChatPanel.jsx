@@ -192,6 +192,12 @@ export default function ECardChatPanel({
             placeholder="輸入訊息…"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => {
+              // 手机键盘弹出后视口变矮，延迟一点再滚到底，保证输入框与最新消息可见
+              setTimeout(() => {
+                if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+              }, 250);
+            }}
           />
           <button type="button" className="ecard-chatSend" disabled={!draft.trim() || sending} onClick={handleSend}>
             <Send size={15} style={{ marginRight: 6 }} />

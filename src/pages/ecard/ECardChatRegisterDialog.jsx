@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { KeyRound, LoaderCircle, RefreshCw, X } from 'lucide-react';
 import { chatApi } from './ecardChatApi';
 import './ecardChatDialog.css';
@@ -8,8 +8,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * 访客登记弹窗（聊天入口必经）。必须填写姓名 + 电子邮箱才能进入聊天；
  * 聊天码选填 —— 填入后点右侧刷新按钮验证，成功即回填上次登记信息并接续原会话。
+ * focusCode=true 时（从「已有聊天碼？」入口进来）自动聚焦聊天码输入框。
  */
-export default function ECardChatRegisterDialog({ slug, defaultContact, defaultCode = '', onClose, onReady }) {
+export default function ECardChatRegisterDialog({ slug, defaultContact, defaultCode = '', focusCode = false, onClose, onReady }) {
   const [form, setForm] = useState({
     name: defaultContact?.name || '',
     email: defaultContact?.email || '',
@@ -22,6 +23,11 @@ export default function ECardChatRegisterDialog({ slug, defaultContact, defaultC
   const [verified, setVerified] = useState(null); // { session, snapshot }
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const codeInputRef = useRef(null);
+
+  useEffect(() => {
+    if (focusCode) codeInputRef.current?.focus();
+  }, [focusCode]);
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -106,6 +112,7 @@ export default function ECardChatRegisterDialog({ slug, defaultContact, defaultC
             </span>
             <span className="ecard-chatCodeRow">
               <input
+                ref={codeInputRef}
                 className="ecard-chatDialogInput ecard-chatCodeInput"
                 value={code}
                 placeholder="QT-XXXX-XXXX"
