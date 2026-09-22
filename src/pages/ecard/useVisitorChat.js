@@ -160,7 +160,15 @@ export function useVisitorChat(slug) {
   /** 图片/文件：上传后按服务端判定的 kind 发 image/file 消息 */
   const sendAttachment = useCallback(async ({ blob, fileName, mimeType }) => {
     const token = tokenRef.current;
-    if (!token || !blob || sending) return false;
+    if (!blob) return false;
+    if (sending) {
+      setError('上一則訊息還在傳送中，請稍候');
+      return false;
+    }
+    if (!token) {
+      setError('連線已過期，請重新整理頁面後再試');
+      return false;
+    }
     setSending(true);
     try {
       const uploaded = await chatApi.uploadAttachment(slug, token, { blob, fileName, mimeType });
@@ -237,6 +245,16 @@ export function useVisitorChat(slug) {
     }
     audioUrlRef.current.clear();
   }, []);
+
+  // 看门狗：任何原因（含读文件阶段）导致 sending 卡住时自动复位，避免输入区整体失效
+  useEffect(() => {
+    if (!sending) return undefined;
+    const timer = setTimeout(() => {
+      setSending(false);
+      setError('傳送逾時，請重新整理頁面後重試');
+    }, 150000);
+    return () => clearTimeout(timer);
+  }, [sending]);
 
   const statusTone = agentStatus === 'available' ? 'is-ok' : 'is-warn';
   const statusText = agentStatus === 'available'

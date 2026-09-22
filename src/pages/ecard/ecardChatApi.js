@@ -9,7 +9,7 @@
 const CONTACT_STORE_PREFIX = 'ecardChatContact:';
 const CODE_STORE_PREFIX = 'ecardChatCode:';
 
-async function request(path, { method = 'GET', token, body, params } = {}) {
+async function request(path, { method = 'GET', token, body, params, timeoutMs = 30000 } = {}) {
   const url = new URL(path, window.location.origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -20,12 +20,25 @@ async function request(path, { method = 'GET', token, body, params } = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(url.toString(), {
-    method,
-    headers,
-    credentials: 'same-origin',
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  // 必须有超时：手机上大图上传遇到弱网会长时间挂住，sending 卡死会让整个输入区失效
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(url.toString(), {
+      method,
+      headers,
+      credentials: 'same-origin',
+      signal: controller.signal,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    if (error?.name === 'AbortError') throw new Error('請求逾時，請檢查網路後重試');
+    throw new Error('網路連線失敗，請重試');
+  }
+  clearTimeout(timer);
 
   let payload = null;
   try {
@@ -78,6 +91,7 @@ export const chatApi = {
     request(`${chatBase(slug)}/uploads`, {
       method: 'POST',
       token,
+      timeoutMs: 120000, // 附件可能较大，给更长的上传窗口
       body: { filename: fileName, mimeType, durationMs: durationMs ?? null, data: await blobToDataUrl(blob) },
     }),
 

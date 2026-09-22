@@ -79,15 +79,19 @@ export default function ECardChatPanel({
   }, []);
 
   async function handlePickedFiles(event) {
-    const file = event.target.files?.[0];
+    const picked = event.target.files?.[0];
     event.target.value = ''; // 允许再次选同一文件
     setAttachMenuOpen(false);
-    if (!file) return;
+    if (!picked) return;
+    setLocalError('');
+
+    // 图片先本地压缩（顺带把 HEIC 统一成 JPEG），避免大图上传超时/被服务端当未知类型
+    const file = await downscaleImage(picked);
+
     if (file.size > MAX_UPLOAD_BYTES) {
       setLocalError(`檔案過大（上限 ${Math.round(MAX_UPLOAD_BYTES / 1048576)}MB）`);
       return;
     }
-    setLocalError('');
     const ext = EXT_BY_MIME[String(file.type || '').toLowerCase()] || 'jpg';
     const fileName = file.name && file.name.trim() ? file.name : `photo-${Date.now()}.${ext}`;
     await onSendAttachment?.({
@@ -363,7 +367,6 @@ export default function ECardChatPanel({
                   type="button"
                   className="ecard-chatIconButton"
                   onClick={() => setAttachMenuOpen((open) => !open)}
-                  disabled={sending}
                   title="傳送圖片或檔案"
                 >
                   <Paperclip size={16} />
@@ -578,6 +581,43 @@ function formatSize(bytes) {
   if (value < 1024) return `${value} B`;
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
   return `${(value / 1048576).toFixed(1)} MB`;
+}
+
+/**
+ * 手机原图动辄几 MB（且 iOS 相册常为 HEIC，服务端不认），上传前先在本地压缩成 JPEG：
+ * 最长边 ≤1600px、质量 0.85，通常缩到几百 KB；解码失败（老引擎/异常格式）则原样上传。
+ */
+async function downscaleImage(file, maxEdge = 1600, quality = 0.85) {
+  const type = String(file?.type || '').toLowerCase();
+  if (!type.startsWith('image/') || type === 'image/gif') return file;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('decode failed'));
+      el.src = url;
+    });
+    const naturalW = img.naturalWidth || 1;
+    const naturalH = img.naturalHeight || 1;
+    const scale = Math.min(1, maxEdge / Math.max(naturalW, naturalH));
+    const width = Math.max(1, Math.round(naturalW * scale));
+    const height = Math.max(1, Math.round(naturalH * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob) return file;
+    const baseName = String(file.name || 'photo').replace(/\.[^.]+$/, '') || 'photo';
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function callButtonStyle(enabled) {  return {
