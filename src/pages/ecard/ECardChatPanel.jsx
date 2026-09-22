@@ -29,12 +29,23 @@ export default function ECardChatPanel({
 }) {
   const [draft, setDraft] = useState('');
   const [codeCopied, setCodeCopied] = useState(false);
+  const [connIssue, setConnIssue] = useState(false);
   const listRef = useRef(null);
   const copyTimerRef = useRef(null);
 
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages.length]);
+
+  // 断线提示延迟 3 秒出现：避免刚进入（首次连线上线中）就闪一下「連線中斷」
+  useEffect(() => {
+    if (connection !== 'disconnected') {
+      setConnIssue(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setConnIssue(true), 3000);
+    return () => clearTimeout(timer);
+  }, [connection]);
 
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
 
@@ -163,7 +174,7 @@ export default function ECardChatPanel({
           )}
         </div>
 
-        {connection === 'disconnected' ? (
+        {connIssue ? (
           <div className="ecard-chatConnBar">連線中斷，正在重新連線…</div>
         ) : null}
 

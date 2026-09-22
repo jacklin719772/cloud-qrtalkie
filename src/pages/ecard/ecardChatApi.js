@@ -119,7 +119,9 @@ export function createVisitorChatSocket({ slug, getToken, onEvent, onStateChange
       const ticket = await chatApi.ticket(slug, token);
       if (stopped) return;
       const scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const url = `${scheme}://${window.location.host}${ticket?.wsPath || wsPath}?ticket=${encodeURIComponent(ticket?.ticket || '')}`;
+      // 必须用外网可达的 /api/ca/ws：服务端返回的 wsPath 是 /ca/ws（本机路径，
+      // Apache 只反代 /api 与 /v1，直接连 /ca/ws 到不了）
+      const url = `${scheme}://${window.location.host}${wsPath}?ticket=${encodeURIComponent(ticket?.ticket || '')}`;
       socket = new WebSocket(url);
 
       socket.onopen = () => {
