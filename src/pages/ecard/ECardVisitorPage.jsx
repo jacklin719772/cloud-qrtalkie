@@ -106,6 +106,7 @@ export default function ECardVisitorPage({ slug }) {
   const [sipBusyHint, setSipBusyHint] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [view, setView] = useState('card'); // 'card' | 'chat'
+  const [chatFocusCode, setChatFocusCode] = useState(false);
 
   // 樣式階段：聊天入口僅在帶 ?chat=1 時出現（接後端後改為按名片設定顯示）
   const chatEntryVisible = useMemo(() => {
@@ -115,7 +116,6 @@ export default function ECardVisitorPage({ slug }) {
   const isChatView = view === 'chat';
   const chat = useVisitorChat(slug);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
-  const [chatFocusCode, setChatFocusCode] = useState(false);
 
   const uaRef = useRef(null);
   const currentSessionRef = useRef(null);
@@ -198,6 +198,28 @@ export default function ECardVisitorPage({ slug }) {
       document.removeEventListener('visibilitychange', tick);
     };
   }, [ecardData?.sipAccount, ecardData?.sipAccountInfo?.domain, loadSipStatus]);
+
+  // 聊天态高度用 visualViewport 实测值驱动：真机（尤其 App 内置 WebView）里
+  // 浏览器工具栏显隐、软键盘弹出都会改变可视高度，仅靠 100vh/100dvh 会算错，
+  // 导致输入栏被挤出屏幕。JS 不可用时回退到 CSS 的 100dvh。
+  useEffect(() => {
+    if (!isChatView) return undefined;
+    const viewport = window.visualViewport;
+    const apply = () => {
+      const height = viewport ? viewport.height : window.innerHeight;
+      if (height > 0) document.documentElement.style.setProperty('--ecard-vvh', `${Math.round(height)}px`);
+    };
+    apply();
+    viewport?.addEventListener('resize', apply);
+    viewport?.addEventListener('scroll', apply);
+    window.addEventListener('resize', apply);
+    return () => {
+      viewport?.removeEventListener('resize', apply);
+      viewport?.removeEventListener('scroll', apply);
+      window.removeEventListener('resize', apply);
+      document.documentElement.style.removeProperty('--ecard-vvh');
+    };
+  }, [isChatView]);
 
   useEffect(() => {
     function handleBeforeUnload() {
@@ -889,7 +911,15 @@ export default function ECardVisitorPage({ slug }) {
   return (
     <div
       className={`ecard-visitor-page${isChatView ? ' is-chat-page' : ''}`}
-      style={isChatView ? { ...pageStyle, padding: 0 } : pageStyle}
+      style={isChatView
+        ? {
+          ...pageStyle,
+          padding: 0,
+          height: 'var(--ecard-vvh, 100dvh)',
+          minHeight: 'var(--ecard-vvh, 100dvh)',
+          overflow: 'hidden',
+        }
+        : pageStyle}
     >
       <div className={`ecard-shell${isChatView ? ' is-chat' : ''}`}>
         <div className="ecard-shellHeader">

@@ -2,8 +2,8 @@
 
 /* ── 外壳在聊天态：改成固定高度 + 内部两栏，消息区自己滚动 ── */
 .ecard-shell.is-chat {
-  height: calc(100vh - 32px);
-  max-height: calc(100vh - 32px);
+  height: var(--ecard-vvh, calc(100vh - 32px));
+  max-height: var(--ecard-vvh, calc(100vh - 32px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -343,8 +343,9 @@
   /* 手机端：聊天即整屏（无卡片留白/圆角），顶部栏与输入栏常驻，消息区独立滚动 */
   .ecard-shell.is-chat {
     width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--ecard-vvh, 100svh);
+    height: var(--ecard-vvh, 100dvh);
+    max-height: var(--ecard-vvh, 100dvh);
     border-radius: 0;
     border-left: none;
     border-right: none;
