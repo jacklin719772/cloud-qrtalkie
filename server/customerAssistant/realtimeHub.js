@@ -145,6 +145,41 @@ export function dispatchAgentAvailability(sipUserId, available, { manual = "auto
   }
 }
 
+/**
+ * 访客在线状态变化 → 只通知该会话归属客服的连接。
+ * 首次对齐由会话列表的 visitorOnline 字段负责（客服后连也能拿到当前状态）。
+ */
+function dispatchVisitorPresence(socket, online) {
+  const sipUserId = socket.caScope?.sipUserId;
+  const conversationPublicId = socket.caConversationPublicId;
+  if (sipUserId === undefined || sipUserId === null || !conversationPublicId) return;
+  const frame = {
+    ns: "ca",
+    type: online ? "ca.visitor.online" : "ca.visitor.offline",
+    ts: new Date().toISOString(),
+    conv: conversationPublicId,
+    data: { conversationId: conversationPublicId },
+  };
+  const agentSet = agentSockets.get(Number(sipUserId));
+  if (agentSet) for (const agentSocket of agentSet) sendFrame(agentSocket, frame);
+}
+
+/**
+ * 访客是否在线：该会话当前是否存在活跃 WS 连接。
+ * 关闭浏览器/离开页面后，最迟在心跳空闲超时（IDLE_TIMEOUT_MS）判定为离线。
+ * 单实例内存注册表 —— 水平扩展下失效（见架构文档 §3.7）。
+ */
+export function isVisitorOnlineByPublicId(conversationPublicId) {
+  const target = String(conversationPublicId || "");
+  if (!target) return false;
+  for (const sockets of visitorSockets.values()) {
+    for (const socket of sockets) {
+      if (socket.caConversationPublicId === target) return true;
+    }
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------------ *
  * 上行帧处理
  * ------------------------------------------------------------------ */
@@ -261,8 +296,11 @@ function registerSocket(socket, record) {
   if (record.role === "visitor") {
     socket.caConversationPublicId = scope.conversationPublicId || null;
     const set = visitorSockets.get(Number(scope.conversationId)) || new Set();
+    const wasEmpty = set.size === 0;
     set.add(socket);
     visitorSockets.set(Number(scope.conversationId), set);
+    // 只有 0 → 1 才通知，避免同会话多标签页重复推送
+    if (wasEmpty) dispatchVisitorPresence(socket, true);
   } else {
     const set = agentSockets.get(Number(scope.sipUserId)) || new Set();
     const wasEmpty = set.size === 0;
@@ -279,7 +317,11 @@ function unregisterSocket(socket) {
     const set = visitorSockets.get(Number(scope.conversationId));
     if (set) {
       set.delete(socket);
-      if (set.size === 0) visitorSockets.delete(Number(scope.conversationId));
+      if (set.size === 0) {
+        visitorSockets.delete(Number(scope.conversationId));
+        // 最后一个连接断开才算离线（其它标签页/重连窗口仍在则保持在线）
+        dispatchVisitorPresence(socket, false);
+      }
     }
   } else {
     const set = agentSockets.get(Number(scope.sipUserId));

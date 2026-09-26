@@ -14,7 +14,7 @@ import * as convs from "./conversationService.js";
 import * as msgs from "./messageService.js";
 import { newPublicId } from "./ids.js";
 import { allowRequest, CA_RATE_LIMITS, getClientIp, rateLimitedResponse } from "./rateLimit.js";
-import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor } from "./realtimeHub.js";
+import { issueTicket, isAgentAvailable, dispatchConversationEvent, dispatchToVisitor, isVisitorOnlineByPublicId } from "./realtimeHub.js";
 import { notifyVisitorMessage } from "./pushNotifier.js";
 import { queueVisitorResumeCodeEmail } from "../email.js";
 import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
@@ -867,7 +867,12 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
         unreadOnly: String(request.query?.unreadOnly || "") === "1",
         limit: request.query?.limit ?? 50,
       });
-      return ok(response, { conversations: items });
+      // 访客在线状态（内存注册表，单实例）：用于列表首次对齐；后续变化走 ca.visitor.online|offline 事件
+      const conversations = items.map((item) => ({
+        ...item,
+        visitorOnline: isVisitorOnlineByPublicId(item.conversationId),
+      }));
+      return ok(response, { conversations });
     } catch (error) {
       console.error("[customerAssistant] agent list error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
