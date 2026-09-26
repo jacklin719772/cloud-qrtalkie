@@ -12,8 +12,10 @@
  */
 
 import { randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 export const CA_ATTACHMENT_LIMITS = {
@@ -105,6 +107,55 @@ export function resolveStoragePath(storageKey) {
   return absolute;
 }
 
+/** 浏览器与各端播放器都原生支持的音频格式：已是这些就无需转换 */
+const VOICE_ALREADY_PLAYABLE = new Set(["m4a", "mp4", "aac", "mp3", "wav"]);
+
+/**
+ * 语音统一转成 m4a/AAC。
+ *
+ * 背景：桌面端录音器产出 mka/Opus（Linphone SDK 只支持 wav/mkv/smff），浏览器与部分移动端
+ * 播放器读不了；而在客户端转码会拖慢发送（实测流水线不可靠）。因此放在服务端一次性转好，
+ * 客户端保持"录完立即上传"的零延迟体验；安卓端本来就录 m4a，会走下面的快速跳过分支。
+ *
+ * 返回 { buffer, ext, mime }；无需转换或转换失败都返回 null（调用方保留原文件，降级不丢消息）。
+ */
+async function transcodeVoiceToM4a(buffer, inExt) {
+  const ext = String(inExt || "").toLowerCase();
+  if (VOICE_ALREADY_PLAYABLE.has(ext)) return null;
+
+  const stamp = randomBytes(8).toString("hex");
+  const tmpIn = path.join(tmpdir(), `ca-voice-in-${stamp}.${ext || "bin"}`);
+  const tmpOut = path.join(tmpdir(), `ca-voice-out-${stamp}.m4a`);
+  try {
+    await writeFile(tmpIn, buffer);
+    const ok = await new Promise((resolve) => {
+      const proc = spawn("ffmpeg", [
+        "-hide_banner", "-loglevel", "error", "-y",
+        "-i", tmpIn,
+        "-vn", "-c:a", "aac", "-b:a", "64k", "-ar", "44100", "-ac", "1",
+        tmpOut,
+      ]);
+      let err = "";
+      proc.stderr.on("data", (chunk) => { if (err.length < 500) err += chunk.toString(); });
+      proc.on("error", () => resolve(false));
+      proc.on("close", (code) => {
+        if (code !== 0) console.warn("[customerAssistant] voice transcode failed:", err.trim().slice(0, 300));
+        resolve(code === 0);
+      });
+    });
+    if (!ok) return null;
+    const converted = await readFile(tmpOut);
+    if (!converted.length) return null;
+    return { buffer: converted, ext: "m4a", mime: "audio/mp4" };
+  } catch (error) {
+    console.warn("[customerAssistant] voice transcode error:", error?.message || error);
+    return null;
+  } finally {
+    await unlink(tmpIn).catch(() => {});
+    await unlink(tmpOut).catch(() => {});
+  }
+}
+
 /**
  * 落盘并返回元数据。key 同时是"会话归属凭据"——发送消息时用它校验。
  */
@@ -119,20 +170,38 @@ export async function saveAttachmentBuffer({ ecardId, conversationPublicId, file
     return { error: { status: 413, code: "VOICE_TOO_LONG", message: "語音訊息過長" } };
   }
 
+  // 语音消息（客户端带 durationMs）：统一转成各端都能播的 m4a/AAC；
+  // 转换失败则保留原文件（降级为普通附件，不丢消息）
+  let payload = buffer;
+  let outExt = kindInfo.ext;
+  let outMime = kindInfo.mime;
+  let outKind = kindInfo.kind;
+  let outName = String(fileName || `file.${kindInfo.ext}`).slice(0, 255);
+  if (durationMs && Number(durationMs) > 0) {
+    const converted = await transcodeVoiceToM4a(buffer, kindInfo.ext);
+    if (converted) {
+      payload = converted.buffer;
+      outExt = converted.ext;
+      outMime = converted.mime;
+      outKind = "audio";
+      outName = `voice-${Date.now()}.m4a`; // 统一显示名，与网页/安卓端一致
+    }
+  }
+
   const random = randomBytes(16).toString("hex");
-  const storageKey = `${conversationPublicId}/${random}.${kindInfo.ext}`;
+  const storageKey = `${conversationPublicId}/${random}.${outExt}`;
   const absolute = resolveStoragePath(storageKey);
   if (!absolute) return { error: { status: 500, code: "CA_INTERNAL_ERROR", message: "服務暫時不可用" } };
 
   await mkdir(path.dirname(absolute), { recursive: true });
-  await writeFile(absolute, buffer);
+  await writeFile(absolute, payload);
 
   return {
     storageKey,
-    fileName: String(fileName || `file.${kindInfo.ext}`).slice(0, 255),
-    mimeType: kindInfo.mime,
-    fileSize: buffer.length,
-    kind: kindInfo.kind,
+    fileName: outName,
+    mimeType: outMime,
+    fileSize: payload.length,
+    kind: outKind,
     durationMs: durationMs ? Number(durationMs) : null,
     ecardId: Number(ecardId),
   };
