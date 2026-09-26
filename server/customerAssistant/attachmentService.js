@@ -27,9 +27,9 @@ export const CA_ATTACHMENT_LIMITS = {
     { mime: "image/webp", ext: "webp", kind: "image" },
     { mime: "image/gif", ext: "gif", kind: "sticker" },
     { mime: "application/pdf", ext: "pdf", kind: "file" },
-    { mime: "audio/m4a", ext: "m4a", kind: "audio" },
-    { mime: "audio/x-m4a", ext: "m4a", kind: "audio" },
+    // m4a 的标准 MIME 是 audio/mp4；audio/m4a / audio/x-m4a 非标准，浏览器 <audio> 会解码失败
     { mime: "audio/mp4", ext: "m4a", kind: "audio" },
+    { mime: "audio/x-m4a", ext: "m4a", kind: "audio" },
     { mime: "audio/aac", ext: "aac", kind: "audio" },
     { mime: "audio/opus", ext: "opus", kind: "audio" },
     { mime: "audio/ogg", ext: "ogg", kind: "audio" },
@@ -58,6 +58,8 @@ const MIME_BY_EXT = {
   ppt: "application/vnd.ms-powerpoint",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   mp3: "audio/mpeg", wav: "audio/wav", amr: "audio/amr",
+  // m4a/aac 用标准 audio/mp4（audio/m4a 非标准，浏览器拒绝解码）
+  m4a: "audio/mp4", aac: "audio/aac",
   mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
   mkv: "video/x-matroska", webm: "video/webm", "3gp": "video/3gpp",
 };

@@ -582,8 +582,10 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       visitorAttachment = {
         storageKey: key,
         kind: stat.kind,
-        // 客户端可覆盖展示名（原始文件名）；截断到与 DB 列一致，避免超长名插入失败
-        fileName: String(request.body?.attachment?.fileName || stat.fileName || "").slice(0, 255) || stat.fileName,
+        // 语音用统一的展示名（本地录音名对访客无意义）；其它类型仍可被客户端原始文件名覆盖
+        fileName: stat.kind === "audio"
+          ? `voice-${Date.now()}.m4a`
+          : (String(request.body?.attachment?.fileName || stat.fileName || "").slice(0, 255) || stat.fileName),
         mimeType: stat.mimeType,
         fileSize: stat.size,
         durationMs: request.body?.attachment?.durationMs ?? null,
@@ -923,7 +925,10 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       agentAttachment = {
         storageKey: key,
         kind: stat.kind,
-        fileName: request.body?.attachment?.fileName || stat.fileName,
+        // 语音用统一的展示名（桌面端录音名 vocal_*.mka 对访客无意义）
+        fileName: stat.kind === "audio"
+          ? `voice-${Date.now()}.m4a`
+          : (String(request.body?.attachment?.fileName || stat.fileName || "").slice(0, 255) || stat.fileName),
         mimeType: stat.mimeType,
         fileSize: stat.size,
         durationMs: request.body?.attachment?.durationMs ?? null,
