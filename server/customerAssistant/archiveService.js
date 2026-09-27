@@ -4,6 +4,8 @@
  * 约定（用户已确认）：
  *   · 归档 = 把会话的全部消息 + 双方附件打成一个 ZIP（同一会话重复归档 = 覆盖换链）
  *   · ZIP 内含 chat.html（可读问答记录）、info.json（结构化）、files/（附件，序号_原名）
+ *   · 同时把同一份结构化快照落到 <会话publicId>.json（与 ZIP/HTML 同目录、同生命周期），
+ *     供客服端「按原始聊天形式展示归档内容」直接读取，不必解压 ZIP
  *   · 同时生成只读网页预览（免登录，凭不可猜 token），网页内提供 ZIP 下载
  *   · 归档动作会把会话标记为 archived（出现在列表的"已归档"里）
  *   · 删除会话/清空内容不影响已生成的归档包（归档即快照，不做级联删除）
@@ -270,6 +272,7 @@ export async function buildConversationArchive({ rows, visitor, ecardId, convers
   return {
     zip: buildZip(entries),
     previewHtml,
+    info,
     messageCount: rows.length,
     attachmentCount: attachmentsInZip.length,
     startedAt,
@@ -396,15 +399,18 @@ export function archivePaths(ecardId, conversationPublicId) {
   return {
     zip: path.join(dir, `${conversationPublicId}.zip`),
     html: path.join(dir, `${conversationPublicId}.html`),
+    // 结构化快照（与 zip 同内容来源，供客服端按聊天形式展示）
+    info: path.join(dir, `${conversationPublicId}.json`),
   };
 }
 
-export async function saveArchiveFiles(ecardId, conversationPublicId, { zip, previewHtml }) {
+export async function saveArchiveFiles(ecardId, conversationPublicId, { zip, previewHtml, info }) {
   const dir = archiveDir(ecardId);
   await mkdir(dir, { recursive: true });
   const paths = archivePaths(ecardId, conversationPublicId);
   await writeFile(paths.zip, zip);
   await writeFile(paths.html, Buffer.from(previewHtml, "utf8"));
+  if (info) await writeFile(paths.info, Buffer.from(JSON.stringify(info), "utf8"));
   return paths;
 }
 
@@ -412,6 +418,32 @@ export async function removeArchiveFiles(ecardId, conversationPublicId) {
   const paths = archivePaths(ecardId, conversationPublicId);
   await rm(paths.zip, { force: true });
   await rm(paths.html, { force: true });
+  await rm(paths.info, { force: true });
+}
+
+/**
+ * 读取归档的结构化快照（客服端按聊天形式展示用）。
+ * 优先读同目录快照文件；老归档没有该文件时回退到解 ZIP 里的 info.json，保证历史归档也能展示。
+ */
+export async function readArchiveInfo(ecardId, conversationPublicId) {
+  const paths = archivePaths(ecardId, conversationPublicId);
+  if (existsSync(paths.info)) {
+    try {
+      return JSON.parse(await readFile(paths.info, "utf8"));
+    } catch (error) {
+      console.error("[customerAssistant][archive] snapshot parse failed, fallback to zip:", error?.message || error);
+    }
+  }
+  const zipBuffer = await readArchiveZipBuffer(ecardId, conversationPublicId);
+  if (!zipBuffer) return null;
+  const entry = readZipEntry(zipBuffer, "info.json");
+  if (!entry) return null;
+  try {
+    return JSON.parse(entry.toString("utf8"));
+  } catch (error) {
+    console.error("[customerAssistant][archive] zip info.json parse failed:", error?.message || error);
+    return null;
+  }
 }
 
 /** 读取归档 ZIP 缓冲（公开按文件下载用） */

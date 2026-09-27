@@ -28,6 +28,7 @@ import {
   isValidArchiveEntryName,
   isValidShareToken,
   openArchiveStream,
+  readArchiveInfo,
   readArchiveZipBuffer,
   readZipEntry,
   removeArchiveFiles,
@@ -1273,7 +1274,11 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       const previewHtml = String(built.previewHtml)
         .split(ARCHIVE_FILE_LINK_PLACEHOLDER).join(`/api/public/ca-archive/${shareToken}/file?path=`)
         .split(ARCHIVE_ZIP_LINK_PLACEHOLDER).join(`/api/public/ca-archive/${shareToken}/zip`);
-      await saveArchiveFiles(conversation.ecardId, conversation.publicId, { zip: built.zip, previewHtml });
+      await saveArchiveFiles(conversation.ecardId, conversation.publicId, {
+        zip: built.zip,
+        previewHtml,
+        info: built.info, // 结构化快照：客服端按聊天形式展示归档内容用
+      });
       await connection.query(
         `INSERT INTO ca_archives
            (ecard_id, conversation_id, conversation_public_id, sip_user_id, visitor_public_id, visitor_name,
@@ -1381,6 +1386,41 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       return ok(response, { revoked: true });
     } catch (error) {
       console.error("[customerAssistant] revoke archive error:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      connection.release();
+    }
+  });
+
+  // A17 归档内容（结构化快照）：客服端右侧按原始聊天形式只读展示
+  // 返回快照（访客信息 / 沟通起止 / 消息数组，附件含 zipName）+ 附件取文件的前缀
+  app.get("/api/visitor-assistant/archives/:id/content", requireCaAgent, async (request, response) => {
+    const sipUserId = getCaAgentSipUserId(request);
+    const archiveId = Number(request.params.id) || 0;
+    const connection = await pool.getConnection();
+    try {
+      const rows = await connection.query(
+        `SELECT id, ecard_id, conversation_public_id, visitor_name, share_token, file_size, message_count,
+                attachment_count, started_at, ended_at, archived_at, sip_user_id
+           FROM ca_archives
+          WHERE id = ? AND revoked_at IS NULL
+          LIMIT 1`,
+        [archiveId],
+      );
+      const row = rows[0];
+      if (!row || !isSameSipUserId(row.sip_user_id, sipUserId)) {
+        return fail(response, 404, "ARCHIVE_NOT_FOUND", "歸檔不存在");
+      }
+      const content = await readArchiveInfo(row.ecard_id, row.conversation_public_id);
+      if (!content) return fail(response, 404, "ARCHIVE_CONTENT_MISSING", "歸檔內容不可用");
+      return ok(response, {
+        archive: archiveSummary(row),
+        content,
+        // 附件按条目取文件（公开路由，token 来自本归档的分享链接）
+        fileBase: `${publicBaseUrl}/api/public/ca-archive/${row.share_token}/file?path=`,
+      });
+    } catch (error) {
+      console.error("[customerAssistant] archive content error:", error?.message || error);
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();
