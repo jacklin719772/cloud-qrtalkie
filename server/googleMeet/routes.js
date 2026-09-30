@@ -71,13 +71,15 @@ async function getAccessToken() {
   return inflightTokenPromise;
 }
 
-/** 创建一个 Google Meet 空间，返回 { name, meetingCode, meetingUri } */
+/** 创建一个 Google Meet 空间，返回 { name, meetingCode, meetingUri }
+    accessType 必须显式 OPEN：默认 TRUSTED 只放行创建者组织内成员，
+    个人 Gmail 授权时外部人会被拒（实测报「You can't join this video call」）。 */
 async function createMeetingSpace() {
   const token = await getAccessToken();
   const response = await fetch(SPACES_ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: "{}",
+    body: JSON.stringify({ config: { accessType: "OPEN" } }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload.meetingUri) {
