@@ -90,6 +90,7 @@ export default function ECardChatPanel({
   const copyTimerRef = useRef(null);
   const loadingOlderRef = useRef(false); // 更早一页加载中（防重复触发）
   const prevMsgCountRef = useRef(0); // 上一次的消息条数（判断是「新增」还是「补历史」）
+  const forceScrollRef = useRef(false); // 自己刚发消息：无论当前在哪个位置都回到底部
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordTimerRef = useRef(null);
@@ -132,20 +133,23 @@ export default function ECardChatPanel({
     }
     const ext = EXT_BY_MIME[String(file.type || '').toLowerCase()] || 'jpg';
     const fileName = file.name && file.name.trim() ? file.name : `photo-${Date.now()}.${ext}`;
-    await onSendAttachment?.({
+    forceScrollRef.current = true;
+    const ok = await onSendAttachment?.({
       blob: file,
       fileName,
       mimeType: file.type || 'application/octet-stream',
     });
+    if (ok === false) forceScrollRef.current = false;
   }
 
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    // 首次进入或新消息：只有原本就贴近底部时才自动滚到底（否则会打断用户上翻看历史）
+    // 首次进入、自己刚发消息、或原本就贴近底部时才自动滚到底（上翻看历史时不被新消息拽走）
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-    if (prevMsgCountRef.current === 0 || nearBottom) {
+    if (forceScrollRef.current || prevMsgCountRef.current === 0 || nearBottom) {
       el.scrollTop = el.scrollHeight;
+      forceScrollRef.current = false;
     }
     prevMsgCountRef.current = messages.length;
   }, [messages.length]);
@@ -210,8 +214,10 @@ export default function ECardChatPanel({
     const text = draft.trim();
     if (!text || sending) return;
     // 发送成功才清空：失败时保留文案（错误条会说明原因），避免静默丢消息
+    forceScrollRef.current = true;
     const ok = await onSend?.(text);
     if (ok) setDraft('');
+    else forceScrollRef.current = false;
   }
 
   function handleKeyDown(event) {
@@ -269,7 +275,9 @@ export default function ECardChatPanel({
         if (!shouldSend || !blob.size) return;
         const baseMime = String(type).split(';')[0].trim();
         const fileName = baseMime === 'audio/mp4' ? `voice-${Date.now()}.m4a` : `voice-${Date.now()}.weba`;
-        await onSendVoice?.({ blob, mimeType: baseMime, fileName, durationMs: elapsed });
+        forceScrollRef.current = true;
+        const sent = await onSendVoice?.({ blob, mimeType: baseMime, fileName, durationMs: elapsed });
+        if (sent === false) forceScrollRef.current = false;
       };
 
       recordStartRef.current = Date.now();
