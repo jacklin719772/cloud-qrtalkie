@@ -121,6 +121,7 @@ import {
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 import { registerCustomerAssistantRoutes } from "./customerAssistant/routes.js";
 import { attachCustomerAssistantWebSocketServer } from "./customerAssistant/realtimeHub.js";
+import { registerGoogleMeetRoutes } from "./googleMeet/routes.js";
 import { listSessions, getOrCreateSession, getMessages, sendMessage, deleteSession,
          updateSession, searchSessions, duplicateSession, exportSession, regenerateLast, appendMessage, createSession } from "./aiBotService.js";
 import { listPrompts, createPrompt, updatePrompt, deletePrompt, touchPromptUsage } from "./aiPromptService.js";
@@ -199,6 +200,8 @@ app.use("/download", express.static(path.join(projectRoot, "public/download")));
 registerPushGatewayRoutes(app, { requireAdmin });
 // Customer Assistant（ECard 访客聊天）——独立模块，与 AI 助手平级；对既有路由只增不改
 registerCustomerAssistantRoutes(app, { requireSipUser });
+// Google Meet（发起会议）——独立模块，对既有路由只增不改
+registerGoogleMeetRoutes(app, { requireSipUser });
 
 // Serve JsSIP UMD bundle for visitor pages
 app.get("/visitor-assets/jssip.min.js", (_req, res) => {
