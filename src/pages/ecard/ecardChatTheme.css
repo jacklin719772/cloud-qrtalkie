@@ -544,6 +544,17 @@
   color: #fff4dd;
 }
 
+/* 文本消息里的超链接（气泡为深色底，用浅金高亮保证可读） */
+.ecard-chatLink {
+  color: #f1d37a;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.ecard-chatLink:hover {
+  color: #ffe9a8;
+}
+
 .ecard-chatMeta {
   color: #8b8f96;
   font-size: 10px;

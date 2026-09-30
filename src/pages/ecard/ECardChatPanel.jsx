@@ -23,6 +23,28 @@ function pickRecorderMime() {
   }) || '';
 }
 
+/** 文本消息里的 URL 分组（保留分隔符，配合 String.split 使用） */
+const URL_SPLIT_PATTERN = /(https?:\/\/[^\s<>"']+)/g;
+/** URL 末尾常见的标点（中文句号等）不应算进链接 */
+const URL_TRAILING_PUNCT = /[。，、；：！？,.!?;:)\]}>'"”’]+$/;
+
+/** 把文本里的 http/https 链接渲染成可点击超链接（新标签打开） */
+function renderTextWithLinks(text) {
+  const value = text == null ? '' : String(text);
+  if (!value.includes('http')) return value;
+  return value.split(URL_SPLIT_PATTERN).map((part, index) => {
+    if (!/^https?:\/\//.test(part)) return part;
+    const url = part.replace(URL_TRAILING_PUNCT, '');
+    const tail = part.slice(url.length);
+    return (
+      <React.Fragment key={index}>
+        <a className="ecard-chatLink" href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+        {tail}
+      </React.Fragment>
+    );
+  });
+}
+
 /**
  * 名片页内的访客聊天面板（PC 两栏 / 窄屏单栏）。
  * 纯呈现：消息、发送、聊天码、连接状态都由 ECardVisitorPage 注入。
@@ -360,7 +382,7 @@ export default function ECardChatPanel({
                   ) : isFile ? (
                     <FileBubble message={item} onLoadAttachment={onLoadAudio} onDownloadAttachment={onDownloadAttachment} />
                   ) : (
-                    <div className="ecard-chatBubble">{item.content}</div>
+                    <div className="ecard-chatBubble">{renderTextWithLinks(item.content)}</div>
                   )}
                   <div className="ecard-chatMeta">
                     {formatTime(item.createdAt)}
