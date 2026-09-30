@@ -125,7 +125,6 @@ export function dispatchConversationEvent({ conversationId, conversationPublicId
   if (visitorSet) for (const socket of visitorSet) sendFrame(socket, payload);
 
   const agentSet = agentSockets.get(Number(sipUserId));
-  console.log(`[ca-ws-debug] dispatch type=${frame?.type} sipUserId=${sipUserId} agentSockets=${agentSet ? agentSet.size : 0} agentKeys=${[...agentSockets.keys()].join("|")}`);
   if (agentSet) for (const socket of agentSet) sendFrame(socket, payload);
 }
 
@@ -293,7 +292,6 @@ function registerSocket(socket, record) {
   const scope = record.scope;
   socket.caScope = { role: record.role, ...scope };
   socket.caAliveAt = Date.now();
-  console.log(`[ca-ws-debug] register role=${record.role} id=${scope.sipUserId ?? scope.conversationId} agents=${[...agentSockets.keys()].join("|")}`);
 
   if (record.role === "visitor") {
     socket.caConversationPublicId = scope.conversationPublicId || null;
@@ -315,7 +313,6 @@ function registerSocket(socket, record) {
 function unregisterSocket(socket) {
   const scope = socket.caScope;
   if (!scope) return;
-  console.log(`[ca-ws-debug] unregister role=${scope.role} id=${scope.sipUserId ?? scope.conversationId}`);
   if (scope.role === "visitor") {
     const set = visitorSockets.get(Number(scope.conversationId));
     if (set) {
@@ -424,7 +421,6 @@ export function attachCustomerAssistantWebSocketServer(httpServer, { path = "/ca
       const now = Date.now();
       for (const socket of wss.clients) {
         if (now - (socket.caAliveAt || now) > IDLE_TIMEOUT_MS) {
-          console.log(`[ca-ws-debug] heartbeat-terminate idle=${Math.round((now - (socket.caAliveAt || now)) / 1000)}s role=${socket.caScope?.role}`);
           try { socket.terminate(); } catch { /* ignore */ }
           continue;
         }
