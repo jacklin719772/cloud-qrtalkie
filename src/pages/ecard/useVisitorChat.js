@@ -34,6 +34,9 @@ export function useVisitorChat(slug) {
   const tokenRef = useRef('');
   const oldestSeqRef = useRef(0);
   const audioUrlRef = useRef(new Map());
+  // 附件下载限并发（最多 2 个）：一屏图片同时开下会占满带宽，拖慢新消息发送
+  const downloadActiveRef = useRef(0);
+  const downloadQueueRef = useRef([]);
   tokenRef.current = session?.accessToken || '';
 
   useEffect(() => {
@@ -305,16 +308,30 @@ export function useVisitorChat(slug) {
   }, [slug]);
 
   /** 语音气泡播放：附件需带 Bearer 取回，转成 objectURL 并缓存（卸载时释放） */
+  /** 下载任务限并发执行（简单信号量） */
+  const runLimitedDownload = useCallback((task) => new Promise((resolve, reject) => {
+    const run = () => {
+      downloadActiveRef.current += 1;
+      task().then(resolve, reject).finally(() => {
+        downloadActiveRef.current -= 1;
+        const next = downloadQueueRef.current.shift();
+        if (next) next();
+      });
+    };
+    if (downloadActiveRef.current < 2) run();
+    else downloadQueueRef.current.push(run);
+  }), []);
+
   const loadAudioUrl = useCallback(async (message) => {
     const attachmentId = message?.attachment?.id;
     if (!attachmentId) return null;
     const cached = audioUrlRef.current.get(attachmentId);
     if (cached) return cached;
-    const blob = await chatApi.fetchAttachmentBlob(slug, tokenRef.current, attachmentId);
+    const blob = await runLimitedDownload(() => chatApi.fetchAttachmentBlob(slug, tokenRef.current, attachmentId));
     const url = URL.createObjectURL(blob);
     audioUrlRef.current.set(attachmentId, url);
     return url;
-  }, [slug]);
+  }, [slug, runLimitedDownload]);
 
   useEffect(() => () => {
     for (const url of audioUrlRef.current.values()) {

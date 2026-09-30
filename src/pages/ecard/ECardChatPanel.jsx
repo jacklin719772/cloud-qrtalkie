@@ -88,6 +88,8 @@ export default function ECardChatPanel({
   const [actionMessage, setActionMessage] = useState(null);
   const listRef = useRef(null);
   const copyTimerRef = useRef(null);
+  const loadingOlderRef = useRef(false); // 更早一页加载中（防重复触发）
+  const prevMsgCountRef = useRef(0); // 上一次的消息条数（判断是「新增」还是「补历史」）
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordTimerRef = useRef(null);
@@ -138,8 +140,42 @@ export default function ECardChatPanel({
   }
 
   useEffect(() => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    const el = listRef.current;
+    if (!el) return;
+    // 首次进入或新消息：只有原本就贴近底部时才自动滚到底（否则会打断用户上翻看历史）
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (prevMsgCountRef.current === 0 || nearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+    prevMsgCountRef.current = messages.length;
   }, [messages.length]);
+
+  /** 加载更早一页：完成后按新增高度补偿 scrollTop，视觉上停在原处不跳动 */
+  function handleLoadMore() {
+    const el = listRef.current;
+    if (!el || !hasMore || loading || loadingOlderRef.current) return;
+    loadingOlderRef.current = true;
+    const prevHeight = el.scrollHeight;
+    const prevTop = el.scrollTop;
+    Promise.resolve(onLoadMore?.()).finally(() => {
+      loadingOlderRef.current = false;
+      requestAnimationFrame(() => {
+        const node = listRef.current;
+        if (!node) return;
+        const delta = node.scrollHeight - prevHeight;
+        if (delta > 0) node.scrollTop = prevTop + delta;
+      });
+    });
+  }
+
+  /** 上滚到顶自动加载更早一页；列表还没撑满视口时不触发（避免一次把历史全拉下来） */
+  function handleListScroll() {
+    const el = listRef.current;
+    if (!el || !hasMore || loading || loadingOlderRef.current) return;
+    if (el.scrollHeight <= el.clientHeight + 80) return;
+    if (el.scrollTop > 40) return;
+    handleLoadMore();
+  }
 
   // 断线提示延迟 3 秒出现：避免刚进入（首次连线上线中）就闪一下「連線中斷」
   useEffect(() => {
@@ -344,9 +380,9 @@ export default function ECardChatPanel({
           )}
         </header>
 
-        <div className="ecard-chatMessages" ref={listRef}>
+        <div className="ecard-chatMessages" ref={listRef} onScroll={handleListScroll}>
           {hasMore ? (
-            <button type="button" className="ecard-chatLoadMore" onClick={onLoadMore} disabled={loading}>
+            <button type="button" className="ecard-chatLoadMore" onClick={handleLoadMore} disabled={loading}>
               {loading ? '載入中…' : '載入更早的訊息'}
             </button>
           ) : null}
@@ -654,8 +690,29 @@ function formatDuration(ms) {
 function ImageBubble({ message, onLoadAttachment }) {
   const [url, setUrl] = useState('');
   const [failed, setFailed] = useState(false);
+  const [nearViewport, setNearViewport] = useState(false);
+  const holderRef = useRef(null);
+
+  // 懒加载：图片滚到可视区附近才真正下载（否则进会话就会把整页 50 条消息的图全下下来）
+  useEffect(() => {
+    const el = holderRef.current;
+    if (!el) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setNearViewport(true);
+      return undefined;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setNearViewport(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '240px 0px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
+    if (!nearViewport) return undefined;
     let cancelled = false;
     (async () => {
       try {
@@ -667,10 +724,14 @@ function ImageBubble({ message, onLoadAttachment }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [message, onLoadAttachment]);
+  }, [nearViewport, message, onLoadAttachment]);
 
   if (failed) return <div className="ecard-chatFileChip"><span>圖片載入失敗</span></div>;
-  if (!url) return <div className="ecard-chatImagePlaceholder">載入中…</div>;
+  if (!url) {
+    return (
+      <div ref={holderRef} className="ecard-chatImagePlaceholder">{nearViewport ? '載入中…' : ''}</div>
+    );
+  }
   return (
     <img
       className="ecard-chatImage"

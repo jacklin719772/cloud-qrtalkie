@@ -202,12 +202,18 @@ export default function ECardVisitorPage({ slug }) {
   // 聊天态高度用 visualViewport 实测值驱动：真机（尤其 App 内置 WebView）里
   // 浏览器工具栏显隐、软键盘弹出都会改变可视高度，仅靠 100vh/100dvh 会算错，
   // 导致输入栏被挤出屏幕。JS 不可用时回退到 CSS 的 100dvh。
+  // iOS Safari 弹键盘时还会单独滚动「视觉视口」（offsetTop > 0），同步记录 --ecard-vvtop，
+  // 让页面容器跟着下移，否则输入栏会被顶到屏幕最上方。
   useEffect(() => {
     if (!isChatView) return undefined;
     const viewport = window.visualViewport;
     const apply = () => {
       const height = viewport ? viewport.height : window.innerHeight;
-      if (height > 0) document.documentElement.style.setProperty('--ecard-vvh', `${Math.round(height)}px`);
+      const offsetTop = viewport ? viewport.offsetTop : 0;
+      if (height > 0) {
+        document.documentElement.style.setProperty('--ecard-vvh', `${Math.round(height)}px`);
+        document.documentElement.style.setProperty('--ecard-vvtop', `${Math.round(offsetTop)}px`);
+      }
     };
     apply();
     viewport?.addEventListener('resize', apply);
@@ -218,6 +224,22 @@ export default function ECardVisitorPage({ slug }) {
       viewport?.removeEventListener('scroll', apply);
       window.removeEventListener('resize', apply);
       document.documentElement.style.removeProperty('--ecard-vvh');
+      document.documentElement.style.removeProperty('--ecard-vvtop');
+    };
+  }, [isChatView]);
+
+  // 聊天态锁死文档滚动：不锁的话 iOS Safari 弹软键盘会把整个文档往上滚（scroll to reveal），
+  // 整页被顶掉、输入栏跑到屏幕最上方。退出聊天时恢复原值。
+  useEffect(() => {
+    if (!isChatView) return undefined;
+    const html = document.documentElement;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    html.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
     };
   }, [isChatView]);
 
@@ -914,6 +936,12 @@ export default function ECardVisitorPage({ slug }) {
       style={isChatView
         ? {
           ...pageStyle,
+          // 固定到「视觉视口」：iOS Safari 弹键盘滚动视觉视口时，用 top 补偿跟随，
+          // 输入栏始终贴在键盘上方（见上面的 --ecard-vvh / --ecard-vvtop 说明）
+          position: 'fixed',
+          top: 'var(--ecard-vvtop, 0px)',
+          left: 0,
+          right: 0,
           padding: 0,
           height: 'var(--ecard-vvh, 100dvh)',
           minHeight: 'var(--ecard-vvh, 100dvh)',
