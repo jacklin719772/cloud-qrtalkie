@@ -186,6 +186,7 @@ export async function appendMessage(connection, {
 
 /**
  * 历史 / 追平（P3、A8）。
+ *   不带游标      → 最新一页（升序返回；会话超过 size 条时新消息必须可见）
  *   before=<seq>  → 更早的一页（历史分页，结果按 seq 升序返回）
  *   after=<seq>   → 断线重连后的增量追平
  */
@@ -194,14 +195,21 @@ export async function listMessages(connection, conversationId, { before = null, 
   const params = [conversationId];
   let where = "conversation_id = ?";
   let order = "seq ASC";
+  let reverse = false; // DESC 取的窗口统一在内存里反转为升序返回
 
   if (before) {
     where += " AND seq < ?";
     params.push(Number(before));
     order = "seq DESC"; // 取"更早的 size 条"，再在内存里反转为升序
+    reverse = true;
   } else if (after) {
     where += " AND seq > ?";
     params.push(Number(after));
+  } else {
+    // 不带游标（首次进入）：必须取「最新一页」。原先用 seq ASC 返回的是最旧的 size 条，
+    // 会话一旦超过 size 条，新消息就再也不会出现在聊天页（列表页走另一条查询所以正常）。
+    order = "seq DESC";
+    reverse = true;
   }
   params.push(size);
 
@@ -220,7 +228,7 @@ export async function listMessages(connection, conversationId, { before = null, 
   );
 
   const messages = rows.map(mapMessageRow);
-  return before ? messages.reverse() : messages;
+  return reverse ? messages.reverse() : messages;
 }
 
 /**
