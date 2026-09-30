@@ -21,7 +21,7 @@ import { randomUUID } from "node:crypto";
 import { pool } from "../db.js";
 import { createProvider, getGatewayConfig } from "../pushGatewayService.js";
 import { readRegistrarKeys, RedisReadOnlyError } from "../redisClient.js";
-import { isAgentAvailable } from "./realtimeHub.js";
+import { isAgentViewing } from "./realtimeHub.js";
 
 function positiveNumber(value, fallback) {
   const n = Number(value);
@@ -197,9 +197,10 @@ export async function notifyVisitorMessage({ conversation, message, liveTest = p
     if (!row.sip_username || !row.sip_domain) return { skipped: "owner_missing" };
 
     const agentLastReadSeq = Number(row.agent_last_read_seq || 0);
-    // 主人正在前台看该会话（WS 在线且已读到这条之前）→ 不推送
-    if (!force && isAgentAvailable(row.sip_user_id) && agentLastReadSeq >= Number(message.seq) - 1) {
-      return { skipped: "agent_watching" };
+    // 主人此刻正在看「这个会话」→ 不推送（消息会经 WS 实时显示）。
+    // 旧实现用「WS 在线 + 读过上一条」，只要 App 开着就命中，导致切到别的页面也收不到横幅。
+    if (!force && isAgentViewing(row.sip_user_id, row.public_id)) {
+      return { skipped: "agent_viewing" };
     }
 
     // leading-edge：窗口内不重复推送；主人已读（游标前移）即视为窗口重置

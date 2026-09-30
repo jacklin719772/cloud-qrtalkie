@@ -94,6 +94,17 @@ export function isAgentAvailable(sipUserId) {
   return Boolean(set && set.size > 0);
 }
 
+/** 该客服是否有连接「正在查看这个会话」（前端推送抑制用；比 isAgentAvailable 精确得多） */
+export function isAgentViewing(sipUserId, conversationPublicId) {
+  if (!conversationPublicId) return false;
+  const set = agentSockets.get(Number(sipUserId));
+  if (!set) return false;
+  for (const socket of set) {
+    if (socket.caViewing === conversationPublicId) return true;
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------------ *
  * 事件分发
  * ------------------------------------------------------------------ */
@@ -211,8 +222,20 @@ async function handleUpstream(socket, frame) {
     });
   }
 
-  if (type !== "ca.typing.start" && type !== "ca.typing.stop" && type !== "ca.message.read" && type !== "ca.message.delivered") {
+  if (type !== "ca.typing.start" && type !== "ca.typing.stop" && type !== "ca.message.read"
+      && type !== "ca.message.delivered" && type !== "ca.agent.viewing") {
     return sendFrame(socket, { ns: "ca", type: "ca.error", data: { code: "UNKNOWN_FRAME", message: "未知的訊息類型" } });
+  }
+
+  // 「正在查看哪个会话」（仅客服）：用于前台推送精确抑制——只有确实在看这个会话才不推。
+  // 记录在 socket 上：多设备互不干扰，连接断开自动失效。
+  if (type === "ca.agent.viewing") {
+    if (scope.role !== "agent") {
+      return sendFrame(socket, { ns: "ca", type: "ca.error", data: { code: "FORBIDDEN_ROLE", message: "僅客服可上報" } });
+    }
+    const isViewing = frame?.data?.viewing !== false && Boolean(conversationPublicId);
+    socket.caViewing = isViewing ? conversationPublicId : null;
+    return undefined;
   }
 
   if (!conversationPublicId) {
