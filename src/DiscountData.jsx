@@ -92,7 +92,7 @@ const DiscountData = forwardRef((props, ref) => {
     }
   };
 
-  async function loadCoupons({ silent = false, preferredId = selectedId } = {}) {
+  async function loadCoupons({ silent = false, preferredId = selectedId, autoSelectFirst = false, keepSelection = false } = {}) {
     setIsLoading(true);
     if (!silent) showMessage('', '');
     try {
@@ -100,7 +100,11 @@ const DiscountData = forwardRef((props, ref) => {
       const nextCoupons = (data.coupons || []).map(normalizeCoupon);
       setCoupons(nextCoupons);
 
-      const nextSelected = nextCoupons.find((coupon) => coupon.id === preferredId) || nextCoupons[0] || null;
+      // keepSelection：僅刷新列表，不改動右側面板（開關切換刷新用）
+      if (keepSelection) return;
+      const nextSelected = nextCoupons.find((coupon) => coupon.id === preferredId)
+        || (autoSelectFirst ? nextCoupons[0] : null)
+        || null;
       if (nextSelected) {
         setSelectedId(nextSelected.id);
         setDraftCoupon({ ...nextSelected });
@@ -118,7 +122,7 @@ const DiscountData = forwardRef((props, ref) => {
   }
 
   useEffect(() => {
-    loadCoupons();
+    loadCoupons({ autoSelectFirst: true });
     return () => {
       if (messageTimerRef.current) window.clearTimeout(messageTimerRef.current);
     };
@@ -239,7 +243,11 @@ const DiscountData = forwardRef((props, ref) => {
       const updatedCoupon = { ...targetCoupon, status: newStatus };
       const payload = toApiCoupon(updatedCoupon);
       const result = await apiClient.put('/billing/coupon-settings', payload);
-      await loadCoupons({ silent: true, preferredId: couponId });
+      await loadCoupons({ silent: true, keepSelection: true });
+      // 若切換的正是右側正在編輯的這條，同步其狀態，避免面板舊值把開關改回去
+      if (couponId === selectedId) {
+        setDraftCoupon((current) => (current.id === couponId ? { ...current, status: newStatus } : current));
+      }
       showMessage('success', result.message || '優惠狀態已更新。');
     } catch (error) {
       showMessage('error', error.message || '無法更新優惠狀態。');
@@ -355,8 +363,8 @@ const DiscountData = forwardRef((props, ref) => {
                     key={coupon.id}
                     onClick={() => selectCoupon(coupon)}
                   >
-                    <span className="discount-code" style={{ fontSize: '14px' }}>{coupon.couponCode}</span>
-                    <span className="discount-name" style={{ fontSize: '14px' }}>{coupon.displayName}</span>
+                    <span className="discount-code" style={{ fontSize: '15px', fontWeight: 700 }}>{coupon.couponCode}</span>
+                    <span className="discount-name" style={{ fontSize: '13px' }}>{coupon.displayName}</span>
                     <span className="discount-list-meta">
                       <b>{formatDiscount(coupon)}</b>
                       <div className="discount-list-item-actions">
@@ -420,7 +428,13 @@ const DiscountData = forwardRef((props, ref) => {
                 </label>
                 <label>
                   幣種
-                  <select value={draftCoupon.currency || 'TWD'} onChange={updateDraft('currency')} disabled={isSaving}>
+                  <select
+                    value={draftCoupon.currency || 'TWD'}
+                    onChange={updateDraft('currency')}
+                    disabled={isSaving || draftCoupon.discountType !== 'fixed_amount'}
+                    title={draftCoupon.discountType !== 'fixed_amount' ? '百分比優惠不區分幣種' : undefined}
+                    style={draftCoupon.discountType !== 'fixed_amount' ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  >
                     {currencyOptions.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
