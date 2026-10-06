@@ -13,6 +13,17 @@ const roleLabels = {
 
 const PlatformAdminManagement = forwardRef((props, ref) => {
   const [admins, setAdmins] = useState([]);
+
+  // 分頁（與 App 版本管理頁一致）
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState('10');
+  const pageSizeNum = pageSize === 'all' ? admins.length : (parseInt(pageSize, 10) || 10);
+  const totalPages = Math.max(1, Math.ceil(admins.length / Math.max(1, pageSizeNum)));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagedAdmins = pageSize === 'all' ? admins : admins.slice((safePage - 1) * pageSizeNum, safePage * pageSizeNum);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [dialogMode, setDialogMode] = useState(null); // 'add' | 'edit'
@@ -138,9 +149,21 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
     <section className="view active" id="platform-admin-management">
       <style>{`
         .pam-panel { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.2); overflow: hidden; }
-        .pam-table-wrap { overflow: auto; }
+        .pam-table-wrap { overflow: auto; height: calc(100dvh - 280px); }
+        .pam-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+        .pam-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        .pam-table-wrap::-webkit-scrollbar-track { background: transparent; }
+        .pam-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+        .pam-page-controls { display: flex; align-items: center; gap: 12px; }
+        .pam-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; font-size: 12px; outline: none; }
+        .pam-page-btn, .pam-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+        .pam-page-current { border-color: #3b82f6; color: #60a5fa; background: rgba(59,130,246,0.15); font-weight: 600; }
+        .pam-page-btn { cursor: pointer; font-size: 18px; line-height: 1; }
+        .pam-page-btn:disabled { color: #4b5563; cursor: not-allowed; background: #111827; }
+        .pam-page-jump { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 12px; }
+        .pam-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; text-align: center; outline: none; color: #e5e7eb; font-size: 12px; }
         .pam-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
-        .pam-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #9ca3af; background: #1a2332; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+        .pam-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #9ca3af; background: #1a2332; border-bottom: 1px solid #1f2937; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
         .pam-table td { padding: 12px 16px; color: #e5e7eb; border-bottom: 1px solid #1f2937; white-space: nowrap; }
         .pam-table th:last-child, .pam-table td:last-child { position: sticky; right: 0; z-index: 1; background: #111827; box-shadow: -2px 0 4px rgba(0,0,0,0.2); }
         .pam-table thead th:last-child { z-index: 3; background: #1a2332; }
@@ -183,7 +206,7 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
               <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>加载中...</td></tr>
             ) : admins.length === 0 ? (
               <tr><td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>暂无数据</td></tr>
-            ) : admins.map(a => (
+            ) : pagedAdmins.map(a => (
               <tr key={a.id}>
                 <td style={{ fontWeight: 500 }}>{a.email}</td>
                 <td>{a.displayName || '-'}</td>
@@ -208,6 +231,39 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
             ))}
           </tbody>
         </table>
+        </div>
+      </div>
+
+      <div className="pam-pagination">
+        <div style={{ color: '#9ca3af', fontSize: '13px' }}>共 {admins.length} 条</div>
+        <div className="pam-page-controls">
+          <select
+            className="pam-page-size"
+            value={pageSize}
+            onChange={(e) => { setPageSize(e.target.value); setPage(1); }}
+          >
+            <option value="10">10 条/页</option>
+            <option value="20">20 条/页</option>
+            <option value="50">50 条/页</option>
+            <option value="all">全部</option>
+          </select>
+          <button type="button" className="pam-page-btn" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>‹</button>
+          <span className="pam-page-current">{safePage}</span>
+          <button type="button" className="pam-page-btn" disabled={pageSize === 'all' || safePage * pageSizeNum >= admins.length} onClick={() => setPage(p => p + 1)}>›</button>
+          <span className="pam-page-jump">
+            前往
+            <input
+              className="pam-page-input"
+              defaultValue={safePage}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = parseInt(e.currentTarget.value, 10);
+                  if (!isNaN(val) && val > 0) setPage(Math.min(val, totalPages));
+                }
+              }}
+            />
+            页
+          </span>
         </div>
       </div>
 

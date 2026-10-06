@@ -273,7 +273,7 @@ const AppReleases = forwardRef((props, ref) => {
     <section className="view active" id="app-releases">
       <style>{`
         .rel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .rel-table-wrap { max-height: calc(100dvh - 280px); overflow: auto; }
+        .rel-table-wrap { height: calc(100dvh - 280px); overflow: auto; }
         .rel-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
         .rel-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
         .rel-table-wrap::-webkit-scrollbar-track { background: transparent; }
