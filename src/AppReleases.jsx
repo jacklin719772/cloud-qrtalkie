@@ -330,7 +330,7 @@ const AppReleases = forwardRef((props, ref) => {
       `}</style>
 
 
-      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
+      <h2 style={{ margin: '0 0 10px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
 
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
