@@ -219,8 +219,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       console.log('【前端 DEBUG】介面返回的資料:', data);
       setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
     } catch (err) {
+      // 拉取失敗時保留現有列表，避免瞬時失敗把整頁清空
       console.error('Failed to load sip accounts:', err);
-      setAccounts([]);
     } finally {
       setIsLoading(false);
     }
@@ -1020,6 +1020,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setBatchAddResults((result.results || []).filter(r => !r.success || r.check?.consistent === false));
       } else {
         setBatchAddMessage({ type: 'success', text: `批次新增完成，${createdOk} 個帳號全部建立成功。` });
+        setCurrentPage(1);
         setTimeout(() => {
           setBatchAddOpen(false);
           setBatchAddResults(null);
