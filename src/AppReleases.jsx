@@ -273,6 +273,7 @@ const AppReleases = forwardRef((props, ref) => {
     <section className="view active" id="app-releases">
       <style>{`
         .rel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .rel-table-wrap { max-height: calc(100dvh - 280px); overflow: auto; }
         .rel-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
         .rel-page-controls { display: flex; align-items: center; gap: 12px; }
         .rel-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; font-size: 12px; outline: none; }
@@ -335,6 +336,7 @@ const AppReleases = forwardRef((props, ref) => {
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
       <div className="rel-card">
+        <div className="rel-table-wrap">
         <table className="rel-table">
           <thead>
             <tr>
@@ -373,6 +375,7 @@ const AppReleases = forwardRef((props, ref) => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="rel-pagination">
