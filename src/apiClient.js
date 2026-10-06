@@ -105,7 +105,12 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // 只有「已帶 token 的請求」收到 401 才視為登入過期去重載；
+    // 登入/註冊等匿名請求的 401 直接拋給調用方（否則登入失敗會整頁重載、錯誤提示被刷掉）
+    const hadAuth = Boolean(
+      error.config?.headers?.Authorization || error.config?.headers?.get?.('Authorization')
+    );
+    if (error.response && error.response.status === 401 && hadAuth) {
       localStorage.removeItem('qrtalkieAdminToken');
       sessionStorage.removeItem('qrtalkieAdminToken');
       window.location.reload(); // 登入過期，重整頁面讓 App.jsx 將使用者導回首頁
