@@ -56,7 +56,7 @@ const AddonServices = forwardRef((props, ref) => {
   }));
 
   useEffect(() => {
-    loadAddons();
+    loadAddons({ autoSelectFirst: true });
     loadPlans();
   }, []);
 
@@ -69,12 +69,13 @@ const AddonServices = forwardRef((props, ref) => {
     }
   }
 
-  async function loadAddons() {
+  async function loadAddons({ autoSelectFirst = false } = {}) {
     try {
       const data = await apiClient.get('/billing/addon-services?status=all');
       const loaded = (data.addons || []).map(a => ({ ...a, prices: a.prices || [] }));
       setAddons(loaded);
-      if (loaded.length > 0 && !selectedId) {
+      // 自動選中只在首次進頁時執行；刪除/保存/切狀態後的刷新不得改動右側面板
+      if (autoSelectFirst && loaded.length > 0 && !selectedId) {
         setSelectedId(loaded[0].id);
         setDraftAddon({ ...loaded[0], prices: loaded[0].prices.map(p => ({ ...p })) });
       }
