@@ -361,7 +361,7 @@ const AppReleases = forwardRef((props, ref) => {
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
             ) : pagedReleases.map(r => (
               <tr key={r.id}>
-                <td><strong style={{ color: '#0f172a' }}>v{r.version}</strong> <span style={{ color: '#94a3b8', fontSize: 11 }}>({r.version_code})</span></td>
+                <td><strong style={{ color: '#f3f4f6', display: 'inline-block', minWidth: '76px' }}>v{r.version}</strong> <span style={{ color: '#94a3b8', fontSize: 11 }}>({r.version_code})</span></td>
                 <td>{r.platform}</td>
                 <td>{formatBytes(r.file_size)}</td>
                 <td><span className={`rel-badge ${r.status === 'published' ? 'rel-badge-published' : 'rel-badge-draft'}`}>{r.status === 'published' ? '已发布' : '草稿'}</span></td>
