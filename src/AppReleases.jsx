@@ -9,6 +9,17 @@ const AppReleases = forwardRef((props, ref) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // 分頁（列表前端分頁，樣式參照其他頁面）
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState('10');
+  const pageSizeNum = pageSize === 'all' ? releases.length : (parseInt(pageSize, 10) || 10);
+  const totalPages = Math.max(1, Math.ceil(releases.length / Math.max(1, pageSizeNum)));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const pagedReleases = pageSize === 'all' ? releases : releases.slice((safePage - 1) * pageSizeNum, safePage * pageSizeNum);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   // 表单
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -262,6 +273,15 @@ const AppReleases = forwardRef((props, ref) => {
     <section className="view active" id="app-releases">
       <style>{`
         .rel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .rel-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+        .rel-page-controls { display: flex; align-items: center; gap: 12px; }
+        .rel-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; font-size: 12px; outline: none; }
+        .rel-page-btn, .rel-page-current { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+        .rel-page-current { border-color: #3b82f6; color: #60a5fa; background: rgba(59,130,246,0.15); font-weight: 600; }
+        .rel-page-btn { cursor: pointer; font-size: 18px; line-height: 1; }
+        .rel-page-btn:disabled { color: #4b5563; cursor: not-allowed; background: #111827; }
+        .rel-page-jump { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 12px; }
+        .rel-page-input { width: 56px; height: 36px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; text-align: center; outline: none; color: #e5e7eb; font-size: 12px; }
         .rel-btn { height: 38px; padding: 0 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all .2s; }
         .rel-btn-primary { background: linear-gradient(90deg, #2563eb, #06b6d4); color: #fff; }
         .rel-btn-primary:hover { filter: brightness(1.1); }
@@ -310,14 +330,9 @@ const AppReleases = forwardRef((props, ref) => {
       `}</style>
 
 
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: '#9ca3af' }}>管理 Android App 版本发布，上传 APK 并生成下载链接和二维码</p>
+      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
 
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
-
-      <div className="rel-toolbar">
-        <span style={{ fontSize: 13, color: '#9ca3af' }}>共 {releases.length} 个版本</span>
-      </div>
 
       <div className="rel-card">
         <table className="rel-table">
@@ -336,7 +351,7 @@ const AppReleases = forwardRef((props, ref) => {
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>加载中...</td></tr>
             ) : releases.length === 0 ? (
               <tr><td colSpan="6" style={{ textAlign: 'center', padding: 32, color: '#94a3b8' }}>暂无版本记录</td></tr>
-            ) : releases.map(r => (
+            ) : pagedReleases.map(r => (
               <tr key={r.id}>
                 <td><strong style={{ color: '#0f172a' }}>v{r.version}</strong> <span style={{ color: '#94a3b8', fontSize: 11 }}>({r.version_code})</span></td>
                 <td>{r.platform}</td>
@@ -358,6 +373,39 @@ const AppReleases = forwardRef((props, ref) => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="rel-pagination">
+        <div style={{ color: '#9ca3af', fontSize: '13px' }}>共 {releases.length} 个版本</div>
+        <div className="rel-page-controls">
+          <select
+            className="rel-page-size"
+            value={pageSize}
+            onChange={(e) => { setPageSize(e.target.value); setPage(1); }}
+          >
+            <option value="10">10 条/页</option>
+            <option value="20">20 条/页</option>
+            <option value="50">50 条/页</option>
+            <option value="all">全部</option>
+          </select>
+          <button type="button" className="rel-page-btn" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>‹</button>
+          <span className="rel-page-current">{safePage}</span>
+          <button type="button" className="rel-page-btn" disabled={pageSize === 'all' || safePage * pageSizeNum >= releases.length} onClick={() => setPage(p => p + 1)}>›</button>
+          <span className="rel-page-jump">
+            前往
+            <input
+              className="rel-page-input"
+              defaultValue={safePage}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = parseInt(e.currentTarget.value, 10);
+                  if (!isNaN(val) && val > 0) setPage(Math.min(val, totalPages));
+                }
+              }}
+            />
+            页
+          </span>
+        </div>
       </div>
 
       {/* 编辑/新建弹窗 */}
