@@ -6,6 +6,7 @@ import {
   getAccount as flexisipGetAccount,
   deleteAccount as flexisipDeleteAccount,
 } from "./flexisipAccountManagerClient.js";
+import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 
 const MAX_PER_RUN = 50;
 const RETRY_BACKOFF_MINUTES = 5;
@@ -87,21 +88,13 @@ export async function retryPendingSipAccountDeletes() {
       }
     }
 
-    // 2) 本地刪除（同一事務）
-    let localConnection;
+    // 2) 本地刪除（同一事務，含 RESTRICT 外鍵依賴清理）
     try {
-      localConnection = await pool.getConnection();
-      await localConnection.beginTransaction();
-      await localConnection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
-      await localConnection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
-      await localConnection.commit();
+      await hardDeleteLocalSipUser(accountId);
       successCount++;
       console.log(`[SipDeleteRetry] account ${accountId} (${row.username}) fully deleted`);
     } catch (localError) {
-      if (localConnection) await localConnection.rollback().catch(() => {});
       await markRetryFailure(accountId, `本地刪除失敗：${localError?.message || localError}`);
-    } finally {
-      if (localConnection) localConnection.release();
     }
   }
 

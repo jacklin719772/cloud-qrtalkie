@@ -107,6 +107,7 @@ import {
   getAccountProvisionLink as flexisipGetProvisionLink,
   sendResetPasswordEmail as flexisipSendResetPasswordEmail,
 } from "./flexisipAccountManagerClient.js";
+import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import {
   createContactList,
   assignContactListToAccount,
@@ -8817,12 +8818,7 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
 
     // ── local_only 历史帳號：直接本地刪除 ──
     if (account.sync_status === 'local_only' || (!account.flexisip_account_id && !account.sip_uri)) {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
-      await connection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
-      await connection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
-      await connection.commit();
-      connection.release();
+      await hardDeleteLocalSipUser(accountId);
       return response.json({ message: "帳號已成功刪除。" });
     }
 
@@ -8910,19 +8906,11 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
       }
     }
 
-    // ── 本地刪除 ──
-    connection = await pool.getConnection();
+    // ── 本地刪除（含 RESTRICT 外鍵依賴清理，單一事務）──
     try {
-      await connection.beginTransaction();
-      await connection.query(`DELETE FROM sip_external_accounts WHERE sip_user_id = ?`, [accountId]);
-      await connection.query(`DELETE FROM sip_users WHERE id = ?`, [accountId]);
-      await connection.commit();
-      connection.release();
+      await hardDeleteLocalSipUser(accountId);
       return response.json({ message: "帳號已成功刪除。" });
     } catch (dbErr) {
-      await connection.rollback().catch(() => {});
-      connection.release();
-
       if (flexisipDeleted && flexisipAccountId) {
         // 远端已刪除但本地刪除失败，标记异常
         const now = new Date().toISOString().slice(0, 19).replace("T", " ");
