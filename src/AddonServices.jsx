@@ -312,10 +312,10 @@ const AddonServices = forwardRef((props, ref) => {
                       key={addon.id}
                     >
                       <div className="addon-item-content" onClick={() => selectAddon(addon)}>
-                    <span className="addon-code" style={{ fontSize: '14px' }}>{addon.addonCode}</span>
-                    <span className="addon-name" style={{ fontSize: '14px' }}>{addon.name}</span>
+                    <span className="addon-code" style={{ fontSize: '15px', fontWeight: 700 }}>{addon.addonCode}</span>
+                    <span className="addon-name" style={{ fontSize: '13px' }}>{addon.name}</span>
                         <span className="addon-list-meta">
-                      <b style={{ fontSize: '14px' }}>{firstPrice ? `${firstPrice.currency} ${Number(firstPrice.unitPrice).toFixed(2)} / ${billingUnitText(addon.billingUnit)} / 月` : '未定價'}</b>
+                      <b style={{ fontSize: '13px' }}>{firstPrice ? `${firstPrice.currency} ${Number(firstPrice.unitPrice).toFixed(2)} / ${billingUnitText(addon.billingUnit)} / 月` : '未定價'}</b>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <button
                               type="button"
