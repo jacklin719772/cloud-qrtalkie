@@ -858,15 +858,15 @@ export default function ConsoleLayout({ onLogout }) {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${sipBatchImportType === 'csv' ? '#3b82f6' : '#374151'}`, borderRadius: '8px', cursor: 'pointer', background: sipBatchImportType === 'csv' ? '#1a2332' : 'transparent' }} onClick={() => setSipBatchImportType('csv')}>
                     <input type="radio" name="sip-batch-import-type" checked={sipBatchImportType === 'csv'} onChange={() => setSipBatchImportType('csv')} style={{ accentColor: '#3b82f6', width: '18px', height: '18px' }} />
                     <div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb' }}>導入 CSV</div>
-                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>上傳 CSV 文件批量導入 SIP 帳號</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb' }}>導入 CSV</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>上傳 CSV 文件批量導入 SIP 帳號</div>
                     </div>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', border: `1px solid ${sipBatchImportType === 'server' ? '#3b82f6' : '#374151'}`, borderRadius: '8px', cursor: 'pointer', background: sipBatchImportType === 'server' ? '#1a2332' : 'transparent' }} onClick={() => setSipBatchImportType('server')}>
                     <input type="radio" name="sip-batch-import-type" checked={sipBatchImportType === 'server'} onChange={() => setSipBatchImportType('server')} style={{ accentColor: '#3b82f6', width: '18px', height: '18px' }} />
                     <div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb' }}>導入服務器賬號</div>
-                      <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>從 Flexisip 服務器批量導入現有 SIP 帳號</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#e5e7eb' }}>導入服務器賬號</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>從服務端批量導入SIP賬號</div>
                     </div>
                   </label>
                 </div>

@@ -1283,7 +1283,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '12px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600', flexShrink: 0 }}>導入服務器賬號</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#f3f4f6', fontWeight: '600', flexShrink: 0 }}>導入服務器賬號</h3>
               <span style={{ fontSize: '14px', color: '#9ca3af', flexShrink: 0 }}>
                 {serverImportLoading ? '正在載入...' : `共 ${serverAccounts.length} 個，${serverAccounts.filter(a => !a.existsLocally).length} 個可匯入`}
               </span>
@@ -1391,7 +1391,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: '600' }}>批量導入帳號</h3>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#f3f4f6', fontWeight: '600' }}>批量導入帳號</h3>
               <button className="ghost-btn" type="button" onClick={handleDownloadTemplate} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}>
                 <Download size={14} /> 下載模板
               </button>
