@@ -1673,7 +1673,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
         #sip-account-registration .sip-table {
           width: 100%;
-          min-width: 1180px;
+          min-width: 900px;
           border-collapse: collapse;
           table-layout: fixed;
           font-size: 12px;
@@ -1900,18 +1900,18 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     />
                   </th>
                   {[
-                    ['username', '帳號', '190px'],
-                    ['status', '狀態', '140px'],
-                    ['tenantName', '租戶名稱', '150px'],
-                    ['expiresAt', '到期日期', '130px'],
-                    ['creatorName', '新增人', '170px'],
-                    ['createdAt', '新增時間', '150px'],
+                    ['username', '帳號', '130px'],
+                    ['status', '狀態', '100px'],
+                    ['tenantName', '租戶名稱', '140px'],
+                    ['expiresAt', '到期日期', '120px'],
+                    ['creatorName', '新增人', '120px'],
+                    ['createdAt', '新增時間', '120px'],
                   ].map(([key, label, width]) => (
                     <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" className="sip-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
                     </th>
                   ))}
-                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center' }}>操作</th>
+                  <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, boxShadow: '-1px 0 0 #1f2937', width: '120px', textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1945,7 +1945,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       <td style={{ color: '#9ca3af' }}>{acc.expiresAt ? new Date(acc.expiresAt).toISOString().slice(0, 10) : '-'}</td>
                       <td>{acc.creatorName || '-'}</td>
                       <td>{acc.createdAt || '-'}</td>
-                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                      <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '120px', textAlign: 'center', padding: '0 12px' }}>
                         <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                           <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={() => handleAction('details', acc)}>詳情</button>
                           <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={(e) => {
