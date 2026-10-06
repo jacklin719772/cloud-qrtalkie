@@ -1673,7 +1673,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
         #sip-account-registration .sip-table {
           width: 100%;
-          min-width: 900px;
+          min-width: 1180px;
           border-collapse: collapse;
           table-layout: fixed;
           font-size: 12px;
