@@ -286,12 +286,17 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   // 分頁計算
   const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize)));
-  const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize), currentPage * (pageSize === "全部" ? (sortedAccounts.length || 1) : pageSize));
+  const paginatedAccounts = pageSize === "全部" ? sortedAccounts : sortedAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [searchKeyword, statusFilter, sortConfig]);
+  }, [searchKeyword, statusFilter, sortConfig, pageSize]);
+
+  // 頁碼夾取：刪除/篩選後總頁數變少時，避免停留在越界頁導致列表顯示為空
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const handleSort = (key) => {
     let direction = 'asc';
