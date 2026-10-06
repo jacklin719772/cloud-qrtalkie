@@ -178,8 +178,6 @@ const PlatformAdminManagement = forwardRef((props, ref) => {
         .pam-action-btn.danger:hover { background: #3b1111; }
       `}</style>
 
-      <div style={{ marginBottom: '16px' }}></div>
-
       {message.text && (
         <div style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px', background: message.type === 'error' ? '#fef2f2' : '#f0fdf4', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>
           {message.text}

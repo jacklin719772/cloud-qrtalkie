@@ -336,9 +336,6 @@ const AppReleases = forwardRef((props, ref) => {
         }
       `}</style>
 
-
-      <div style={{ marginBottom: '16px' }}></div>
-
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
       <div className="rel-card">
