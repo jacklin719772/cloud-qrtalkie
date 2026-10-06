@@ -678,7 +678,7 @@ export default function ConsoleLayout({ onLogout }) {
           <button className="primary-btn" type="button" onClick={() => platformAdminRef.current?.openAdd()} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 18px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)', color: '#fff' }}>
             + 新增管理員
           </button>
-          <button type="button" onClick={() => setShowAdminHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #d8e2ef', background: '#fff', cursor: 'pointer', color: '#64748b' }} title="幫助">
+          <button type="button" onClick={() => setShowAdminHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明">
             <HelpCircle size={18} />
           </button>
         </div>
