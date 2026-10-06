@@ -60,6 +60,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   // 删除确认弹窗
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { account, isBatch }
+  // 删除结果弹窗：{ success, fail, errors: [{ username, message }] }
+  const [deleteResults, setDeleteResults] = useState(null);
 
   // 单个创建 tombstone 重试
   const [tombstoneRetry, setTombstoneRetry] = useState(null); // { username, domain, formData }
@@ -190,6 +192,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setServerImportResults(null);
       setServerAccounts([]);
       setServerImportSelected([]);
+      setDeleteResults(null);
     },
     handleExportCsv,
     startImport: () => { setViewMode('import'); setImportStep(1); setParsedData([]); },
@@ -446,26 +449,41 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setDeleteConfirm({ account: null, isBatch: true, ids: selectedIds });
   };
 
-  // 执行删除（permanent: true = 彻底删除，false = 保留删除）
+  // 执行删除（permanent: true = 彻底删除，false = 保留删除）；完成后统一弹「刪除結果」
   const executeDelete = async (permanent) => {
     const info = deleteConfirm;
     if (!info) return;
     setDeleteConfirm(null);
     setIsLoading(true);
     try {
+      const targets = info.isBatch
+        ? accounts.filter(acc => info.ids.includes(acc.id))
+        : [info.account].filter(Boolean);
+      // 收集每条结果：部分失败不再中断，且无论成败都刷新列表、清空勾选
+      const settled = await Promise.allSettled(targets.map(account =>
+        apiClient.delete(`/admin/sip-accounts/${account.id}`, { data: { permanent } })
+      ));
+      const errors = [];
+      let success = 0;
+      settled.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          success++;
+        } else {
+          const target = targets[index] || {};
+          errors.push({ username: target.username || `ID ${target.id}`, message: result.reason?.message || '刪除失敗' });
+        }
+      });
       if (info.isBatch) {
-        const selectedAccounts = accounts.filter(acc => info.ids.includes(acc.id));
-        await Promise.all(selectedAccounts.map(account =>
-          apiClient.delete(`/admin/sip-accounts/${account.id}`, { data: { permanent } })
-        ));
         setSelectedIds([]);
-      } else {
-        await apiClient.delete(`/admin/sip-accounts/${info.account.id}`, { data: { permanent } });
+      } else if (info.account?.id != null) {
+        setSelectedIds(prev => prev.filter(id => id !== info.account.id));
       }
+      setDeleteResults({ success, fail: errors.length, errors });
       loadAccounts();
     } catch (err) {
       console.error('Failed to delete sip account:', err);
       alert(err.message || '刪除失敗');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -2178,6 +2196,37 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button type="button" onClick={() => setDeleteConfirm(null)} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 刪除結果彈窗 */}
+      {deleteResults && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100002 }} onClick={() => setDeleteResults(null)}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '460px', maxWidth: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>刪除完成</h3>
+            </div>
+            <div style={{ padding: '20px 24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: 0, color: '#d1d5db', fontSize: '14px', lineHeight: 1.7 }}>
+                {deleteResults.fail === 0
+                  ? <>已成功刪除 <strong style={{ color: '#22c55e' }}>{deleteResults.success}</strong> 條帳號。</>
+                  : <>成功刪除 <strong style={{ color: '#22c55e' }}>{deleteResults.success}</strong> 條，失敗 <strong style={{ color: '#f59e0b' }}>{deleteResults.fail}</strong> 條。</>}
+              </p>
+              {deleteResults.errors.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+                  {deleteResults.errors.map((item, index) => (
+                    <div key={index} style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#3b1111', color: '#fca5a5', fontSize: '13px', lineHeight: 1.5 }}>
+                      <strong style={{ color: '#fecaca' }}>{item.username}</strong> — {item.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={() => setDeleteResults(null)} style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', background: 'linear-gradient(90deg, #2563eb, #06b6d4)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>知道了</button>
             </div>
           </div>
         </div>,
