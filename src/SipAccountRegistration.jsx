@@ -2138,7 +2138,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           {r.errorCode === 'FLEXISIP_USERNAME_TOMBSTONED' ? '已刪除保留' :
                            r.errorCode === 'DUPLICATE_LOCAL_SIP_ACCOUNT' ? '本地已存在' :
                            r.errorCode === 'FLEXISIP_ACCOUNT_ALREADY_EXISTS' ? '遠端已存在' :
-                           r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? '本地儲存失敗' :
+                           r.errorCode === 'LOCAL_DB_SAVE_FAILED' ? (r.cleanupStatus === 'pending' ? '本地儲存失敗（遠端清理待重試）' : r.cleanupStatus === 'failed' ? '本地儲存失敗（遠端殘留，需手動處理）' : '本地儲存失敗') :
                            r.message || r.errorCode || '失敗'}
                         </span>
                       </div>

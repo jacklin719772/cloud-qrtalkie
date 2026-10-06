@@ -7809,6 +7809,35 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
 });
 
 // POST /api/admin/sip-accounts/batch - 批量新增 SIP 帳號（同步 Flexisip）
+// 批次新增的補償清理：刪除遠端孤兒帳號；刪除失敗則登記 pending_delete 交由補償任務收尾
+// 返回 'deleted' | 'pending' | 'failed'
+async function compensateOrphanFlexisipAccount({ username, domain, sipUri, flexisipAccountId }) {
+  try {
+    await flexisipDeleteAccount(flexisipAccountId);
+    return 'deleted';
+  } catch (deleteErr) {
+    if (deleteErr?.status === 404) return 'deleted';
+    const errMsg = (deleteErr?.message || String(deleteErr)).substring(0, 500);
+    try {
+      const c = await pool.getConnection();
+      try {
+        await c.query(
+          `INSERT INTO sip_users (username, sip_domain, email, password_hash, role, status, flexisip_account_id, sip_uri, sync_status, sync_error, sync_attempts, last_synced_at)
+           VALUES (?, ?, ?, '', 'user', 'disabled', ?, ?, 'pending_delete', ?, 1, NOW())`,
+          [username, domain, `${username}@${domain}`, String(flexisipAccountId), sipUri || `sip:${username}@${domain}`, `批次新增補償刪除失敗：${errMsg}`],
+        );
+      } finally {
+        c.release();
+      }
+      console.error(`[batch] ${username}: 遠端補償刪除失敗，已登記 pending_delete 補償：${errMsg}`);
+      return 'pending';
+    } catch (regErr) {
+      console.error(`[batch] ${username}: 遠端補償刪除失敗且登記 pending_delete 失敗：`, regErr?.message, '| 原始錯誤：', errMsg);
+      return 'failed';
+    }
+  }
+}
+
 app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以進行批次操作。" });
@@ -7969,15 +7998,32 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
         console.log(`[batch] ${realUsername}: ❌ 本地 DB 儲存失敗:`, dbErr?.message, dbErr?.code);
         await conn.rollback().catch(() => {});
         conn.release();
-        // 补偿刪除
-        try { await flexisipDeleteAccount(flexisipAccountId); } catch {}
-        results.push({ username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED", message: "本地儲存失敗，已回滾。" });
+        // 补偿刪除（失敗會登記 pending_delete 由補償任務收尾）
+        const cleanup = await compensateOrphanFlexisipAccount({ username: realUsername, domain, sipUri, flexisipAccountId });
+        results.push({
+          username: realUsername, sipUri, success: false, errorCode: "LOCAL_DB_SAVE_FAILED",
+          message: cleanup === 'deleted' ? "本地儲存失敗，已回滾；遠端帳號已清理。"
+            : cleanup === 'pending' ? "本地儲存失敗，已回滾；遠端帳號清理待重試（已登記自動補償）。"
+            : "本地儲存失敗，已回滾；⚠️ 遠端帳號清理失敗，請手動處理。",
+          cleanupStatus: cleanup,
+        });
         failed++;
       }
     } catch (err) {
       console.log(`[batch] ${realUsername}: ❌ 異常:`, err?.message, err?.code, err?.status, err?.responseBody);
-      if (flexisipAccountId) { try { await flexisipDeleteAccount(flexisipAccountId); } catch {} }
-      results.push({ username: realUsername, sipUri, success: false, errorCode: err?.code || "FLEXISIP_CREATE_FAILED", message: (err?.message || '建立失敗').substring(0, 200) });
+      let cleanup = null;
+      if (flexisipAccountId) {
+        cleanup = await compensateOrphanFlexisipAccount({ username: realUsername, domain, sipUri, flexisipAccountId });
+      }
+      const cleanupNote = cleanup === 'deleted' ? '；遠端帳號已清理。'
+        : cleanup === 'pending' ? '；遠端帳號清理待重試（已登記自動補償）。'
+        : cleanup === 'failed' ? '；⚠️ 遠端帳號清理失敗，請手動處理。' : '';
+      results.push({
+        username: realUsername, sipUri, success: false,
+        errorCode: err?.code || "FLEXISIP_CREATE_FAILED",
+        message: `${(err?.message || '建立失敗').substring(0, 200)}${cleanupNote}`,
+        ...(cleanup ? { cleanupStatus: cleanup } : {}),
+      });
       failed++;
     }
   }
