@@ -293,7 +293,7 @@ const AppReleases = forwardRef((props, ref) => {
         .rel-btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
         .rel-card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.2); overflow: hidden; }
         .rel-table { width: 100%; border-collapse: collapse; }
-        .rel-table th { background: #1a2332; color: #9ca3af; font-weight: 600; font-size: 12px; padding: 12px 16px; text-align: left; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+        .rel-table th { background: #1a2332; color: #9ca3af; font-weight: 600; font-size: 12px; padding: 12px 16px; text-align: left; border-bottom: 1px solid #1f2937; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
         .rel-table td { padding: 12px 16px; border-bottom: 1px solid #1f2937; font-size: 13px; color: #e5e7eb; }
         .rel-table tr:hover td { background: #1a2332; }
         .rel-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
@@ -331,7 +331,7 @@ const AppReleases = forwardRef((props, ref) => {
       `}</style>
 
 
-      <h2 style={{ margin: '0 0 10px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
+      <h2 style={{ margin: '0 0 4px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
 
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
