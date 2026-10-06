@@ -26,9 +26,17 @@ export default function Landing({ onLogin }) {
   useEffect(() => {
     if (!trialSignupEnabled && authMode === 'signup') {
       setAuthMode('login');
-      clearMessages();
+      showTimedError('試用申請暫未開放，請聯繫平台管理員。');
     }
   }, [trialSignupEnabled, authMode]);
+  // 點擊「申請試用」：關閉時僅提示，不切換表單
+  const handleTrialTabClick = () => {
+    if (!trialSignupEnabled) {
+      showTimedError('試用申請暫未開放，請聯繫平台管理員。');
+      return;
+    }
+    changeMode('signup');
+  };
   const [isResending, setIsResending] = useState(false);
   
   // 新增：法律條款彈窗狀態
@@ -387,9 +395,7 @@ export default function Landing({ onLogin }) {
         <div className="auth-panel" aria-label="帳號入口">
           <div className="auth-tabs" role="tablist">
             <button className={authMode === 'login' ? 'selected' : ''} onClick={() => changeMode('login')}>登入</button>
-            {trialSignupEnabled && (
-              <button className={authMode === 'signup' ? 'selected' : ''} onClick={() => changeMode('signup')}>申請試用</button>
-            )}
+            <button className={authMode === 'signup' ? 'selected' : ''} onClick={handleTrialTabClick}>申請試用</button>
           </div>
 
           {authMode === 'login' && (
