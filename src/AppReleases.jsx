@@ -274,6 +274,12 @@ const AppReleases = forwardRef((props, ref) => {
       <style>{`
         .rel-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
         .rel-table-wrap { max-height: calc(100dvh - 280px); overflow: auto; }
+        .rel-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
+        .rel-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        .rel-table-wrap::-webkit-scrollbar-track { background: transparent; }
+        #app-releases::-webkit-scrollbar { width: 6px; height: 6px; }
+        #app-releases::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        #app-releases::-webkit-scrollbar-track { background: transparent; }
         .rel-pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
         .rel-page-controls { display: flex; align-items: center; gap: 12px; }
         .rel-page-size { height: 38px; padding: 0 14px; border-radius: 8px; border: 1px solid #374151; background: #1f2937; color: #d1d5db; font-size: 12px; outline: none; }
@@ -331,7 +337,7 @@ const AppReleases = forwardRef((props, ref) => {
       `}</style>
 
 
-      <h2 style={{ margin: '0 0 4px', fontSize: 20, color: '#f3f4f6' }}>App 版本管理</h2>
+      <div style={{ marginBottom: '16px' }}></div>
 
       {message.text && <div className={`rel-msg rel-msg-${message.type}`}>{message.text}</div>}
 
