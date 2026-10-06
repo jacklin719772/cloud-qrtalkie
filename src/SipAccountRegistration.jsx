@@ -1900,12 +1900,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     />
                   </th>
                   {[
-                    ['username', '帳號', '130px'],
-                    ['status', '狀態', '100px'],
+                    ['username', '帳號', '110px'],
+                    ['status', '狀態', '75px'],
                     ['tenantName', '租戶名稱', '140px'],
-                    ['expiresAt', '到期日期', '120px'],
-                    ['creatorName', '新增人', '120px'],
-                    ['createdAt', '新增時間', '120px'],
+                    ['expiresAt', '到期日期', '98px'],
+                    ['creatorName', '新增人', '98px'],
+                    ['createdAt', '新增時間', '98px'],
                   ].map(([key, label, width]) => (
                     <th key={key} style={{ width, background: '#1a2332' }}>
                       <button type="button" className="sip-sort-btn" onClick={() => handleSort(key)}>{label}{getSortIcon(key)}</button>
