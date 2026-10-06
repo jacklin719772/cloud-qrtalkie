@@ -22,6 +22,18 @@ const DEFAULT_TIMEOUT_RULES = [
     path: '/pbx/webrtc-accounts/:extension',
     timeoutMs: 120000,
   },
+  {
+    // 批量新增逐條呼叫 Flexisip（200 條實測約 3 分鐘），10 秒默認超時不夠
+    method: 'post',
+    path: '/admin/sip-accounts/batch',
+    timeoutMs: 300000,
+  },
+  {
+    // 批量釋放 tombstone 逐條呼叫 Account Manager，與批量新增重試同流程
+    method: 'post',
+    path: '/flexisip/accounts/tombstones/batch-release',
+    timeoutMs: 300000,
+  },
 ];
 
 function parseTimeoutRules() {
