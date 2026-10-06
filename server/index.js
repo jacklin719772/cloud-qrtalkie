@@ -4810,7 +4810,7 @@ app.put("/api/billing/addon-services", requireAdmin, async (request, response) =
   const addonCode = String(addon.addonCode || '').trim();
   const name = String(addon.name || '').trim();
   const description = String(addon.description || '').trim();
-  const billingUnit = ['account', 'extension', 'device'].includes(addon.billingUnit) ? addon.billingUnit : 'account';
+  const billingUnit = ['account', 'tenant', 'unit'].includes(addon.billingUnit) ? addon.billingUnit : 'account';
   const status = ['active', 'disabled'].includes(addon.status) ? addon.status : 'active';
   const sortOrder = Math.max(0, Number(addon.sortOrder || 0));
 
@@ -4851,6 +4851,11 @@ app.put("/api/billing/addon-services", requireAdmin, async (request, response) =
         await connection.query(
           `INSERT INTO billing_plan_addons (plan_id, addon_id, currency, unit_price, sync_with_plan_term, status, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE currency = VALUES(currency), unit_price = VALUES(unit_price), sync_with_plan_term = VALUES(sync_with_plan_term), status = VALUES(status)`,
           [price.planId, addonId, currency, unitPrice, syncWithPlanTerm, priceStatus, priceSort]
+        );
+        // 管理頁模型為「每套餐一條價格」：改幣種保存時刪掉同套餐舊幣種行，避免重複行導致回顯舊值
+        await connection.query(
+          `DELETE FROM billing_plan_addons WHERE addon_id = ? AND plan_id = ? AND currency <> ?`,
+          [addonId, price.planId, currency]
         );
       }
     }
