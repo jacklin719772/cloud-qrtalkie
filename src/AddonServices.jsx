@@ -332,8 +332,16 @@ const AddonServices = forwardRef((props, ref) => {
                       <button
                         className="addon-delete-btn"
                         type="button"
-                        onClick={(event) => handleDelete(addon.id, event)}
-                        title="刪除增值服務"
+                        onClick={(event) => {
+                          if (addon.isReserved) {
+                            event.stopPropagation();
+                            window.alert('保留服務不可刪除，只能修改。');
+                            return;
+                          }
+                          handleDelete(addon.id, event);
+                        }}
+                        title={addon.isReserved ? '保留服務不可刪除' : '刪除增值服務'}
+                        style={addon.isReserved ? { opacity: 0.35, cursor: 'not-allowed' } : undefined}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -364,7 +372,14 @@ const AddonServices = forwardRef((props, ref) => {
               <div className="tenant-field-grid addon-field-grid">
                 <label>
                   服務編號
-                  <input value={draftAddon.addonCode} onChange={updateDraft('addonCode')} placeholder="ecard" />
+                  <input
+                    value={draftAddon.addonCode}
+                    onChange={updateDraft('addonCode')}
+                    placeholder="ecard"
+                    readOnly={Boolean(draftAddon.isReserved)}
+                    title={draftAddon.isReserved ? '保留服務的編號不可修改' : undefined}
+                    style={draftAddon.isReserved ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  />
                 </label>
                 <label>
                   顯示名稱

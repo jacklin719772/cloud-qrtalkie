@@ -4740,7 +4740,7 @@ app.get("/api/billing/addon-services", requireAdmin, async (request, response) =
     // ?status=all 返回全部狀態（增值服務管理頁顯示停用記錄用）；缺省仍只返回啟用，保持其他調用方行為不變
     const includeAllStatuses = String(request.query.status || '').trim().toLowerCase() === 'all';
     const rows = await connection.query(
-      `SELECT id, addon_code, name, description, billing_unit, status, sort_order
+      `SELECT id, addon_code, name, description, is_reserved, billing_unit, status, sort_order
        FROM billing_addons
        ${includeAllStatuses ? '' : "WHERE status = 'active'"}
        ORDER BY sort_order ASC, id ASC`
@@ -4783,6 +4783,7 @@ app.get("/api/billing/addon-services", requireAdmin, async (request, response) =
         addonCode: row.addon_code || "",
         name: row.name || "",
         description: row.description || "",
+        isReserved: Boolean(row.is_reserved),
         billingUnit: row.billing_unit || "account",
         status: row.status || 'active',
         sortOrder: Number(row.sort_order || 0),
@@ -4881,7 +4882,10 @@ app.delete("/api/billing/addon-services/:addonCode", requireAdmin, async (reques
   let connection;
   try {
     connection = await pool.getConnection();
-    const [row] = await connection.query(`SELECT id FROM billing_addons WHERE addon_code = ? LIMIT 1`, [addonCode]);
+    const [row] = await connection.query(`SELECT id, is_reserved FROM billing_addons WHERE addon_code = ? LIMIT 1`, [addonCode]);
+    if (row && row.is_reserved) {
+      return response.status(403).json({ message: "保留增值服務不可刪除，只能修改。" });
+    }
     if (row) {
       await connection.query(`DELETE FROM billing_plan_addons WHERE addon_id = ?`, [row.id]);
       await connection.query(`DELETE FROM billing_addons WHERE id = ?`, [row.id]);
