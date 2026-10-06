@@ -299,9 +299,9 @@ const AppReleases = forwardRef((props, ref) => {
         .rel-btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
         .rel-card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 10px 26px rgba(0,0,0,0.2); overflow: hidden; }
         .rel-table { width: 100%; border-collapse: collapse; }
-        .rel-table th { background: #1a2332; color: #9ca3af; font-weight: 600; font-size: 12px; padding: 12px 16px; text-align: left; border-bottom: 1px solid #1f2937; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
-        .rel-table td { padding: 12px 16px; border-bottom: 1px solid #1f2937; font-size: 13px; color: #e5e7eb; }
-        .rel-table tr:hover td { background: #1a2332; }
+        .rel-table th { background: #1a2332; color: #e5e7eb; font-weight: 600; font-size: 12px; height: 56px; padding: 0 16px; text-align: left; border-bottom: 1px solid #1f2937; white-space: nowrap; position: sticky; top: 0; z-index: 1; }
+        .rel-table td { height: 64px; padding: 0 16px; border-bottom: 1px solid #1f2937; font-size: 13px; color: #e5e7eb; }
+        .rel-table tr:hover td { background: #1e293b; }
         .rel-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
         .rel-badge-published { background: #dcfce7; color: #16a34a; }
         .rel-badge-draft { background: #fef3c7; color: #d97706; }
