@@ -12,6 +12,23 @@ export default function Landing({ onLogin }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [registeredEmail, setRegisteredEmail] = useState(''); // 記住註冊信箱用於重發驗證
+  const [trialSignupEnabled, setTrialSignupEnabled] = useState(true); // 後台控制「申請試用」開關（缺省開放）
+
+  // 拉取試用申請開關（公開接口；讀取失敗 fail-open，仍由服務端兜底）
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get('/public/settings/trial-signup')
+      .then((data) => { if (!cancelled) setTrialSignupEnabled(data?.enabled !== false); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  // 開關關閉時：若正停留在試用申請表單，切回登入
+  useEffect(() => {
+    if (!trialSignupEnabled && authMode === 'signup') {
+      setAuthMode('login');
+      clearMessages();
+    }
+  }, [trialSignupEnabled, authMode]);
   const [isResending, setIsResending] = useState(false);
   
   // 新增：法律條款彈窗狀態
@@ -199,7 +216,7 @@ export default function Landing({ onLogin }) {
     setIsLoading(true);
     try {
       const result = await apiClient.post('/auth/register', { companyName, email, password, confirmPassword });
-      showTimedSuccess(result.message || '註冊成功，請前往信箱完成驗證。');
+      showTimedSuccess(result.message || '試用申請已送出，請前往信箱完成驗證。');
       if (result.devVerificationUrl) {
         setRegisteredEmail(email);
       }
@@ -210,7 +227,7 @@ export default function Landing({ onLogin }) {
         setRegisteredEmail(serverData.email || email);
         clearMessages();
       } else {
-        showTimedError(serverData.message || '註冊失敗，請使用系統內未註冊的電子郵件或稍後再試。');
+        showTimedError(serverData.message || '試用申請失敗，請使用系統內未註冊的電子郵件或稍後再試。');
       }
     } finally {
       setIsLoading(false);
@@ -370,7 +387,9 @@ export default function Landing({ onLogin }) {
         <div className="auth-panel" aria-label="帳號入口">
           <div className="auth-tabs" role="tablist">
             <button className={authMode === 'login' ? 'selected' : ''} onClick={() => changeMode('login')}>登入</button>
-            <button className={authMode === 'signup' ? 'selected' : ''} onClick={() => changeMode('signup')}>註冊</button>
+            {trialSignupEnabled && (
+              <button className={authMode === 'signup' ? 'selected' : ''} onClick={() => changeMode('signup')}>申請試用</button>
+            )}
           </div>
 
           {authMode === 'login' && (
@@ -403,11 +422,11 @@ export default function Landing({ onLogin }) {
                 <label>確認密碼<input name="confirmPassword" type="password" placeholder="再次輸入密碼" required minLength={8} /></label>
               </div>
               <button type="submit" className="primary-btn full" disabled={isLoading}>
-                {isLoading ? '註冊中...' : '註冊並驗證電子郵件'}
+                {isLoading ? '送出中...' : '送出試用申請（需驗證郵件）'}
               </button>
               {registeredEmail && (
                 <div style={{ marginTop: '16px', padding: '14px 16px', backgroundColor: '#065f46', borderRadius: '8px', border: '1px solid #059669' }}>
-                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 註冊成功！驗證郵件已發送至 {registeredEmail}</p>
+                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 試用申請已送出！驗證郵件已發送至 {registeredEmail}</p>
                   <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '12px' }}>若未收到郵件，可點擊下方按鈕重新發送。</p>
                   <button type="button" onClick={handleResendVerification} disabled={isResending}
                     style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#059669', color: '#fff', border: 'none', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>

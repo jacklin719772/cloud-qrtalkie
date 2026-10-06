@@ -86,6 +86,27 @@ export default function ConsoleLayout({ onLogout }) {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [identity, setIdentity] = useState(null);
+  const [trialSignupEnabled, setTrialSignupEnabled] = useState(null); // null=載入中；平台管理員「開放試用申請」開關
+  // 平台管理員進入租戶管理頁時讀取試用申請開關
+  useEffect(() => {
+    if (currentView !== 'tenant-management') return undefined;
+    if (identity?.admin?.accountType !== 'platform') return undefined;
+    let cancelled = false;
+    apiClient.get('/admin/settings/trial-signup')
+      .then((data) => { if (!cancelled) setTrialSignupEnabled(data?.enabled !== false); })
+      .catch(() => { if (!cancelled) setTrialSignupEnabled((prev) => (prev === null ? true : prev)); });
+    return () => { cancelled = true; };
+  }, [currentView, identity]);
+  const toggleTrialSignup = async () => {
+    if (trialSignupEnabled === null) return;
+    const next = !trialSignupEnabled;
+    try {
+      const data = await apiClient.put('/admin/settings/trial-signup', { enabled: next });
+      setTrialSignupEnabled(data?.enabled !== false);
+    } catch (error) {
+      window.alert(error.message || '儲存試用申請設定失敗，請稍後再試。');
+    }
+  };
   const [userType, setUserType] = useState(null);
   const [loginEmailInitialValue, setLoginEmailInitialValue] = useState('');
   const [tenantCouponMode, setTenantCouponMode] = useState('list');
@@ -599,6 +620,16 @@ export default function ConsoleLayout({ onLogout }) {
       if (mode === 'add' || mode === 'edit') return null;
       return (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={toggleTrialSignup}
+            disabled={trialSignupEnabled === null}
+            title="控制登入頁是否開放「申請試用」"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', height: '44px', padding: '0 14px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', color: trialSignupEnabled ? '#34d399' : '#9ca3af', cursor: trialSignupEnabled === null ? 'default' : 'pointer', fontSize: '13px' }}
+          >
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: trialSignupEnabled === null ? '#6b7280' : (trialSignupEnabled ? '#34d399' : '#6b7280'), display: 'inline-block' }} />
+            開放試用申請：{trialSignupEnabled === null ? '載入中…' : (trialSignupEnabled ? '開放' : '未開放')}
+          </button>
           <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
             新增租戶
           </button>

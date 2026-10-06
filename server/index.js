@@ -1053,6 +1053,23 @@ function validateRegistration(payload) {
 }
 
 app.post("/api/auth/register", async (request, response) => {
+  // 試用申請開關（system_settings.trial_signup_enabled，缺省開放；服務端兜底防繞過 UI）
+  {
+    let gateConnection;
+    try {
+      gateConnection = await pool.getConnection();
+      const rows = await gateConnection.query(
+        `SELECT setting_value FROM system_settings WHERE setting_key = 'trial_signup_enabled'`
+      );
+      if (rows.length > 0 && rows[0].setting_value === '0') {
+        return response.status(403).json({ message: "暫未開放試用申請，請稍後再試或聯繫客服。" });
+      }
+    } catch (gateError) {
+      console.error("Trial signup gate check failed:", gateError); // 讀取失敗不攔截（fail-open）
+    } finally {
+      if (gateConnection) gateConnection.release();
+    }
+  }
   const validated = validateRegistration(request.body);
   if (validated.error) {
     return response.status(400).json({ message: validated.error });
@@ -1118,7 +1135,7 @@ app.post("/api/auth/register", async (request, response) => {
     await connection.commit();
 
     return response.status(201).json({
-      message: "註冊成功，請前往電子郵件完成驗證。",
+      message: "試用申請已送出，請前往電子郵件完成驗證。",
       devVerificationUrl: verificationUrl,
     });
   } catch (error) {
@@ -12134,6 +12151,70 @@ app.get("/api/public/settings/terms-of-service", async (request, response) => {
   } catch (error) {
     console.error("Failed to get public terms of service:", error);
     return response.status(500).json({ message: "取得服務條款失敗，請稍後再試" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 讀取「試用申請」開關 (管理后台，僅平台管理員)
+app.get("/api/admin/settings/trial-signup", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取系統配置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT setting_value FROM system_settings WHERE setting_key = 'trial_signup_enabled'`
+    );
+    const enabled = rows.length === 0 ? true : rows[0].setting_value !== '0';
+    return response.json({ enabled });
+  } catch (error) {
+    console.error("Failed to get trial signup setting:", error);
+    return response.status(500).json({ message: "讀取試用申請設定失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 保存「試用申請」開關 (管理后台，僅平台管理員)
+app.put("/api/admin/settings/trial-signup", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以修改系統配置。" });
+  }
+  const enabled = request.body?.enabled !== false;
+  const value = enabled ? '1' : '0';
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value) 
+       VALUES ('trial_signup_enabled', ?) 
+       ON DUPLICATE KEY UPDATE setting_value = ?`,
+      [value, value]
+    );
+    return response.json({ message: enabled ? "已開放試用申請" : "已關閉試用申請", enabled });
+  } catch (error) {
+    console.error("Failed to save trial signup setting:", error);
+    return response.status(500).json({ message: "儲存試用申請設定失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 公開讀取「試用申請」開關（未登入頁面使用）
+app.get("/api/public/settings/trial-signup", async (request, response) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT setting_value FROM system_settings WHERE setting_key = 'trial_signup_enabled'`
+    );
+    const enabled = rows.length === 0 ? true : rows[0].setting_value !== '0';
+    return response.json({ enabled });
+  } catch (error) {
+    console.error("Failed to get public trial signup setting:", error);
+    return response.status(500).json({ message: "讀取試用申請設定失敗。" });
   } finally {
     if (connection) connection.release();
   }
