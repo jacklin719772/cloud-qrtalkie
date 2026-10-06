@@ -836,9 +836,9 @@ export default function EcardStyles() {
           align-items: center;
         }
         .ecard-page-header h2 {
-          margin: 0 0 6px 0;
-          font-size: 24px;
-          color: #f3f4f6;
+          margin: 0;
+          font-size: 20px;
+          color: #17202a;
           font-weight: 700;
         }
         .ecard-page-header p {
@@ -1098,10 +1098,10 @@ export default function EcardStyles() {
           <h2>Ecard樣式管理</h2>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button type="button" onClick={() => setShowHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '42px', width: '42px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           <button className="ecard-primary-btn" onClick={openAddPage}>
             <Plus size={16} /> 新增Ecard樣式
           </button>
+          <button type="button" onClick={() => setShowHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '42px', width: '42px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       </div>
 
