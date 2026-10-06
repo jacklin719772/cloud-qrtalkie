@@ -7517,6 +7517,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         u.phone_number AS phone,
         u.email,
         u.status,
+        u.sync_status AS syncStatus,
         u.created_at,
         c.display_name AS creator_name,
         e.external_username,
@@ -7545,6 +7546,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       phone: r.phone,
       email: r.email,
       status: r.status,
+      syncStatus: r.syncStatus || '',
       externalUsername: r.external_username || '',
       externalDomain: r.externalDomain,
       externalPassword: r.external_password || '',
@@ -8837,6 +8839,33 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
         const sr = await searchAccountBySip(`${account.username}@${account.sip_domain}`);
         flexisipAccountId = sr?.id;
       } catch {}
+    }
+
+    // 若遠端 ID 是搜索得到的，回寫本地，供刪除失敗後的重試補償使用
+    if (!account.flexisip_account_id && flexisipAccountId) {
+      let cFix;
+      try {
+        cFix = await pool.getConnection();
+        await cFix.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [String(flexisipAccountId), accountId]);
+      } catch {} finally {
+        if (cFix) cFix.release();
+      }
+    }
+
+    // ── 保護 Flexisip 管理員帳號：不允許刪除 ──
+    if (flexisipAccountId) {
+      try {
+        const remoteAcc = await flexisipGetAccount(flexisipAccountId);
+        const remoteIsAdmin = remoteAcc && (
+          remoteAcc.admin === true || remoteAcc.admin === 1 || String(remoteAcc.admin) === '1'
+          || String(remoteAcc.role || '').toLowerCase() === 'admin'
+        );
+        if (remoteIsAdmin) {
+          return response.status(409).json({ message: "Flexisip 服務端管理員帳號不允許刪除。" });
+        }
+      } catch (adminCheckErr) {
+        // 讀取失敗（含 404）不阻斷：真正的刪除調用會再次處理連通性與 404
+      }
     }
 
     // ── 刪除 Flexisip 远端帳號 ──

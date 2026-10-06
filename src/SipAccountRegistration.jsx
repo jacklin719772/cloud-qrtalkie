@@ -1940,7 +1940,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                         />
                       </td>
                       <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
-                      <td>{getStatusBadge(acc.status)}</td>
+                      <td>
+                        {getStatusBadge(acc.status)}
+                        {acc.syncStatus === 'pending_delete' && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', marginLeft: '6px', fontSize: '10px', backgroundColor: '#3b1f0f', color: '#fbbf24', whiteSpace: 'nowrap' }} title="刪除未完成（遠端或本地），可從「更多」選「重試刪除」">刪除待重試</span>
+                        )}
+                      </td>
                       <td title={acc.tenantName || ''}><span style={{ display: 'block', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.tenantName || '未分配'}</span></td>
                       <td style={{ color: '#9ca3af' }}>{acc.expiresAt ? new Date(acc.expiresAt).toISOString().slice(0, 10) : '-'}</td>
                       <td>{acc.creatorName || '-'}</td>
@@ -1959,6 +1964,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                               <button type="button" className="dropdown-item" onClick={() => handleAction('edit', acc)}>編輯</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', acc)}>{acc.status === 'active' ? '停用' : '啟用'}</button>
                               <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', acc)}>刪除</button>
+                              {acc.syncStatus === 'pending_delete' && (
+                                <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setDeleteConfirm({ account: acc, isBatch: false }); }}>重試刪除</button>
+                              )}
                               <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', acc)}>重設密碼</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('verify', acc)}>帳號校驗</button>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('ai_entitlement', acc)}>AI授權</button>
