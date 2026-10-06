@@ -71,7 +71,7 @@ const AddonServices = forwardRef((props, ref) => {
 
   async function loadAddons() {
     try {
-      const data = await apiClient.get('/billing/addon-services');
+      const data = await apiClient.get('/billing/addon-services?status=all');
       const loaded = (data.addons || []).map(a => ({ ...a, prices: a.prices || [] }));
       setAddons(loaded);
       if (loaded.length > 0 && !selectedId) {

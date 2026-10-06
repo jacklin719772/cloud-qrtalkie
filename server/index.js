@@ -4737,10 +4737,12 @@ app.get("/api/billing/addon-services", requireAdmin, async (request, response) =
   let connection;
   try {
     connection = await pool.getConnection();
+    // ?status=all 返回全部狀態（增值服務管理頁顯示停用記錄用）；缺省仍只返回啟用，保持其他調用方行為不變
+    const includeAllStatuses = String(request.query.status || '').trim().toLowerCase() === 'all';
     const rows = await connection.query(
       `SELECT id, addon_code, name, description, billing_unit, status, sort_order
        FROM billing_addons
-       WHERE status = 'active'
+       ${includeAllStatuses ? '' : "WHERE status = 'active'"}
        ORDER BY sort_order ASC, id ASC`
     );
 
