@@ -60,6 +60,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   // 删除确认弹窗
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { account, isBatch }
+  // 列表拉取失败标记（区分「暂无数据」与「拉取失败」）
+  const [listError, setListError] = useState(false);
   // 删除结果弹窗：{ success, fail, errors: [{ username, message }] }
   const [deleteResults, setDeleteResults] = useState(null);
 
@@ -218,9 +220,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       const data = await apiClient.get('/admin/sip-accounts');
       console.log('【前端 DEBUG】介面返回的資料:', data);
       setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
+      setListError(false);
     } catch (err) {
-      // 拉取失敗時保留現有列表，避免瞬時失敗把整頁清空
+      // 拉取失敗時保留現有列表，避免瞬時失敗把整頁清空；空列表時提示失敗原因
       console.error('Failed to load sip accounts:', err);
+      setListError(true);
     } finally {
       setIsLoading(false);
     }
@@ -1943,7 +1947,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   <tr>
                     <td colSpan="8" style={{ padding: 0, textAlign: 'center' }}>
                       <div className="sip-empty">
-                        <div>{isLoading ? '載入中...' : '暫無SIP帳號資料'}</div>
+                        <div>{isLoading ? '載入中...' : listError ? '列表載入失敗，請重新整理頁面' : '暫無SIP帳號資料'}</div>
                       </div>
                     </td>
                   </tr>
