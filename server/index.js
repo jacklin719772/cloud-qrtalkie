@@ -11078,18 +11078,20 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
     ecardDataJson.avatarDataUrl = avatarUrl;
     ecardDataJson.logoDataUrl = logoUrl;
     const enableVideoCall = payload.enableVideoCall !== false; // 默认 true
+    const enableTextChat = payload.enableTextChat !== false; // 允许文字聊天，默认 true
 
     await connection.query(
       `INSERT INTO tenant_ecards (
-         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call,
+         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call, enable_text_chat,
          created_by_admin_id, ecard_data_json, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, NOW(), NOW())
+       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())
        ON DUPLICATE KEY UPDATE
          access_slug = VALUES(access_slug),
          avatar_url = VALUES(avatar_url),
          logo_url = VALUES(logo_url),
          thumbnail_url = VALUES(thumbnail_url),
          enable_video_call = VALUES(enable_video_call),
+         enable_text_chat = VALUES(enable_text_chat),
          ecard_data_json = VALUES(ecard_data_json),
          updated_at = NOW()`,
       [
@@ -11100,6 +11102,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
         logoUrl || null,
         thumbnailUrl || null,
         enableVideoCall ? 1 : 0,
+        enableTextChat ? 1 : 0,
         request.admin.id,
         JSON.stringify(ecardDataJson)
       ]
@@ -11384,7 +11387,7 @@ app.get("/api/desktop/ecard-settings", async (request, response) => {
 
     const [ec] = await connection.query(
       `SELECT ec.ecard_data_json, ec.card_data_json, ec.thumbnail_url, ec.avatar_url, ec.logo_url,
-              ec.access_slug, ec.status, ec.enable_video_call,
+              ec.access_slug, ec.status, ec.enable_video_call, ec.enable_text_chat,
               DATE_FORMAT(ec.valid_from, '%Y-%m-%d') AS valid_from,
               DATE_FORMAT(ec.valid_to, '%Y-%m-%d') AS valid_to
        FROM tenant_ecards ec
@@ -11412,6 +11415,7 @@ app.get("/api/desktop/ecard-settings", async (request, response) => {
         validFrom: ec?.valid_from || su.activated_date || "",
         validTo: ec?.valid_to || su.expires_date || "",
         enableVideoCall: ec ? Boolean(ec.enable_video_call) : true,
+        enableTextChat: ec ? ec.enable_text_chat !== 0 : true,
         configured,
         status: ec?.status || null,
         ecardDataJson: parseEcardPublicJson(ec?.ecard_data_json || ec?.card_data_json),
@@ -11543,6 +11547,7 @@ async function loadEcardPublicViewData(connection, slug) {
        ec.ecard_data_json,
        ec.card_data_json,
        ec.enable_video_call,
+       ec.enable_text_chat,
        su.username AS sip_account,
        su.display_name AS sip_display_name,
        su.email AS sip_email,
@@ -11669,6 +11674,7 @@ async function loadEcardPublicViewData(connection, slug) {
       },
       sipRegistrationStatus,
       enableVideoCall: ecardRow.enable_video_call !== 0,
+      enableTextChat: ecardRow.enable_text_chat !== 0,
       callConfigSummary: {
         sipAccount: String(ecardRow.sip_account || ""),
         sipDomain: String(ecardRow.sip_domain || process.env.ECARD_FLEXISIP_SIP_DOMAIN || sipDomain || ""),
@@ -20318,17 +20324,19 @@ app.post("/api/external-api/ecard", async (request, response) => {
     ecardDataJson.avatarDataUrl = avatarUrl;
     ecardDataJson.logoDataUrl = logoUrl;
     const enableVideoCall = payload.enableVideoCall !== false;
+    const enableTextChat = payload.enableTextChat !== false; // 允许文字聊天，默认 true
 
     await connection.query(
       `INSERT INTO tenant_ecards (
-         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call,
+         tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call, enable_text_chat,
          ecard_data_json, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, NOW(), NOW())
+       ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, NOW(), NOW())
        ON DUPLICATE KEY UPDATE
          avatar_url = VALUES(avatar_url),
          logo_url = VALUES(logo_url),
          thumbnail_url = VALUES(thumbnail_url),
          enable_video_call = VALUES(enable_video_call),
+         enable_text_chat = VALUES(enable_text_chat),
          ecard_data_json = VALUES(ecard_data_json),
          updated_at = NOW()`,
       [
@@ -20339,6 +20347,7 @@ app.post("/api/external-api/ecard", async (request, response) => {
         logoUrl || null,
         thumbnailUrl || null,
         enableVideoCall ? 1 : 0,
+        enableTextChat ? 1 : 0,
         JSON.stringify(ecardDataJson),
       ]
     );

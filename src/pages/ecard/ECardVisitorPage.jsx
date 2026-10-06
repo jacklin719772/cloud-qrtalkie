@@ -52,6 +52,7 @@ function mapPublicDataToCard(data) {
     callCapabilities: data?.callCapabilities || {},
     callConfigSummary: data?.callConfigSummary || {},
     enableVideoCall: data?.enableVideoCall !== false,
+    enableTextChat: data?.enableTextChat !== false,
     sipRegistrationStatus: data?.sipRegistrationStatus || 'unknown',
     media: data?.media || {},
     template: data?.template || {},
@@ -108,11 +109,10 @@ export default function ECardVisitorPage({ slug }) {
   const [view, setView] = useState('card'); // 'card' | 'chat'
   const [chatFocusCode, setChatFocusCode] = useState(false);
 
-  // 樣式階段：聊天入口僅在帶 ?chat=1 時出現（接後端後改為按名片設定顯示）
+  // 聊天入口按名片設定顯示（tenant_ecards.enable_text_chat，預設允許）
   const chatEntryVisible = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('chat') === '1' || window.location.hash.replace('#', '') === 'chat';
-  }, []);
+    return ecardData?.enableTextChat !== false;
+  }, [ecardData]);
   const isChatView = view === 'chat';
   const chat = useVisitorChat(slug);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
