@@ -7838,6 +7838,25 @@ async function compensateOrphanFlexisipAccount({ username, domain, sipUri, flexi
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Account Manager 有限流（flexiapi Kernel.php: throttle:600,1）；
+// 429 時等待限流窗口後重試，避免批量新增被瞬時限流整批記失敗
+async function withAmRateLimitRetry(fn, label, maxAttempts = 6) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      attempt++;
+      if (error?.status !== 429 || attempt >= maxAttempts) throw error;
+      const waitMs = Math.min(60000, 15000 * attempt);
+      console.log(`[batch] ${label}: Account Manager 限流(429)，等待 ${Math.round(waitMs / 1000)}s 後重試（第 ${attempt} 次）`);
+      await sleep(waitMs);
+    }
+  }
+}
+
 app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以進行批次操作。" });
@@ -7894,7 +7913,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       let remoteExists = false;
       try {
         console.log(`[batch] ${realUsername}: 搜尋遠端 searchAccountBySip(${realUsername}@${domain})...`);
-        await searchAccountBySip(`${realUsername}@${domain}`);
+        await withAmRateLimitRetry(() => searchAccountBySip(`${realUsername}@${domain}`), realUsername);
         remoteExists = true; // 未抛异常 = 远端已存在
         console.log(`[batch] ${realUsername}: 遠端已存在`);
       } catch (e) {
@@ -7915,10 +7934,10 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       });
       let createErr = null;
       try {
-        const flexisipResult = await flexisipCreateAccount({
+        const flexisipResult = await withAmRateLimitRetry(() => flexisipCreateAccount({
           username: realUsername, sip: sipUri, password, algorithm: "SHA-256",
           display_name: realUsername, email: `${realUsername}@${domain}`,
-        });
+        }), realUsername);
         console.log(`[batch] ${realUsername}: flexisipCreateAccount 返回:`, JSON.stringify(flexisipResult));
         flexisipAccountId = flexisipResult?.id;
       } catch (e) {
@@ -7953,7 +7972,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       if (!flexisipAccountId) {
         console.log(`[batch] ${realUsername}: ⚠️ flexisipResult 無 id，嘗試 searchAccountBySip 獲取...`);
         try {
-          const sr = await searchAccountBySip(`${realUsername}@${domain}`);
+          const sr = await withAmRateLimitRetry(() => searchAccountBySip(`${realUsername}@${domain}`), realUsername);
           flexisipAccountId = sr?.id;
           console.log(`[batch] ${realUsername}: searchAccountBySip 返回 id=${flexisipAccountId}`);
         } catch (e2) {
@@ -7972,7 +7991,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
 
       console.log(`[batch] ${realUsername}: flexisipAccountId=${flexisipAccountId}, 開始 activate...`);
       // Flexisip activate
-      await flexisipActivateAccount(flexisipAccountId);
+      await withAmRateLimitRetry(() => flexisipActivateAccount(flexisipAccountId), realUsername);
       console.log(`[batch] ${realUsername}: activate 成功`);
 
       // 本地保存
@@ -8040,7 +8059,7 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       const local = rows[0];
 
       let remote;
-      try { remote = await flexisipGetAccount(item.flexisipAccountId); } catch {}
+      try { remote = await withAmRateLimitRetry(() => flexisipGetAccount(item.flexisipAccountId), item.username, 3); } catch {}
       if (!remote) { results.find(r => r.username === item.username).check = { checked: false, message: "遠端查詢失敗" }; continue; }
 
       const diffs = [];
