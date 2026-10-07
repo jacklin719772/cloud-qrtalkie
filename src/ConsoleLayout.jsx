@@ -620,6 +620,9 @@ export default function ConsoleLayout({ onLogout }) {
       if (mode === 'add' || mode === 'edit') return null;
       return (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
+            新增租戶
+          </button>
           <button
             type="button"
             onClick={toggleTrialSignup}
@@ -629,9 +632,6 @@ export default function ConsoleLayout({ onLogout }) {
           >
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: trialSignupEnabled === null ? '#6b7280' : (trialSignupEnabled ? '#34d399' : '#6b7280'), display: 'inline-block' }} />
             開放試用申請：{trialSignupEnabled === null ? '載入中…' : (trialSignupEnabled ? '開放' : '未開放')}
-          </button>
-          <button className="primary-btn" type="button" onClick={() => tenantManagementRef.current?.startAdd()}>
-            新增租戶
           </button>
           <button type="button" onClick={() => setShowTenantMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
