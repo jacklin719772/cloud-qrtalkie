@@ -532,8 +532,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setBatchAddMessage({ type: 'error', text: '請輸入有效的起始帳號。' });
       return;
     }
-    if (!Number.isInteger(count) || count <= 0 || count > 100) {
-      setBatchAddMessage({ type: 'error', text: '數量必須在 1 到 100 之間。' });
+    if (!Number.isInteger(count) || count <= 0 || count > 500) {
+      setBatchAddMessage({ type: 'error', text: '數量必須在 1 到 500 之間。' });
       return;
     }
 
@@ -1598,7 +1598,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100px' }}>
                 <span style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 500 }}>數量</span>
-                <input type="number" min="1" max="100" value={batchAddForm.count} onChange={(e) => setBatchAddForm(f => ({ ...f, count: e.target.value }))} disabled={isBatchAdding}
+                <input type="number" min="1" max="500" value={batchAddForm.count} onChange={(e) => setBatchAddForm(f => ({ ...f, count: e.target.value }))} disabled={isBatchAdding}
                   style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
               </label>
             </div>
