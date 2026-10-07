@@ -595,6 +595,8 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const [batchDeleteResults, setBatchDeleteResults] = useState([]);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  const [batchDeleteTotal, setBatchDeleteTotal] = useState(0);
+  const [batchDeleteCurrent, setBatchDeleteCurrent] = useState('');
   // 批量取消分配确认弹窗：{ ghosts: [{id,username}], selected: [{id,username,tenantName}] }
   const [unassignDialog, setUnassignDialog] = useState(null);
   const [isUnassigning, setIsUnassigning] = useState(false);
@@ -609,12 +611,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     const toDeleteAccount = selectedAccounts.filter((account) => !account.tenantName);
 
     if (!window.confirm(
-      `確定要刪除 ${selectedAccounts.length} 個帳號嗎？` +
+      `確定要刪除 ${selectedAccounts.length} 個帳號嗎？\n\n` +
+      `⚠ 此操作將從服務端永久刪除帳號，請確認後執行。` +
       (assignedAccounts.length > 0 ? `\n\n其中 ${assignedAccounts.length} 個已分配租戶，將跳過不刪除。` : '')
     )) return;
 
     setIsBatchDeleting(true);
     setBatchDeleteResults([]);
+    setBatchDeleteTotal(selectedAccounts.length);
+    setBatchDeleteCurrent('');
 
     const results = [];
     let delCount = 0, skipCount = 0, failCount = 0;
@@ -627,6 +632,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     // 逐個刪除
     for (const acc of toDeleteAccount) {
+      setBatchDeleteCurrent(acc.username);
       try {
         await apiClient.delete(`/pbx/webrtc-accounts/${acc.username}`, {}, { timeout: 120000 });
         results.push({ ext: acc.username, status: 'success', label: '已刪除' });
@@ -1679,8 +1685,12 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量刪除帳號</h3>
             </div>
             <div style={{ flexShrink: 0, padding: '12px 18px' }}>
-              <div style={{ background: '#3b1111', borderRadius: '8px', border: '1px solid #7f1d1d', padding: '10px 14px' }}>
-                <p style={{ margin: 0, fontSize: '12px', color: '#fca5a5' }}>⚠ 此操作將從服務端永久刪除帳號，請確認後執行。</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#9ca3af' }}>
+                <span>{batchDeleteCurrent ? `正在刪除 ${batchDeleteCurrent}` : '準備中...'}</span>
+                <span>{batchDeleteResults.length} / {batchDeleteTotal}</span>
+              </div>
+              <div style={{ height: '6px', background: '#1f2937', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.round((batchDeleteResults.length / Math.max(1, batchDeleteTotal)) * 100)}%`, background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: '3px', transition: 'width 0.3s ease' }} />
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 18px 12px', scrollbarWidth: 'none', msOverflowStyle: 'none', minHeight: 0 }}>
