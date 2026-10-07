@@ -9070,6 +9070,53 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   }
 });
 
+// GET /api/admin/web-accounts/ghost-assignments - 全量掃描「幽靈分配」：
+// 已分配租戶，但 (a) 租戶不存在 (b) 未關聯 SIP 帳號 (c) 訂單已過期 或 關聯 SIP 帳號已過期
+app.get("/api/admin/web-accounts/ghost-assignments", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以查詢幽靈分配。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(`
+      SELECT
+        u.id,
+        u.username,
+        t.id AS tenant_id_found,
+        e.id AS entitlement_id,
+        e.sip_user_id,
+        DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS order_expires_at,
+        (SELECT DATE_FORMAT(MAX(se.service_expires_at), '%Y-%m-%d')
+           FROM tenant_sip_account_entitlements se
+          WHERE se.sip_user_id = e.sip_user_id AND se.status = 'active') AS sip_service_expires_at
+      FROM web_users u
+      LEFT JOIN tenants t ON t.id = u.tenant_id
+      LEFT JOIN tenant_web_account_entitlements e ON e.web_user_id = u.id
+      LEFT JOIN billing_orders o ON o.id = e.current_order_id
+      WHERE u.tenant_id IS NOT NULL
+    `);
+
+    const today = new Date().toISOString().slice(0, 10);
+    const accounts = [];
+    for (const row of rows) {
+      const tenantMissing = !row.tenant_id_found;
+      const noSip = !row.entitlement_id || !row.sip_user_id;
+      const orderExpired = Boolean(row.order_expires_at) && row.order_expires_at < today;
+      const sipExpired = Boolean(row.sip_user_id) && (!row.sip_service_expires_at || row.sip_service_expires_at < today);
+      if (tenantMissing || noSip || orderExpired || sipExpired) {
+        accounts.push({ id: Number(row.id), username: row.username || "" });
+      }
+    }
+    return response.json({ accounts, count: accounts.length });
+  } catch (error) {
+    console.error("Failed to scan ghost web assignments:", error);
+    return response.status(500).json({ message: "幽靈分配檢查失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.post("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以進行 Web 帳號登記。" });

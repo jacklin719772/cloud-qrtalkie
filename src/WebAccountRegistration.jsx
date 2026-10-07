@@ -595,6 +595,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   const [batchDeleteResults, setBatchDeleteResults] = useState([]);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+  // 批量取消分配确认弹窗：{ ghosts: [{id,username}], selected: [{id,username,tenantName}] }
+  const [unassignDialog, setUnassignDialog] = useState(null);
+  const [isUnassigning, setIsUnassigning] = useState(false);
 
   async function handleBatchDelete() {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
@@ -652,23 +655,48 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   async function handleBatchUnassign() {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
-    const assignedAccounts = selectedAccounts.filter((account) => account.tenantName);
-    if (selectedAccounts.length === 0) {
-      window.alert('請選擇要取消分配的帳號。');
-      return;
-    }
-    if (assignedAccounts.length === 0) {
-      window.alert('所選帳號均未分配給租戶。');
-      return;
-    }
-    if (!window.confirm(`確定要取消分配選中的 ${assignedAccounts.length} 個 Web 帳號嗎？`)) return;
+    // 先全量檢查幽靈分配（已分配但：租戶不存在 / 未關聯 SIP 帳號 / 訂單或關聯 SIP 已過期）
+    let ghosts = [];
     try {
-      await Promise.all(assignedAccounts.map((account) => apiClient.post(`/admin/web-accounts/${account.id}/unassign`)));
-      setSelectedIds([]);
-      await loadAccounts();
+      const data = await apiClient.get('/admin/web-accounts/ghost-assignments');
+      ghosts = data.accounts || [];
     } catch (error) {
-      window.alert(error.message || '批次取消分配失敗。');
+      window.alert(error.message || '幽靈分配檢查失敗。');
+      return;
     }
+    const ghostIds = new Set(ghosts.map((item) => item.id));
+    // 勾選中已分配、且非幽靈的帳號（幽靈走幽靈通道，避免重複處理）
+    const selectedNonGhost = selectedAccounts.filter((account) => account.tenantName && !ghostIds.has(account.id));
+    if (ghosts.length === 0 && selectedNonGhost.length === 0) {
+      window.alert('所選帳號均未分配給租戶，且目前未發現幽靈分配。');
+      return;
+    }
+    setUnassignDialog({ ghosts, selected: selectedNonGhost });
+  }
+
+  async function executeBatchUnassign() {
+    const info = unassignDialog;
+    if (!info) return;
+    setIsUnassigning(true);
+    const results = { ghostOk: 0, ghostFail: 0, selOk: 0, selFail: 0 };
+    // 幽靈分配：直接取消分配
+    for (const item of info.ghosts) {
+      try { await apiClient.post(`/admin/web-accounts/${item.id}/unassign`); results.ghostOk++; }
+      catch { results.ghostFail++; }
+    }
+    // 勾選帳號：按現有取消分配邏輯處理
+    for (const account of info.selected) {
+      try { await apiClient.post(`/admin/web-accounts/${account.id}/unassign`); results.selOk++; }
+      catch { results.selFail++; }
+    }
+    setIsUnassigning(false);
+    setUnassignDialog(null);
+    setSelectedIds([]);
+    await loadAccounts();
+    const msgs = [];
+    if (info.ghosts.length > 0) msgs.push(`幽靈分配取消 ${results.ghostOk} 個${results.ghostFail ? `（失敗 ${results.ghostFail}）` : ''}`);
+    if (info.selected.length > 0) msgs.push(`選中帳號取消分配 ${results.selOk} 個${results.selFail ? `（失敗 ${results.selFail}）` : ''}`);
+    window.alert(`${msgs.join('；')}。`);
   }
 
   async function handleAction(action, account) {
@@ -1615,6 +1643,30 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button type="submit" disabled={isBatchAdding} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: isBatchAdding ? '#1e3a5f' : '#3b82f6', color: isBatchAdding ? '#6b7280' : '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: isBatchAdding ? 'not-allowed' : 'pointer' }}>{isBatchAdding ? '建立中...' : '開始批次新增'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {/* 批量取消分配確認彈窗（幽靈分配 + 勾選帳號，僅顯示匯總數量） */}
+      {unassignDialog && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100003 }} onClick={() => { if (!isUnassigning) setUnassignDialog(null); }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '440px', maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '18px 22px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>批量取消分配</h3>
+            </div>
+            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ fontSize: '14px', color: '#e5e7eb', lineHeight: 1.7 }}>
+                幽靈分配：<strong style={{ color: '#fbbf24' }}>{unassignDialog.ghosts.length}</strong> 個（確認後直接取消分配）
+              </div>
+              <div style={{ fontSize: '14px', color: '#e5e7eb', lineHeight: 1.7 }}>
+                已選擇的帳號：<strong style={{ color: '#93c5fd' }}>{unassignDialog.selected.length}</strong> 個（按現有邏輯取消分配）
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={() => setUnassignDialog(null)} disabled={isUnassigning} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isUnassigning ? 'default' : 'pointer' }}>取消</button>
+              <button type="button" onClick={executeBatchUnassign} disabled={isUnassigning} style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', background: 'linear-gradient(90deg, #2563eb, #06b6d4)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: isUnassigning ? 'default' : 'pointer', opacity: isUnassigning ? 0.7 : 1 }}>{isUnassigning ? '處理中...' : '確認執行'}</button>
+            </div>
+          </div>
         </div>,
         document.body
       )}
