@@ -116,7 +116,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }, 3000);
 
     try {
-      const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
+      const result = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 180000 });
       clearInterval(timer);
       setAddSteps(result.data?.steps || []);
       setSimulatedStep(-1);
@@ -561,9 +561,15 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       }
 
       try {
-        const res = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 120000 });
-        results.push({ ext, status: 'success', label: '建立成功', steps: res.data?.steps || [] });
-        successCount++;
+        const res = await apiClient.post('/pbx/webrtc-accounts', { extension: ext }, { timeout: 180000 });
+        if (res.data?.savedToDatabase === false) {
+          // 兜底校驗：遠端成功但本地未入庫（正常已由服務端回滾並報失敗）
+          results.push({ ext, status: 'failed', label: '遠端已建、本地未入庫，請人工檢查' });
+          failCount++;
+        } else {
+          results.push({ ext, status: 'success', label: '建立成功', steps: res.data?.steps || [] });
+          successCount++;
+        }
       } catch (err) {
         const data = err.response?.data || err.data || {};
         const code = data.error?.code;

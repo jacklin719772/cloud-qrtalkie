@@ -17766,7 +17766,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     markStepRunning(steps, "finalize");
     markStepSuccess(steps, "finalize", { success: true });
 
-    // 同步到 SaaS 数据库
+    // 同步到 SaaS 数据库（失敗時回滾 FreePBX，不留半成品）
     try {
       const dbConn = await pool.getConnection();
       try {
@@ -17783,6 +17783,28 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     } catch (dbErr) {
       console.error("Failed to save WebRTC account to database:", dbErr?.message);
       responseData.savedToDatabase = false;
+      markStepFailed(steps, "finalize", { dbSaveFailed: true });
+      if (responseData.createdInFreepbx) {
+        responseData.rollbackExecuted = true;
+        try {
+          await rollbackCreatedAccount();
+          responseData.rollbackSuccess = true;
+        } catch (rollbackError) {
+          responseData.rollbackSuccess = false;
+          responseData.rollbackMessage = rollbackError?.message || "回滾失敗";
+          console.error("Failed to rollback FreePBX account after DB save failure:", rollbackError?.message);
+        }
+      }
+      if (responseData.rollbackSuccess === false) {
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "LOCAL_DB_SAVE_FAILED_ORPHAN_REMOTE",
+          message: "本地儲存失敗且遠端回滾失敗，FreePBX 分機可能殘留，請人工檢查。",
+        }, 500);
+      }
+      return finalizeReport(false, "WebRTC 帳號建立失敗", {
+        code: "LOCAL_DB_SAVE_FAILED",
+        message: "本地儲存失敗，已回滾遠端建立的帳號，請重試。",
+      }, 500);
     }
 
     return finalizeReport(true, "WebRTC 帳號已建立完成", null, 200);

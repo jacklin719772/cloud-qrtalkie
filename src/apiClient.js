@@ -15,7 +15,7 @@ const DEFAULT_TIMEOUT_RULES = [
   {
     method: 'post',
     path: '/pbx/webrtc-accounts',
-    timeoutMs: 120000,
+    timeoutMs: 180000,
   },
   {
     method: 'delete',
