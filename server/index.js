@@ -108,6 +108,7 @@ import {
   sendResetPasswordEmail as flexisipSendResetPasswordEmail,
 } from "./flexisipAccountManagerClient.js";
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
+import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
 import {
   createContactList,
   assignContactListToAccount,
@@ -9326,11 +9327,8 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
     }
 
     const remoteAccountName = String(rows[0].username || "").trim();
-    const remoteSipDomain = String(rows[0].sip_domain || "").trim() || sipDomain;
-    const remoteSipUri = remoteAccountName && remoteSipDomain ? `${remoteAccountName}@${remoteSipDomain}` : "";
     const remoteCleanup = {
       freepbxDeleted: false,
-      flexisipDeleted: false,
     };
 
     if (remoteAccountName && /^\d+$/.test(remoteAccountName)) {
@@ -9361,39 +9359,24 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
         });
       }
 
-      try {
-        if (remoteSipUri) {
-          const flexisipResult = await deleteFlexisipAccountBySipUri(remoteSipUri);
-          remoteCleanup.flexisipDeleted = Boolean(flexisipResult?.deleted || flexisipResult?.matched);
-          if (flexisipResult?.matched && !remoteCleanup.flexisipDeleted) {
-            throw new Error("Flexisip account delete failed");
-          }
-        }
-        const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
-          success: false,
-          message: error?.message || "reload failed",
-        }));
-        if (!applyConfig?.success) {
-          throw new Error(applyConfig?.message || "FreePBX apply config failed");
-        }
-      } catch (error) {
-        console.error("Failed to delete Flexisip account for Web account:", {
+      const applyConfig = await freepbxApplyConfigAndWait().catch((error) => ({
+        success: false,
+        message: error?.message || "reload failed",
+      }));
+      if (!applyConfig?.success) {
+        console.error("Failed to reload FreePBX config for Web account:", {
           accountId,
           username: remoteAccountName,
-          sipUri: remoteSipUri,
-          message: error?.message || String(error),
-          status: error?.status || null,
+          message: applyConfig?.message || "",
         });
         return response.status(502).json({
-          message: "Flexisip 帳號刪除失敗。",
-          code: "FLEXISIP_DELETE_FAILED",
+          message: "FreePBX 配置重載失敗。",
+          code: "FWCONSOLE_RELOAD_FAILED",
         });
       }
     }
 
-    await connection.beginTransaction();
-    await connection.query(`DELETE FROM web_users WHERE id = ?`, [accountId]);
-    await connection.commit();
+    await hardDeleteLocalWebUsers([accountId]);
     return response.json({
       message: "Web 帳號已成功刪除。",
       data: remoteCleanup,
@@ -16383,37 +16366,6 @@ function parseBackupScriptOutput(output) {
   };
 }
 
-async function deleteFlexisipAccountBySipUri(sipUri) {
-  const normalizedSipUri = String(sipUri || "").trim();
-  if (!normalizedSipUri) {
-    return { matched: false, deleted: false, flexisipAccountId: null };
-  }
-
-  let searchResult;
-  try {
-    searchResult = await searchAccountBySip(normalizedSipUri);
-  } catch (error) {
-    if (error?.status === 404) {
-      return { matched: false, deleted: false, flexisipAccountId: null };
-    }
-    throw error;
-  }
-  const flexisipAccountId = searchResult?.id || searchResult?.account?.id || searchResult?.userId || null;
-  if (!flexisipAccountId) {
-    return { matched: false, deleted: false, flexisipAccountId: null };
-  }
-
-  try {
-    await flexisipDeleteAccount(flexisipAccountId);
-    return { matched: true, deleted: true, flexisipAccountId };
-  } catch (error) {
-    if (error?.status === 404) {
-      return { matched: true, deleted: true, flexisipAccountId, remoteMissing: true };
-    }
-    throw error;
-  }
-}
-
 async function handleWebrtcAccountDelete(request, response) {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({
@@ -16574,44 +16526,29 @@ async function handleWebrtcAccountDelete(request, response) {
           message: "WebRTC 帳號刪除過程中有專案失敗",
         }, 502);
       }
-      // 同步刪除 SaaS 數據庫記錄
+      // 本地清理（含 RESTRICT 外鍵依賴；失敗不靜默，重試可自愈）
       const deletedExts = responseData.items.filter(i => i.status === 'deleted' || i.status === 'not_found').map(i => i.extension);
       if (deletedExts.length > 0) {
         try {
-          const flexisipDeleteResults = [];
-          for (const username of deletedExts) {
-            const sipUri = `${username}@${sipDomain}`;
-            try {
-              const result = await deleteFlexisipAccountBySipUri(sipUri);
-              if (result.matched) {
-                flexisipDeleteResults.push({ username, sipUri, ...result });
-              }
-            } catch (flexisipErr) {
-              console.error("Failed to cleanup Flexisip account after WebRTC delete:", {
-                username,
-                sipUri,
-                message: flexisipErr?.message || String(flexisipErr),
-                status: flexisipErr?.status || null,
-              });
-              return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
-                code: "FLEXISIP_DELETE_FAILED",
-                message: "Flexisip 帳號刪除失敗",
-              }, 502);
-            }
-          }
           const dbConn = await pool.getConnection();
+          let webUserIds = [];
           try {
-            await dbConn.query(
-              `DELETE FROM web_users WHERE username IN (${deletedExts.map(() => '?').join(',')}) AND sip_domain = ?`,
+            const idRows = await dbConn.query(
+              `SELECT id FROM web_users WHERE username IN (${deletedExts.map(() => '?').join(',')}) AND sip_domain = ?`,
               [...deletedExts, webrtcDomain],
             );
-            responseData.dbCleanedUp = deletedExts.length;
-            responseData.flexisipDeleted = flexisipDeleteResults.length;
+            webUserIds = idRows.map((row) => Number(row.id));
           } finally {
             dbConn.release();
           }
+          responseData.dbCleanedUp = await hardDeleteLocalWebUsers(webUserIds);
         } catch (dbErr) {
           console.error("Failed to cleanup web_users after delete:", dbErr?.message);
+          markDeleteStepFailed(steps, "finalize", { dbCleanupFailed: true });
+          return finalizeDeleteResponse(false, "Web 帳號刪除失敗", {
+            code: "LOCAL_CLEANUP_FAILED",
+            message: "本地記錄清理失敗，請重試。",
+          }, 502);
         }
       }
       return finalizeDeleteResponse(true, "WebRTC 帳號刪除完成");
@@ -16700,25 +16637,6 @@ async function handleWebrtcAccountDelete(request, response) {
       deleted: responseData.deleted.slice(),
       failed: responseData.failed.map((item) => item.extension),
     });
-
-    const flexisipDeleteResults = [];
-    for (const extension of uniqueRequested) {
-      try {
-        const result = await deleteFlexisipAccountBySipUri(`${extension}@${sipDomain}`);
-        if (result.matched) {
-          flexisipDeleteResults.push({ extension, ...result });
-        }
-      } catch (flexisipErr) {
-        markDeleteStepFailed(steps, "delete_freepbx_extensions", {
-          flexisipError: flexisipErr?.code || flexisipErr?.message || "error",
-        });
-        return finalizeDeleteResponse(false, "WebRTC 帳號刪除失敗", {
-          code: "FLEXISIP_DELETE_FAILED",
-          message: "Flexisip 帳號刪除失敗",
-        }, 502);
-      }
-    }
-    responseData.flexisipDeleted = flexisipDeleteResults.length;
 
     markDeleteStepRunning(steps, "remove_endpoint_custom_overlays");
     const currentOverlayContent = await readFile(ASTERISK_PATHS.endpointCustomPostConf, "utf8").catch(() => "");
@@ -16881,6 +16799,35 @@ async function handleWebrtcAccountDelete(request, response) {
       code: "WEBRTC_ACCOUNT_DELETE_FAILED",
       message: item.message || "WebRTC 帳號刪除失敗",
     }));
+
+    // 本地清理（含 RESTRICT 外鍵依賴；失敗不靜默，重試可自愈）
+    const succeededExts = responseData.items
+      .filter((item) => item.status === "deleted" || item.status === "not_found")
+      .map((item) => item.extension);
+    if (succeededExts.length > 0) {
+      try {
+        const dbConn = await pool.getConnection();
+        let webUserIds = [];
+        try {
+          const idRows = await dbConn.query(
+            `SELECT id FROM web_users WHERE username IN (${succeededExts.map(() => '?').join(',')}) AND sip_domain = ?`,
+            [...succeededExts, webrtcDomain],
+          );
+          webUserIds = idRows.map((row) => Number(row.id));
+        } finally {
+          dbConn.release();
+        }
+        responseData.dbCleanedUp = await hardDeleteLocalWebUsers(webUserIds);
+      } catch (dbErr) {
+        console.error("Failed to cleanup web_users after delete:", dbErr?.message);
+        markDeleteStepFailed(steps, "finalize", { dbCleanupFailed: true });
+        return finalizeDeleteResponse(false, "Web 帳號刪除失敗", {
+          code: "LOCAL_CLEANUP_FAILED",
+          message: "本地記錄清理失敗，請重試。",
+        }, 502);
+      }
+    }
+
     markDeleteStepRunning(steps, "finalize");
     markDeleteStepSuccess(steps, "finalize", { success: true });
     return finalizeDeleteResponse(true, "WebRTC 帳號刪除完成");

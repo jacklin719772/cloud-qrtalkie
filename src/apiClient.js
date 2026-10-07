@@ -34,6 +34,12 @@ const DEFAULT_TIMEOUT_RULES = [
     path: '/flexisip/accounts/tombstones/batch-release',
     timeoutMs: 300000,
   },
+  {
+    // 單條刪除 web 帳號需等待 FreePBX 刪除 + 配置重載，10 秒默認超時不夠
+    method: 'delete',
+    path: '/admin/web-accounts/:id',
+    timeoutMs: 120000,
+  },
 ];
 
 function parseTimeoutRules() {
