@@ -395,6 +395,14 @@ export default forwardRef(function TenantManagement(props, ref) {
           #console #tenant-management-add .tenant-settings-form textarea:focus { border-color: #3b82f6; }
           #console #tenant-management-add .tenant-settings-form input::placeholder,
           #console #tenant-management-add .tenant-settings-form textarea::placeholder { color: #6b7280; }
+          /* Chrome 自動填充（密碼管理器）會給信箱/密碼框塗白，用 inset 陰影覆盖回暗色 */
+          #console #tenant-management-add .tenant-settings-form input:-webkit-autofill,
+          #console #tenant-management-add .tenant-settings-form input:-webkit-autofill:hover,
+          #console #tenant-management-add .tenant-settings-form input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #1a2332 inset;
+            -webkit-text-fill-color: #e5e7eb;
+            caret-color: #e5e7eb;
+          }
           #console #tenant-management-add .tenant-field-grid label { color: #d1d5db; }
         `}</style>
         <form className="tenant-settings-form" onSubmit={handleAddSubmit} style={{ background: '#111827', borderColor: '#1f2937' }}>
