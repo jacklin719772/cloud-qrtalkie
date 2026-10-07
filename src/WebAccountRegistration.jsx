@@ -732,10 +732,6 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (action === 'delete') {
-      if (account.tenantName) {
-        window.alert('已經分配給租戶的帳號不允許刪除。');
-        return;
-      }
       if (!window.confirm(`確定刪除 Web 帳號 ${account.username} 嗎？`)) return;
       try {
         await apiClient.delete(`/admin/web-accounts/${account.id}`);

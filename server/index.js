@@ -9071,6 +9071,18 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   }
 });
 
+// web 帳號關聯狀態的共用判定（幽靈掃描與單條刪除守衛同源，口徑一致）
+function buildWebAssignmentState(row, today) {
+  return {
+    tenantMissing: !row.tenant_id_found,
+    noSip: !row.entitlement_id || !row.sip_user_id,
+    orderExpired: Boolean(row.order_expires_at) && row.order_expires_at < today,
+    sipMissing: Boolean(row.sip_user_id) && !row.sip_user_exists,
+    sipExpired: Boolean(row.sip_user_id) && (!row.sip_service_expires_at || row.sip_service_expires_at < today),
+    sipAssignedToTenant: Boolean(row.sip_tenant_id),
+  };
+}
+
 // GET /api/admin/web-accounts/ghost-assignments - 全量掃描「幽靈分配」：
 // 已分配租戶，但 (a) 租戶不存在 (b) 未關聯 SIP 帳號 (c) 訂單已過期 或 關聯 SIP 帳號已過期
 app.get("/api/admin/web-accounts/ghost-assignments", requireAdmin, async (request, response) => {
@@ -9087,6 +9099,8 @@ app.get("/api/admin/web-accounts/ghost-assignments", requireAdmin, async (reques
         t.id AS tenant_id_found,
         e.id AS entitlement_id,
         e.sip_user_id,
+        s.id AS sip_user_exists,
+        s.tenant_id AS sip_tenant_id,
         DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS order_expires_at,
         (SELECT DATE_FORMAT(MAX(se.service_expires_at), '%Y-%m-%d')
            FROM tenant_sip_account_entitlements se
@@ -9094,6 +9108,7 @@ app.get("/api/admin/web-accounts/ghost-assignments", requireAdmin, async (reques
       FROM web_users u
       LEFT JOIN tenants t ON t.id = u.tenant_id
       LEFT JOIN tenant_web_account_entitlements e ON e.web_user_id = u.id
+      LEFT JOIN sip_users s ON s.id = e.sip_user_id
       LEFT JOIN billing_orders o ON o.id = e.current_order_id
       WHERE u.tenant_id IS NOT NULL
     `);
@@ -9101,11 +9116,8 @@ app.get("/api/admin/web-accounts/ghost-assignments", requireAdmin, async (reques
     const today = new Date().toISOString().slice(0, 10);
     const accounts = [];
     for (const row of rows) {
-      const tenantMissing = !row.tenant_id_found;
-      const noSip = !row.entitlement_id || !row.sip_user_id;
-      const orderExpired = Boolean(row.order_expires_at) && row.order_expires_at < today;
-      const sipExpired = Boolean(row.sip_user_id) && (!row.sip_service_expires_at || row.sip_service_expires_at < today);
-      if (tenantMissing || noSip || orderExpired || sipExpired) {
+      const state = buildWebAssignmentState(row, today);
+      if (state.tenantMissing || state.noSip || state.orderExpired || state.sipExpired) {
         accounts.push({ id: Number(row.id), username: row.username || "" });
       }
     }
@@ -9315,15 +9327,44 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(
-      `SELECT id, tenant_id, username, sip_domain FROM web_users WHERE id = ? LIMIT 1`,
+      `SELECT
+         u.id, u.tenant_id, u.username, u.sip_domain,
+         t.id AS tenant_id_found,
+         e.id AS entitlement_id,
+         e.sip_user_id,
+         s.id AS sip_user_exists,
+         s.username AS sip_username,
+         s.tenant_id AS sip_tenant_id,
+         DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS order_expires_at,
+         (SELECT DATE_FORMAT(MAX(se.service_expires_at), '%Y-%m-%d')
+            FROM tenant_sip_account_entitlements se
+           WHERE se.sip_user_id = e.sip_user_id AND se.status = 'active') AS sip_service_expires_at
+       FROM web_users u
+       LEFT JOIN tenants t ON t.id = u.tenant_id
+       LEFT JOIN tenant_web_account_entitlements e ON e.web_user_id = u.id
+       LEFT JOIN sip_users s ON s.id = e.sip_user_id
+       LEFT JOIN billing_orders o ON o.id = e.current_order_id
+       WHERE u.id = ? LIMIT 1`,
       [accountId],
     );
     const account = rows[0];
     if (!account) {
       return response.status(404).json({ message: "帳號不存在。" });
     }
-    if (account.tenant_id != null) {
-      return response.status(409).json({ message: "已經分配給租戶的帳號不允許刪除。" });
+
+    // 刪除守衛：僅當關聯 SIP 帳號「存在 + 已分配租戶 + 未過期」時禁止刪除；
+    // 其餘（未關聯 / SIP 不存在 / SIP 未分配租戶 / 訂單或 SIP 已過期）均允許
+    const today = new Date().toISOString().slice(0, 10);
+    const assignmentState = buildWebAssignmentState(account, today);
+    const sipFullyActive = !assignmentState.noSip
+      && !assignmentState.sipMissing
+      && assignmentState.sipAssignedToTenant
+      && !assignmentState.orderExpired
+      && !assignmentState.sipExpired;
+    if (sipFullyActive) {
+      return response.status(409).json({
+        message: `該 Web 帳號關聯的 SIP 帳號「${account.sip_username || ""}」已分配給租戶且未過期，不允許刪除。`,
+      });
     }
 
     const remoteAccountName = String(rows[0].username || "").trim();
