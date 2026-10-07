@@ -311,20 +311,43 @@ export default forwardRef(function TenantManagement(props, ref) {
       return;
     }
 
+    const label = tenant.companyName || tenant.tenantNumber;
+    const forcePrompt =
+      `【警告：此操作不可恢復！】\n\n租戶「${label}」已有付款紀錄。\n\n是否強制刪除？強制刪除將：\n` +
+      `· 刪除該租戶及其全部關聯資料（含付款紀錄）\n` +
+      `· 回收該租戶已分配的所有 SIP 帳號（解除綁定，帳號保留、可再分配）`;
+
+    const performDelete = async (force) => {
+      await apiClient.delete(`/admin/tenants/${tenant.id}${force ? '?force=true' : ''}`);
+      setTenants((current) => current.filter((t) => t.id !== tenant.id));
+      setOpenDropdownId(null);
+    };
+
+    let force = false;
     if (Number(tenant.totalPaid) > 0) {
-      alert('該租戶已有支付紀錄，為保障財務資料完整性，無法刪除。');
+      if (!window.confirm(forcePrompt)) return;
+      force = true;
+    } else if (!window.confirm(`【警告：此操作不可恢復！】\n\n確定要徹底刪除租戶「${label}」及其所有的關聯資料嗎？`)) {
       return;
     }
 
-    if (window.confirm(`【警告：此操作不可恢復！】\n\n確定要徹底刪除租戶「${tenant.companyName || tenant.tenantNumber}」及其所有的關聯資料嗎？`)) {
-      try {
-        await apiClient.delete(`/admin/tenants/${tenant.id}`);
-        setTenants((current) => current.filter((t) => t.id !== tenant.id));
-        setOpenDropdownId(null);
-      } catch (err) {
-        console.error('Failed to delete tenant:', err);
-        alert(err.message || '刪除租戶失敗');
+    try {
+      await performDelete(force);
+    } catch (err) {
+      // 列表 totalPaid 未覆盖的边界情形：服務端返回付款記錄拦截提示码，走同一强制确认
+      if (err.code === 'TENANT_HAS_PAYMENTS') {
+        if (window.confirm(forcePrompt)) {
+          try {
+            await performDelete(true);
+          } catch (forceErr) {
+            console.error('Failed to force delete tenant:', forceErr);
+            alert(forceErr.message || '刪除租戶失敗');
+          }
+        }
+        return;
       }
+      console.error('Failed to delete tenant:', err);
+      alert(err.message || '刪除租戶失敗');
     }
   };
 

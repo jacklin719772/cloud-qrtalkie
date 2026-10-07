@@ -4174,11 +4174,13 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
 // DELETE /api/admin/tenants/:id - 寰瑰簳鍒櫎绉熸埗鍙婂叾鎵€鏈夐棞鑱硣鏂?
 app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ュ煼琛屾錼嶄綔銆?" });
+    return response.status(403).json({ message: "只有平臺管理員可以執行此操作。" });
   }
 
   const tenantId = Number(request.params.id);
-  if (!tenantId) return response.status(400).json({ message: "鐒℃晥鐨勭鎴?ID銆?" });
+  if (!tenantId) return response.status(400).json({ message: "無效的租戶 ID。" });
+
+  const force = request.query?.force === 'true' || request.body?.force === true;
 
   let connection;
   try {
@@ -4198,11 +4200,16 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
       return response.status(409).json({ message: "只有處於停用狀態的租戶才可以被刪除。" });
     }
 
-    // Check payment records
-    const paymentRows = await connection.query(`SELECT id FROM billing_payments WHERE tenant_id = ? LIMIT 1`, [tenantId]);
-    if (paymentRows.length > 0) {
-      await connection.rollback();
-      return response.status(409).json({ message: "該租戶已有支付記錄，為保障財務資料完整性，無法刪除。" });
+    // Check payment records（強制刪除時跳過；billing_payments 為 CASCADE，隨租戶一併清理）
+    if (!force) {
+      const paymentRows = await connection.query(`SELECT id FROM billing_payments WHERE tenant_id = ? LIMIT 1`, [tenantId]);
+      if (paymentRows.length > 0) {
+        await connection.rollback();
+        return response.status(409).json({
+          message: "該租戶已有支付記錄，為保障財務資料完整性，無法刪除。",
+          code: "TENANT_HAS_PAYMENTS",
+        });
+      }
     }
 
     // 3. 鍒櫎闂滆伅鐨?Token 鑸?Session (鑱〃鍒櫎)
@@ -4228,7 +4235,11 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE FROM tenants WHERE id = ?`, [tenantId]);
 
     await connection.commit();
-    return response.json({ message: "租戶及其所有關聯資料已徹底刪除。" });
+    return response.json({
+      message: force
+        ? "租戶及其所有關聯資料（含付款記錄）已徹底刪除，其已分配的 SIP 帳號已回收。"
+        : "租戶及其所有關聯資料已徹底刪除。",
+    });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to delete tenant:", error);
