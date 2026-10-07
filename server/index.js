@@ -9029,10 +9029,16 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
         u.created_at,
         u.tenant_id,
         c.display_name AS creator_name,
-        t.name AS tenant_name
+        t.name AS tenant_name,
+        s.username AS assigned_sip_username,
+        DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS service_expires_at,
+        o.order_no AS current_order_no
       FROM web_users u
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN tenant_web_account_entitlements e ON e.web_user_id = u.id
+      LEFT JOIN sip_users s ON s.id = e.sip_user_id
+      LEFT JOIN billing_orders o ON o.id = e.current_order_id
       ${whereClause}
       ORDER BY u.created_at DESC
     `, params);
@@ -9050,6 +9056,9 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
       creatorName: row.creator_name || "-",
       tenantName: row.tenant_name || "",
       tenantId: row.tenant_id ? Number(row.tenant_id) : null,
+      assignedSipUsername: row.assigned_sip_username || "",
+      serviceExpiresAt: row.service_expires_at || "",
+      currentOrderNo: row.current_order_no || "",
     }));
 
     return response.json({ accounts });

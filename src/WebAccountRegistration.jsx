@@ -273,6 +273,11 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const totalPages = Math.max(1, Math.ceil(sortedAccounts.length / effectivePageSize));
   const paginatedAccounts = sortedAccounts.slice((currentPage - 1) * effectivePageSize, currentPage * effectivePageSize);
 
+  // 頁碼夾取：刪除/篩選後總頁數變少時，避免停留在越界頁導致列表顯示為空（與 SIP 帳號管理頁一致）
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
   function handleSort(key) {
     setSortConfig((current) => ({
       key,
@@ -1235,6 +1240,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   ['role', '角色', '60px'],
                   ['status', '狀態', '80px'],
                   ['tenantName', '租戶', '100px'],
+                  ['assignedSipUsername', 'SIP 帳號', '100px'],
+                  ['serviceExpiresAt', '有效期', '100px'],
+                  ['currentOrderNo', '訂單編號', '140px'],
                   ['createdAt', '建立時間', '110px'],
                   ['creatorName', '建立者', '100px'],
                 ].map(([key, label, width]) => (
@@ -1255,6 +1263,9 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                     <td>{account.role || 'user'}</td>
                     <td>{getStatusBadge(account.status)}</td>
                     <td>{account.tenantName || '未分配'}</td>
+                    <td>{account.assignedSipUsername || '-'}</td>
+                    <td style={{ color: '#9ca3af' }}>{account.serviceExpiresAt || '-'}</td>
+                    <td style={{ color: '#9ca3af' }}>{account.currentOrderNo || '-'}</td>
                     <td>{account.createdAt || '-'}</td>
                     <td>{account.creatorName || '-'}</td>
                     <td style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', color: '#e5e7eb', zIndex: 1, boxShadow: '-1px 0 0 #1f2937', width: '120px', textAlign: 'center', padding: '0 12px' }}>
