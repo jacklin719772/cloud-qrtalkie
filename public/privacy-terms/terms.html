@@ -24,9 +24,19 @@
   .highlight { background: #fff7ed; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; }
   hr { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0; }
   strong { color: #0f172a; }
+  .lang-switch { display: flex; justify-content: flex-end; gap: 8px; margin: 8px 0 0; }
+  .lang-switch button { font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; color: #475569; cursor: pointer; }
+  .lang-switch button.active { background: #16213e; border-color: #16213e; color: #fff; }
+  .lang-block[hidden] { display: none; }
 </style>
 </head>
 <body>
+<div class="lang-switch">
+  <button type="button" data-lang="zh-Hant">繁體中文</button>
+  <button type="button" data-lang="zh-Hans">简体中文</button>
+  <button type="button" data-lang="en">English</button>
+</div>
+<div class="lang-block" data-lang="zh-Hant">
 <h1>QRTalkie 服務條款</h1>
 <p class="meta"><strong>生效日期：2026年10月6日</strong><br><strong>最近更新日期：2026年10月6日</strong></p>
 
@@ -160,6 +170,319 @@
 
 <h2>簡短版服務條款提醒</h2>
 <p>請遵守您所在國家或地區的法律法規；禁止利用 QRTalkie 發送違法資訊或從事違法活動。違反者我們將依法限制、暫停或終止其帳號，並配合執法機關處理。網路通信存在固有風險，請對重要資料自行備份。</p>
+</div>
+<div class="lang-block" data-lang="zh-Hans" hidden>
+<h1>QRTalkie 服务条款</h1>
+<p class="meta"><strong>生效日期：2026年10月6日</strong><br><strong>最近更新日期：2026年10月6日</strong></p>
 
+<p>本服务条款（以下简称"本条款"）是您与 QRTalkie Team（以下简称"我们"）之间就使用 QRTalkie App、QRTalkie 官网（www.qrtalkie.org）及相关服务（以下合称"本服务"）所订立的协议。</p>
+<p>请您在注册、登录或使用本服务前，仔细阅读并充分理解本条款全部内容，<strong>特别是免除或限制我们责任的条款、以及对您使用行为进行约束的条款</strong>。您注册、登录或以任何方式使用本服务，即表示您已阅读、理解并同意接受本条款的全部内容。如果您不同意本条款，请立即停止使用本服务。</p>
+
+<hr>
+
+<h2>一、服务说明</h2>
+<p>QRTalkie 是一款面向企业与个人用户的即时通信服务，主要功能包括：</p>
+<ol>
+  <li>即时消息（文本、图片、文件、语音频息等）；</li>
+  <li>语音通话、视频通话与群组对讲；</li>
+  <li>企业通讯录、联系人管理；</li>
+  <li>电子名片、二维码等相关功能；</li>
+  <li>我们不时推出的其他功能。</li>
+</ol>
+<p>我们有权根据业务发展需要，对本服务的功能进行增加、修改、暂停或终止，并会以适当方式通知您。</p>
+
+<hr>
+
+<h2>二、账号与账号安全</h2>
+<ol>
+  <li>您应使用真实、合法的方式注册和使用 QRTalkie 账号，并保证注册信息的真实性、准确性与完整性。</li>
+  <li>账号的所有权归我们所有，您在符合本条款的前提下取得账号的使用权。</li>
+  <li>您应妥善保管账号及密码，不得将账号出借、转让或与他人共用。<strong>因您保管不善导致账号被他人使用而产生的损失与责任，由您自行承担。</strong></li>
+  <li>如发现账号被盗用、密码泄露或其他安全问题，您应立即通知我们（qrtalkie@gmail.com），我们将在合理范围内协助处理。</li>
+</ol>
+
+<hr>
+
+<h2>三、用户行为规范（重要）</h2>
+
+<div class="highlight">
+<p><strong>3.1 遵守法律法规。</strong>您承诺在使用本服务时，<strong>严格遵守您所在国家或地区的法律法规</strong>（包括但不限于电信、网络安全、个人信息保护、内容管理等相关法律），以及您所在地适用的其他规范。您不得利用本服务从事任何违反法律法规的活动。由于各国家和地区法律存在差异，<strong>您应自行了解并遵守适用于您的全部法律要求；因您违反当地法律法规所产生的一切后果与责任，由您自行承担。</strong></p>
+
+<p><strong>3.2 禁止利用 QRTalkie 发送违法信息、从事违法活动。</strong>您不得利用本服务发送、传播、存储或以其他方式处理下列信息，也不得利用本服务从事下列活动：</p>
+<ol>
+  <li>违反您所在国家或地区法律法规的任何信息与活动；</li>
+  <li>危害国家安全、泄露国家秘密、颠覆国家政权、破坏国家统一的；</li>
+  <li>煽动民族仇恨、破坏民族团结的；</li>
+  <li>宣扬恐怖主义、极端主义、暴力、凶杀的；</li>
+  <li>散布淫秽、色情、赌博、毒品、诈骗、传销等违法信息的；</li>
+  <li>侮辱、诽谤他人，或侵犯他人名誉权、隐私权、肖像权、知识产权等合法权益的；</li>
+  <li>发送垃圾消息、钓鱼链接、恶意程序、病毒，或以其他方式干扰、破坏本服务及网络安全的；</li>
+  <li>未经授权访问他人账号、数据或系统的；</li>
+  <li>跟踪、骚扰、恐吓他人的；</li>
+  <li>法律法规禁止的其他信息与活动。</li>
+</ol>
+
+<p><strong>3.3 违反后果。</strong>如您违反本条款或相关法律法规，我们有权视情况采取以下一项或多项措施：警告、限制功能、暂停或终止您的账号、删除违规内容，<strong>并依法保存相关记录、向主管机关报告或配合执法机关调查</strong>。因此产生的全部责任由您自行承担；给我们或第三方造成损失的，您应依法承担赔偿责任。</p>
+</div>
+
+<hr>
+
+<h2>四、用户内容</h2>
+<ol>
+  <li>您通过本服务发送、传输的消息、文件等内容（以下简称"用户内容"）由您自行负责。您应确保您拥有相关内容的合法权利，且内容不违反法律法规与本条款。</li>
+  <li>我们不会主动审查用户内容，但在法律法规要求、主管机关要求或为保护我们及第三方的合法权益时，我们有权依法处理相关内容。</li>
+  <li>您理解并同意：通信内容的传输受网络环境、终端设备等多种因素影响，<strong>请您自行对重要内容做好备份</strong>。</li>
+</ol>
+
+<hr>
+
+<h2>五、隐私保护</h2>
+<p>我们重视您的个人信息保护。我们如何收集、使用、存储和保护您的个人信息，请查阅<a href="privacy.html">《QRTalkie 隐私政策》</a>。本隐私政策是本条款的重要组成部分。</p>
+
+<hr>
+
+<h2>六、知识产权</h2>
+<p>本服务所包含的软件、商标、标识、接口设计、文档及相关技术与数据的知识产权，均归我们或相关权利人所有。未经书面许可，您不得拷贝、修改、散布、出租、反向工程或以其他方式使用上述内容。</p>
+
+<hr>
+
+<h2>七、免责声明（重要）</h2>
+
+<div class="highlight">
+<p><strong>7.1 服务按「现状」提供。</strong>在法律允许的最大范围内，本服务按「现状」及「现有」基础提供。我们不保证：服务一定能满足您的全部需求；服务不会中断、不会出现错误或延迟；通过本服务获得的信息完全准确可靠。</p>
+
+<p><strong>7.2 通信服务固有风险。</strong>互联网通信受网络质量、电信运营商、终端设备、系统版本、环境干扰等多种因素影响。<strong>您理解并同意：语音/视频通话质量可能受上述因素影响；消息可能存在延迟、丢失或未能送达的风险；本服务无法保证任何消息的必达与即时性。</strong>请勿将本服务作为唯一或紧急情况下的关键通信手段（如医疗急救、人身安全等场景）。</p>
+
+<p><strong>7.3 不可抗力与第三方原因。</strong>因下列原因导致服务中断、延迟或数据损失的，我们不承担责任：</p>
+<ol>
+  <li>自然灾害、战争、疫情、罢工、政府行为等不可抗力；</li>
+  <li>电信运营商、网络服务商、云服务商等第三方的服务中断或故障；</li>
+  <li>黑客攻击、病毒、技术漏洞等超出我们合理控制范围的事件；</li>
+  <li>您或第三方的设备故障、系统兼容性问题、不当操作。</li>
+</ol>
+
+<p><strong>7.4 用户自身原因。</strong>因您自身原因（包括但不限于：账号凭证泄露、设备遗失、操作不当、违反本条款或法律法规）造成的损失，由您自行承担。</p>
+
+<p><strong>7.5 责任限制。</strong>在法律允许的最大范围内，我们对因使用或无法使用本服务而产生的任何间接损失、附带损失、惩罚性损失、利润损失、数据损失或商誉损失，不承担赔偿责任。若法律规定我们需承担责任，我们在本条款项下的全部责任累计不超过您就本服务向我们实际支付的费用（如有）。</p>
+
+<p><strong>7.6</strong> 您应自行对重要数据做好备份。因您未备份而导致的数据损失，我们不承担责任。</p>
+</div>
+
+<hr>
+
+<h2>八、服务变更、中止与终止</h2>
+<ol>
+  <li>我们有权根据业务调整、法律法规要求或技术原因，变更、暂停或终止本服务的全部或部分功能。</li>
+  <li>如您严重违反本条款或法律法规，我们有权立即暂停或终止向您提供服务。</li>
+  <li>您可随时停止使用本服务，并可依隐私政策所述方式申请注销账号。</li>
+</ol>
+
+<hr>
+
+<h2>九、法律适用与争议解决</h2>
+<p>本条款的订立、效力、解释、履行与争议解决，均适用服务提供方所在地的法律。因本条款或本服务产生的争议，双方应先友好协商解决；协商不成的，任何一方可向服务提供方所在地有管辖权的法院提起诉讼。</p>
+
+<hr>
+
+<h2>十、未成年人</h2>
+<p>本服务主要面向成年人或企业用户。未成年人应在父母或法定监护人的同意和指导下使用本服务。</p>
+
+<hr>
+
+<h2>十一、条款更新</h2>
+<p>我们可能根据产品功能变化、法律法规要求或服务调整更新本条款。如本条款发生重大变更，我们会通过 App 内通知、官网公告、弹窗提示或其他合理方式通知您。更新后的条款自公布之日起生效；您继续使用本服务，即表示您接受更新后的条款。</p>
+
+<hr>
+
+<h2>十二、联系我们</h2>
+<p>如果您对本条款有任何疑问、意见或投诉，可以通过以下方式联系我们：</p>
+<p><strong>服务提供方：QRTalkie Team</strong><br>
+<strong>应用名称：QRTalkie</strong><br>
+<strong>官方网站：www.qrtalkie.org</strong><br>
+<strong>联系邮箱：qrtalkie@gmail.com</strong></p>
+
+<hr>
+
+<h2>简短版服务条款提醒</h2>
+<p>请遵守您所在国家或地区的法律法规；禁止利用 QRTalkie 发送违法信息或从事违法活动。违反者我们将依法限制、暂停或终止其账号，并配合执法机关处理。网络通信存在固有风险，请对重要数据自行备份。</p>
+</div>
+<div class="lang-block" data-lang="en" hidden>
+<h1>QRTalkie Terms of Service</h1>
+<p class="meta"><strong>Effective date: October 6, 2026</strong><br><strong>Last updated: October 6, 2026</strong></p>
+
+<p>These Terms of Service (referred to below as "these Terms") constitute an agreement between you and QRTalkie Team (referred to below as "we", "us" or "our") regarding the use of the QRTalkie App, the QRTalkie official website (www.qrtalkie.org) and related services (collectively, "the Services").</p>
+<p>Please read and fully understand all of these Terms carefully before registering, logging in or using the Services, <strong>especially the provisions that exempt or limit our liability and the provisions that restrict your conduct</strong>. By registering, logging in or using the Services in any way, you indicate that you have read, understood and agreed to accept all of these Terms. If you do not agree to these Terms, please stop using the Services immediately.</p>
+
+<hr>
+
+<h2>1. Service Description</h2>
+<p>QRTalkie is an instant communication service for businesses and individual users. Its main features include:</p>
+<ol>
+  <li>Instant messaging (text, pictures, files, voice messages, etc.);</li>
+  <li>Voice calls, video calls and group push-to-talk;</li>
+  <li>Enterprise directories and contact management;</li>
+  <li>Electronic business cards, QR codes and related features;</li>
+  <li>Other features we release from time to time.</li>
+</ol>
+<p>We have the right to add, modify, suspend or terminate the functions of the Services as required by business development, and will notify you in an appropriate manner.</p>
+
+<hr>
+
+<h2>2. Accounts and Account Security</h2>
+<ol>
+  <li>You shall register and use a QRTalkie account in a truthful and lawful manner, and ensure that your registration information is true, accurate and complete.</li>
+  <li>Ownership of the account belongs to us; you obtain the right to use the account on the premise that you comply with these Terms.</li>
+  <li>You shall keep your account and password properly and shall not lend, transfer or share the account with others. <strong>Losses and liabilities arising from another person's use of your account due to your failure to keep it secure are borne by you.</strong></li>
+  <li>If you discover that your account has been stolen, your password has leaked or other security problems, you shall notify us immediately (qrtalkie@gmail.com), and we will assist within a reasonable scope.</li>
+</ol>
+
+<hr>
+
+<h2>3. User Conduct (Important)</h2>
+
+<div class="highlight">
+<p><strong>3.1 Comply with laws and regulations.</strong> You undertake that when using the Services you will <strong>strictly comply with the laws and regulations of your country or region</strong> (including but not limited to laws on telecommunications, cybersecurity, personal information protection and content management), as well as other norms applicable to your location. You shall not use the Services to engage in any activity that violates laws or regulations. Because laws differ between countries and regions, <strong>you should inform yourself of and comply with all legal requirements applicable to you; all consequences and liabilities arising from your violation of local laws and regulations are borne by you.</strong></p>
+
+<p><strong>3.2 Prohibited: using QRTalkie to send illegal information or engage in illegal activities.</strong> You shall not use the Services to send, spread, store or otherwise process the following information, nor use the Services to engage in the following activities:</p>
+<ol>
+  <li>Any information or activity that violates the laws and regulations of your country or region;</li>
+  <li>Endangering national security, divulging state secrets, subverting state power, or undermining national unity;</li>
+  <li>Inciting ethnic hatred or undermining ethnic solidarity;</li>
+  <li>Advocating terrorism, extremism, violence or murder;</li>
+  <li>Spreading obscene, pornographic, gambling, drug, fraud, pyramid scheme or other illegal information;</li>
+  <li>Insulting or defaming others, or infringing others' lawful rights such as reputation, privacy, portrait rights or intellectual property;</li>
+  <li>Sending spam, phishing links, malicious programs or viruses, or otherwise interfering with or damaging the Services or network security;</li>
+  <li>Accessing another person's account, data or system without authorization;</li>
+  <li>Stalking, harassing or intimidating others;</li>
+  <li>Other information and activities prohibited by laws and regulations.</li>
+</ol>
+
+<p><strong>3.3 Consequences of violation.</strong> If you violate these Terms or the applicable laws and regulations, we have the right to take one or more of the following measures as appropriate: warning, restricting features, suspending or terminating your account, deleting violating content, <strong>and preserving relevant records, reporting to competent authorities or cooperating with law enforcement investigations in accordance with law</strong>. All resulting liability is borne by you; if you cause losses to us or a third party, you shall bear compensation liability in accordance with law.</p>
+</div>
+
+<hr>
+
+<h2>4. User Content</h2>
+<ol>
+  <li>Messages, files and other content that you send or transmit through the Services (referred to below as "User Content") are your responsibility. You shall ensure that you hold lawful rights to the relevant content and that the content does not violate laws, regulations or these Terms.</li>
+  <li>We do not proactively review User Content, but when required by laws and regulations or competent authorities, or when necessary to protect the lawful rights and interests of us and third parties, we have the right to handle the relevant content in accordance with law.</li>
+  <li>You understand and agree that the transmission of communication content is affected by many factors, such as the network environment and terminal devices. <strong>Please back up important content yourself.</strong></li>
+</ol>
+
+<hr>
+
+<h2>5. Privacy Protection</h2>
+<p>We value the protection of your personal information. For how we collect, use, store and protect your personal information, please see the <a href="privacy.html">QRTalkie Privacy Policy</a>. This Privacy Policy is an important part of these Terms.</p>
+
+<hr>
+
+<h2>6. Intellectual Property</h2>
+<p>The intellectual property rights in the software, trademarks, logos, interface designs, documents and related technology and data contained in the Services belong to us or the relevant rights holders. Without written permission, you shall not copy, modify, distribute, rent, reverse engineer or otherwise use the above content.</p>
+
+<hr>
+
+<h2>7. Disclaimer (Important)</h2>
+
+<div class="highlight">
+<p><strong>7.1 The Services are provided "as is".</strong> To the maximum extent permitted by law, the Services are provided on an "as is" and "as available" basis. We do not guarantee: that the Services will fully meet all your needs; that the Services will not be interrupted, will not have errors and will not be delayed; or that information obtained through the Services will be completely accurate and reliable.</p>
+
+<p><strong>7.2 Inherent risks of communication services.</strong> Internet communications are affected by many factors, including network quality, telecom operators, terminal devices, system versions and environmental interference. <strong>You understand and agree: the quality of voice/video calls may be affected by the above factors; messages may be delayed, lost or fail to be delivered; and the Services cannot guarantee the delivery or timeliness of any message.</strong> Please do not rely on the Services as your only or critical communication means in emergencies (such as medical emergencies or personal safety situations).</p>
+
+<p><strong>7.3 Force majeure and third-party causes.</strong> We are not liable when service interruption, delay or data loss is caused by:</p>
+<ol>
+  <li>Force majeure such as natural disasters, war, epidemics, strikes or government actions;</li>
+  <li>Service interruption or failure of third parties such as telecom operators, network service providers or cloud service providers;</li>
+  <li>Events beyond our reasonable control, such as hacker attacks, viruses or technical vulnerabilities;</li>
+  <li>Device failures, system compatibility problems or improper operation by you or a third party.</li>
+</ol>
+
+<p><strong>7.4 Your own causes.</strong> Losses caused by your own reasons (including but not limited to: disclosure of account credentials, loss of device, improper operation, violation of these Terms or laws and regulations) are borne by you.</p>
+
+<p><strong>7.5 Limitation of liability.</strong> To the maximum extent permitted by law, we are not liable for any indirect losses, incidental losses, punitive losses, loss of profits, loss of data or loss of goodwill arising from the use of or inability to use the Services. If we are required by law to bear liability, our total aggregate liability under these Terms shall not exceed the amount you have actually paid us for the Services (if any).</p>
+
+<p><strong>7.6</strong> You should back up important data yourself. We are not liable for data loss caused by your failure to back up.</p>
+</div>
+
+<hr>
+
+<h2>8. Service Changes, Suspension and Termination</h2>
+<ol>
+  <li>We have the right to change, suspend or terminate all or part of the functions of the Services based on business adjustments, legal or regulatory requirements or technical reasons.</li>
+  <li>If you seriously violate these Terms or laws and regulations, we have the right to immediately suspend or terminate the provision of the Services to you.</li>
+  <li>You may stop using the Services at any time and may apply to delete your account in the manner described in the Privacy Policy.</li>
+</ol>
+
+<hr>
+
+<h2>9. Governing Law and Dispute Resolution</h2>
+<p>The conclusion, validity, interpretation, performance and dispute resolution of these Terms are governed by the laws of the place where the service provider is located. Disputes arising from these Terms or the Services shall first be resolved through friendly negotiation between the parties; if negotiation fails, either party may file a lawsuit with the court of competent jurisdiction in the place where the service provider is located.</p>
+
+<hr>
+
+<h2>10. Minors</h2>
+<p>The Services are mainly intended for adults or business users. Minors should use the Services with the consent and guidance of their parents or legal guardian.</p>
+
+<hr>
+
+<h2>11. Updates to These Terms</h2>
+<p>We may update these Terms based on product feature changes, legal or regulatory requirements or service adjustments. If these Terms change significantly, we will notify you through in-app notices, website announcements, pop-up prompts or other reasonable means. The updated Terms take effect on the date they are published; your continued use of the Services means you accept the updated Terms.</p>
+
+<hr>
+
+<h2>12. Contact Us</h2>
+<p>If you have any questions, comments or complaints about these Terms, you can contact us in the following ways:</p>
+<p><strong>Service provider: QRTalkie Team</strong><br>
+<strong>App name: QRTalkie</strong><br>
+<strong>Official website: www.qrtalkie.org</strong><br>
+<strong>Contact email: qrtalkie@gmail.com</strong></p>
+
+<hr>
+
+<h2>Short Version of the Terms</h2>
+<p>Please comply with the laws and regulations of your country or region; you are prohibited from using QRTalkie to send illegal information or engage in illegal activities. We will restrict, suspend or terminate the accounts of violators in accordance with law and cooperate with law enforcement authorities. Internet communications carry inherent risks; please back up important data yourself.</p>
+</div>
+<script>
+(function () {
+  var KEY = 'qrtalkie-legal-lang';
+  var LANGS = ['zh-Hant', 'zh-Hans', 'en'];
+  var TITLES = { 'zh-Hant': '服務條款 - QRTalkie', 'zh-Hans': '服务条款 - QRTalkie', 'en': 'Terms of Service - QRTalkie' };
+  function detect() {
+    var hash = (location.hash || '').replace('#', '');
+    if (LANGS.indexOf(hash) > -1) return hash;
+    try { var s = localStorage.getItem(KEY); if (s && LANGS.indexOf(s) > -1) return s; } catch (e) {}
+    var nav = (navigator.language || navigator.userLanguage || '').toLowerCase();
+    if (nav.indexOf('zh') === 0) {
+      if (nav.indexOf('hant') > -1 || nav === 'zh-tw' || nav === 'zh-hk' || nav === 'zh-mo') return 'zh-Hant';
+      return 'zh-Hans';
+    }
+    return nav ? 'en' : 'zh-Hant';
+  }
+  function apply(lang) {
+    var blocks = document.querySelectorAll('.lang-block');
+    for (var i = 0; i < blocks.length; i++) {
+      blocks[i].hidden = blocks[i].getAttribute('data-lang') !== lang;
+    }
+    var btns = document.querySelectorAll('.lang-switch button');
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].className = btns[j].getAttribute('data-lang') === lang ? 'active' : '';
+    }
+    document.documentElement.lang = lang;
+    if (TITLES[lang]) document.title = TITLES[lang];
+  }
+  apply(detect());
+  var btns = document.querySelectorAll('.lang-switch button');
+  for (var k = 0; k < btns.length; k++) {
+    btns[k].addEventListener('click', function () {
+      var l = this.getAttribute('data-lang');
+      try { localStorage.setItem(KEY, l); } catch (e) {}
+      apply(l);
+    });
+  }
+  window.addEventListener('hashchange', function () {
+    var h = (location.hash || '').replace('#', '');
+    if (LANGS.indexOf(h) > -1) apply(h);
+  });
+})();
+</script>
 </body>
 </html>
