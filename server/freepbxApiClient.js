@@ -3,7 +3,8 @@ import { buildFreepbxPasswordUpdatePayload } from "./freepbxWebrtcExtensionPaylo
 const DEFAULT_BASE_URL = "http://127.0.0.1";
 const DEFAULT_TOKEN_PATH = "/admin/api/api/token";
 const DEFAULT_GQL_PATH = "/admin/api/api/gql";
-const DEFAULT_TIMEOUT_MS = 15000;
+// FreePBX 写操作耗时随账号总量增长（2026-10-08 实测 updateExtension ≈16.6s @780+ 账号），15s 会误伤，放宽到 90s
+const DEFAULT_TIMEOUT_MS = 90000;
 const DEFAULT_APPLY_CONFIG_WAIT_MS = 5000;
 const DEFAULT_APPLY_CONFIG_POLL_TIMEOUT_MS = 30000;
 const DEFAULT_APPLY_CONFIG_POLL_INTERVAL_MS = 2000;
