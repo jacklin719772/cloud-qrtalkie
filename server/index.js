@@ -17280,6 +17280,9 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
   const displayName = `${WEBRTC_RUNTIME.displayNamePrefix || "訪客"}${extension || ""}`;
   const reportPath = `/tmp/freepbx-webrtc-create-final-${extension || "unknown"}-report.md`;
   const steps = createWorkflowSteps();
+  steps.extension = extension || "";
+  steps.startedAtMs = Date.now();
+  console.log(JSON.stringify({ src: "webrtc-create", ts: new Date().toISOString(), ext: extension || "", event: "request_start" }));
   const responseData = {
     extension: extension || "",
     displayName,
@@ -17348,6 +17351,16 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       endpointComparison: responseData.endpointComparison || [],
     });
     await writeFile(reportPath, reportContent, "utf8").catch(() => {});
+    console.log(JSON.stringify({
+      src: "webrtc-create",
+      ts: new Date().toISOString(),
+      ext: extension || "",
+      event: "request_end",
+      success: Boolean(success),
+      code: error?.code || "",
+      message: message || "",
+      ms: Date.now() - (steps.startedAtMs || Date.now()),
+    }));
     return response.status(httpStatus).json({
       success,
       message,

@@ -176,6 +176,33 @@ export function getStep(steps, key) {
   return steps.find((step) => step.key === key) || null;
 }
 
+const WORKFLOW_LOG_SRC = "webrtc-create";
+
+function sanitizeWorkflowDetails(details) {
+  const out = {};
+  for (const [key, value] of Object.entries(details || {})) {
+    out[key] = /pass|secret|token/i.test(key) ? "[redacted]" : value;
+  }
+  return out;
+}
+
+export function logWorkflowEvent(steps, key, status, message, details = {}, stepMs = null) {
+  try {
+    console.log(JSON.stringify({
+      src: WORKFLOW_LOG_SRC,
+      ts: new Date().toISOString(),
+      ext: steps?.extension || "",
+      step: key,
+      status,
+      message: message || "",
+      stepMs,
+      detail: sanitizeWorkflowDetails(details),
+    }));
+  } catch {
+    // 日志不能影响建号流程本身
+  }
+}
+
 export function setStepStatus(steps, key, status, message, details = {}) {
   const step = getStep(steps, key);
   if (!step) return null;
@@ -185,6 +212,11 @@ export function setStepStatus(steps, key, status, message, details = {}) {
   step.details = { ...step.details, ...details };
   if (status !== "running" && !step.finishedAt) step.finishedAt = new Date().toISOString();
   if (status === "running") step.finishedAt = "";
+  let stepMs = null;
+  if (status !== "running" && step.startedAt && step.finishedAt) {
+    stepMs = new Date(step.finishedAt).getTime() - new Date(step.startedAt).getTime();
+  }
+  logWorkflowEvent(steps, key, status, step.message, details, stepMs);
   return step;
 }
 
