@@ -15299,6 +15299,128 @@ app.delete("/api/platform/admins/:id", requireAdmin, async (request, response) =
   }
 });
 // ==========================================
+// User Reports API（UGC 舉報：App 提交 + 平台處置）
+// ==========================================
+const USER_REPORT_REASONS = new Set(["harassment", "spam", "other"]);
+const USER_REPORT_STATUSES = new Set(["new", "reviewing", "handled", "rejected"]);
+
+// App 內「檢舉」提交（Bearer token：與 ai-login 會話同一認證，requireAdmin 內部已支持 sip_user）
+app.post("/api/reports", requireAdmin, async (request, response) => {
+  const targetAddress = String(request.body.targetAddress || "").trim().toLowerCase();
+  const reason = String(request.body.reason || "").trim().toLowerCase();
+  const detail = String(request.body.detail || "").trim().slice(0, 1000);
+  const blocked = request.body.blocked ? 1 : 0;
+  const appVersion = String(request.body.appVersion || "").trim().slice(0, 64);
+
+  if (!targetAddress || !USER_REPORT_REASONS.has(reason)) {
+    return response.status(400).json({ message: "參數不完整。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const reporterUserId =
+      request.admin.accountType === "sip_user" ? Number(request.admin.id) : null;
+    const result = await connection.query(
+      `INSERT INTO user_reports
+         (reporter_user_id, reporter_username, reporter_tenant_id, target_address, reason, detail, blocked, app_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        reporterUserId,
+        String(request.admin.email || request.admin.displayName || ""),
+        Number(request.admin.tenantId) || null,
+        targetAddress,
+        reason,
+        detail || null,
+        blocked,
+        appVersion || null,
+      ],
+    );
+    return response.json({ success: true, id: Number(result.insertId) });
+  } catch (error) {
+    console.error("Failed to create user report:", error);
+    return response.status(500).json({ message: "提交失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 平台：舉報列表（可按狀態過濾）
+app.get("/api/platform/reports", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平台管理員可以查看舉報。" });
+  }
+  const status = String(request.query.status || "").trim();
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const hasStatusFilter = USER_REPORT_STATUSES.has(status);
+    const rows = await connection.query(
+      `SELECT r.id, r.reporter_username, r.reporter_tenant_id, t.name AS tenant_name,
+              r.target_address, r.reason, r.detail, r.blocked, r.app_version,
+              r.status, r.handled_at, r.created_at
+       FROM user_reports r
+       LEFT JOIN tenants t ON t.id = r.reporter_tenant_id
+       ${hasStatusFilter ? "WHERE r.status = ?" : ""}
+       ORDER BY (r.status = 'new') DESC, r.created_at DESC
+       LIMIT 500`,
+      hasStatusFilter ? [status] : [],
+    );
+    return response.json({
+      reports: rows.map((r) => ({
+        id: Number(r.id),
+        reporterUsername: r.reporter_username || "",
+        reporterTenantId: r.reporter_tenant_id != null ? Number(r.reporter_tenant_id) : null,
+        tenantName: r.tenant_name || "",
+        targetAddress: r.target_address || "",
+        reason: r.reason || "other",
+        detail: r.detail || "",
+        blocked: !!Number(r.blocked),
+        appVersion: r.app_version || "",
+        status: r.status || "new",
+        handledAt: r.handled_at || null,
+        createdAt: r.created_at || null,
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to fetch user reports:", error);
+    return response.status(500).json({ message: "取得舉報列表失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 平台：處置舉報（更新狀態）
+app.put("/api/platform/reports/:id", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平台管理員可以處置舉報。" });
+  }
+  const id = Number(request.params.id);
+  const status = String(request.body.status || "").trim().toLowerCase();
+  if (!id || !USER_REPORT_STATUSES.has(status)) {
+    return response.status(400).json({ message: "參數不完整。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const result = await connection.query(
+      "UPDATE user_reports SET status = ?, handled_by = ?, handled_at = NOW() WHERE id = ?",
+      [status, Number(request.admin.id) || null, id],
+    );
+    if (!result.affectedRows) {
+      return response.status(404).json({ message: "舉報記錄不存在。" });
+    }
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to update user report:", error);
+    return response.status(500).json({ message: "更新失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// ==========================================
 // Platform Health API (platform admin only)
 // ==========================================
 

@@ -15,6 +15,7 @@ import PaymentMethods from './PaymentMethods';
 import DiscountData from './DiscountData';
 import AddonServices from './AddonServices';
 import TenantManagement from './TenantManagement';
+import ReportManagement from './ReportManagement';
 import TenantCouponManagement from './TenantCouponManagement';
 import PaymentProofDialog from './PaymentProofDialog';
 import CreateUserDialog from './CreateUserDialog';
@@ -838,6 +839,7 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} accountType={identity?.admin?.accountType} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
+          {currentView === 'reports-management' && <ReportManagement />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}
           {['plans', 'plans-add'].includes(currentView) && (
             <Plans ref={plansRef} view={currentView} onReturnToList={() => setCurrentView('plans')} />

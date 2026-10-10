@@ -21,6 +21,7 @@ import {
   Monitor,
   BarChart3,
   Download,
+  Flag,
 } from 'lucide-react';
 
 const navItems = [
@@ -183,6 +184,17 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             >
               <Monitor className="nav-icon" size={20} aria-hidden="true" />
               {!isCollapsed && <span>設備管理</span>}
+            </button>
+
+            <button
+              className={`nav-item ${currentView === 'reports-management' ? 'active' : ''}`}
+              type="button"
+              title={isCollapsed ? '舉報管理' : undefined}
+              aria-label="舉報管理"
+              onClick={() => onViewChange('reports-management')}
+            >
+              <Flag className="nav-icon" size={20} aria-hidden="true" />
+              {!isCollapsed && <span>舉報管理</span>}
             </button>
 
             <button
