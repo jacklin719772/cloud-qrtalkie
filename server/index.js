@@ -17530,14 +17530,100 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       }, 500);
     }
     if (existing) {
-      markStepFailed(steps, "check_existing_extension");
-      skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
-      return finalizeReport(false, "WebRTC 帳號建立失敗", {
-        code: "FREEPBX_EXTENSION_ALREADY_EXISTS",
-        message: "該 WebRTC 帳號已存在，請更換帳號",
-      }, 409);
+      // PBX 已存在该分机，按策略处理（2026-10-12 定）：
+      // 配置正确 → 跳过 PBX 侧全部步骤，补全 SaaS 库内账号（web_users）；
+      // 配置不正确 → 删除 PBX 账号后按正常流程重建。
+      const existingSchema = await freepbxGetExtensionInputSchema();
+      const existingPayloads = buildFreepbxWebrtcExtensionPayloads(extension, email, existingSchema);
+      let existingVerified = false;
+      let existingRuntime = null;
+      try {
+        existingRuntime = await verifyPjsipExtension(extension, existingPayloads.webrtcConfig);
+        existingVerified = Boolean(existingRuntime?.verified);
+      } catch (error) {
+        existingRuntime = { verified: false, runtimeError: error?.message || "verify error" };
+      }
+      responseData.existingAccount = {
+        found: true,
+        extensionId: existing.extensionId || extension,
+        verified: existingVerified,
+        failedChecks: existingRuntime?.failedChecks || [],
+      };
+
+      if (existingVerified) {
+        markStepSuccess(steps, "check_existing_extension", { existingAccount: true, verified: true });
+        skipRemainingSteps(steps, "backup_asterisk_configs", "已存在且配置正確，略過");
+        try {
+          const dbConn = await pool.getConnection();
+          try {
+            const [rows] = await dbConn.query(
+              "SELECT id FROM web_users WHERE username = ? AND sip_domain = ?",
+              [extension, webrtcDomain],
+            );
+            if (Array.isArray(rows) && rows.length > 0) {
+              responseData.localAccountExisting = true;
+            } else {
+              const passwordHash = await hashPassword(WEBRTC_RUNTIME.defaultPassword || "");
+              await dbConn.query(
+                `INSERT INTO web_users (tenant_id, username, sip_domain, display_name, email, password_hash, role, status, created_by_admin_user_id)
+                 VALUES (?, ?, ?, ?, ?, ?, 'user', 'active', ?)`,
+                [null, extension, webrtcDomain, existingPayloads.displayName, `${extension}@${webrtcDomain}`, passwordHash, request.admin.id],
+              );
+              responseData.localAccountBackfilled = true;
+            }
+            responseData.savedToDatabase = true;
+          } finally {
+            dbConn.release();
+          }
+        } catch (dbErr) {
+          console.error("Failed to backfill existing WebRTC account to database:", dbErr?.message);
+          responseData.savedToDatabase = false;
+          markStepFailed(steps, "finalize", { dbSaveFailed: true, existingAccount: true });
+          return finalizeReport(false, "WebRTC 帳號建立失敗", {
+            code: "LOCAL_DB_SAVE_FAILED",
+            message: "本地儲存失敗（PBX 帳號已存在且配置正確，未做改動），請重試。",
+          }, 500);
+        }
+        markStepRunning(steps, "finalize");
+        markStepSuccess(steps, "finalize", { success: true, existingAccount: true });
+        return finalizeReport(true, "WebRTC 帳號已存在且配置正確，已補全 SaaS 帳號", null, 200);
+      }
+
+      // 配置不正确：删除 PBX 账号后继续正常创建
+      try {
+        const deleteExisting = await freepbxDeleteExtension(existing.extensionId || extension);
+        responseData.existingAccountDeleted = Boolean(deleteExisting?.status);
+        if (!deleteExisting?.status) {
+          markStepFailed(steps, "check_existing_extension", {
+            existingAccount: true,
+            verified: false,
+            deleteMessage: deleteExisting?.message || "delete failed",
+          });
+          skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
+          return finalizeReport(false, "WebRTC 帳號建立失敗", {
+            code: "FREEPBX_EXISTING_ACCOUNT_DELETE_FAILED",
+            message: "既有 FreePBX 帳號配置不正確且刪除失敗，請人工檢查",
+          }, 502);
+        }
+      } catch (delErr) {
+        markStepFailed(steps, "check_existing_extension", {
+          existingAccount: true,
+          deleteError: delErr?.code || delErr?.message || "error",
+        });
+        skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "FREEPBX_EXISTING_ACCOUNT_DELETE_FAILED",
+          message: "既有 FreePBX 帳號配置不正確且刪除失敗，請人工檢查",
+        }, 502);
+      }
+      markStepSuccess(steps, "check_existing_extension", {
+        existingAccount: true,
+        verified: false,
+        deletedAndRecreate: true,
+      });
+    } else {
+      markStepSuccess(steps, "check_existing_extension");
     }
-    markStepSuccess(steps, "check_existing_extension");
 
     markStepRunning(steps, "backup_asterisk_configs");
     const backupOutput = execSync("node scripts/backup-asterisk-pjsip-configs.js --confirm yes", {

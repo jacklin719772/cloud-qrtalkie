@@ -528,11 +528,17 @@ export async function applyConfigAndWait({
 }
 
 export async function fetchExtension(extension) {
+  // 分页遍历全部扩展：此前只取 fetchAllExtensions(first:1000)，全库超过 1000 个分机后
+  // 高段分机检测不到（2026-10-12 实测全库 1687，951606 被漏检 → 建号被 FreePBX 拒绝重复）
   const query = `
-    query FetchAllExtensions($first: Int!) {
-      fetchAllExtensions(first: $first) {
+    query FetchAllExtensions($first: Int!, $after: String) {
+      fetchAllExtensions(first: $first, after: $after) {
         status
         message
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
         extension {
           extensionId
           tech
@@ -547,29 +553,37 @@ export async function fetchExtension(extension) {
 
   try {
     const target = String(extension);
-    const result = await graphql(query, { first: 1000 });
-    const rows = result?.data?.fetchAllExtensions?.extension || [];
-    const matched = Array.isArray(rows)
-      ? rows.find((row) => {
-          const candidates = [
-            row?.extensionId,
-            row?.extension,
-            row?.user_extension,
-            row?.user?.extension,
-            row?.coreDevice?.deviceId,
-          ];
-          return candidates.some((value) => String(value || "") === target);
-        })
-      : null;
+    let after = null;
+    for (let page = 0; page < 50; page += 1) {
+      const result = await graphql(query, { first: 1000, after });
+      const connection = result?.data?.fetchAllExtensions;
+      const rows = connection?.extension || [];
+      const matched = Array.isArray(rows)
+        ? rows.find((row) => {
+            const candidates = [
+              row?.extensionId,
+              row?.extension,
+              row?.user_extension,
+              row?.user?.extension,
+              row?.coreDevice?.deviceId,
+            ];
+            return candidates.some((value) => String(value || "") === target);
+          })
+        : null;
 
-    if (!matched) return null;
-    return {
-      extensionId: matched.extensionId || matched.user?.extension || target,
-      extension: matched.user?.extension || matched.extensionId || target,
-      name: matched.user?.name || "",
-      tech: matched.tech || "",
-      status: true,
-    };
+      if (matched) {
+        return {
+          extensionId: matched.extensionId || matched.user?.extension || target,
+          extension: matched.user?.extension || matched.extensionId || target,
+          name: matched.user?.name || "",
+          tech: matched.tech || "",
+          status: true,
+        };
+      }
+      if (!connection?.pageInfo?.hasNextPage || !connection?.pageInfo?.endCursor) break;
+      after = connection.pageInfo.endCursor;
+    }
+    return null;
   } catch (error) {
     throw error;
   }
