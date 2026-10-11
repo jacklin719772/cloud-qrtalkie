@@ -528,17 +528,16 @@ export async function applyConfigAndWait({
 }
 
 export async function fetchExtension(extension) {
-  // 分页遍历全部扩展：此前只取 fetchAllExtensions(first:1000)，全库超过 1000 个分机后
-  // 高段分机检测不到（2026-10-12 实测全库 1687，951606 被漏检 → 建号被 FreePBX 拒绝重复）
+  // 全量拉取：此前 fetchAllExtensions(first:1000) 在全库超过 1000 个分机后漏检高段分机
+  //（2026-10-12 实测全库 1691，951606 被漏检 → 建号被 FreePBX 拒绝重复）。
+  // 该 API 的 pageInfo 解析在服务端报 500、after 游标无效（实测），无法翻页，故一次取足；
+  // count 大于返回行数时打印告警（发生截断时需提高 first）。
   const query = `
-    query FetchAllExtensions($first: Int!, $after: String) {
-      fetchAllExtensions(first: $first, after: $after) {
+    query FetchAllExtensions($first: Int!) {
+      fetchAllExtensions(first: $first) {
         status
         message
-        pageInfo {
-          endCursor
-          hasNextPage
-        }
+        count
         extension {
           extensionId
           tech
@@ -553,37 +552,34 @@ export async function fetchExtension(extension) {
 
   try {
     const target = String(extension);
-    let after = null;
-    for (let page = 0; page < 50; page += 1) {
-      const result = await graphql(query, { first: 1000, after });
-      const connection = result?.data?.fetchAllExtensions;
-      const rows = connection?.extension || [];
-      const matched = Array.isArray(rows)
-        ? rows.find((row) => {
-            const candidates = [
-              row?.extensionId,
-              row?.extension,
-              row?.user_extension,
-              row?.user?.extension,
-              row?.coreDevice?.deviceId,
-            ];
-            return candidates.some((value) => String(value || "") === target);
-          })
-        : null;
-
-      if (matched) {
-        return {
-          extensionId: matched.extensionId || matched.user?.extension || target,
-          extension: matched.user?.extension || matched.extensionId || target,
-          name: matched.user?.name || "",
-          tech: matched.tech || "",
-          status: true,
-        };
-      }
-      if (!connection?.pageInfo?.hasNextPage || !connection?.pageInfo?.endCursor) break;
-      after = connection.pageInfo.endCursor;
+    const result = await graphql(query, { first: 10000 });
+    const connection = result?.data?.fetchAllExtensions;
+    const rows = connection?.extension || [];
+    const total = Number(connection?.count || 0);
+    if (total > 0 && Array.isArray(rows) && rows.length < total) {
+      console.warn(`FreePBX fetchAllExtensions truncated: returned ${rows.length} of ${total}.`);
     }
-    return null;
+    const matched = Array.isArray(rows)
+      ? rows.find((row) => {
+          const candidates = [
+            row?.extensionId,
+            row?.extension,
+            row?.user_extension,
+            row?.user?.extension,
+            row?.coreDevice?.deviceId,
+          ];
+          return candidates.some((value) => String(value || "") === target);
+        })
+      : null;
+
+    if (!matched) return null;
+    return {
+      extensionId: matched.extensionId || matched.user?.extension || target,
+      extension: matched.user?.extension || matched.extensionId || target,
+      name: matched.user?.name || "",
+      tech: matched.tech || "",
+      status: true,
+    };
   } catch (error) {
     throw error;
   }
