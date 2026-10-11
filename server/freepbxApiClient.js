@@ -6,7 +6,10 @@ const DEFAULT_GQL_PATH = "/admin/api/api/gql";
 // FreePBX 写操作耗时随账号总量增长（2026-10-08 实测 updateExtension ≈16.6s @780+ 账号），15s 会误伤，放宽到 90s
 const DEFAULT_TIMEOUT_MS = 90000;
 const DEFAULT_APPLY_CONFIG_WAIT_MS = 5000;
-const DEFAULT_APPLY_CONFIG_POLL_TIMEOUT_MS = 30000;
+// 配置再生耗时随账号量增长已贴到 ~31s+（pjsip.endpoint.conf 8 万行/1.4MB），30s 轮询超时常态化；
+// 超时分支保持「按 reload 已受理返回成功」不变（API 状态文案不可靠，改成失败会误伤全部建号），
+// 这里放宽到 90s 降低超时噪音，落盘竞态另由建号流程的「等待段落出现」轮询兜底
+const DEFAULT_APPLY_CONFIG_POLL_TIMEOUT_MS = 90000;
 const DEFAULT_APPLY_CONFIG_POLL_INTERVAL_MS = 2000;
 
 let cachedToken = null;

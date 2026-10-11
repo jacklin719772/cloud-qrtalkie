@@ -373,7 +373,14 @@ export async function rollbackCreatedFreepbxAccount({
 
   markStepRunning(steps, "rollback_freepbx_extension");
   try {
-    const existingBefore = await freepbxFetchExtension(ext);
+    // 存在性检查重试：reload/落盘延迟会让刚建成的分机假阴性 notFound，
+    // 直接跳过删除会把账号留成幽灵（2026-10-11 事故）
+    let existingBefore = null;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      existingBefore = await freepbxFetchExtension(ext);
+      if (existingBefore) break;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
     if (!existingBefore) {
       deletedInFreepbx = true;
       rollbackMessage = "FreePBX 帳號已不存在，略過刪除";

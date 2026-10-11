@@ -17702,9 +17702,19 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
     });
 
     markStepRunning(steps, "verify_generated_endpoint");
-    const endpointConf = await readFile(ASTERISK_PATHS.endpointConf, "utf8");
+    // 等待 reload 落盘再比对：applyConfigAndWait 轮询超时后仍按「reload 已受理」返回成功，
+    // 此时 pjsip.endpoint.conf 可能还是旧文件，直接比对会因段落缺失误判全部字段失败
+    // （2026-10-11 幽灵账号根因）。轮询直到目标分机段出现（最长 120s、间隔 2s）。
+    const endpointSectionWaitStartedAt = Date.now();
+    let endpointConf = await readFile(ASTERISK_PATHS.endpointConf, "utf8");
+    let generatedSection = parsePjsipSection(endpointConf, extension);
+    while (!generatedSection && Date.now() - endpointSectionWaitStartedAt < 120000) {
+      await delay(2000);
+      endpointConf = await readFile(ASTERISK_PATHS.endpointConf, "utf8");
+      generatedSection = parsePjsipSection(endpointConf, extension);
+    }
+    responseData.endpointSectionWaitMs = Date.now() - endpointSectionWaitStartedAt;
     const referenceSection = parsePjsipSection(endpointConf, WEBRTC_RUNTIME.referenceExtension || WEBRTC_RUNTIME.fallbackReferenceExtension || "");
-    const generatedSection = parsePjsipSection(endpointConf, extension);
     const expectedSection = buildExpectedGeneratedEndpointSection(extension, referenceSection?.fields || {}, webrtcConfig);
     const endpointComparison = compareEndpointFields(
       generatedSection?.fields || {},
