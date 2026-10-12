@@ -8,8 +8,11 @@ export const pool = mariadb.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   ssl: process.env.DB_SSL === "true",
-  connectionLimit: 100,
-  acquireTimeout: 5000,
+  // 100 会在「建号流程 + 控制台轮询 + 客户端请求风暴」叠加时打满（2026-10-12 实测
+  // pool timeout ×38：所有 API 500「身份驗證失敗」，App 显示成 "AI service …"）；
+  // MySQL max_connections=500 有余量，池上限提到 200、获取超时放宽到 15s 吸收尖峰
+  connectionLimit: 200,
+  acquireTimeout: 15000,
   idleTimeout: 30000,
   minimumIdle: 2,
 });
