@@ -1,17 +1,25 @@
 /**
- * Google Meet —— 发起会议（生成会议链接）。
+ * Web meet —— 发起会议（生成会议链接）。
  *
- * 端点：POST /api/google-meet/spaces（客服侧，requireSipUser）→ 创建一个 Meet 空间并返回链接。
- * 凭据：/etc/qrtalkie/google-meet-oauth.json（client_id / client_secret / refresh_token，
- *      由一次性 OAuth 授权取得；当前为「外部+测试」模式，refresh_token 7 天过期，需重新授权）。
- * 机制：refresh_token 换 access_token 并做进程内缓存（并发去重），再调用 Meet API。
+ * 端点：POST /api/google-meet/spaces（客服侧，requireSipUser）→ 返回会议链接。
+ * 响应结构与旧版一致：{ success:true, meeting:{ name, meetingCode, meetingUri } } —— 三端 App 无需改动。
+ *
+ * Provider（环境变量 MEET_PROVIDER，默认 jitsi）：
+ * - jitsi ：生成 meet.jit.si 随机房间链接（默认）。客户零账号零安装：点开链接即在浏览器进会。
+ *           注意 meet.jit.si 为 8x8 公共服：新会议需「主持人先登录开房」，客服流程 = 先在电脑上
+ *           打开链接登录开房，再发链接给客户。链接参数：禁深链跳 App、跳过 prejoin、预填显示名。
+ * - google：原有 Google Meet 路径（OAuth refresh_token，2026-10-12 已修复不再 7 天过期），保留备用。
+ *
  * 纪律：独立模块，对既有路由只增不改（与 customerAssistant/routes.js 同规则）。
  */
 import { readFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 
 const OAUTH_FILE = process.env.GOOGLE_MEET_OAUTH_FILE || "/etc/qrtalkie/google-meet-oauth.json";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SPACES_ENDPOINT = "https://meet.googleapis.com/v2/spaces";
+const JITSI_DOMAIN = process.env.JITSI_DOMAIN || "meet.jit.si";
+const JITSI_DISPLAY_NAME = process.env.JITSI_DISPLAY_NAME || "访客";
 
 let cachedCredentials = null;
 let cachedAccessToken = null; // { token, expiresAt }
@@ -22,6 +30,24 @@ function fail(response, status, code, message) {
 }
 function ok(response, payload = {}) {
   return response.json({ success: true, ...payload });
+}
+
+/** 生成 Jitsi 房间会议（默认 provider）：
+    房间名随机不可猜；参数关闭「跳转 Jitsi App」的深链、跳过 prejoin 姓名页并预填显示名，
+    客户点开即进浏览器会议（自建服务器同样适用，改 JITSI_DOMAIN 即可）。 */
+function createJitsiMeeting() {
+  const room = "QRTalkie-" + randomBytes(8).toString("hex");
+  const params = [
+    "config.disableDeepLinking=true",
+    "config.prejoinPageEnabled=false",
+    "config.prejoinConfig.enabled=false",
+    `userInfo.displayName=${encodeURIComponent(JITSI_DISPLAY_NAME)}`,
+  ].join("&");
+  return {
+    name: room,
+    meetingCode: room,
+    meetingUri: `https://${JITSI_DOMAIN}/${room}#${params}`,
+  };
 }
 
 async function loadCredentials() {
@@ -94,14 +120,15 @@ export function registerGoogleMeetRoutes(app, { requireSipUser } = {}) {
     throw new Error("registerGoogleMeetRoutes 需要 requireSipUser 中间件");
   }
 
-  // 发起 Google Meet：调用方拿到 meetingUri 后自行发一条链接消息
+  // 发起 Web meet：调用方拿到 meetingUri 后自行发一条链接消息
   app.post("/api/google-meet/spaces", requireSipUser, async (request, response) => {
     try {
-      const meeting = await createMeetingSpace();
-      console.log(`[google-meet] sipUser=${request.admin?.id} 创建会议 ${meeting.meetingCode}`);
+      const provider = (process.env.MEET_PROVIDER || "jitsi").toLowerCase();
+      const meeting = provider === "google" ? await createMeetingSpace() : createJitsiMeeting();
+      console.log(`[web-meet] sipUser=${request.admin?.id} 创建会议 ${meeting.meetingCode}（${provider}）`);
       return ok(response, { meeting });
     } catch (error) {
-      console.error("[google-meet] 创建会议失败:", error?.message || error);
+      console.error("[web-meet] 创建会议失败:", error?.message || error);
       return fail(response, 502, "GOOGLE_MEET_FAILED", String(error?.message || error));
     }
   });
