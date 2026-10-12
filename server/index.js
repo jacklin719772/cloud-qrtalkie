@@ -19442,7 +19442,9 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
   const content = sanitizeString(String(request.body?.content || ""), 2000);
 
   if (!sessionId) return response.status(400).json({ message: "無效的會話 ID" });
-  if (!content) return response.status(400).json({ message: "訊息不能為空" });
+  // v2.1：仅附件消息放行（content 为空但有附件）；两者皆空才报错
+  const hasAttachments = Array.isArray(request.body?.attachments) && request.body.attachments.length > 0;
+  if (!content && !hasAttachments) return response.status(400).json({ message: "訊息不能為空" });
 
   // 可选字段（只增）：全部带默认值，缺失时与旧版等价
   const options = {

@@ -6,9 +6,59 @@ import { ensureAiAllowed, incrementUsage } from "./aiEntitlementService.js";
 import { buildKbInjection, buildWebSearchInjection } from "./aiInjectionService.js";
 import { getEnabledToolDefinitions, executeTool } from "./aiTools.js";
 import { injectReasoning, saveReasoning } from "./aiReasoningService.js";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import AdmZip from "adm-zip";
 
 const MAX_CONTEXT_MESSAGES = 10;
 const MAX_USER_MESSAGE_LENGTH = 2000;
+// v2.1（只增）：附件文本提取——支持的文本类扩展名与单附件提取上限
+const AI_ATTACH_TEXT_EXTS = new Set(["txt", "md", "markdown", "csv", "json", "log", "xml", "html", "htm"]);
+const AI_ATTACH_TEXT_MAX = 20000;
+const AI_ASSETS_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets");
+
+/// 提取单个附件的文本（docx 解 zip 取 document.xml 去标签；文本类直接读；其余返回空）
+async function extractOneAttachmentText(key, ext) {
+    const diskPath = path.join(AI_ASSETS_ROOT, key);
+    if (AI_ATTACH_TEXT_EXTS.has(ext)) {
+        return String(await readFile(diskPath, "utf8"));
+    }
+    if (ext === "docx") {
+        const zip = new AdmZip(diskPath);
+        const entry = zip.getEntry("word/document.xml");
+        if (!entry) return "";
+        return entry.getData().toString("utf8")
+            .replace(/<w:tab[^>]*\/>/g, "\t")
+            .replace(/<\/w:p>/g, "\n")
+            .replace(/<[^>]+>/g, "")
+            .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            .replace(/&quot;/g, String.fromCharCode(34)).replace(/&apos;/g, "'").replace(/&amp;/g, "&");
+    }
+    return "";
+}
+
+/// 为模型组装附件文本段落（key 校验防路径穿越；失败/不支持格式仅标注文件名）
+async function extractAttachmentTexts(attachments) {
+    const parts = [];
+    for (const att of attachments.slice(0, 10)) {
+        const name = String(att?.filename || "").slice(0, 255);
+        const key = String(att?.key || "").slice(0, 255);
+        if (!name || !key || !key.startsWith("/ai-attachments/") || key.includes("..")) continue;
+        const ext = (name.split(".").pop() || "").toLowerCase();
+        let text = "";
+        try {
+            text = await extractOneAttachmentText(key, ext);
+        } catch (error) {
+            console.warn("[aiBotService] 附件解析失败:", name, error?.message || error);
+        }
+        text = text.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, AI_ATTACH_TEXT_MAX);
+        parts.push(text
+            ? `[附件：${name}]\n${text}`
+            : `[附件：${name}（该文件内容暂不支持解析）]`);
+    }
+    return parts;
+}
 
 const SYSTEM_PROMPT = `你是 QRTalkie 的 AI 助手，一位知识广博、乐于助人的通用智能助手。你可以回答各种领域的問題（科技、學習、生活、編程、創作等），不局限於 QRTalkie 相關內容；同時對 QRTalkie 相關問題（賬號設定、SIP 註冊、推送通知、閱後即焚、環境檢測、許可權設定等）尤為專業。請用簡潔友好的中文回答。
 你配備了聯網搜索工具（web_search）：當用戶詢問需要實時信息的話題（新聞、天氣、股價、賽事、最新動態、事實核查等）時，必須先調用 web_search 搜索獲取最新結果，再基於結果回答，不要聲稱自己無法聯網。`;
@@ -79,10 +129,29 @@ export async function getMessages(sessionId, sipUserId, connection) {
          FROM ai_bot_messages WHERE session_id = ? ORDER BY created_at ASC`,
         [sessionId]
     );
+    // v2.1（只增）：随消息返回附件元数据（重新进入会话时气泡回显附件）
+    const attByMsg = new Map();
+    const msgIds = rows.map(r => Number(r.id)).filter(n => n > 0);
+    if (msgIds.length > 0) {
+        const attRows = await connection.query(
+            `SELECT id, message_id, kind, filename, file_size, storage_key
+             FROM ai_attachments WHERE message_id IN (?)`,
+            [msgIds]
+        );
+        for (const a of attRows) {
+            const k = Number(a.message_id);
+            if (!attByMsg.has(k)) attByMsg.set(k, []);
+            attByMsg.get(k).push({
+                key: a.storage_key, filename: a.filename,
+                size: Number(a.file_size || 0), kind: a.kind
+            });
+        }
+    }
     return rows.map(r => ({
         id: Number(r.id), session_id: Number(r.session_id), role: r.role,
         content: r.content, message_type: r.message_type,
-        token_count: Number(r.token_count || 0), status: r.status, created_at: r.created_at
+        token_count: Number(r.token_count || 0), status: r.status, created_at: r.created_at,
+        attachments: attByMsg.get(Number(r.id)) || []
     }));
 }
 
@@ -207,10 +276,12 @@ async function saveAssistantReply(sessionId, sipUserId, result, connection) {
 }
 
 export async function sendMessage(sessionId, sipUserId, content, connection, options = undefined) {
-    if (!content || String(content).trim().length === 0) {
+    // v2.1：仅附件消息放行（content 为空但有附件）
+    const attachments = Array.isArray(options?.attachments) ? options.attachments : [];
+    if ((!content || String(content).trim().length === 0) && attachments.length === 0) {
         return { error: "AI_EMPTY_MESSAGE", message: "訊息不能為空" };
     }
-    const trimmed = String(content).trim().slice(0, MAX_USER_MESSAGE_LENGTH);
+    const trimmed = String(content || "").trim().slice(0, MAX_USER_MESSAGE_LENGTH);
 
     // Verify ownership
     const [session] = await connection.query(
@@ -227,7 +298,6 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     const userMessageId = Number(userMsgResult.insertId);
 
     // v2（只增不改）：附件元数据落库（可选字段，旧客户端不传则跳过）
-    const attachments = Array.isArray(options?.attachments) ? options.attachments : [];
     for (const att of attachments.slice(0, 10)) {
         const key = String(att?.key || "").slice(0, 255);
         const name = String(att?.filename || "").slice(0, 255);
@@ -246,6 +316,11 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     // v2：检索/搜索注入（可选字段；未就绪/失败自动降级为普通对话）
     let finalUserContent = trimmed;
     const injectedParts = [];
+    // v2.1（只增）：附件文本提取并入用户消息（模型可据此回答；图片/不支持格式仅标注文件名）
+    const attachmentTexts = await extractAttachmentTexts(attachments);
+    if (attachmentTexts.length > 0) {
+        finalUserContent = (trimmed ? `${trimmed}\n\n` : "") + `以下是用户上传的附件内容：\n${attachmentTexts.join("\n\n")}`;
+    }
     if (options?.knowledgeBaseId) {
         try {
             const kbCtx = await buildKbInjection(Number(options.knowledgeBaseId), trimmed, connection);
@@ -256,13 +331,13 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     }
     // webSearch 走工具路径（模型自主调用 web_search 工具），不再静默注入
     if (injectedParts.length > 0) {
-        finalUserContent = `${injectedParts.join("\n\n")}\n\n以上是可能相關的參考資料，僅供參考：如與用戶問題無關請忽略，直接按用戶要求回答；如相關請參考並標註來源。\n\n[用戶問題]\n${trimmed}`;
+        finalUserContent = `${injectedParts.join("\n\n")}\n\n以上是可能相關的參考資料，僅供參考：如與用戶問題無關請忽略，直接按用戶要求回答；如相關請參考並標註來源。\n\n[用戶問題]\n${finalUserContent}`;
     }
 
     // Build context
     const messages = await buildContextMessages(sipUserId, sessionId, connection, options);
-    // 注入后的用户消息覆盖历史中的原样消息（保证模型看到的是带参考资料的版本）
-    if (injectedParts.length > 0) {
+    // 注入后的用户消息覆盖历史中的原样消息（保证模型看到的是带参考资料/附件内容的版本）
+    if (finalUserContent !== trimmed) {
         messages.push({ role: "user", content: finalUserContent });
     }
 
