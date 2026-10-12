@@ -138,6 +138,10 @@ import { ensureAiAllowed, AiError, incrementUsage } from "./aiEntitlementService
 import deviceMqttService from "./deviceMqttService.js";
 
 const app = express();
+// 关闭响应 ETag：移动客户端（iOS/Android）带条件头复验时服务器会回 304（无正文），
+// 客户端请求层把 304 归入错误分支 → 列表空白/报错（2026-10-13 访客列表实测）。
+// API 服务统一返回 200 带完整正文。
+app.set("etag", false);
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const port = Number(process.env.API_PORT || 3001);
 const appUrl = process.env.APP_URL || "http://127.0.0.1:5173";
