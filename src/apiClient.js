@@ -15,7 +15,8 @@ const DEFAULT_TIMEOUT_RULES = [
   {
     method: 'post',
     path: '/pbx/webrtc-accounts',
-    timeoutMs: 180000,
+    // 建号流程全链路已达 ~182s（FreePBX 写操作随账号量变慢），180s 会把成功的请求误报超时
+    timeoutMs: 300000,
   },
   {
     method: 'delete',

@@ -17385,6 +17385,9 @@ app.patch("/api/pbx/webrtc-accounts/:extension/password", requireAdmin, async (r
     });
   }
 });
+// WebRTC 建號互斥旗標（模組級）：同一時間只允許一條建號流程運行
+let webrtcCreateInFlight = false;
+
 app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => {
   // TODO: keep this endpoint restricted to trusted SaaS platform administrators before production use.
   if (request.admin.accountType !== "platform") {
@@ -17509,6 +17512,17 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       message: "電子郵件格式無效。",
     }, 400);
   }
+
+  // 建號互斥：並發建號會互相搶 fwconsole reload / 覆寫配置檔
+  //（2026-10-12 同一分機雙提交導致兩條流程互相刪建、雙雙失敗）
+  if (webrtcCreateInFlight) {
+    return response.status(409).json({
+      success: false,
+      code: "WEBRTC_CREATE_IN_PROGRESS",
+      message: "已有 Web 帳號建立任務進行中，請等待完成後再試",
+    });
+  }
+  webrtcCreateInFlight = true;
 
   try {
     markStepRunning(steps, "validate_extension");
@@ -18118,6 +18132,8 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
       code: error?.code || "WEBRTC_ACCOUNT_CREATE_FAILED",
       message: error?.message || "WebRTC 帳號建立失敗",
     }, 500);
+  } finally {
+    webrtcCreateInFlight = false;
   }
 });
 
