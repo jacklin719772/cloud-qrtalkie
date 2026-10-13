@@ -15,9 +15,10 @@ import { readRegistrarKeys } from "./redisClient.js";
  *           每塊 = 一次通話結束時客戶端上報的 VQSessionReport: CallTerm，
  *           寫入時刻 = 通話結束（實測延遲 0~8 秒）。
  *
- * 判定：當日「已接聽（2xx）」筆數 > 當日「CallTerm」筆數 ⇒ 仍有未結束的通話 ⇒ 忙。
- * 若未結束的通話已存在超過 SIP_STATUS_MAX_CALL_HOURS（預設 3 小時），
- * 視為客戶端未上報（崩潰/斷網）而無法判斷 ⇒ unknown，避免永久誤判為忙。
+ * 判定：已接聽（2xx）且無 CallTerm 上報的通話，僅時效窗口內（SIP_STATUS_MAX_CALL_MINUTES，
+ * 預設 15 分鐘）視為「可能仍在通話中」⇒ 忙；超窗視為會話已死（App 崩潰/斷網未上報）不再影響狀態。
+ * 註冊成功（registered=true）時永不返回 unknown：忙⇒online_busy，其餘⇒online_idle；
+ * unknown 僅保留給註冊狀態本身讀取失敗（registered === null）的情況。
  */
 
 const ACCOUNT_PATTERN = /^[A-Za-z0-9._+-]{1,64}$/;
@@ -61,9 +62,9 @@ function resolveEventLogDir() {
   return String(process.env.FLEXISIP_EVENT_LOG_DIR || "/var/opt/belledonne-communications/log/flexisip").trim();
 }
 
-function resolveMaxCallHours() {
-  const value = Number(process.env.SIP_STATUS_MAX_CALL_HOURS);
-  return Number.isFinite(value) && value > 0 ? value : 3;
+function resolveMaxCallMinutes() {
+  const value = Number(process.env.SIP_STATUS_MAX_CALL_MINUTES);
+  return Number.isFinite(value) && value > 0 ? value : 15;
 }
 
 function parseLogTimestamp(text) {
@@ -180,7 +181,7 @@ function resolveCallState({ domain, account, now = new Date() }) {
   const userDir = path.join(baseDir, "users", domain, account);
   if (!existsSync(userDir)) {
     return {
-      callState: "unknown",
+      callState: "idle",
       call: null,
       detail: { reason: "event-log-dir-missing", answered: 0, terminated: 0, unmatched: 0 },
     };
@@ -193,26 +194,33 @@ function resolveCallState({ domain, account, now = new Date() }) {
     calls.push(...parseCallLog(readTailText(path.join(userDir, "calls", `${day}.log`))));
     reports.push(...parseStatisticsReports(readTailText(path.join(userDir, "statistics_reports", `${day}.log`))));
   }
+  // days 為「今天、昨天」，各日內已排序但合併後需整體再排序——
+  // 否則取最後一條已接聽會拿到「昨天」的通話（跨天順序 bug：在線帳號被永久判為 unknown）
+  calls.sort((a, b) => a.at - b.at);
+  reports.sort((a, b) => a.at - b.at);
 
   const answered = calls.filter((item) => item.isAnswered && !item.isChatroom);
   const terminated = reports.length;
   const unmatched = Math.max(0, answered.length - terminated);
-  const lastAnswered = answered.length ? answered[answered.length - 1] : null;
   const detail = { answered: answered.length, terminated, unmatched };
 
   if (unmatched === 0) {
     return { callState: "idle", call: null, detail };
   }
 
-  const ageMs = lastAnswered ? now.getTime() - lastAnswered.at.getTime() : Number.POSITIVE_INFINITY;
-  if (!lastAnswered || ageMs > resolveMaxCallHours() * 3600 * 1000) {
-    return { callState: "unknown", call: null, detail: { ...detail, reason: "call-term-report-missing" } };
+  // 未上報的已接聽通話：僅時效窗口內視為「可能仍在通話中」；
+  // 超窗視為會話已死（App 崩潰/斷網未上報 CallTerm），不再拖累狀態（否則崩潰一次會忙/未知數小時）
+  const maxCallMs = resolveMaxCallMinutes() * 60 * 1000;
+  const activeUnmatched = answered.filter((item) => now.getTime() - item.at.getTime() <= maxCallMs);
+  if (activeUnmatched.length === 0) {
+    return { callState: "idle", call: null, detail: { ...detail, reason: "stale-unmatched-ignored" } };
   }
 
-  const peer = lastAnswered.to.includes(`sip:${account}@`) ? lastAnswered.from : lastAnswered.to;
+  const current = activeUnmatched[activeUnmatched.length - 1];
+  const peer = current.to.includes(`sip:${account}@`) ? current.from : current.to;
   return {
     callState: "busy",
-    call: { peer, startedAt: lastAnswered.at.toISOString() },
+    call: { peer, startedAt: current.at.toISOString() },
     detail,
   };
 }
@@ -240,13 +248,13 @@ export async function getSipAccountStatus({ account, domain, now = new Date() } 
     now,
   });
 
+  // 註冊成功即視為在線：忙碌⇒online_busy，其餘（含通話狀態不可判定）⇒online_idle；
+  // unknown 僅保留給註冊狀態讀取失敗（registered === null）
   let state = "unknown";
   if (registered === false) {
     state = "offline";
-  } else if (registered === true && callState === "busy") {
-    state = "online_busy";
-  } else if (registered === true && callState === "idle") {
-    state = "online_idle";
+  } else if (registered === true) {
+    state = callState === "busy" ? "online_busy" : "online_idle";
   }
 
   return {

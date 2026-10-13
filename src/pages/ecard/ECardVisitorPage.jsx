@@ -759,7 +759,8 @@ export default function ECardVisitorPage({ slug }) {
       setSipBusyHint(true);
       return;
     }
-    if (freshState !== 'online_idle') {
+    // unknown（狀態暫不可判定，如註冊數據讀取失敗）也放行呼叫——語音與視頻一致
+    if (freshState !== 'online_idle' && freshState !== 'unknown') {
       setSipOfflineHint(true);
       return;
     }
