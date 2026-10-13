@@ -201,17 +201,33 @@ function resolveCallState({ domain, account, now = new Date() }) {
 
   const answered = calls.filter((item) => item.isAnswered && !item.isChatroom);
   const terminated = reports.length;
-  const unmatched = Math.max(0, answered.length - terminated);
+
+  // 逐條配對：每個 CallTerm 上報關閉「它之前最近的一條未關閉已接聽通話」
+  // （上報在通話結束後 0~8 秒到達；崩潰/斷網的會話永遠沒有上報，殘留為未關閉）
+  // 注意：不能只按「數量差」+近期窗口判斷——那會把剛正常結束的通話也算成忙碌 15 分鐘
+  const events = [
+    ...answered.map((item) => ({ at: item.at, call: item })),
+    ...reports.map((item) => ({ at: item.at, report: item })),
+  ].sort((a, b) => a.at - b.at);
+  const openCalls = [];
+  for (const evt of events) {
+    if (evt.call) {
+      openCalls.push(evt.call);
+    } else if (openCalls.length) {
+      openCalls.pop();
+    }
+  }
+  const unmatched = openCalls.length;
   const detail = { answered: answered.length, terminated, unmatched };
 
   if (unmatched === 0) {
     return { callState: "idle", call: null, detail };
   }
 
-  // 未上報的已接聽通話：僅時效窗口內視為「可能仍在通話中」；
-  // 超窗視為會話已死（App 崩潰/斷網未上報 CallTerm），不再拖累狀態（否則崩潰一次會忙/未知數小時）
+  // 仍未關閉的已接聽通話：僅時效窗口內視為「可能仍在通話中」；
+  // 超窗視為會話已死（App 崩潰/斷網未上報 CallTerm），不再拖累狀態
   const maxCallMs = resolveMaxCallMinutes() * 60 * 1000;
-  const activeUnmatched = answered.filter((item) => now.getTime() - item.at.getTime() <= maxCallMs);
+  const activeUnmatched = openCalls.filter((item) => now.getTime() - item.at.getTime() <= maxCallMs);
   if (activeUnmatched.length === 0) {
     return { callState: "idle", call: null, detail: { ...detail, reason: "stale-unmatched-ignored" } };
   }
