@@ -12418,9 +12418,12 @@ app.get("/api/public/lime/status", async (request, response) => {
   }
 
   try {
+    // OPk.Uid 关联的是 Users 表自增 id（lime-server 写入时取 insert_id），不是 accounts.id，
+    // 且每次设备安装实例注册一行 UserId（sip:user@domain;gr=…），按前缀匹配后汇总
+    const escapeLike = (value) => String(value).replace(/([\\%_])/g, "\\$1");
     const [row] = await limePool.query(
-      `SELECT COUNT(*) AS key_count FROM OPk WHERE Uid = (SELECT id FROM accounts WHERE username = ? AND domain = ? LIMIT 1)`,
-      [username, domain]
+      `SELECT COUNT(*) AS key_count FROM OPk o JOIN Users u ON o.Uid = u.Uid WHERE u.UserId LIKE CONCAT('sip:', ?, '@', ?, '%')`,
+      [escapeLike(username), escapeLike(domain)]
     );
     const ready = Number(row?.key_count || 0) > 0;
     return response.json({ code: 0, data: { ready, keyCount: Number(row?.key_count || 0) } });
