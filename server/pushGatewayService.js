@@ -1866,6 +1866,11 @@ async function resolveTargetDevices(connection, payload, filters = {}) {
   return { devices: fresh, warnings };
 }
 
+// token 归一化（去空白/统一小写/剥离 ':<service>' 后缀），用于 legacy 与 device-first 的「同一设备」判定
+function normalizePushTokenForMatch(value) {
+  return String(value || "").trim().toLowerCase().replace(/:(voip|remote)$/, "");
+}
+
 async function dispatchFlexisipEvent(connection, payload) {
   const config = getGatewayConfig();
   const event = normalizeEventName(payload.event);
@@ -1900,6 +1905,9 @@ async function dispatchFlexisipEvent(connection, payload) {
   let deviceFirstSendResult = null;
   let deviceFirstProviderName = "";
   let deviceFirstRouteReason = "";
+  // legacy 去重用：device-first 实际发送的目标 token 与该设备行上的全部 token（归一化后比较）
+  let deviceFirstSendToken = "";
+  let deviceFirstDeviceTokens = [];
 
   const androidDeviceEntry = devices.length > 0 ? routePlan.devices.find((entry) => {
     const platform = normalizePlatform(entry.device.platform, entry.device.provider);
@@ -1952,6 +1960,14 @@ async function dispatchFlexisipEvent(connection, payload) {
         });
         deviceFirstProviderName = selectedProvider;
         deviceFirstRouteReason = routeReason;
+        deviceFirstSendToken = normalizePushTokenForMatch(sendToken);
+        deviceFirstDeviceTokens = [
+          device.token,
+          device.fcm_token,
+          device.jpush_registration_id,
+          device.apns_token,
+          device.voip_token,
+        ].map(normalizePushTokenForMatch).filter(Boolean);
         console.log(JSON.stringify({
           src: "flexisip-device-first-send",
           event,
@@ -1993,13 +2009,23 @@ async function dispatchFlexisipEvent(connection, payload) {
   // Legacy route (fallback when device-first didn't send or for non-Android)
   const legacyDispatch = buildLegacyDispatchResult(payload, config);
   const legacyProvider = createProvider(legacyDispatch.route.provider, event, config);
+  const legacyTokenValue = legacyDispatch.route.token_value || payload.token || "";
+  // 去重（2026-10-13 修复）：仅当 legacy 的目标 token 属于 device-first 已成功发送的同一台设备时才抑制，
+  // 防止重复推送给同一设备；不同设备的 token（如 iOS 的 voip token）必须照常发送——
+  // 此前「任一设备发送成功即抑制 legacy」会打断多设备扇出，导致 iOS 后台收不到呼叫通知。
+  const legacyTokenNorm = normalizePushTokenForMatch(legacyTokenValue);
+  const deviceFirstSentOk = Boolean(deviceFirstSendResult && deviceFirstSendResult.ok !== false);
+  const legacyTargetsDeviceFirst = Boolean(
+    deviceFirstSentOk &&
+    legacyTokenNorm &&
+    (legacyTokenNorm === deviceFirstSendToken || deviceFirstDeviceTokens.includes(legacyTokenNorm))
+  );
   const legacyLiveEnabled = Boolean(
     payload.deliver &&
     canLiveSendProvider(legacyDispatch.route.provider, config) &&
     legacyDispatch.route.should_send &&
-    !deviceFirstSendResult
+    !legacyTargetsDeviceFirst
   );
-  const legacyTokenValue = legacyDispatch.route.token_value || payload.token || "";
   console.log(JSON.stringify({
     src: "flexisip-dispatch-debug",
     event,
@@ -2009,6 +2035,8 @@ async function dispatchFlexisipEvent(connection, payload) {
     should_send: legacyDispatch.route.should_send,
     legacyLiveEnabled,
     deviceFirstSent: Boolean(deviceFirstSendResult),
+    legacyTargetsDeviceFirst,
+    deviceFirstTokenHint: deviceFirstSendToken && deviceFirstSendToken.length > 12 ? `${deviceFirstSendToken.slice(0, 6)}…${deviceFirstSendToken.slice(-6)}` : (deviceFirstSendToken || "(empty)"),
     tokenValuePresent: Boolean(legacyTokenValue),
     tokenValueHint: legacyTokenValue && legacyTokenValue.length > 12 ? `${legacyTokenValue.slice(0, 6)}…${legacyTokenValue.slice(-6)}` : (legacyTokenValue || "(empty)"),
     route_reason: legacyDispatch.route.route_reason,
