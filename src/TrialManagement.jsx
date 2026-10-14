@@ -73,6 +73,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [emailCheck, setEmailCheck] = useState({ status: 'idle', text: '' });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [stockWebTotal, setStockWebTotal] = useState(0);
+  const [addCount, setAddCount] = useState('1');
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -199,6 +200,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setEmailChecking(false);
       setEmailCheck({ status: 'idle', text: '' });
       setPickerOpen(false);
+      setAddCount('1');
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
@@ -207,13 +209,20 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   }));
 
   function toggleStock(account) {
+    const exists = selectedStocks.some((s) => s.id === account.id);
+    if (!exists) {
+      const limit = Number(addCount);
+      if (!Number.isInteger(limit) || limit < 1) {
+        setFormMessage({ type: 'error', text: '請先輸入新增試用帳號數量（1~100）。' });
+        return;
+      }
+      if (selectedStocks.length >= Math.min(limit, 100)) {
+        setFormMessage({ type: 'error', text: `已達新增數量上限（${limit} 個），請先取消已選帳號或調大數量。` });
+        return;
+      }
+    }
     setFormMessage({ type: '', text: '' });
-    setSelectedStocks((prev) => {
-      const exists = prev.some((s) => s.id === account.id);
-      if (exists) return prev.filter((s) => s.id !== account.id);
-      if (prev.length >= 100) return prev;
-      return [...prev, account];
-    });
+    setSelectedStocks((prev) => (exists ? prev.filter((s) => s.id !== account.id) : [...prev, account]));
   }
 
   async function submitAssign() {
@@ -254,6 +263,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
     if (selectedStocks.length === 0) {
       setFormMessage({ type: 'error', text: '請添加至少一個測試帳號。' });
+      return;
+    }
+    const addLimit = Number(addCount);
+    if (Number.isInteger(addLimit) && addLimit >= 1 && selectedStocks.length > addLimit) {
+      setFormMessage({ type: 'error', text: `已選 ${selectedStocks.length} 個超過新增數量上限（${addLimit}），請先取消多餘的帳號。` });
       return;
     }
 
@@ -971,7 +985,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <div className="tm-section">
                 <div className="tm-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   測試帳號列表
-                  <span className="tm-hint">已添加 {selectedStocks.length} / 100 個</span>
+                  <span className="tm-hint">已添加 {selectedStocks.length} / {Number(addCount) || '—'} 個</span>
                   <button
                     className="tm-btn"
                     type="button"
@@ -981,7 +995,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     <Plus size={13} /> 添加測試帳號
                   </button>
                 </div>
-                <div className="tm-grid2">
+                <div className="tm-grid3">
                   <div className="tm-field">
                     <label>試用開始 *</label>
                     <input type="date" value={form.startedAt} onChange={(e) => setForm((f) => ({ ...f, startedAt: e.target.value }))} />
@@ -989,6 +1003,22 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <div className="tm-field">
                     <label>試用結束 *（預設 1 個月）</label>
                     <input type="date" value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))} />
+                  </div>
+                  <div className="tm-field">
+                    <label>新增試用帳號數量 *</label>
+                    <input
+                      value={addCount}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^\d]/g, '');
+                        setAddCount(digits);
+                        const limit = Number(digits);
+                        if (Number.isInteger(limit) && limit >= 1 && selectedStocks.length > limit) {
+                          setFormMessage({ type: 'error', text: `已選 ${selectedStocks.length} 個超過數量上限 ${limit}，請取消多餘的帳號。` });
+                        } else {
+                          setFormMessage({ type: '', text: '' });
+                        }
+                      }}
+                    />
                   </div>
                 </div>
 
