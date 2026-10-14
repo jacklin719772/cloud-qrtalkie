@@ -65,9 +65,10 @@ function addDaysStr(value, days) {
 }
 
 export function registerTrialManagementRoutes(app, { requireAdmin }) {
-  // 庫存帳號查詢（分配表單選號用）：tenant_id IS NULL 且 active
+  // 庫存帳號查詢（添加表單選號用）：tenant_id IS NULL 且 active；random=1 時隨機取
   app.get("/api/admin/trials/stock-accounts", requireAdmin, async (request, response) => {
     const keyword = clean(request.query?.q, 120);
+    const random = request.query?.random === "1" || request.query?.random === "true";
     const limit = Math.min(200, Math.max(1, Number.parseInt(request.query?.limit || "100", 10) || 100));
     let connection;
     try {
@@ -84,7 +85,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         `SELECT id, username, sip_domain, display_name
          FROM sip_users
          WHERE ${where}
-         ORDER BY username ASC
+         ORDER BY ${random ? "RAND()" : "username ASC"}
          LIMIT ${limit}`,
         params,
       );

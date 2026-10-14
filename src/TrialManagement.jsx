@@ -32,18 +32,15 @@ function emptyForm() {
     contactName: '',
     contactEmail: '',
     contactPhone: '',
-    company: '',
     startedAt: todayStr(),
     expiresAt: addMonthsMinusOneDay(todayStr(), 1),
-    mode: 'auto',
-    count: '1',
     aiEnabled: false,
     notes: '',
   };
 }
 
 function emptyNewTenant() {
-  return { companyName: '', contactPerson: '', contactPhone: '', loginEmail: '', password: '' };
+  return { companyName: '', password: '' };
 }
 
 const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref) => {
@@ -70,10 +67,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [stockLoading, setStockLoading] = useState(false);
   const [selectedStocks, setSelectedStocks] = useState([]);
 
-  const [showNewTenant, setShowNewTenant] = useState(false);
+  const [newTenantMode, setNewTenantMode] = useState(false);
   const [newTenant, setNewTenant] = useState(emptyNewTenant());
-  const [creatingTenant, setCreatingTenant] = useState(false);
-  const [newTenantMessage, setNewTenantMessage] = useState({ type: '', text: '' });
+  const [tenantAdmin, setTenantAdmin] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerMode, setPickerMode] = useState('manual');
+  const [randomCount, setRandomCount] = useState('1');
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -136,6 +135,68 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
+  // 選定現有租戶後自動載入其管理員信息（回填聯繫人字段，可修改）
+  useEffect(() => {
+    if (!isPlatform || newTenantMode || !form.ownerTenantId) {
+      setTenantAdmin(null);
+      return undefined;
+    }
+    let cancelled = false;
+    apiClient.get(`/admin/tenants/${form.ownerTenantId}`)
+      .then((data) => {
+        if (cancelled) return;
+        const tenant = data?.tenant || {};
+        const admin = {
+          name: tenant.adminDisplayName || '',
+          email: tenant.loginEmail || '',
+          phone: tenant.adminPhone || '',
+        };
+        setTenantAdmin(admin);
+        setForm((f) => ({ ...f, contactName: admin.name, contactEmail: admin.email, contactPhone: admin.phone }));
+      })
+      .catch(() => { if (!cancelled) setTenantAdmin({ name: '', email: '', phone: '' }); });
+    return () => { cancelled = true; };
+  }, [isPlatform, newTenantMode, form.ownerTenantId]);
+
+  function startNewTenant() {
+    setNewTenantMode(true);
+    setNewTenant(emptyNewTenant());
+    setForm((f) => ({ ...f, contactName: '', contactEmail: '', contactPhone: '' }));
+    setFormMessage({ type: '', text: '' });
+  }
+
+  function useExistingTenant() {
+    setNewTenantMode(false);
+    setForm((f) => ({ ...f, contactName: '', contactEmail: '', contactPhone: '' }));
+    setFormMessage({ type: '', text: '' });
+  }
+
+  async function addRandomAccounts() {
+    const count = Number(randomCount);
+    if (!Number.isInteger(count) || count < 1 || count > 100) {
+      setFormMessage({ type: 'error', text: '隨機取號數量需為 1~100。' });
+      return;
+    }
+    try {
+      const data = await apiClient.get(`/admin/trials/stock-accounts?random=1&limit=${count}`);
+      const list = Array.isArray(data.accounts) ? data.accounts : [];
+      if (list.length === 0) {
+        setFormMessage({ type: 'error', text: '庫存帳號不足。' });
+        return;
+      }
+      setSelectedStocks((prev) => {
+        const merged = [...prev];
+        for (const account of list) {
+          if (!merged.some((s) => s.id === account.id)) merged.push(account);
+        }
+        return merged.slice(0, 100);
+      });
+      setFormMessage({ type: 'success', text: `已隨機加入 ${list.length} 個帳號。` });
+    } catch (error) {
+      setFormMessage({ type: 'error', text: error.message || '隨機取號失敗。' });
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     openAssign: () => {
       setForm(emptyForm());
@@ -143,9 +204,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setStockKeyword('');
       setStockList([]);
       setStockTotal(0);
-      setShowNewTenant(false);
+      setNewTenantMode(false);
       setNewTenant(emptyNewTenant());
-      setNewTenantMessage({ type: '', text: '' });
+      setTenantAdmin(null);
+      setPickerOpen(false);
+      setPickerMode('manual');
+      setRandomCount('1');
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
@@ -163,9 +227,23 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   }
 
   async function submitAssign() {
-    if (isPlatform && !form.ownerTenantId) {
+    if (!newTenantMode && isPlatform && !form.ownerTenantId) {
       setFormMessage({ type: 'error', text: '請選擇歸屬租戶。' });
       return;
+    }
+    if (newTenantMode) {
+      if (!newTenant.companyName.trim()) {
+        setFormMessage({ type: 'error', text: '請輸入租戶公司名稱。' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim())) {
+        setFormMessage({ type: 'error', text: '請輸入有效的管理員登入信箱。' });
+        return;
+      }
+      if ((newTenant.password || '').length < 8) {
+        setFormMessage({ type: 'error', text: '管理員密碼至少 8 位字元。' });
+        return;
+      }
     }
     if (!form.startedAt || !form.expiresAt) {
       setFormMessage({ type: 'error', text: '請設定試用週期。' });
@@ -175,74 +253,63 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setFormMessage({ type: 'error', text: '結束日期不能早於開始日期。' });
       return;
     }
-    if (form.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) {
+    if (!newTenantMode && form.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) {
       setFormMessage({ type: 'error', text: '聯繫郵箱格式無效。' });
       return;
     }
-    const payload = {
-      contactName: form.contactName.trim(),
-      contactEmail: form.contactEmail.trim(),
-      contactPhone: form.contactPhone.trim(),
-      company: form.company.trim(),
-      startedAt: form.startedAt,
-      expiresAt: form.expiresAt,
-      aiEnabled: form.aiEnabled,
-      notes: form.notes.trim(),
-    };
-    if (isPlatform) payload.ownerTenantId = Number(form.ownerTenantId);
-    if (form.mode === 'auto') {
-      const count = Number(form.count);
-      if (!Number.isInteger(count) || count < 1 || count > 100) {
-        setFormMessage({ type: 'error', text: '自動取號數量需為 1~100。' });
-        return;
-      }
-      payload.count = count;
-    } else {
-      if (selectedStocks.length === 0) {
-        setFormMessage({ type: 'error', text: '請至少選擇一個帳號。' });
-        return;
-      }
-      payload.sipUserIds = selectedStocks.map((s) => s.id);
+    if (selectedStocks.length === 0) {
+      setFormMessage({ type: 'error', text: '請添加至少一個測試帳號。' });
+      return;
     }
+
+    let ownerTenantId = newTenantMode ? null : Number(form.ownerTenantId) || null;
+    const company = newTenantMode
+      ? newTenant.companyName.trim()
+      : (tenants.find((t) => String(t.id) === String(form.ownerTenantId))?.companyName || '');
 
     setAssigning(true);
     setFormMessage({ type: '', text: '' });
+    let createdTenantId = null;
     try {
+      if (newTenantMode) {
+        const created = await apiClient.put('/admin/tenants/0', {
+          companyName: newTenant.companyName.trim(),
+          contactPerson: form.contactName.trim(),
+          contactPhone: form.contactPhone.trim(),
+          loginEmail: form.contactEmail.trim(),
+          password: newTenant.password,
+        });
+        ownerTenantId = Number(created?.id) || null;
+        if (!ownerTenantId) throw new Error('建立租戶失敗。');
+        createdTenantId = ownerTenantId;
+        await loadTenants();
+      }
+      const payload = {
+        ownerTenantId,
+        contactName: form.contactName.trim(),
+        contactEmail: form.contactEmail.trim(),
+        contactPhone: form.contactPhone.trim(),
+        company,
+        startedAt: form.startedAt,
+        expiresAt: form.expiresAt,
+        aiEnabled: form.aiEnabled,
+        notes: form.notes.trim(),
+        sipUserIds: selectedStocks.map((s) => s.id),
+      };
       const res = await apiClient.post('/admin/trials', payload, { timeoutMs: 120000 });
       setAssignOpen(false);
       setMessage({ type: 'success', text: res.message || '試用帳號已添加。' });
       setPage(1);
       loadTrials({ page: 1 });
     } catch (error) {
-      setFormMessage({ type: 'error', text: error.message || '添加失敗。' });
+      setFormMessage({
+        type: 'error',
+        text: createdTenantId
+          ? `租戶已建立（#${createdTenantId}），但添加試用失敗：${error.message || '未知錯誤'}`
+          : (error.message || '添加失敗。'),
+      });
     } finally {
       setAssigning(false);
-    }
-  }
-
-  async function submitNewTenant() {
-    if (!newTenant.companyName.trim()) return setNewTenantMessage({ type: 'error', text: '請輸入公司名稱。' });
-    if (!newTenant.loginEmail.trim()) return setNewTenantMessage({ type: 'error', text: '請輸入管理員登入信箱。' });
-    if ((newTenant.password || '').length < 8) return setNewTenantMessage({ type: 'error', text: '密碼至少 8 位字元。' });
-    setCreatingTenant(true);
-    setNewTenantMessage({ type: '', text: '' });
-    try {
-      const res = await apiClient.put('/admin/tenants/0', {
-        companyName: newTenant.companyName.trim(),
-        contactPerson: newTenant.contactPerson.trim(),
-        contactPhone: newTenant.contactPhone.trim(),
-        loginEmail: newTenant.loginEmail.trim(),
-        password: newTenant.password,
-      });
-      await loadTenants();
-      if (res?.id) setForm((f) => ({ ...f, ownerTenantId: String(res.id) }));
-      setShowNewTenant(false);
-      setNewTenant(emptyNewTenant());
-      setFormMessage({ type: 'success', text: '租戶已建立並自動選中。' });
-    } catch (error) {
-      setNewTenantMessage({ type: 'error', text: error.message || '建立租戶失敗。' });
-    } finally {
-      setCreatingTenant(false);
     }
   }
 
@@ -305,7 +372,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management .tm-toolbar input::placeholder { color: #6b7280; }
         #trial-management .tm-toolbar select:focus,
         #trial-management .tm-toolbar input:focus { border-color: #3b82f6; outline: none; }
-        #trial-management .tm-search {
+        #trial-management .tm-search,
+        #trial-management-modal .tm-search {
           display: flex;
           align-items: center;
           gap: 8px;
@@ -315,7 +383,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           padding: 0 12px;
           background: #1a2332;
         }
-        #trial-management .tm-search input {
+        #trial-management .tm-search input,
+        #trial-management-modal .tm-search input {
           border: 0;
           outline: none;
           height: 34px;
@@ -551,7 +620,47 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management-modal .tm-radio-row input[type="radio"],
         #trial-management-modal .tm-field input[type="checkbox"] { accent-color: #3b82f6; }
         #trial-management-modal .tm-hint { color: #6b7280; font-size: 11px; }
-        #trial-management-modal .tm-new-tenant {
+        #trial-management-modal .tm-section {
+          border: 1px solid #1f2937;
+          border-radius: 10px;
+          background: #0d1526;
+          padding: 14px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        #trial-management-modal .tm-section-title { font-size: 13px; font-weight: 600; color: #93c5fd; }
+        #trial-management-modal .tm-account-list {
+          border: 1px solid #374151;
+          border-radius: 8px;
+          background: #0b1220;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+        #trial-management-modal .tm-account-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          border-bottom: 1px solid #1f2937;
+          color: #e5e7eb;
+          font-size: 12px;
+        }
+        #trial-management-modal .tm-account-row:last-child { border-bottom: 0; }
+        #trial-management-modal .tm-account-name { font-weight: 600; }
+        #trial-management-modal .tm-account-empty { padding: 18px 12px; color: #6b7280; font-size: 12px; text-align: center; }
+        #trial-management-modal .tm-remove {
+          margin-left: auto;
+          background: none;
+          border: 0;
+          color: #f87171;
+          cursor: pointer;
+          font-size: 14px;
+          line-height: 1;
+          padding: 2px 4px;
+        }
+        #trial-management-modal .tm-remove:hover { color: #fecaca; }
+        #trial-management-modal .tm-picker {
           border: 1px dashed #374151;
           border-radius: 8px;
           padding: 12px;
@@ -694,183 +803,202 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                 <div className={`tm-banner ${formMessage.type || 'success'}`}>{formMessage.text}</div>
               )}
 
-              <div className="tm-grid2">
-                <div className="tm-field">
-                  <label>歸屬租戶 *</label>
-                  {isPlatform ? (
-                    <select value={form.ownerTenantId} onChange={(e) => setForm((f) => ({ ...f, ownerTenantId: e.target.value }))}>
-                      <option value="">請選擇租戶</option>
-                      {tenants.map((t) => (
-                        <option key={t.id} value={t.id}>{t.companyName || t.name}</option>
-                      ))}
-                    </select>
+              {/* 第一部分：租戶信息 */}
+              <div className="tm-section">
+                <div className="tm-section-title">租戶信息</div>
+                {isPlatform ? (
+                  newTenantMode ? (
+                    <div className="tm-grid2">
+                      <div className="tm-field">
+                        <label>公司名稱 *</label>
+                        <input value={newTenant.companyName} onChange={(e) => setNewTenant((v) => ({ ...v, companyName: e.target.value }))} />
+                      </div>
+                      <div className="tm-field" style={{ justifyContent: 'flex-end' }}>
+                        <label>&nbsp;</label>
+                        <button className="tm-btn" type="button" onClick={useExistingTenant}>改用現有租戶</button>
+                      </div>
+                    </div>
                   ) : (
+                    <div className="tm-grid2">
+                      <div className="tm-field">
+                        <label>歸屬租戶 *</label>
+                        <select value={form.ownerTenantId} onChange={(e) => setForm((f) => ({ ...f, ownerTenantId: e.target.value }))}>
+                          <option value="">請選擇租戶</option>
+                          {tenants.map((t) => (
+                            <option key={t.id} value={t.id}>{t.companyName || t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="tm-field" style={{ justifyContent: 'flex-end' }}>
+                        <label>&nbsp;</label>
+                        <button className="tm-btn" type="button" onClick={startNewTenant}>
+                          <UserPlus size={13} /> 新建租戶
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div className="tm-field">
+                    <label>歸屬租戶</label>
                     <input value={tenantName || '本租戶（固定）'} disabled />
-                  )}
-                </div>
-                {isPlatform && (
-                  <div className="tm-field" style={{ justifyContent: 'flex-end' }}>
-                    <label>&nbsp;</label>
-                    <button className="tm-btn" type="button" onClick={() => { setShowNewTenant((v) => !v); setNewTenantMessage({ type: '', text: '' }); }}>
-                      <UserPlus size={13} /> {showNewTenant ? '收起新建租戶' : '新建租戶'}
-                    </button>
                   </div>
                 )}
               </div>
 
-              {isPlatform && showNewTenant && (
-                <div className="tm-new-tenant">
-                  {newTenantMessage.text && (
-                    <div className={`tm-banner ${newTenantMessage.type || 'success'}`}>{newTenantMessage.text}</div>
-                  )}
-                  <div className="tm-grid2">
-                    <div className="tm-field">
-                      <label>公司名稱 *</label>
-                      <input value={newTenant.companyName} onChange={(e) => setNewTenant((v) => ({ ...v, companyName: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>聯絡人</label>
-                      <input value={newTenant.contactPerson} onChange={(e) => setNewTenant((v) => ({ ...v, contactPerson: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>聯絡電話</label>
-                      <input value={newTenant.contactPhone} onChange={(e) => setNewTenant((v) => ({ ...v, contactPhone: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>管理員登入信箱 *</label>
-                      <input value={newTenant.loginEmail} onChange={(e) => setNewTenant((v) => ({ ...v, loginEmail: e.target.value }))} />
-                    </div>
+              {/* 第二部分：租戶管理員信息 */}
+              <div className="tm-section">
+                <div className="tm-section-title">租戶管理員信息</div>
+                <div className={newTenantMode ? 'tm-grid2' : 'tm-grid3'}>
+                  <div className="tm-field">
+                    <label>管理員姓名</label>
+                    <input value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} />
+                  </div>
+                  <div className="tm-field">
+                    <label>{newTenantMode ? '管理員登入信箱 *' : '管理員信箱'}</label>
+                    <input value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
+                  </div>
+                  <div className="tm-field">
+                    <label>聯繫電話</label>
+                    <input value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} />
+                  </div>
+                  {newTenantMode && (
                     <div className="tm-field">
                       <label>管理員密碼 *（至少 8 位）</label>
                       <input type="password" value={newTenant.password} onChange={(e) => setNewTenant((v) => ({ ...v, password: e.target.value }))} />
                     </div>
-                    <div className="tm-field" style={{ justifyContent: 'flex-end' }}>
-                      <label>&nbsp;</label>
-                      <button className="tm-btn primary" type="button" onClick={submitNewTenant} disabled={creatingTenant}>
-                        {creatingTenant ? '建立中…' : '建立並選中'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="tm-grid3">
-                <div className="tm-field">
-                  <label>聯繫人姓名</label>
-                  <input value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} />
-                </div>
-                <div className="tm-field">
-                  <label>聯繫郵箱</label>
-                  <input value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
-                </div>
-                <div className="tm-field">
-                  <label>聯繫電話</label>
-                  <input value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="tm-grid3">
-                <div className="tm-field">
-                  <label>公司</label>
-                  <input value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} />
-                </div>
-                <div className="tm-field">
-                  <label>試用開始 *</label>
-                  <input type="date" value={form.startedAt} onChange={(e) => setForm((f) => ({ ...f, startedAt: e.target.value }))} />
-                </div>
-                <div className="tm-field">
-                  <label>試用結束 *（預設 1 個月）</label>
-                  <input type="date" value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="tm-field">
-                <label>添加帳號 *</label>
-                <div className="tm-radio-row">
-                  <label>
-                    <input type="radio" checked={form.mode === 'auto'} onChange={() => setForm((f) => ({ ...f, mode: 'auto' }))} />
-                    自動從庫存取號
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      checked={form.mode === 'manual'}
-                      onChange={() => { setForm((f) => ({ ...f, mode: 'manual' })); if (stockList.length === 0) loadStock(''); }}
-                    />
-                    手動選號
-                  </label>
-                  {form.mode === 'auto' ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      數量
-                      <input
-                        style={{ width: '90px' }}
-                        value={form.count}
-                        onChange={(e) => setForm((f) => ({ ...f, count: e.target.value.replace(/[^\d]/g, '') }))}
-                      />
-                      （1~100）
-                    </span>
-                  ) : (
-                    <span className="tm-hint">已選 {selectedStocks.length} 個</span>
                   )}
                 </div>
-                {form.mode === 'manual' && (
-                  <>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div className="tm-search" style={{ background: '#0b1220', borderColor: '#1f2937', flex: 1 }}>
-                        <Search size={14} color="#6b7280" />
-                        <input
-                          style={{ background: 'transparent', color: '#e5e7eb', width: '100%' }}
-                          placeholder="搜尋庫存帳號（帳號/名稱）"
-                          value={stockKeyword}
-                          onChange={(e) => setStockKeyword(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') loadStock(stockKeyword.trim()); }}
-                        />
-                      </div>
-                      <button className="tm-btn" type="button" onClick={() => loadStock(stockKeyword.trim())}>搜尋</button>
-                    </div>
-                    <div className="tm-hint">庫存共 {stockTotal} 個可用帳號，最多顯示前 100 個</div>
-                    <div className="tm-stock-list">
-                      {stockLoading ? (
-                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>載入中…</div>
-                      ) : stockList.length === 0 ? (
-                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
-                      ) : (
-                        stockList.map((a) => {
-                          const checked = selectedStocks.some((s) => s.id === a.id);
-                          return (
-                            <div key={a.id} className="tm-stock-row" onClick={() => toggleStock(a)}>
-                              <input type="checkbox" checked={checked} readOnly />
-                              <span style={{ fontWeight: 600 }}>{a.username}</span>
-                              {a.displayName && a.displayName !== a.username && (
-                                <span style={{ color: '#9ca3af' }}>{a.displayName}</span>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                    {selectedStocks.length > 0 && (
-                      <div className="tm-hint">已選：{selectedStocks.map((s) => s.username).join('、')}</div>
-                    )}
-                  </>
+                {!newTenantMode && isPlatform && form.ownerTenantId && tenantAdmin && (
+                  <span className="tm-hint">已自動帶入該租戶的管理員信息（修改僅影響本次試用的聯繫人）。</span>
                 )}
               </div>
 
-              <div className="tm-grid2">
-                <div className="tm-field">
-                  <label>開通 AI 助手</label>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#e5e7eb', fontSize: '13px' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.aiEnabled}
-                      onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
-                    />
-                    添加時同步開通（到試用結束為止）
-                  </label>
+              {/* 第三部分：測試帳號列表 */}
+              <div className="tm-section">
+                <div className="tm-section-title">測試帳號列表</div>
+                <div className="tm-grid2">
+                  <div className="tm-field">
+                    <label>試用開始 *</label>
+                    <input type="date" value={form.startedAt} onChange={(e) => setForm((f) => ({ ...f, startedAt: e.target.value }))} />
+                  </div>
+                  <div className="tm-field">
+                    <label>試用結束 *（預設 1 個月）</label>
+                    <input type="date" value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))} />
+                  </div>
                 </div>
-                <div className="tm-field">
-                  <label>備註</label>
-                  <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+
+                <div className="tm-account-list">
+                  {selectedStocks.length === 0 ? (
+                    <div className="tm-account-empty">尚未添加帳號，點擊下方「添加測試帳號」從庫存選號</div>
+                  ) : (
+                    selectedStocks.map((a) => (
+                      <div key={a.id} className="tm-account-row">
+                        <span className="tm-account-name">{a.username}</span>
+                        {a.displayName && a.displayName !== a.username && (
+                          <span className="tm-hint">{a.displayName}</span>
+                        )}
+                        <button className="tm-remove" type="button" title="移除" onClick={() => toggleStock(a)}>✕</button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <button
+                    className="tm-btn"
+                    type="button"
+                    onClick={() => { setPickerOpen((v) => !v); if (!pickerOpen && stockList.length === 0) loadStock(''); }}
+                  >
+                    <Plus size={13} /> 添加測試帳號
+                  </button>
+                  <span className="tm-hint">已添加 {selectedStocks.length} / 100 個</span>
+                </div>
+
+                {pickerOpen && (
+                  <div className="tm-picker">
+                    <div className="tm-radio-row">
+                      <label>
+                        <input
+                          type="radio"
+                          checked={pickerMode === 'manual'}
+                          onChange={() => { setPickerMode('manual'); if (stockList.length === 0) loadStock(''); }}
+                        />
+                        手動選號
+                      </label>
+                      <label>
+                        <input type="radio" checked={pickerMode === 'random'} onChange={() => setPickerMode('random')} />
+                        隨機取號
+                      </label>
+                      {pickerMode === 'random' && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          數量
+                          <input
+                            style={{ width: '90px' }}
+                            value={randomCount}
+                            onChange={(e) => setRandomCount(e.target.value.replace(/[^\d]/g, ''))}
+                          />
+                          <button className="tm-btn" type="button" onClick={addRandomAccounts}>加入</button>
+                        </span>
+                      )}
+                      <button className="tm-btn" type="button" style={{ marginLeft: 'auto' }} onClick={() => setPickerOpen(false)}>收起</button>
+                    </div>
+                    {pickerMode === 'manual' && (
+                      <>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div className="tm-search" style={{ background: '#0b1220', borderColor: '#374151', flex: 1 }}>
+                            <Search size={14} color="#6b7280" />
+                            <input
+                              style={{ background: 'transparent', color: '#e5e7eb', width: '100%' }}
+                              placeholder="搜尋庫存帳號（帳號/名稱）"
+                              value={stockKeyword}
+                              onChange={(e) => setStockKeyword(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') loadStock(stockKeyword.trim()); }}
+                            />
+                          </div>
+                          <button className="tm-btn" type="button" onClick={() => loadStock(stockKeyword.trim())}>搜尋</button>
+                        </div>
+                        <div className="tm-hint">庫存共 {stockTotal} 個可用帳號，最多顯示前 100 個；點擊行加入或移除</div>
+                        <div className="tm-stock-list">
+                          {stockLoading ? (
+                            <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>載入中…</div>
+                          ) : stockList.length === 0 ? (
+                            <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
+                          ) : (
+                            stockList.map((a) => {
+                              const checked = selectedStocks.some((s) => s.id === a.id);
+                              return (
+                                <div key={a.id} className="tm-stock-row" onClick={() => toggleStock(a)}>
+                                  <input type="checkbox" checked={checked} readOnly />
+                                  <span style={{ fontWeight: 600 }}>{a.username}</span>
+                                  {a.displayName && a.displayName !== a.username && (
+                                    <span style={{ color: '#9ca3af' }}>{a.displayName}</span>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <div className="tm-grid2">
+                  <div className="tm-field">
+                    <label>開通 AI 助手</label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#e5e7eb', fontSize: '13px' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.aiEnabled}
+                        onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
+                      />
+                      添加時同步開通（到試用結束為止）
+                    </label>
+                  </div>
+                  <div className="tm-field">
+                    <label>備註</label>
+                    <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+                  </div>
                 </div>
               </div>
             </div>
