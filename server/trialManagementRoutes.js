@@ -47,12 +47,21 @@ function normalizeIds(list) {
   return Array.from(new Set((Array.isArray(list) ? list : []).map((value) => Number(value)).filter((id) => Number.isInteger(id) && id > 0)));
 }
 
-// 試用階段：active 且未到期 = 試用中；active 且已到期 = 寬限期；其餘為終態
+// 試用階段：active 且 7 天內到期 = 即將到期；active 且已到期 = 寬限期；其餘為終態
 function trialPhase(row, today) {
   if (row.status === "converted") return "converted";
   if (row.status === "reclaimed") return "reclaimed";
   const expires = String(row.expires_at || "").slice(0, 10);
-  return expires && expires < today ? "grace" : "active";
+  if (!expires) return "active";
+  if (expires < today) return "grace";
+  if (expires <= addDaysStr(today, 7)) return "expiring";
+  return "active";
+}
+
+function addDaysStr(value, days) {
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 export function registerTrialManagementRoutes(app, { requireAdmin }) {
@@ -117,7 +126,13 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       whereClauses.push("ta.owner_tenant_id = ?");
       params.push(ownerFilter);
     }
-    if (statusFilter === "active" || statusFilter === "converted" || statusFilter === "reclaimed") {
+    if (statusFilter === "active") {
+      whereClauses.push("ta.status = 'active' AND ta.expires_at > DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
+    } else if (statusFilter === "expiring") {
+      whereClauses.push("ta.status = 'active' AND ta.expires_at >= CURDATE() AND ta.expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
+    } else if (statusFilter === "grace") {
+      whereClauses.push("ta.status = 'active' AND ta.expires_at < CURDATE()");
+    } else if (statusFilter === "converted" || statusFilter === "reclaimed") {
       whereClauses.push("ta.status = ?");
       params.push(statusFilter);
     }
@@ -375,7 +390,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         batchOrderId,
       }));
       return response.json({
-        message: `已分配 ${createdTrials.length} 個試用帳號（${startedAt} 至 ${expiresAt}）。`,
+        message: `已添加 ${createdTrials.length} 個試用帳號（${startedAt} 至 ${expiresAt}）。`,
         data: {
           ownerTenantId,
           ownerTenantName: owner.name || "",
@@ -390,7 +405,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     } catch (error) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to assign trial accounts:", error);
-      return response.status(500).json({ message: "分配試用帳號失敗。" });
+      return response.status(500).json({ message: "添加試用帳號失敗。" });
     } finally {
       if (connection) connection.release();
     }

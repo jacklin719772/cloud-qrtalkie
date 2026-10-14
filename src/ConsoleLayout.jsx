@@ -576,7 +576,7 @@ export default function ConsoleLayout({ onLogout }) {
             onClick={() => trialManagementRef.current?.openAssign()}
             style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
           >
-            <Plus size={14} /> 分配試用
+            <Plus size={14} /> 添加試用
           </button>
         </div>
       );

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 import apiClient from './apiClient';
 
-// 試用管理：分配試用帳號（掛靠保留租戶）與列表/提前結束
+// 試用管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
 // 方案：试用账号模块设计方案-实施参考.md（2026-10-14）
 
 function todayStr() {
@@ -20,7 +20,8 @@ function addMonthsMinusOneDay(value, months) {
 
 const PHASE_META = {
   active: { label: '試用中', color: '#4ade80', bg: '#0d2818' },
-  grace: { label: '寬限期', color: '#fbbf24', bg: '#3b2e11' },
+  expiring: { label: '即將到期', color: '#fbbf24', bg: '#3b2e11' },
+  grace: { label: '寬限期', color: '#fb923c', bg: '#3b2411' },
   converted: { label: '已轉正', color: '#60a5fa', bg: '#1e3a5f' },
   reclaimed: { label: '已回收', color: '#9ca3af', bg: '#1f2937' },
 };
@@ -209,11 +210,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     try {
       const res = await apiClient.post('/admin/trials', payload, { timeoutMs: 120000 });
       setAssignOpen(false);
-      setMessage({ type: 'success', text: res.message || '試用帳號已分配。' });
+      setMessage({ type: 'success', text: res.message || '試用帳號已添加。' });
       setPage(1);
       loadTrials({ page: 1 });
     } catch (error) {
-      setFormMessage({ type: 'error', text: error.message || '分配失敗。' });
+      setFormMessage({ type: 'error', text: error.message || '添加失敗。' });
     } finally {
       setAssigning(false);
     }
@@ -569,7 +570,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         <div className="tm-toolbar">
           <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}>
             <option value="all">全部狀態</option>
-            <option value="active">試用中 / 寬限期</option>
+            <option value="active">試用中</option>
+            <option value="expiring">即將到期</option>
+            <option value="grace">寬限期</option>
             <option value="converted">已轉正</option>
             <option value="reclaimed">已回收</option>
           </select>
@@ -601,7 +604,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         {loading ? (
           <div className="tm-empty">載入中…</div>
         ) : trials.length === 0 ? (
-          <div className="tm-empty">暫無試用記錄。點擊右上角「分配試用」開始。</div>
+          <div className="tm-empty">暫無試用記錄。點擊右上角「添加試用」開始。</div>
         ) : (
           <div className="tm-table-scroll">
             <table>
@@ -619,7 +622,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <tbody>
                 {trials.map((t) => {
                   const meta = PHASE_META[t.phase] || PHASE_META.active;
-                  const actionable = t.phase === 'active' || t.phase === 'grace';
+                  const actionable = ['active', 'expiring', 'grace'].includes(t.phase);
                   return (
                     <tr key={t.id}>
                       <td>
@@ -682,7 +685,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         <div className="tm-modal" onClick={() => { if (!assigning) setAssignOpen(false); }}>
           <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
             <div className="tm-modal-head">
-              <h3>分配試用帳號</h3>
+              <h3>添加試用帳號</h3>
               <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>關閉</button>
             </div>
             <div className="tm-modal-body">
@@ -781,7 +784,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               </div>
 
               <div className="tm-field">
-                <label>分配帳號 *</label>
+                <label>添加帳號 *</label>
                 <div className="tm-radio-row">
                   <label>
                     <input type="radio" checked={form.mode === 'auto'} onChange={() => setForm((f) => ({ ...f, mode: 'auto' }))} />
@@ -861,7 +864,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       checked={form.aiEnabled}
                       onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
                     />
-                    分配時同步開通（到試用結束為止）
+                    添加時同步開通（到試用結束為止）
                   </label>
                 </div>
                 <div className="tm-field">
@@ -873,7 +876,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             <div className="tm-modal-foot">
               <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>取消</button>
               <button className="tm-btn primary" type="button" onClick={submitAssign} disabled={assigning}>
-                <Plus size={13} /> {assigning ? '分配中…' : '確認分配'}
+                <Plus size={13} /> {assigning ? '添加中…' : '確認添加'}
               </button>
             </div>
           </div>
