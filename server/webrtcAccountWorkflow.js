@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs";
 import { copyFile, chmod, chown, mkdir, readFile, stat, writeFile, rename, mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import os from "node:os";
-import { applyConfigAndWait as freepbxApplyConfigAndWait, deleteExtension as freepbxDeleteExtension, fetchExtension as freepbxFetchExtension } from "./freepbxApiClient.js";
+import { applyConfigAndWait as freepbxApplyConfigAndWait, deleteExtension as freepbxDeleteExtension, fetchAllExtensionIds as freepbxFetchAllExtensionIds, fetchExtension as freepbxFetchExtension } from "./freepbxApiClient.js";
 import { verifyPjsipExtension } from "./asteriskCommandService.js";
 import { getAsteriskPathConfig, getWebrtcRuntimeConfig } from "./webrtcTemplateLoader.js";
 
@@ -18,6 +18,14 @@ export const WEBRTC_WORKFLOW_STEP_DEFS = [
     running: "正在驗證 WebRTC 帳號格式",
     success: "WebRTC 帳號格式正確",
     failed: "WebRTC 帳號必須為純數字",
+  },
+  {
+    key: "cleanup_orphan_overlays",
+    label: "清理孤兒 Runtime Overlay 段",
+    running: "正在清理孤兒 Runtime Overlay 段",
+    success: "Runtime Overlay 段無孤兒",
+    failed: "孤兒 Runtime Overlay 段清理失敗",
+    skipped: "已略過孤兒清理",
   },
   {
     key: "check_existing_extension",
@@ -648,6 +656,53 @@ export async function readEndpointCustomPostOverlay(extension) {
     fields: overlay.fields,
     marker: overlay.marker,
   };
+}
+
+// 一次读写内移除若干扩展号的 overlay 段（幂等：无对应段则不做任何事）
+export async function removeEndpointOverlayBlocks(extensions) {
+  const targets = Array.from(new Set(
+    (Array.isArray(extensions) ? extensions : [extensions])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean),
+  ));
+  if (targets.length === 0) return { removed: [], changed: false };
+
+  const content = await readFile(ENDPOINT_CUSTOM_POST_FILE, "utf8").catch(() => "");
+  let next = content;
+  const removed = [];
+  for (const extension of targets) {
+    const result = removeEndpointCustomPostOverlay(next, extension);
+    if (result.removed) {
+      next = result.content;
+      removed.push(extension);
+    }
+  }
+  if (removed.length > 0) {
+    const currentStat = await stat(ENDPOINT_CUSTOM_POST_FILE);
+    await writeAtomicFile(ENDPOINT_CUSTOM_POST_FILE, next, currentStat.mode & 0o7777);
+    await chown(ENDPOINT_CUSTOM_POST_FILE, currentStat.uid, currentStat.gid);
+    await chmod(ENDPOINT_CUSTOM_POST_FILE, currentStat.mode & 0o7777);
+  }
+  return { removed, changed: removed.length > 0 };
+}
+
+// 清理 overlay 文件中「扩展已不存在」的 marker 段：孤儿段会毒杀其后全部覆盖段（2026-10-14 死区事故）。
+// 判据为 FreePBX 现有扩展集合——建号先建扩展、后写 overlay，故不会误删在建账号。
+export async function cleanupOrphanEndpointOverlays() {
+  const content = await readFile(ENDPOINT_CUSTOM_POST_FILE, "utf8").catch(() => "");
+  const markerExtensions = [];
+  for (const match of content.matchAll(/^; BEGIN SaaS WebRTC 4-field endpoint overlay (\S+)\s*$/gm)) {
+    markerExtensions.push(match[1]);
+  }
+  const targets = Array.from(new Set(markerExtensions));
+  if (targets.length === 0) return { scanned: 0, removed: [] };
+
+  const knownExtensions = await freepbxFetchAllExtensionIds();
+  const orphans = targets.filter((extension) => !knownExtensions.has(extension));
+  if (orphans.length === 0) return { scanned: targets.length, removed: [] };
+
+  const result = await removeEndpointOverlayBlocks(orphans);
+  return { scanned: targets.length, removed: result.removed };
 }
 
 export function buildExpectedGeneratedEndpointSection(extension, referenceFields = {}, defaults = {}) {

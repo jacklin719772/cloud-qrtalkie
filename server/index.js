@@ -74,6 +74,7 @@ import {
   buildExpectedGeneratedEndpointSection,
   buildFourFieldEndpointOverlay,
   buildWorkflowReport,
+  cleanupOrphanEndpointOverlays,
   compareEndpointFields,
   createWorkflowSteps,
   getEndpointComparisonFields,
@@ -87,6 +88,7 @@ import {
   parseEndpointCustomPostOverlay,
   readEndpointCustomPostOverlay,
   removeEndpointCustomPostOverlay,
+  removeEndpointOverlayBlocks,
   rollbackCreatedFreepbxAccount,
   restoreEndpointCustomPostFromBackup,
   sha256File,
@@ -9385,6 +9387,7 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
     const remoteAccountName = String(rows[0].username || "").trim();
     const remoteCleanup = {
       freepbxDeleted: false,
+      overlayRemoved: false,
     };
 
     if (remoteAccountName && /^\d+$/.test(remoteAccountName)) {
@@ -9412,6 +9415,23 @@ app.delete("/api/admin/web-accounts/:id", requireAdmin, async (request, response
         return response.status(502).json({
           message: "FreePBX 帳號刪除失敗。",
           code: "FREEPBX_EXTENSION_DELETE_FAILED",
+        });
+      }
+
+      // 远端扩展已删/不存在时，遗留的 overlay 段会成为孤儿段——配置框架遇孤儿段会放弃处理
+      // 文件其余部分（2026-10-14 死区事故），必须随号一并清除（含远端不存在的幽灵号）
+      try {
+        const overlayCleanup = await removeEndpointOverlayBlocks([remoteAccountName]);
+        remoteCleanup.overlayRemoved = overlayCleanup.changed;
+      } catch (overlayError) {
+        console.error("Failed to remove WebRTC endpoint overlay for Web account:", {
+          accountId,
+          username: remoteAccountName,
+          message: overlayError?.message || String(overlayError),
+        });
+        return response.status(502).json({
+          message: "Runtime Overlay 清理失敗，請重試。",
+          code: "WEBRTC_OVERLAY_REMOVE_FAILED",
         });
       }
 
@@ -17503,7 +17523,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
 
   if (!/^\d+$/.test(extension)) {
     markStepFailed(steps, "validate_extension");
-    skipRemainingSteps(steps, "check_existing_extension", "已略過");
+    skipRemainingSteps(steps, "cleanup_orphan_overlays", "已略過");
     return finalizeReport(false, "WebRTC 帳號建立失敗", {
       code: "INVALID_WEBRTC_EXTENSION",
       message: "WebRTC 帳號必須為純數字",
@@ -17513,7 +17533,7 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
   const email = sanitizeString(request.body?.email || `${extension}@example.com`, 160);
   if (!isValidEmail(email)) {
     markStepFailed(steps, "validate_extension", { email });
-    skipRemainingSteps(steps, "check_existing_extension", "已略過");
+    skipRemainingSteps(steps, "cleanup_orphan_overlays", "已略過");
     return finalizeReport(false, "WebRTC 帳號建立失敗", {
       code: "WEBRTC_ACCOUNT_CREATE_FAILED",
       message: "電子郵件格式無效。",
@@ -17534,6 +17554,20 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
   try {
     markStepRunning(steps, "validate_extension");
     markStepSuccess(steps, "validate_extension");
+
+    // 孤儿段自愈：overlay 文件中扩展已不存在的 marker 段会让配置框架放弃处理其后内容
+    //（2026-10-14 死区事故）；FreePBX 后台直删等平台外路径无法挂钩，故在建号预检统一清理
+    markStepRunning(steps, "cleanup_orphan_overlays");
+    try {
+      const orphanCleanup = await cleanupOrphanEndpointOverlays();
+      responseData.orphanOverlayCleanup = orphanCleanup;
+      markStepSuccess(steps, "cleanup_orphan_overlays", orphanCleanup);
+    } catch (orphanErr) {
+      // 非致命：不清理也能继续，check_existing 会以同一 API 的失败给出明确报错
+      console.warn("Skipped orphan overlay cleanup:", orphanErr?.code || orphanErr?.message || orphanErr);
+      responseData.orphanOverlayCleanup = { scanned: 0, removed: [], error: orphanErr?.code || orphanErr?.message || "error" };
+      markStepSkipped(steps, "cleanup_orphan_overlays", "取得 FreePBX 擴展清單失敗，已略過清理");
+    }
 
     markStepRunning(steps, "check_existing_extension");
     let existing;
@@ -17635,6 +17669,21 @@ app.post("/api/pbx/webrtc-accounts", requireAdmin, async (request, response) => 
         return finalizeReport(false, "WebRTC 帳號建立失敗", {
           code: "FREEPBX_EXISTING_ACCOUNT_DELETE_FAILED",
           message: "既有 FreePBX 帳號配置不正確且刪除失敗，請人工檢查",
+        }, 502);
+      }
+      // 既有扩展已删除：旧 overlay 段必须一并清除——若后续步骤失败中止，残留段会成为孤儿段
+      try {
+        const existingOverlayCleanup = await removeEndpointOverlayBlocks([String(existing.extensionId || extension), extension]);
+        responseData.existingOverlayRemoved = existingOverlayCleanup.changed;
+      } catch (overlayErr) {
+        markStepFailed(steps, "check_existing_extension", {
+          existingAccount: true,
+          overlayCleanupError: overlayErr?.code || overlayErr?.message || "error",
+        });
+        skipRemainingSteps(steps, "backup_asterisk_configs", "已略過");
+        return finalizeReport(false, "WebRTC 帳號建立失敗", {
+          code: "WEBRTC_OVERLAY_REMOVE_FAILED",
+          message: "既有帳號 Runtime Overlay 清理失敗，請人工檢查",
         }, 502);
       }
       markStepSuccess(steps, "check_existing_extension", {

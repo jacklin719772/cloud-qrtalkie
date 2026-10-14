@@ -585,6 +585,42 @@ export async function fetchExtension(extension) {
   }
 }
 
+// 一次全量拉取全部扩展号集合（fetchAllExtensions 服务端不支持翻页，first 一次取足）。
+// 截断时抛错：该集合被用作清理孤儿 overlay 的存在性判据，截断会导致误删，必须中止。
+export async function fetchAllExtensionIds() {
+  const query = `
+    query FetchAllExtensions($first: Int!) {
+      fetchAllExtensions(first: $first) {
+        count
+        extension {
+          extensionId
+          user {
+            extension
+          }
+        }
+      }
+    }
+  `;
+  const result = await graphql(query, { first: 10000 });
+  const connection = result?.data?.fetchAllExtensions;
+  const rows = Array.isArray(connection?.extension) ? connection.extension : [];
+  const total = Number(connection?.count || 0);
+  if (total > 0 && rows.length < total) {
+    throw new FreepbxApiError(
+      `FreePBX extension list truncated: returned ${rows.length} of ${total}; aborting to avoid false orphan detection.`,
+      { code: "FREEPBX_EXTENSION_LIST_TRUNCATED" },
+    );
+  }
+  const ids = new Set();
+  for (const row of rows) {
+    for (const candidate of [row?.extensionId, row?.user?.extension]) {
+      const value = String(candidate || "").trim();
+      if (value) ids.add(value);
+    }
+  }
+  return ids;
+}
+
 export async function deleteExtension(extension) {
   const query = `
     mutation DeleteExtension($input: deleteExtensionInput!) {
