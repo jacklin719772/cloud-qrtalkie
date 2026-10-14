@@ -700,6 +700,16 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           gap: 10px;
           background: #0d1526;
         }
+        #trial-management-modal .tm-input {
+          background: #0b1220;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          color: #e5e7eb;
+          font-size: 13px;
+          padding: 9px 12px;
+          outline: none;
+        }
+        #trial-management-modal .tm-input:focus { border-color: #3b82f6; }
       `}</style>
 
       {message.text && (
@@ -972,9 +982,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     selectedStocks.map((a) => (
                       <div key={a.id} className="tm-account-row">
                         <span className="tm-account-name">{a.username}</span>
-                        {a.displayName && a.displayName !== a.username && (
-                          <span className="tm-hint">{a.displayName}</span>
-                        )}
                         <button className="tm-remove" type="button" title="移除" onClick={() => toggleStock(a)}>✕</button>
                       </div>
                     ))
@@ -1000,6 +1007,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                           數量
                           <input
+                            className="tm-input"
                             style={{ width: '90px' }}
                             value={randomCount}
                             onChange={(e) => setRandomCount(e.target.value.replace(/[^\d]/g, ''))}
