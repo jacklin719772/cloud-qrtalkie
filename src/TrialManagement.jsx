@@ -19,10 +19,10 @@ function addMonthsMinusOneDay(value, months) {
 }
 
 const PHASE_META = {
-  active: { label: '試用中', color: '#16a34a', bg: '#ecfdf5' },
-  grace: { label: '寬限期', color: '#d97706', bg: '#fffbeb' },
-  converted: { label: '已轉正', color: '#2563eb', bg: '#eff6ff' },
-  reclaimed: { label: '已回收', color: '#6b7280', bg: '#f3f4f6' },
+  active: { label: '試用中', color: '#4ade80', bg: '#0d2818' },
+  grace: { label: '寬限期', color: '#fbbf24', bg: '#3b2e11' },
+  converted: { label: '已轉正', color: '#60a5fa', bg: '#1e3a5f' },
+  reclaimed: { label: '已回收', color: '#9ca3af', bg: '#1f2937' },
 };
 
 function emptyForm() {
@@ -262,13 +262,17 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div id="trial-management" style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
+    <div id="trial-management" style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0, height: '100%', background: '#111827', boxSizing: 'border-box' }}>
       <style>{`
         #trial-management .tm-card {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 12px;
-          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+          background: #111827;
+          border: 1px solid #1f2937;
+          border-radius: 14px;
+          box-shadow: none;
+        }
+        #trial-management .tm-card.tm-table-card {
+          background: #1a2332;
+          overflow: hidden;
         }
         #trial-management .tm-toolbar {
           display: flex;
@@ -281,21 +285,24 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management .tm-toolbar input {
           height: 38px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #334155;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #e5e7eb;
           font-size: 12px;
           padding: 0 12px;
         }
+        #trial-management .tm-toolbar input::placeholder { color: #6b7280; }
+        #trial-management .tm-toolbar select:focus,
+        #trial-management .tm-toolbar input:focus { border-color: #3b82f6; outline: none; }
         #trial-management .tm-search {
           display: flex;
           align-items: center;
           gap: 8px;
           height: 38px;
-          border: 1px solid #d8e2ef;
+          border: 1px solid #374151;
           border-radius: 8px;
           padding: 0 12px;
-          background: #fff;
+          background: #1a2332;
         }
         #trial-management .tm-search input {
           border: 0;
@@ -303,6 +310,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           height: 34px;
           padding: 0;
           min-width: 200px;
+          background: transparent;
+          color: #e5e7eb;
         }
         #trial-management .tm-btn {
           display: inline-flex;
@@ -311,48 +320,52 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           height: 34px;
           padding: 0 14px;
           border-radius: 8px;
-          border: 1px solid #d8e2ef;
-          background: #fff;
-          color: #2563eb;
+          border: 1px solid #4b5563;
+          background: #1f2937;
+          color: #d1d5db;
           font-size: 12px;
           font-weight: 500;
           cursor: pointer;
         }
-        #trial-management .tm-btn:hover { background: #f8fafc; }
+        #trial-management .tm-btn:hover { background: #374151; color: #f3f4f6; }
         #trial-management .tm-btn.primary {
           border: 0;
           background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
           color: #fff;
         }
-        #trial-management .tm-btn.danger { color: #dc2626; border-color: #fecaca; }
-        #trial-management .tm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        #trial-management .tm-btn.danger { color: #fca5a5; }
+        #trial-management .tm-btn.danger:hover { background: #3b1111; color: #fecaca; }
+        #trial-management .tm-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; cursor: not-allowed; }
         #trial-management table {
           width: 100%;
           border-collapse: collapse;
           font-size: 12px;
         }
-        #trial-management thead { background: #f8fafc; }
+        #trial-management thead { background: #1a2332; }
         #trial-management th {
           height: 48px;
           padding: 0 18px;
           text-align: left;
-          color: #64748b;
+          color: #e5e7eb;
           font-weight: 600;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
           white-space: nowrap;
         }
+        #trial-management tbody tr { background: #111827; }
+        #trial-management tbody tr:hover { background: #1e293b; }
         #trial-management td {
           height: 56px;
           padding: 0 18px;
-          color: #334155;
-          border-bottom: 1px solid #eef2f7;
+          color: #e5e7eb;
+          border-bottom: 1px solid #1f2937;
           white-space: nowrap;
         }
         #trial-management .tm-empty {
           padding: 48px 20px;
           text-align: center;
-          color: #94a3b8;
+          color: #9ca3af;
           font-size: 13px;
+          background: #111827;
         }
         #trial-management .tm-badge {
           display: inline-flex;
@@ -368,8 +381,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           align-items: center;
           justify-content: space-between;
           padding: 14px 20px;
-          color: #64748b;
+          color: #9ca3af;
           font-size: 12px;
+          background: #111827;
+          border-top: 1px solid #1f2937;
         }
         #trial-management .tm-footer .tm-page-btns { display: flex; gap: 8px; align-items: center; }
         #trial-management .tm-banner {
@@ -377,21 +392,24 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           border-radius: 8px;
           font-size: 12px;
         }
-        #trial-management .tm-banner.success { background: #ecfdf5; color: #15803d; border: 1px solid #bbf7d0; }
-        #trial-management .tm-banner.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        #trial-management .tm-banner.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
+        #trial-management .tm-banner.error { background: #3b1111; color: #ef4444; border: 1px solid #7f1d1d; }
         #trial-management .tm-field { display: flex; flex-direction: column; gap: 6px; }
-        #trial-management .tm-field label { font-size: 12px; color: #94a3b8; }
+        #trial-management .tm-field label { font-size: 12px; color: #9ca3af; }
         #trial-management .tm-field input,
         #trial-management .tm-field select,
         #trial-management .tm-field textarea {
           background: #0b1220;
-          border: 1px solid #1f2937;
+          border: 1px solid #374151;
           border-radius: 8px;
           color: #e5e7eb;
           font-size: 13px;
           padding: 9px 12px;
           outline: none;
         }
+        #trial-management .tm-field input:focus,
+        #trial-management .tm-field select:focus { border-color: #3b82f6; }
+        #trial-management .tm-field input:disabled { color: #9ca3af; }
         #trial-management .tm-modal {
           position: fixed;
           inset: 0;
@@ -435,7 +453,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management .tm-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         #trial-management .tm-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
         #trial-management .tm-stock-list {
-          border: 1px solid #1f2937;
+          border: 1px solid #374151;
           border-radius: 8px;
           max-height: 220px;
           overflow-y: auto;
@@ -446,14 +464,17 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           align-items: center;
           gap: 10px;
           padding: 8px 12px;
-          border-bottom: 1px solid #111c2e;
+          border-bottom: 1px solid #1f2937;
           color: #e5e7eb;
           font-size: 12px;
           cursor: pointer;
         }
-        #trial-management .tm-stock-row:hover { background: #131d31; }
+        #trial-management .tm-stock-row:hover { background: #1e293b; }
+        #trial-management .tm-stock-row input[type="checkbox"] { accent-color: #3b82f6; }
         #trial-management .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
         #trial-management .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+        #trial-management .tm-radio-row input[type="radio"],
+        #trial-management .tm-field input[type="checkbox"] { accent-color: #3b82f6; }
         #trial-management .tm-hint { color: #6b7280; font-size: 11px; }
         #trial-management .tm-new-tenant {
           border: 1px dashed #374151;
@@ -487,7 +508,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             </select>
           )}
           <div className="tm-search">
-            <Search size={14} color="#94a3b8" />
+            <Search size={14} color="#6b7280" />
             <input
               placeholder="搜尋聯繫人 / 公司 / 郵箱 / 帳號"
               value={filterQInput}
@@ -502,7 +523,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         </div>
       </div>
 
-      <div className="tm-card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="tm-card tm-table-card" style={{ display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           <div className="tm-empty">載入中…</div>
         ) : trials.length === 0 ? (
@@ -528,15 +549,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   return (
                     <tr key={t.id}>
                       <td>
-                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{t.username}</div>
+                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{t.username}</div>
                         {t.accountDisplayName && t.accountDisplayName !== t.username && (
-                          <div style={{ color: '#94a3b8', fontSize: '11px' }}>{t.accountDisplayName}</div>
+                          <div style={{ color: '#9ca3af', fontSize: '11px' }}>{t.accountDisplayName}</div>
                         )}
                       </td>
                       <td>{t.ownerTenantName}</td>
                       <td>
                         <div>{t.contactName || '—'}</div>
-                        {t.contactEmail && <div style={{ color: '#94a3b8', fontSize: '11px' }}>{t.contactEmail}</div>}
+                        {t.contactEmail && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{t.contactEmail}</div>}
                       </td>
                       <td>{t.startedAt} ~ {t.expiresAt}</td>
                       <td>
@@ -552,7 +573,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                             )}
                           </div>
                         ) : (
-                          <span style={{ color: '#cbd5e1' }}>—</span>
+                          <span style={{ color: '#4b5563' }}>—</span>
                         )}
                       </td>
                     </tr>
@@ -706,7 +727,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <div className="tm-search" style={{ background: '#0b1220', borderColor: '#1f2937', flex: 1 }}>
-                        <Search size={14} color="#64748b" />
+                        <Search size={14} color="#6b7280" />
                         <input
                           style={{ background: 'transparent', color: '#e5e7eb', width: '100%' }}
                           placeholder="搜尋庫存帳號（帳號/名稱）"
@@ -720,9 +741,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     <div className="tm-hint">庫存共 {stockTotal} 個可用帳號，最多顯示前 100 個</div>
                     <div className="tm-stock-list">
                       {stockLoading ? (
-                        <div style={{ padding: '14px', color: '#94a3b8', fontSize: '12px' }}>載入中…</div>
+                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>載入中…</div>
                       ) : stockList.length === 0 ? (
-                        <div style={{ padding: '14px', color: '#94a3b8', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
+                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
                       ) : (
                         stockList.map((a) => {
                           const checked = selectedStocks.some((s) => s.id === a.id);
@@ -731,7 +752,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                               <input type="checkbox" checked={checked} readOnly />
                               <span style={{ fontWeight: 600 }}>{a.username}</span>
                               {a.displayName && a.displayName !== a.username && (
-                                <span style={{ color: '#94a3b8' }}>{a.displayName}</span>
+                                <span style={{ color: '#9ca3af' }}>{a.displayName}</span>
                               )}
                             </div>
                           );
