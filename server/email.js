@@ -92,6 +92,48 @@ export async function queuePasswordResetEmail(connection, { email, resetUrl }) {
   }
 }
 
+// 试用模块通用通知邮件（主题/正文由调用方组织；登记联系人非控制台用户，直接发信）
+export async function sendTrialNotificationEmail(connection, { to, subject, body }) {
+  const result = await connection.query(
+    `INSERT INTO email_outbox (recipient_email, subject, body)
+     VALUES (?, ?, ?)`,
+    [to, subject, body],
+  );
+
+  try {
+    const delivery = await sendMail({ to, subject, text: body });
+
+    if (delivery.sent) {
+      await connection.query(
+        `UPDATE email_outbox
+         SET status = 'sent', sent_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [Number(result.insertId)],
+      );
+      console.log(`Trial notification sent to ${to}`);
+      return { sent: true };
+    }
+
+    await connection.query(
+      `UPDATE email_outbox
+       SET status = 'failed'
+       WHERE id = ?`,
+      [Number(result.insertId)],
+    );
+    console.log(`Trial notification queued for ${to}: ${delivery.reason}`);
+    return { sent: false, reason: delivery.reason };
+  } catch (error) {
+    await connection.query(
+      `UPDATE email_outbox
+       SET status = 'failed'
+       WHERE id = ?`,
+      [Number(result.insertId)],
+    );
+    console.error(`Trial notification failed for ${to}:`, error.message);
+    return { sent: false, reason: error.message };
+  }
+}
+
 export async function queueVerificationEmail(connection, { email, verificationUrl }) {
   const subject = "QRTalkie Cloud 電子郵件驗證";
   const body = [

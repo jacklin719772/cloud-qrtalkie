@@ -3,7 +3,7 @@
 // 設計要點：試用帳號掛在保留租戶（is_system=1）名下；分配時為保留租戶靜默建一張
 // order_type='trial' 的批次訂單（金額 0、已付款、已審核），後續回收/轉正均以 trial_assignments 為業務憑據。
 import { pool } from "./db.js";
-import { getReservedTrialTenantId } from "./trialService.js";
+import { expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment } from "./trialService.js";
 
 const MAX_ASSIGN_COUNT = 100;
 
@@ -441,41 +441,18 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       const yesterday = addDays(todayDate(), -1);
 
       if (action === "end") {
-        // 提前到期：功能即停（權益置 expired / AI 關閉），帳號留在寬限期內可轉正
-        await connection.query(
-          "UPDATE trial_assignments SET expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-          [yesterday, trialId],
-        );
-        await connection.query(
-          "UPDATE sip_users SET service_expires_at = ? WHERE id = ?",
-          [yesterday, Number(trial.sip_user_id)],
-        );
-        await connection.query(
-          "UPDATE tenant_sip_account_entitlements SET status = 'expired', service_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-          [yesterday, Number(trial.sip_user_id)],
-        );
-        await connection.query(
-          "UPDATE ai_bot_account_entitlements SET enabled = 0, expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-          [`${yesterday} 23:59:59`, Number(trial.sip_user_id)],
-        );
+        // 提前到期：功能即停（权益置 expired / AI 关闭），帐号留在宽限期可转正
+        await expireTrialAssignment(connection, {
+          trialId,
+          sipUserId: Number(trial.sip_user_id),
+          expiresAt: yesterday,
+        });
       } else {
-        // 立即回庫：抹去掛靠與到期字段，帳號回到與庫存一致的形態
-        await connection.query(
-          "UPDATE sip_users SET tenant_id = NULL, service_expires_at = NULL WHERE id = ?",
-          [Number(trial.sip_user_id)],
-        );
-        await connection.query(
-          "UPDATE tenant_sip_account_entitlements SET status = 'revoked', current_order_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-          [Number(trial.sip_user_id)],
-        );
-        await connection.query(
-          "UPDATE ai_bot_account_entitlements SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-          [Number(trial.sip_user_id)],
-        );
-        await connection.query(
-          "UPDATE trial_assignments SET status = 'reclaimed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-          [trialId],
-        );
+        // 立即回库：抹去挂靠与到期字段，帐号回到与库存一致的形态
+        await reclaimTrialAssignment(connection, {
+          trialId,
+          sipUserId: Number(trial.sip_user_id),
+        });
       }
 
       await connection.commit();

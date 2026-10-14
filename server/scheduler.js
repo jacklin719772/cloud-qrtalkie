@@ -5,6 +5,7 @@ import { pool } from "./db.js";
 import { cleanupFlexisipCallLogs } from "./flexisipCallLogCleanupService.js";
 import { cleanupCustomerAssistantData } from "./customerAssistant/cleanupService.js";
 import { retryPendingSipAccountDeletes } from "./sipDeleteRetryService.js";
+import { notifyTrialContactOnce, reclaimTrialAssignment } from "./trialService.js";
 
 let timers = [];
 
@@ -37,6 +38,7 @@ async function scanExpiringResources() {
     connection = await pool.getConnection();
     await scanExpiringSipAccounts(connection);
     await scanExpiredSipAccounts(connection);
+    await scanExpiredTrials(connection);
     await scanExpiringPlans(connection);
     await scanExpiringEcards(connection);
     console.log("[Scheduler] Expiry scan complete");
@@ -129,6 +131,78 @@ async function scanExpiredSipAccounts(connection) {
         await connection.query("INSERT IGNORE INTO notification_receipts (event_id, sip_user_id, receiver_type) VALUES (?, ?, 'sip')", [ev.id, sipId]);
       }
     }
+  }
+}
+
+// 试用账号：7 天到期提醒 / 到期提醒 / 到期逾 7 天自动回收（邮件通知登记联系人）
+async function scanExpiredTrials(connection) {
+  const rows = await connection.query(
+    `SELECT ta.id, ta.sip_user_id, ta.contact_name, ta.contact_email, ta.company,
+            u.username, DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_at,
+            DATEDIFF(ta.expires_at, CURDATE()) AS days_left
+     FROM trial_assignments ta
+     JOIN sip_users u ON u.id = ta.sip_user_id
+     WHERE ta.status = 'active'
+       AND ta.expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`
+  );
+
+  for (const row of rows) {
+    const daysLeft = Number(row.days_left);
+    const trial = {
+      id: Number(row.id),
+      contact_email: row.contact_email,
+      contact_name: row.contact_name,
+      company: row.company,
+    };
+    const who = row.contact_name || row.company || "";
+    const username = row.username || "";
+    const greeting = who ? `${who} 您好：` : "您好：";
+
+    if (daysLeft <= -8) {
+      // 到期逾 7 天：回收（独立事务 + 行锁 + 状态复核，防与转正并发）
+      try {
+        await connection.beginTransaction();
+        const [locked] = await connection.query(
+          "SELECT id, status FROM trial_assignments WHERE id = ? FOR UPDATE",
+          [Number(row.id)],
+        );
+        if (!locked || locked.status !== "active") {
+          await connection.rollback();
+          continue;
+        }
+        await reclaimTrialAssignment(connection, { trialId: Number(row.id), sipUserId: Number(row.sip_user_id) });
+        await connection.commit();
+      } catch (error) {
+        await connection.rollback().catch(() => {});
+        console.error("Trial reclaim failed:", row.id, error && error.message);
+        continue;
+      }
+      console.log(`[Scheduler] Trial reclaimed: ${username} (trial ${row.id})`);
+      await notifyTrialContactOnce(connection, {
+        trial,
+        kind: "reclaimed",
+        subject: `QRTalkie 試用帳號已回收（${username}）`,
+        body: `${greeting}\n\n試用帳號 ${username} 已於 ${row.expires_at} 到期逾 7 天，系統已自動回收。\n如需繼續使用，歡迎隨時與我們聯繫。\n\nQRTalkie Cloud`,
+      });
+      continue;
+    }
+
+    if (daysLeft <= 0) {
+      await notifyTrialContactOnce(connection, {
+        trial,
+        kind: "expired",
+        subject: `QRTalkie 試用帳號已到期（${username}）`,
+        body: `${greeting}\n\n試用帳號 ${username} 已於 ${row.expires_at} 到期，功能已停止。\n到期後 7 天內仍可轉為正式方案；逾期帳號將自動回收。\n\nQRTalkie Cloud`,
+      });
+      continue;
+    }
+
+    await notifyTrialContactOnce(connection, {
+      trial,
+      kind: "expiring_7d",
+      subject: `QRTalkie 試用帳號即將到期（${username}）`,
+      body: `${greeting}\n\n試用帳號 ${username} 將於 ${row.expires_at} 到期（剩餘 ${daysLeft} 天）。\n如需繼續使用，請與我們聯繫升級為正式方案。\n\nQRTalkie Cloud`,
+    });
   }
 }
 
