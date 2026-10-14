@@ -469,12 +469,26 @@ export default function ECardVisitorPage({ slug }) {
 
     try {
       const videoStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, frameRate: 20 },
+        // 低分辨率/低帧率压制发送码率，降低跨国链路 UDP 分片丢包（320x240@15fps）
+        video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } },
       });
       const pc = session.connection;
       const videoTrack = videoStream.getVideoTracks()[0];
       if (localStreamRef.current && videoTrack) localStreamRef.current.addTrack(videoTrack);
       if (videoTrack) pc.addTrack(videoTrack, localStreamRef.current || videoStream);
+      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
+      try {
+        const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          const sendParams = videoSender.getParameters();
+          if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
+          sendParams.encodings.forEach((enc) => {
+            enc.maxBitrate = 300000;
+            enc.maxFramerate = 15;
+          });
+          await videoSender.setParameters(sendParams);
+        }
+      } catch {}
       if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
       setIsLocalVideoActive(true);
       applyCodecPreferences(pc);
