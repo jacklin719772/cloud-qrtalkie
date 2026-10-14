@@ -119,6 +119,19 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 提示自动关闭（原则：所有提示必须定时消失，不依赖用户操作）
+  useEffect(() => {
+    if (!message.text) return undefined;
+    const timer = setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
+    if (!formMessage.text) return undefined;
+    const timer = setTimeout(() => setFormMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [formMessage]);
+
   async function loadStock(keyword) {
     setStockLoading(true);
     try {
