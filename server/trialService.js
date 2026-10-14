@@ -39,15 +39,18 @@ export async function expireTrialAssignment(connection, { trialId, sipUserId, ex
   );
 }
 
-// 回收：抹去挂靠与到期字段，帐号回到与库存完全一致的形态（可再次分配）
+// 回收：抹去挂靠与到期字段并删除试用权益行，帐号回到与库存完全一致的形态（可再次分配）
 export async function reclaimTrialAssignment(connection, { trialId, sipUserId }) {
   await connection.query(
     "UPDATE sip_users SET tenant_id = NULL, service_expires_at = NULL WHERE id = ?",
     [sipUserId],
   );
+  // 权益行直接删除（置 revoked 会在库存账号上留残行，与「回到库存形态」不符）；
+  // 业务痕迹保留在 trial_assignments
+  const reservedTenantId = await getReservedTrialTenantId(connection);
   await connection.query(
-    "UPDATE tenant_sip_account_entitlements SET status = 'revoked', current_order_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-    [sipUserId],
+    "DELETE FROM tenant_sip_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
+    [sipUserId, reservedTenantId || 0],
   );
   await connection.query(
     "UPDATE ai_bot_account_entitlements SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
