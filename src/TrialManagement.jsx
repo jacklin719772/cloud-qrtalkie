@@ -324,7 +324,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           background: transparent;
           color: #e5e7eb;
         }
-        #trial-management .tm-btn {
+        #trial-management .tm-btn, #trial-management-modal .tm-btn {
           display: inline-flex;
           align-items: center;
           gap: 6px;
@@ -338,15 +338,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           font-weight: 500;
           cursor: pointer;
         }
-        #trial-management .tm-btn:hover { background: #374151; color: #f3f4f6; }
-        #trial-management .tm-btn.primary {
+        #trial-management .tm-btn:hover, #trial-management-modal .tm-btn:hover { background: #374151; color: #f3f4f6; }
+        #trial-management .tm-btn.primary, #trial-management-modal .tm-btn.primary {
           border: 0;
           background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
           color: #fff;
         }
-        #trial-management .tm-btn.danger { color: #fca5a5; }
-        #trial-management .tm-btn.danger:hover { background: #3b1111; color: #fecaca; }
-        #trial-management .tm-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; cursor: not-allowed; }
+        #trial-management .tm-btn.danger, #trial-management-modal .tm-btn.danger { color: #fca5a5; }
+        #trial-management .tm-btn.danger:hover, #trial-management-modal .tm-btn.danger:hover { background: #3b1111; color: #fecaca; }
+        #trial-management .tm-btn:disabled, #trial-management-modal .tm-btn:disabled { opacity: 0.4; background: #1a2332; color: #4b5563; cursor: not-allowed; }
         #trial-management table {
           width: 100%;
           border-collapse: collapse;
@@ -462,18 +462,18 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           outline: none;
           font-size: 11px;
         }
-        #trial-management .tm-banner {
+        #trial-management .tm-banner, #trial-management-modal .tm-banner {
           padding: 10px 16px;
           border-radius: 8px;
           font-size: 12px;
         }
-        #trial-management .tm-banner.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
-        #trial-management .tm-banner.error { background: #3b1111; color: #ef4444; border: 1px solid #7f1d1d; }
-        #trial-management .tm-field { display: flex; flex-direction: column; gap: 6px; }
-        #trial-management .tm-field label { font-size: 12px; color: #9ca3af; }
-        #trial-management .tm-field input,
-        #trial-management .tm-field select,
-        #trial-management .tm-field textarea {
+        #trial-management .tm-banner.success, #trial-management-modal .tm-banner.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
+        #trial-management .tm-banner.error, #trial-management-modal .tm-banner.error { background: #3b1111; color: #ef4444; border: 1px solid #7f1d1d; }
+        #trial-management-modal .tm-field { display: flex; flex-direction: column; gap: 6px; }
+        #trial-management-modal .tm-field label { font-size: 12px; color: #9ca3af; }
+        #trial-management-modal .tm-field input,
+        #trial-management-modal .tm-field select,
+        #trial-management-modal .tm-field textarea {
           background: #0b1220;
           border: 1px solid #374151;
           border-radius: 8px;
@@ -482,19 +482,19 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           padding: 9px 12px;
           outline: none;
         }
-        #trial-management .tm-field input:focus,
-        #trial-management .tm-field select:focus { border-color: #3b82f6; }
-        #trial-management .tm-field input:disabled { color: #9ca3af; }
-        #trial-management .tm-modal {
+        #trial-management-modal .tm-field input:focus,
+        #trial-management-modal .tm-field select:focus { border-color: #3b82f6; }
+        #trial-management-modal .tm-field input:disabled { color: #9ca3af; }
+        #trial-management-modal .tm-modal {
           position: fixed;
           inset: 0;
-          z-index: 10000;
+          z-index: 2147483646;
           display: flex;
           align-items: center;
           justify-content: center;
           background: rgba(0, 0, 0, 0.6);
         }
-        #trial-management .tm-modal-panel {
+        #trial-management-modal .tm-modal-panel {
           background: #111827;
           border: 1px solid #1f2937;
           border-radius: 12px;
@@ -505,7 +505,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           flex-direction: column;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
         }
-        #trial-management .tm-modal-head {
+        #trial-management-modal .tm-modal-head {
           padding: 18px 24px;
           border-bottom: 1px solid #1f2937;
           background: #1a2332;
@@ -514,9 +514,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           justify-content: space-between;
           align-items: center;
         }
-        #trial-management .tm-modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
-        #trial-management .tm-modal-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-        #trial-management .tm-modal-foot {
+        #trial-management-modal .tm-modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
+        #trial-management-modal .tm-modal-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        #trial-management-modal .tm-modal-foot {
           padding: 14px 24px;
           border-top: 1px solid #1f2937;
           background: #1a2332;
@@ -525,16 +525,16 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           justify-content: flex-end;
           gap: 10px;
         }
-        #trial-management .tm-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        #trial-management .tm-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        #trial-management .tm-stock-list {
+        #trial-management-modal .tm-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        #trial-management-modal .tm-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+        #trial-management-modal .tm-stock-list {
           border: 1px solid #374151;
           border-radius: 8px;
           max-height: 220px;
           overflow-y: auto;
           background: #0b1220;
         }
-        #trial-management .tm-stock-row {
+        #trial-management-modal .tm-stock-row {
           display: flex;
           align-items: center;
           gap: 10px;
@@ -544,14 +544,14 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           font-size: 12px;
           cursor: pointer;
         }
-        #trial-management .tm-stock-row:hover { background: #1e293b; }
-        #trial-management .tm-stock-row input[type="checkbox"] { accent-color: #3b82f6; }
-        #trial-management .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
-        #trial-management .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-        #trial-management .tm-radio-row input[type="radio"],
-        #trial-management .tm-field input[type="checkbox"] { accent-color: #3b82f6; }
-        #trial-management .tm-hint { color: #6b7280; font-size: 11px; }
-        #trial-management .tm-new-tenant {
+        #trial-management-modal .tm-stock-row:hover { background: #1e293b; }
+        #trial-management-modal .tm-stock-row input[type="checkbox"] { accent-color: #3b82f6; }
+        #trial-management-modal .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
+        #trial-management-modal .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+        #trial-management-modal .tm-radio-row input[type="radio"],
+        #trial-management-modal .tm-field input[type="checkbox"] { accent-color: #3b82f6; }
+        #trial-management-modal .tm-hint { color: #6b7280; font-size: 11px; }
+        #trial-management-modal .tm-new-tenant {
           border: 1px dashed #374151;
           border-radius: 8px;
           padding: 12px;
@@ -682,6 +682,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       </div>
 
       {assignOpen && createPortal(
+        <div id="trial-management-modal">
         <div className="tm-modal" onClick={() => { if (!assigning) setAssignOpen(false); }}>
           <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
             <div className="tm-modal-head">
@@ -880,6 +881,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               </button>
             </div>
           </div>
+        </div>
         </div>,
         document.body
       )}
