@@ -111,6 +111,7 @@ import {
 } from "./flexisipAccountManagerClient.js";
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
+import { getReservedTrialTenantId, isReservedTrialTenant } from "./trialService.js";
 import {
   createContactList,
   assignContactListToAccount,
@@ -3924,6 +3925,7 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
         WHERE payment_status = 'paid'
         GROUP BY tenant_id
       ) p ON t.id = p.tenant_id
+      WHERE t.is_system = 0
       ORDER BY t.created_at DESC;
     `;
 
@@ -3960,7 +3962,7 @@ app.get("/api/admin/tenants/with-active-sip", requireAdmin, async (request, resp
        FROM tenants t
        INNER JOIN sip_users su2 ON su2.tenant_id = t.id AND su2.status = 'active'
          AND (su2.service_expires_at IS NULL OR su2.service_expires_at > NOW())
-       WHERE t.status = 'active'
+       WHERE t.status = 'active' AND t.is_system = 0
        ORDER BY t.name`
     );
     response.json({
@@ -4194,11 +4196,17 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     await connection.beginTransaction();
 
     // Check tenant status
-    const tenantRows = await connection.query(`SELECT id, status FROM tenants WHERE id = ?`, [tenantId]);
+    const tenantRows = await connection.query(`SELECT id, status, is_system FROM tenants WHERE id = ?`, [tenantId]);
     const tenant = tenantRows[0];
     if (!tenant) {
       await connection.rollback();
       return response.status(404).json({ message: "找不到指定的租戶。" });
+    }
+
+    // 保留租戶（試用模組掛靠）不允許刪除
+    if (Number(tenant.is_system) === 1) {
+      await connection.rollback();
+      return response.status(403).json({ message: "系統保留租戶不允許刪除。", code: "SYSTEM_TENANT_PROTECTED" });
     }
 
     if (tenant.status !== 'disabled') {
@@ -9826,6 +9834,9 @@ app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => 
   const whereClauses = [];
   const params = [];
 
+  // 試用批次靜默訂單（order_type='trial'）不進平台訂單列表
+  whereClauses.push("o.order_type <> 'trial'");
+
   if (statusFilter !== "all") {
     // Map UI filters to DB order_status and payment_status
     if (statusFilter === 'active_effective') {
@@ -9886,7 +9897,7 @@ app.get("/api/admin/billing-orders", requireAdmin, async (request, response) => 
       LEFT JOIN tenants t ON t.id = o.tenant_id
       LEFT JOIN billing_order_items plan ON plan.order_id = o.id AND plan.item_type = 'plan'
       LEFT JOIN billing_payments p ON p.order_id = o.id
-      ${keyword ? `WHERE (o.order_no LIKE ? OR t.name LIKE ? OR t.tenant_number LIKE ? OR plan.item_name LIKE ?)` : ""}
+      ${keyword ? `WHERE o.order_type <> 'trial' AND (o.order_no LIKE ? OR t.name LIKE ? OR t.tenant_number LIKE ? OR plan.item_name LIKE ?)` : "WHERE o.order_type <> 'trial'"}
     `;
     const statsRows = await connection.query(statsQuery, params);
     const stats = {
@@ -18992,11 +19003,13 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    const reservedTrialTenantId = await getReservedTrialTenantId(connection);
     const [sipCreated] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE status = 'active'");
-    const [sipAssigned] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_sip_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE()");
+    // 試用帳號的權益行掛在保留租戶下，不計入「正式已分配」
+    const [sipAssigned] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_sip_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE() AND tenant_id <> ?", [reservedTrialTenantId || 0]);
     const [webCreated] = await connection.query("SELECT COUNT(*) AS cnt FROM web_users WHERE status = 'active'");
     const [webAssigned] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_web_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE()");
-    const [tenantCount] = await connection.query("SELECT COUNT(*) AS cnt FROM tenants WHERE status = 'active'");
+    const [tenantCount] = await connection.query("SELECT COUNT(*) AS cnt FROM tenants WHERE status = 'active' AND is_system = 0");
     const [orderCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved'");
     const [pendingReviewCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'pending_review'");
     const [pendingPaymentCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE payment_status = 'unpaid' AND order_status = 'review_approved'");
@@ -19014,7 +19027,7 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
 
     // 近7日数据
     const tenantTrend = await connection.query(
-      "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS cnt FROM tenants WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC"
+      "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS cnt FROM tenants WHERE is_system = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC"
     );
     const paymentTrend = await connection.query(
       "SELECT DATE_FORMAT(paid_at, '%Y-%m-%d') AS date, COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC"

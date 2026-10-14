@@ -53,7 +53,7 @@ async function scanExpiringSipAccounts(connection) {
     `SELECT su.id, su.username, su.tenant_id, t.name AS tenant_name, e.service_expires_at
      FROM sip_users su
      JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active'
-     JOIN tenants t ON t.id = su.tenant_id AND t.status = 'active'
+     JOIN tenants t ON t.id = su.tenant_id AND t.status = 'active' AND t.is_system = 0
      WHERE su.status = 'active'
        AND e.service_expires_at >= CURDATE()
        AND e.service_expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`
@@ -90,7 +90,7 @@ async function scanExpiringSipAccounts(connection) {
 // SIP accounts already expired (auto-update status)
 async function scanExpiredSipAccounts(connection) {
   const rows = await connection.query(
-    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, su.tenant_id, t.name AS tenant_name
+    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, su.tenant_id, t.name AS tenant_name, t.is_system AS tenant_is_system
      FROM tenant_sip_account_entitlements e
      JOIN sip_users su ON su.id = e.sip_user_id
      JOIN tenants t ON t.id = su.tenant_id
@@ -103,6 +103,9 @@ async function scanExpiredSipAccounts(connection) {
       "UPDATE tenant_sip_account_entitlements SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       [row.entitlement_id]
     );
+
+    // 試用帳號：狀態照常置 expired（功能即停），但提醒走試用郵件通道，不發站內通知
+    if (Number(row.tenant_is_system) === 1) continue;
 
     const dedupeKey = `tenant:${row.tenant_id}:sip:${row.sip_user_id}:expired`;
     const body = `SIP 帳號 ${row.username} 已過期，系統已自動將其停用。`;
