@@ -124,6 +124,7 @@ import {
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
+import { registerTrialManagementRoutes } from "./trialManagementRoutes.js";
 import { registerCustomerAssistantRoutes } from "./customerAssistant/routes.js";
 import { attachCustomerAssistantWebSocketServer } from "./customerAssistant/realtimeHub.js";
 import { registerGoogleMeetRoutes } from "./googleMeet/routes.js";
@@ -207,6 +208,8 @@ app.use("/visitor-assets", express.static(path.join(projectRoot, "public/visitor
 app.use("/privacy-terms", express.static(path.join(projectRoot, "public/privacy-terms")));
 app.use("/download", express.static(path.join(projectRoot, "public/download")));
 registerPushGatewayRoutes(app, { requireAdmin });
+// 試用帳號模組（2026-10-14 方案）——独立模块，对既有路由只增不改
+registerTrialManagementRoutes(app, { requireAdmin });
 // Customer Assistant（ECard 访客聊天）——独立模块，与 AI 助手平级；对既有路由只增不改
 registerCustomerAssistantRoutes(app, { requireSipUser });
 // Google Meet（发起会议）——独立模块，对既有路由只增不改
