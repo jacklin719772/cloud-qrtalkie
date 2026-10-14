@@ -22,6 +22,7 @@ import {
   BarChart3,
   Download,
   Flag,
+  Rocket,
 } from 'lucide-react';
 
 const navItems = [
@@ -31,6 +32,7 @@ const navItems = [
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
   { id: 'tenant-account-management', label: '帳號管理', icon: Users },
+  { id: 'trial-management', label: '試用管理', icon: Rocket },
   { id: 'contact-books', label: '通訊錄管理', icon: Book },
   { id: 'ecard-styles-management', label: '電子名片管理', icon: IdCard },
   { id: 'call-center', label: '呼叫中心設定', icon: Headset },
@@ -54,7 +56,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
   const [isSipAccountOpen, setIsSipAccountOpen] = useState(false);
 
   const isSipUser = userType === 'sip';
-  const tenantOnlyItems = ['domain', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'access-control', 'tenant'];
+  const tenantOnlyItems = ['domain', 'tenant-account-management', 'trial-management', 'contact-books', 'ecard-styles-management', 'call-center', 'access-control', 'tenant'];
   const visibleNavItems = navItems.filter(item => {
     if (isSipUser) return item.id === 'registrations';
     if (item.id === 'registrations') return false;
@@ -124,6 +126,17 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             >
               <Building className="nav-icon" size={20} aria-hidden="true" />
               {!isCollapsed && <span>租戶管理</span>}
+            </button>
+
+            <button
+              className={`nav-item ${currentView === 'trial-management' ? 'active' : ''}`}
+              type="button"
+              title={isCollapsed ? '試用管理' : undefined}
+              aria-label="試用管理"
+              onClick={() => onViewChange('trial-management')}
+            >
+              <Rocket className="nav-icon" size={20} aria-hidden="true" />
+              {!isCollapsed && <span>試用管理</span>}
             </button>
 
             <button

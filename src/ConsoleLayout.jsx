@@ -15,6 +15,7 @@ import PaymentMethods from './PaymentMethods';
 import DiscountData from './DiscountData';
 import AddonServices from './AddonServices';
 import TenantManagement from './TenantManagement';
+import TrialManagement from './TrialManagement';
 import ReportManagement from './ReportManagement';
 import TenantCouponManagement from './TenantCouponManagement';
 import PaymentProofDialog from './PaymentProofDialog';
@@ -57,6 +58,7 @@ const viewTitles = {
   'e-business-card': '電子名片',
   'ecard-styles-management': '電子名片管理',
   'tenant-management': '租戶管理',
+  'trial-management': '試用管理',
   'tenant-coupon-management': '優惠碼管理',
   'device-management': '裝置管理',
   'offline-account': '收款帳戶',
@@ -157,6 +159,7 @@ export default function ConsoleLayout({ onLogout }) {
   const discountDataRef = useRef(null);
   const addonServicesRef = useRef(null);
   const tenantManagementRef = useRef(null);
+  const trialManagementRef = useRef(null);
   const tenantCouponManagementRef = useRef(null);
   const sipAccountRegistrationRef = useRef(null);
   const webAccountRegistrationRef = useRef(null);
@@ -551,6 +554,33 @@ export default function ConsoleLayout({ onLogout }) {
       }
       return null;
     }
+    if (currentView === 'trial-management') {
+      const actionBaseStyle = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        height: '44px',
+        minHeight: '44px',
+        padding: '0 18px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+      };
+      return (
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => trialManagementRef.current?.openAssign()}
+            style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+          >
+            <Plus size={14} /> 分配試用
+          </button>
+        </div>
+      );
+    }
     if (currentView === 'plans') {
       const actionBaseStyle = {
         display: 'inline-flex',
@@ -770,7 +800,7 @@ export default function ConsoleLayout({ onLogout }) {
         userType={userType}
       />
 
-      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
+      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
         <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}), ...(['app-releases', 'platform-admin-management'].includes(currentView) ? { marginBottom: '18px' } : {}) }}>
           <h1 id="page-title">{
             currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平臺概覽' :
@@ -839,6 +869,13 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} accountType={identity?.admin?.accountType} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
+          {currentView === 'trial-management' && (
+            <TrialManagement
+              ref={trialManagementRef}
+              isPlatform={identity?.admin?.accountType === 'platform'}
+              tenantName={identity?.tenant?.companyName || ''}
+            />
+          )}
           {currentView === 'reports-management' && <ReportManagement />}
           {currentView === 'offline-account' && <OfflinePaymentAccount />}
           {['plans', 'plans-add'].includes(currentView) && (
