@@ -65,11 +65,9 @@ function addDaysStr(value, days) {
 }
 
 export function registerTrialManagementRoutes(app, { requireAdmin }) {
-  // 庫存帳號查詢（添加表單選號用）：tenant_id IS NULL 且 active；random=1 時隨機取
+  // 庫存帳號查詢（添加表單選號用）：全量 SIP（tenant_id IS NULL 且 active）+ 隨機預配 Web 帳號
   app.get("/api/admin/trials/stock-accounts", requireAdmin, async (request, response) => {
     const keyword = clean(request.query?.q, 120);
-    const random = request.query?.random === "1" || request.query?.random === "true";
-    const limit = Math.min(200, Math.max(1, Number.parseInt(request.query?.limit || "100", 10) || 100));
     let connection;
     try {
       connection = await pool.getConnection();
@@ -80,23 +78,36 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         const pattern = `%${keyword}%`;
         params.push(pattern, pattern);
       }
-      const [countRow] = await connection.query(`SELECT COUNT(*) AS total FROM sip_users WHERE ${where}`, params);
-      const accounts = await connection.query(
+      const sips = await connection.query(
         `SELECT id, username, sip_domain, display_name
          FROM sip_users
          WHERE ${where}
-         ORDER BY ${random ? "RAND()" : "username ASC"}
-         LIMIT ${limit}`,
+         ORDER BY username ASC`,
         params,
       );
+      const webs = await connection.query(
+        "SELECT id, username FROM web_users WHERE tenant_id IS NULL AND status = 'active' ORDER BY username ASC",
+      );
+      // 隨機預配：Web 池洗牌後按序對位（每次載入重新預配；提交時按所見配對校驗綁定）
+      const shuffledWebs = webs.slice();
+      for (let i = shuffledWebs.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledWebs[i], shuffledWebs[j]] = [shuffledWebs[j], shuffledWebs[i]];
+      }
       return response.json({
-        accounts: accounts.map((row) => ({
-          id: Number(row.id),
-          username: row.username || "",
-          sipDomain: row.sip_domain || "",
-          displayName: row.display_name || "",
-        })),
-        total: Number(countRow?.total || 0),
+        accounts: sips.map((row, index) => {
+          const web = shuffledWebs[index];
+          return {
+            id: Number(row.id),
+            username: row.username || "",
+            sipDomain: row.sip_domain || "",
+            displayName: row.display_name || "",
+            webUserId: web ? Number(web.id) : null,
+            webUsername: web ? (web.username || "") : "",
+          };
+        }),
+        total: sips.length,
+        webStock: webs.length,
       });
     } catch (error) {
       console.error("Failed to query trial stock accounts:", error);
@@ -262,11 +273,17 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       return response.status(400).json({ message: "聯繫郵箱格式無效。" });
     }
     const requestedIds = normalizeIds(request.body?.sipUserIds);
+    const requestedPairs = (Array.isArray(request.body?.pairs) ? request.body.pairs : [])
+      .map((item) => ({
+        sipUserId: Number(item?.sipUserId),
+        webUserId: Number(item?.webUserId) || null,
+      }))
+      .filter((item) => Number.isInteger(item.sipUserId) && item.sipUserId > 0);
     const requestedCount = Number.parseInt(request.body?.count, 10);
-    if (requestedIds.length === 0 && !(Number.isInteger(requestedCount) && requestedCount > 0)) {
+    if (requestedPairs.length === 0 && requestedIds.length === 0 && !(Number.isInteger(requestedCount) && requestedCount > 0)) {
       return response.status(400).json({ message: "請選擇帳號或指定帳號數量。" });
     }
-    if (requestedIds.length > MAX_ASSIGN_COUNT || requestedCount > MAX_ASSIGN_COUNT) {
+    if (requestedPairs.length > MAX_ASSIGN_COUNT || requestedIds.length > MAX_ASSIGN_COUNT || requestedCount > MAX_ASSIGN_COUNT) {
       return response.status(400).json({ message: `單次分配不得超過 ${MAX_ASSIGN_COUNT} 個帳號。` });
     }
 
@@ -295,9 +312,28 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         return response.status(500).json({ message: "系統保留租戶缺失，請先執行資料庫遷移。" });
       }
 
-      // 選號：指定帳號或自動取庫存；皆須為 tenant_id IS NULL 且 active
+      // 選號：pairs（所見配對）優先，其次兼容 sipUserIds/自動取庫存；皆須為 tenant_id IS NULL 且 active
       let accounts = [];
-      if (requestedIds.length > 0) {
+      let pairsList = [];
+      if (requestedPairs.length > 0) {
+        const sipIds = Array.from(new Set(requestedPairs.map((item) => item.sipUserId)));
+        accounts = await connection.query(
+          `SELECT id, username, sip_domain, display_name
+           FROM sip_users
+           WHERE id IN (${sipIds.map(() => "?").join(",")})
+             AND tenant_id IS NULL AND status = 'active'
+           FOR UPDATE`,
+          sipIds,
+        );
+        if (accounts.length !== sipIds.length) {
+          await connection.rollback();
+          return response.status(409).json({ message: "部分所選帳號已被分配或不可用，請重新整理後重試。" });
+        }
+        pairsList = sipIds.map((sipUserId) => {
+          const found = requestedPairs.find((item) => item.sipUserId === sipUserId);
+          return { sipUserId, webUserId: found?.webUserId || null };
+        });
+      } else if (requestedIds.length > 0) {
         accounts = await connection.query(
           `SELECT id, username, sip_domain, display_name
            FROM sip_users
@@ -310,6 +346,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           await connection.rollback();
           return response.status(409).json({ message: "部分所選帳號已被分配或不可用，請重新整理後重試。" });
         }
+        pairsList = requestedIds.map((sipUserId) => ({ sipUserId, webUserId: null }));
       } else {
         accounts = await connection.query(
           `SELECT id, username, sip_domain, display_name
@@ -323,8 +360,14 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           await connection.rollback();
           return response.status(409).json({ message: `庫存帳號不足，目前僅剩 ${accounts.length} 個可用。` });
         }
+        pairsList = accounts.map((row) => ({ sipUserId: Number(row.id), webUserId: null }));
       }
-      const accountIds = accounts.map((row) => Number(row.id));
+      const accountIds = pairsList.map((item) => item.sipUserId);
+      const providedWebIdList = pairsList.map((item) => item.webUserId).filter((id) => Number.isInteger(id) && id > 0);
+      if (new Set(providedWebIdList).size !== providedWebIdList.length) {
+        await connection.rollback();
+        return response.status(409).json({ message: "Web 配對重複，請重新整理後重新選號。" });
+      }
 
       // 靜默批次訂單：order_type='trial'，金額 0、已付款、已審核；期限=該批試用週期
       const orderNo = makeBusinessNo("TRI");
@@ -368,22 +411,52 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         [reservedTenantId, batchOrderId, batchOrderId, startedAt, expiresAt, request.admin.id, ...accountIds],
       );
 
-      // SIP+Web 配對：為每個 SIP 帳號從庫存取一個 Web 帳號（與訂單分配的配對方式一致）
-      const webStockRows = await connection.query(
-        `SELECT id
-         FROM web_users
-         WHERE tenant_id IS NULL AND status = 'active'
-         ORDER BY RAND()
-         LIMIT ${accountIds.length}
-         FOR UPDATE`,
-      );
-      if (webStockRows.length !== accountIds.length) {
-        await connection.rollback();
-        return response.status(409).json({
-          message: `未分配 Web 帳號不足，還需要 ${accountIds.length - webStockRows.length} 個用於試用配對。`,
-        });
+      // SIP+Web 配對：優先使用所見預配結果（校驗仍為庫存），缺配的從剩餘庫存隨機補
+      let usedWebIds = new Set();
+      if (providedWebIdList.length > 0) {
+        const webRows = await connection.query(
+          `SELECT id
+           FROM web_users
+           WHERE id IN (${providedWebIdList.map(() => "?").join(",")})
+             AND tenant_id IS NULL AND status = 'active'
+           FOR UPDATE`,
+          providedWebIdList,
+        );
+        const validIds = new Set(webRows.map((row) => Number(row.id)));
+        if (validIds.size !== providedWebIdList.length) {
+          await connection.rollback();
+          return response.status(409).json({ message: "部分所選 Web 配對已變動，請重新選號後重試。" });
+        }
+        usedWebIds = validIds;
       }
-      const webUserIds = webStockRows.map((row) => Number(row.id));
+      const missingWebCount = pairsList.filter((item) => !(item.webUserId && usedWebIds.has(item.webUserId))).length;
+      if (missingWebCount > 0) {
+        const excludeIds = Array.from(usedWebIds);
+        const excludeSql = excludeIds.length > 0 ? ` AND id NOT IN (${excludeIds.map(() => "?").join(",")})` : "";
+        const fallbackRows = await connection.query(
+          `SELECT id
+           FROM web_users
+           WHERE tenant_id IS NULL AND status = 'active'${excludeSql}
+           ORDER BY RAND()
+           LIMIT ${missingWebCount}
+           FOR UPDATE`,
+          excludeIds,
+        );
+        if (fallbackRows.length !== missingWebCount) {
+          await connection.rollback();
+          return response.status(409).json({
+            message: `未分配 Web 帳號不足，還需要 ${missingWebCount - fallbackRows.length} 個用於試用配對。`,
+          });
+        }
+        let cursor = 0;
+        for (const item of pairsList) {
+          if (item.webUserId && usedWebIds.has(item.webUserId)) continue;
+          item.webUserId = Number(fallbackRows[cursor].id);
+          cursor += 1;
+          usedWebIds.add(item.webUserId);
+        }
+      }
+      const webUserIds = pairsList.map((item) => item.webUserId);
       await connection.query(
         `UPDATE web_users
          SET tenant_id = ?,

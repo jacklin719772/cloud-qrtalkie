@@ -72,8 +72,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [emailChecking, setEmailChecking] = useState(false);
   const [emailCheck, setEmailCheck] = useState({ status: 'idle', text: '' });
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerMode, setPickerMode] = useState('manual');
-  const [randomCount, setRandomCount] = useState('1');
+  const [stockWebTotal, setStockWebTotal] = useState(0);
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -123,11 +122,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setStockLoading(true);
     try {
       const params = new URLSearchParams();
-      params.set('limit', '100');
       if (keyword) params.set('q', keyword);
       const data = await apiClient.get(`/admin/trials/stock-accounts?${params.toString()}`);
       setStockList(Array.isArray(data.accounts) ? data.accounts : []);
       setStockTotal(Number(data.total || 0));
+      setStockWebTotal(Number(data.webStock || 0));
     } catch (error) {
       setStockList([]);
       setStockTotal(0);
@@ -187,32 +186,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
-  async function addRandomAccounts() {
-    const count = Number(randomCount);
-    if (!Number.isInteger(count) || count < 1 || count > 100) {
-      setFormMessage({ type: 'error', text: '隨機取號數量需為 1~100。' });
-      return;
-    }
-    try {
-      const data = await apiClient.get(`/admin/trials/stock-accounts?random=1&limit=${count}`);
-      const list = Array.isArray(data.accounts) ? data.accounts : [];
-      if (list.length === 0) {
-        setFormMessage({ type: 'error', text: '庫存帳號不足。' });
-        return;
-      }
-      setSelectedStocks((prev) => {
-        const merged = [...prev];
-        for (const account of list) {
-          if (!merged.some((s) => s.id === account.id)) merged.push(account);
-        }
-        return merged.slice(0, 100);
-      });
-      setFormMessage({ type: 'success', text: `已隨機加入 ${list.length} 個帳號。` });
-    } catch (error) {
-      setFormMessage({ type: 'error', text: error.message || '隨機取號失敗。' });
-    }
-  }
-
   useImperativeHandle(ref, () => ({
     openAssign: () => {
       setForm(emptyForm());
@@ -226,8 +199,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setEmailChecking(false);
       setEmailCheck({ status: 'idle', text: '' });
       setPickerOpen(false);
-      setPickerMode('manual');
-      setRandomCount('1');
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
@@ -318,6 +289,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         expiresAt: form.expiresAt,
         notes: form.notes.trim(),
         sipUserIds: selectedStocks.map((s) => s.id),
+        pairs: selectedStocks.map((s) => ({ sipUserId: s.id, webUserId: s.webUserId || null })),
       };
       const res = await apiClient.post('/admin/trials', payload, { timeoutMs: 120000 });
       setAssignOpen(false);
@@ -630,22 +602,38 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management-modal .tm-stock-list {
           border: 1px solid #374151;
           border-radius: 8px;
-          max-height: 220px;
-          overflow-y: auto;
+          max-height: 360px;
+          overflow: auto;
           background: #0b1220;
         }
-        #trial-management-modal .tm-stock-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 8px 12px;
-          border-bottom: 1px solid #1f2937;
-          color: #e5e7eb;
+        #trial-management-modal .tm-stock-table {
+          width: 100%;
+          border-collapse: collapse;
           font-size: 12px;
-          cursor: pointer;
         }
-        #trial-management-modal .tm-stock-row:hover { background: #1e293b; }
-        #trial-management-modal .tm-stock-row input[type="checkbox"] { accent-color: #3b82f6; }
+        #trial-management-modal .tm-stock-table thead th {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          background: #131d31;
+          color: #9ca3af;
+          font-weight: 600;
+          text-align: left;
+          padding: 8px 12px;
+          border-bottom: 1px solid #374151;
+          white-space: nowrap;
+        }
+        #trial-management-modal .tm-stock-table tbody td {
+          padding: 7px 12px;
+          color: #e5e7eb;
+          border-bottom: 1px solid #1f2937;
+          white-space: nowrap;
+        }
+        #trial-management-modal .tm-stock-table tbody tr { cursor: pointer; }
+        #trial-management-modal .tm-stock-table tbody tr:hover { background: #1e293b; }
+        #trial-management-modal .tm-stock-table tbody tr.selected { background: #14304a; }
+        #trial-management-modal .tm-stock-table input[type="checkbox"] { accent-color: #3b82f6; }
+        #trial-management-modal .tm-stock-table .mono { font-weight: 600; }
         #trial-management-modal .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
         #trial-management-modal .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
         #trial-management-modal .tm-radio-row input[type="radio"],
@@ -1019,71 +1007,52 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
                 {pickerOpen && (
                   <div className="tm-picker">
-                    <div className="tm-radio-row">
-                      <label>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div className="tm-search" style={{ background: '#0b1220', borderColor: '#374151', flex: 1 }}>
+                        <Search size={14} color="#6b7280" />
                         <input
-                          type="radio"
-                          checked={pickerMode === 'manual'}
-                          onChange={() => { setPickerMode('manual'); if (stockList.length === 0) loadStock(''); }}
+                          style={{ background: 'transparent', color: '#e5e7eb', width: '100%' }}
+                          placeholder="搜尋庫存帳號（帳號/名稱）"
+                          value={stockKeyword}
+                          onChange={(e) => setStockKeyword(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') loadStock(stockKeyword.trim()); }}
                         />
-                        手動選號
-                      </label>
-                      <label>
-                        <input type="radio" checked={pickerMode === 'random'} onChange={() => setPickerMode('random')} />
-                        隨機取號
-                      </label>
-                      {pickerMode === 'random' && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          數量
-                          <input
-                            className="tm-input"
-                            style={{ width: '90px' }}
-                            value={randomCount}
-                            onChange={(e) => setRandomCount(e.target.value.replace(/[^\d]/g, ''))}
-                          />
-                          <button className="tm-btn" type="button" onClick={addRandomAccounts}>加入</button>
-                        </span>
-                      )}
-                      <button className="tm-btn" type="button" style={{ marginLeft: 'auto' }} onClick={() => setPickerOpen(false)}>收起</button>
+                      </div>
+                      <button className="tm-btn" type="button" onClick={() => loadStock(stockKeyword.trim())}>搜尋</button>
+                      <button className="tm-btn" type="button" onClick={() => setPickerOpen(false)}>收起</button>
                     </div>
-                    {pickerMode === 'manual' && (
-                      <>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <div className="tm-search" style={{ background: '#0b1220', borderColor: '#374151', flex: 1 }}>
-                            <Search size={14} color="#6b7280" />
-                            <input
-                              style={{ background: 'transparent', color: '#e5e7eb', width: '100%' }}
-                              placeholder="搜尋庫存帳號（帳號/名稱）"
-                              value={stockKeyword}
-                              onChange={(e) => setStockKeyword(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') loadStock(stockKeyword.trim()); }}
-                            />
-                          </div>
-                          <button className="tm-btn" type="button" onClick={() => loadStock(stockKeyword.trim())}>搜尋</button>
-                        </div>
-                        <div className="tm-hint">庫存共 {stockTotal} 個可用帳號，最多顯示前 100 個；點擊行加入或移除</div>
-                        <div className="tm-stock-list">
-                          {stockLoading ? (
-                            <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>載入中…</div>
-                          ) : stockList.length === 0 ? (
-                            <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
-                          ) : (
-                            stockList.map((a) => {
+                    <div className="tm-hint">庫存共 {stockTotal} 個 SIP / {stockWebTotal} 個 Web；Web 帳號為每次載入的隨機預配，提交時按所見配對綁定</div>
+                    <div className="tm-stock-list">
+                      {stockLoading ? (
+                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>載入中…</div>
+                      ) : stockList.length === 0 ? (
+                        <div style={{ padding: '14px', color: '#9ca3af', fontSize: '12px' }}>無結果（點「搜尋」載入）</div>
+                      ) : (
+                        <table className="tm-stock-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: '42px' }}></th>
+                              <th>SIP 帳號</th>
+                              <th>Web 帳號</th>
+                              <th>顯示名</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stockList.map((a) => {
                               const checked = selectedStocks.some((s) => s.id === a.id);
                               return (
-                                <div key={a.id} className="tm-stock-row" onClick={() => toggleStock(a)}>
-                                  <input type="checkbox" checked={checked} readOnly />
-                                  <span style={{ fontWeight: 600 }}>{a.username}</span>
-                                  {a.displayName && a.displayName !== a.username && (
-                                    <span style={{ color: '#9ca3af' }}>{a.displayName}</span>
-                                  )}
-                                </div>
+                                <tr key={a.id} className={checked ? 'selected' : ''} onClick={() => toggleStock(a)}>
+                                  <td style={{ textAlign: 'center' }}><input type="checkbox" checked={checked} readOnly /></td>
+                                  <td className="mono">{a.username}</td>
+                                  <td className="mono">{a.webUsername || '—'}</td>
+                                  <td>{a.displayName || '—'}</td>
+                                </tr>
                               );
-                            })
-                          )}
-                        </div>
-                      </>
-                    )}
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 )}
 
