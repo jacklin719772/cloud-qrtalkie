@@ -710,6 +710,35 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           outline: none;
         }
         #trial-management-modal .tm-input:focus { border-color: #3b82f6; }
+        /* 弹窗滚动条深色化（portal 在 #console 之外，不吃全局滚动条样式） */
+        #trial-management-modal .tm-modal-body,
+        #trial-management-modal .tm-account-list,
+        #trial-management-modal .tm-stock-list {
+          scrollbar-width: thin;
+          scrollbar-color: #374151 transparent;
+        }
+        #trial-management-modal .tm-modal-body::-webkit-scrollbar,
+        #trial-management-modal .tm-account-list::-webkit-scrollbar,
+        #trial-management-modal .tm-stock-list::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+        }
+        #trial-management-modal .tm-modal-body::-webkit-scrollbar-thumb,
+        #trial-management-modal .tm-account-list::-webkit-scrollbar-thumb,
+        #trial-management-modal .tm-stock-list::-webkit-scrollbar-thumb {
+          border-radius: 999px;
+          background: #374151;
+        }
+        #trial-management-modal .tm-modal-body::-webkit-scrollbar-thumb:hover,
+        #trial-management-modal .tm-account-list::-webkit-scrollbar-thumb:hover,
+        #trial-management-modal .tm-stock-list::-webkit-scrollbar-thumb:hover {
+          background: #4b5563;
+        }
+        #trial-management-modal .tm-modal-body::-webkit-scrollbar-track,
+        #trial-management-modal .tm-account-list::-webkit-scrollbar-track,
+        #trial-management-modal .tm-stock-list::-webkit-scrollbar-track {
+          background: transparent;
+        }
       `}</style>
 
       {message.text && (
