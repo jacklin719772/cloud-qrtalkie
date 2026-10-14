@@ -106,6 +106,28 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
   });
 
+  // 管理員信箱查重（新建租戶表單的「校驗」按鈕）
+  app.get("/api/admin/trials/check-admin-email", requireAdmin, async (request, response) => {
+    if (request.admin.accountType !== "platform") {
+      return response.status(403).json({ message: "只有平臺管理員可以檢查。" });
+    }
+    const email = clean(request.query?.email, 255).toLowerCase();
+    if (!isEmailLike(email)) {
+      return response.status(400).json({ message: "郵箱格式無效。" });
+    }
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const rows = await connection.query("SELECT id FROM admin_users WHERE LOWER(email) = ? LIMIT 1", [email]);
+      return response.json({ available: rows.length === 0 });
+    } catch (error) {
+      console.error("Failed to check admin email:", error);
+      return response.status(500).json({ message: "檢查失敗，請重試。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
   // 試用分配列表：平台管理員看全部，租戶管理員僅看本租戶發出的
   app.get("/api/admin/trials", requireAdmin, async (request, response) => {
     const isPlatform = request.admin.accountType === "platform";
@@ -154,6 +176,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
          ${whereSql}`,
         params,
       );
+      const reservedTrialTenantId = await getReservedTrialTenantId(connection);
       const rows = await connection.query(
         `SELECT
            ta.id, ta.sip_user_id, ta.owner_tenant_id, ta.contact_name, ta.contact_email, ta.contact_phone,
@@ -162,14 +185,18 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            ta.status, ta.ai_enabled, ta.batch_order_id, ta.converted_order_id, ta.notes,
            ta.created_at,
            u.username, u.sip_domain, u.display_name AS account_display_name,
+           wu.username AS web_username,
            t.name AS owner_tenant_name
          FROM trial_assignments ta
          JOIN sip_users u ON u.id = ta.sip_user_id
          JOIN tenants t ON t.id = ta.owner_tenant_id
+         LEFT JOIN tenant_web_account_entitlements we
+           ON we.sip_user_id = ta.sip_user_id AND we.tenant_id = ?
+         LEFT JOIN web_users wu ON wu.id = we.web_user_id
          ${whereSql}
          ORDER BY ta.created_at DESC, ta.id DESC
          LIMIT ${pageSize} OFFSET ${offset}`,
-        params,
+        [reservedTrialTenantId || 0, ...params],
       );
       const today = todayDate();
       return response.json({
@@ -194,6 +221,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           username: row.username || "",
           sipDomain: row.sip_domain || "",
           accountDisplayName: row.account_display_name || "",
+          webUsername: row.web_username || "",
         })),
         total: Number(countRow?.total || 0),
         page,
@@ -339,6 +367,50 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            assigned_by_admin_user_id = VALUES(assigned_by_admin_user_id)`,
         [reservedTenantId, batchOrderId, batchOrderId, startedAt, expiresAt, request.admin.id, ...accountIds],
       );
+
+      // SIP+Web 配對：為每個 SIP 帳號從庫存取一個 Web 帳號（與訂單分配的配對方式一致）
+      const webStockRows = await connection.query(
+        `SELECT id
+         FROM web_users
+         WHERE tenant_id IS NULL AND status = 'active'
+         ORDER BY RAND()
+         LIMIT ${accountIds.length}
+         FOR UPDATE`,
+      );
+      if (webStockRows.length !== accountIds.length) {
+        await connection.rollback();
+        return response.status(409).json({
+          message: `未分配 Web 帳號不足，還需要 ${accountIds.length - webStockRows.length} 個用於試用配對。`,
+        });
+      }
+      const webUserIds = webStockRows.map((row) => Number(row.id));
+      await connection.query(
+        `UPDATE web_users
+         SET tenant_id = ?,
+             status = 'active',
+             activated_at = COALESCE(activated_at, NOW()),
+             service_expires_at = ?
+         WHERE id IN (${webUserIds.map(() => "?").join(",")})`,
+        [reservedTenantId, expiresAt, ...webUserIds],
+      );
+      for (let index = 0; index < accountIds.length; index += 1) {
+        await connection.query(
+          `INSERT INTO tenant_web_account_entitlements (
+             tenant_id, web_user_id, sip_user_id, first_order_id, current_order_id, status,
+             service_starts_at, service_expires_at, assigned_by_admin_user_id
+           )
+           VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             tenant_id = VALUES(tenant_id),
+             sip_user_id = VALUES(sip_user_id),
+             current_order_id = VALUES(current_order_id),
+             status = 'active',
+             service_starts_at = VALUES(service_starts_at),
+             service_expires_at = VALUES(service_expires_at),
+             assigned_by_admin_user_id = VALUES(assigned_by_admin_user_id)`,
+          [reservedTenantId, webUserIds[index], accountIds[index], batchOrderId, batchOrderId, startedAt, expiresAt, request.admin.id],
+        );
+      }
 
       const createdTrials = [];
       for (const account of accounts) {

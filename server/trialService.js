@@ -33,6 +33,19 @@ export async function expireTrialAssignment(connection, { trialId, sipUserId, ex
     "UPDATE tenant_sip_account_entitlements SET status = 'expired', service_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
     [expiresAt, sipUserId],
   );
+  // 配對的 Web 帳號同步停用（到期日改為提前結束日）
+  const reservedTenantId = await getReservedTrialTenantId(connection);
+  await connection.query(
+    `UPDATE web_users w
+     JOIN tenant_web_account_entitlements e ON e.web_user_id = w.id
+     SET w.service_expires_at = ?
+     WHERE e.sip_user_id = ? AND e.tenant_id = ?`,
+    [expiresAt, sipUserId, reservedTenantId || 0],
+  );
+  await connection.query(
+    "UPDATE tenant_web_account_entitlements SET status = 'expired', service_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ?",
+    [expiresAt, sipUserId, reservedTenantId || 0],
+  );
   await connection.query(
     "UPDATE ai_bot_account_entitlements SET enabled = 0, expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
     [`${expiresAt} 23:59:59`, sipUserId],
@@ -50,6 +63,18 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
   const reservedTenantId = await getReservedTrialTenantId(connection);
   await connection.query(
     "DELETE FROM tenant_sip_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
+    [sipUserId, reservedTenantId || 0],
+  );
+  // 配對的 Web 帳號同步回庫（解掛靠 + 刪權益行）
+  await connection.query(
+    `UPDATE web_users w
+     JOIN tenant_web_account_entitlements e ON e.web_user_id = w.id
+     SET w.tenant_id = NULL, w.service_expires_at = NULL
+     WHERE e.sip_user_id = ? AND e.tenant_id = ?`,
+    [sipUserId, reservedTenantId || 0],
+  );
+  await connection.query(
+    "DELETE FROM tenant_web_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
     [sipUserId, reservedTenantId || 0],
   );
   await connection.query(

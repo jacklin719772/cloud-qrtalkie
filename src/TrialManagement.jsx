@@ -34,7 +34,6 @@ function emptyForm() {
     contactPhone: '',
     startedAt: todayStr(),
     expiresAt: addMonthsMinusOneDay(todayStr(), 1),
-    aiEnabled: false,
     notes: '',
   };
 }
@@ -70,6 +69,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [newTenantMode, setNewTenantMode] = useState(false);
   const [newTenant, setNewTenant] = useState(emptyNewTenant());
   const [tenantAdmin, setTenantAdmin] = useState(null);
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailCheck, setEmailCheck] = useState({ status: 'idle', text: '' });
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerMode, setPickerMode] = useState('manual');
   const [randomCount, setRandomCount] = useState('1');
@@ -169,6 +170,23 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setFormMessage({ type: '', text: '' });
   }
 
+  async function checkAdminEmail() {
+    const email = form.contactEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailCheck({ status: 'taken', text: '郵箱格式無效。' });
+      return;
+    }
+    setEmailChecking(true);
+    try {
+      const data = await apiClient.get(`/admin/trials/check-admin-email?email=${encodeURIComponent(email)}`);
+      setEmailCheck(data?.available ? { status: 'available', text: '信箱可用。' } : { status: 'taken', text: '該信箱已被使用。' });
+    } catch (error) {
+      setEmailCheck({ status: 'taken', text: error.message || '檢查失敗，請重試。' });
+    } finally {
+      setEmailChecking(false);
+    }
+  }
+
   async function addRandomAccounts() {
     const count = Number(randomCount);
     if (!Number.isInteger(count) || count < 1 || count > 100) {
@@ -205,6 +223,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setNewTenantMode(false);
       setNewTenant(emptyNewTenant());
       setTenantAdmin(null);
+      setEmailChecking(false);
+      setEmailCheck({ status: 'idle', text: '' });
       setPickerOpen(false);
       setPickerMode('manual');
       setRandomCount('1');
@@ -216,6 +236,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   }));
 
   function toggleStock(account) {
+    setFormMessage({ type: '', text: '' });
     setSelectedStocks((prev) => {
       const exists = prev.some((s) => s.id === account.id);
       if (exists) return prev.filter((s) => s.id !== account.id);
@@ -295,7 +316,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         company,
         startedAt: form.startedAt,
         expiresAt: form.expiresAt,
-        aiEnabled: form.aiEnabled,
         notes: form.notes.trim(),
         sipUserIds: selectedStocks.map((s) => s.id),
       };
@@ -746,7 +766,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   return (
                     <tr key={t.id}>
                       <td>
-                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{t.username}</div>
+                        <div style={{ fontWeight: 600, color: '#ffffff' }}>{t.username}{t.webUsername ? `（${t.webUsername}）` : ''}</div>
                         {t.accountDisplayName && t.accountDisplayName !== t.username && (
                           <div style={{ color: '#9ca3af', fontSize: '11px' }}>{t.accountDisplayName}</div>
                         )}
@@ -883,7 +903,24 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       </div>
                       <div className="tm-field">
                         <label>{newTenantMode ? '管理員登入信箱 *' : '管理員信箱'}</label>
-                        <input autoComplete="off" value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
+                        {newTenantMode ? (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              autoComplete="off"
+                              style={{ flex: 1, minWidth: 0 }}
+                              value={form.contactEmail}
+                              onChange={(e) => { setForm((f) => ({ ...f, contactEmail: e.target.value })); setEmailCheck({ status: 'idle', text: '' }); }}
+                            />
+                            <button className="tm-btn" type="button" onClick={checkAdminEmail} disabled={emailChecking}>
+                              {emailChecking ? '檢查中…' : '校驗'}
+                            </button>
+                          </div>
+                        ) : (
+                          <input autoComplete="off" value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
+                        )}
+                        {newTenantMode && emailCheck.status !== 'idle' && (
+                          <span className="tm-hint" style={{ color: emailCheck.status === 'available' ? '#22c55e' : '#f87171' }}>{emailCheck.text}</span>
+                        )}
                       </div>
                       <div className="tm-field">
                         <label>聯繫電話</label>
@@ -1013,22 +1050,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   </div>
                 )}
 
-                <div className="tm-grid2">
-                  <div className="tm-field">
-                    <label>開通 AI 助手</label>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#e5e7eb', fontSize: '13px' }}>
-                      <input
-                        type="checkbox"
-                        checked={form.aiEnabled}
-                        onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
-                      />
-                      添加時同步開通（到試用結束為止）
-                    </label>
-                  </div>
-                  <div className="tm-field">
-                    <label>備註</label>
-                    <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
-                  </div>
+                <div className="tm-field">
+                  <label>代理商</label>
+                  <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
               </div>
             </div>
