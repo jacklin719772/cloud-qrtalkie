@@ -259,7 +259,7 @@ export function buildFourFieldEndpointOverlay(extension) {
   const overlay = getWebrtcRuntimeConfig().endpointCustomPostOverlay || {};
   return [
     `; BEGIN SaaS WebRTC 4-field endpoint overlay ${extension}`,
-    `[${extension}]`,
+    `[${extension}](+)`,
     `allow_unauthenticated_options=${overlay.allow_unauthenticated_options || "yes"}`,
     `rtp_timeout=${overlay.rtp_timeout || "0"}`,
     `rtp_timeout_hold=${overlay.rtp_timeout_hold || "0"}`,
