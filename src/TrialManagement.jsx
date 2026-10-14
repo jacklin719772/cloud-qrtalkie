@@ -271,8 +271,17 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           box-shadow: none;
         }
         #trial-management .tm-card.tm-table-card {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
           background: #1a2332;
           overflow: hidden;
+        }
+        #trial-management .tm-table-scroll {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
         }
         #trial-management .tm-toolbar {
           display: flex;
@@ -361,6 +370,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           white-space: nowrap;
         }
         #trial-management .tm-empty {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
           padding: 48px 20px;
           text-align: center;
           color: #9ca3af;
@@ -523,15 +537,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         </div>
       </div>
 
-      <div className="tm-card tm-table-card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="tm-card tm-table-card">
         {loading ? (
           <div className="tm-empty">載入中…</div>
         ) : trials.length === 0 ? (
           <div className="tm-empty">暫無試用記錄。點擊右上角「分配試用」開始。</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="tm-table-scroll">
             <table>
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
                   <th>帳號</th>
                   <th>歸屬租戶</th>
