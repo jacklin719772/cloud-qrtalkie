@@ -146,13 +146,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       .then((data) => {
         if (cancelled) return;
         const tenant = data?.tenant || {};
-        const admin = {
+        setTenantAdmin({
           name: tenant.adminDisplayName || '',
           email: tenant.loginEmail || '',
           phone: tenant.adminPhone || '',
-        };
-        setTenantAdmin(admin);
-        setForm((f) => ({ ...f, contactName: admin.name, contactEmail: admin.email, contactPhone: admin.phone }));
+        });
       })
       .catch(() => { if (!cancelled) setTenantAdmin({ name: '', email: '', phone: '' }); });
     return () => { cancelled = true; };
@@ -231,12 +229,17 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setFormMessage({ type: 'error', text: '請選擇歸屬租戶。' });
       return;
     }
+    // 現有租戶（平台）：聯繫人取該租戶管理員信息（只讀）；新建/租戶管理員：取表單
+    const useFormContact = newTenantMode || !isPlatform;
+    const contactName = useFormContact ? form.contactName.trim() : (tenantAdmin?.name || '');
+    const contactEmail = useFormContact ? form.contactEmail.trim() : (tenantAdmin?.email || '');
+    const contactPhone = useFormContact ? form.contactPhone.trim() : (tenantAdmin?.phone || '');
     if (newTenantMode) {
       if (!newTenant.companyName.trim()) {
         setFormMessage({ type: 'error', text: '請輸入租戶公司名稱。' });
         return;
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail.trim())) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
         setFormMessage({ type: 'error', text: '請輸入有效的管理員登入信箱。' });
         return;
       }
@@ -253,7 +256,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setFormMessage({ type: 'error', text: '結束日期不能早於開始日期。' });
       return;
     }
-    if (!newTenantMode && form.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactEmail)) {
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       setFormMessage({ type: 'error', text: '聯繫郵箱格式無效。' });
       return;
     }
@@ -274,9 +277,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       if (newTenantMode) {
         const created = await apiClient.put('/admin/tenants/0', {
           companyName: newTenant.companyName.trim(),
-          contactPerson: form.contactName.trim(),
-          contactPhone: form.contactPhone.trim(),
-          loginEmail: form.contactEmail.trim(),
+          contactPerson: contactName,
+          contactPhone,
+          loginEmail: contactEmail,
           password: newTenant.password,
         });
         ownerTenantId = Number(created?.id) || null;
@@ -286,9 +289,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       }
       const payload = {
         ownerTenantId,
-        contactName: form.contactName.trim(),
-        contactEmail: form.contactEmail.trim(),
-        contactPhone: form.contactPhone.trim(),
+        contactName,
+        contactEmail,
+        contactPhone,
         company,
         startedAt: form.startedAt,
         expiresAt: form.expiresAt,
@@ -553,7 +556,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         }
         #trial-management-modal .tm-field input:focus,
         #trial-management-modal .tm-field select:focus { border-color: #3b82f6; }
-        #trial-management-modal .tm-field input:disabled { color: #9ca3af; }
+        #trial-management-modal .tm-field input:disabled { color: #9ca3af; background: #0d1526; }
+        /* 覆蓋瀏覽器自動填充的白底（新建租戶的電話/密碼被 Chrome 記憶填充時） */
+        #trial-management-modal .tm-field input:-webkit-autofill,
+        #trial-management-modal .tm-field input:-webkit-autofill:hover,
+        #trial-management-modal .tm-field input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 1000px #0b1220 inset;
+          -webkit-text-fill-color: #e5e7eb;
+          transition: background-color 5000s ease-in-out 0s;
+        }
         #trial-management-modal .tm-modal {
           position: fixed;
           inset: 0;
@@ -849,33 +860,63 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <div className="tm-section">
                 <div className="tm-section-title">租戶管理員信息</div>
                 <div className={newTenantMode ? 'tm-grid2' : 'tm-grid3'}>
-                  <div className="tm-field">
-                    <label>管理員姓名</label>
-                    <input value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} />
-                  </div>
-                  <div className="tm-field">
-                    <label>{newTenantMode ? '管理員登入信箱 *' : '管理員信箱'}</label>
-                    <input value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
-                  </div>
-                  <div className="tm-field">
-                    <label>聯繫電話</label>
-                    <input value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} />
-                  </div>
-                  {newTenantMode && (
-                    <div className="tm-field">
-                      <label>管理員密碼 *（至少 8 位）</label>
-                      <input type="password" value={newTenant.password} onChange={(e) => setNewTenant((v) => ({ ...v, password: e.target.value }))} />
-                    </div>
+                  {isPlatform && !newTenantMode ? (
+                    <>
+                      <div className="tm-field">
+                        <label>管理員姓名</label>
+                        <input value={tenantAdmin?.name || ''} disabled placeholder="選擇租戶後自動帶入" />
+                      </div>
+                      <div className="tm-field">
+                        <label>管理員信箱</label>
+                        <input value={tenantAdmin?.email || ''} disabled placeholder="選擇租戶後自動帶入" />
+                      </div>
+                      <div className="tm-field">
+                        <label>聯繫電話</label>
+                        <input value={tenantAdmin?.phone || ''} disabled placeholder="選擇租戶後自動帶入" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="tm-field">
+                        <label>管理員姓名</label>
+                        <input autoComplete="off" value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} />
+                      </div>
+                      <div className="tm-field">
+                        <label>{newTenantMode ? '管理員登入信箱 *' : '管理員信箱'}</label>
+                        <input autoComplete="off" value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} />
+                      </div>
+                      <div className="tm-field">
+                        <label>聯繫電話</label>
+                        <input autoComplete="off" value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} />
+                      </div>
+                      {newTenantMode && (
+                        <div className="tm-field">
+                          <label>管理員密碼 *（至少 8 位）</label>
+                          <input type="password" autoComplete="new-password" value={newTenant.password} onChange={(e) => setNewTenant((v) => ({ ...v, password: e.target.value }))} />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
-                {!newTenantMode && isPlatform && form.ownerTenantId && tenantAdmin && (
-                  <span className="tm-hint">已自動帶入該租戶的管理員信息（修改僅影響本次試用的聯繫人）。</span>
+                {isPlatform && !newTenantMode && form.ownerTenantId && tenantAdmin && (
+                  <span className="tm-hint">管理員信息來自該租戶，僅供確認（不可修改）。</span>
                 )}
               </div>
 
               {/* 第三部分：測試帳號列表 */}
               <div className="tm-section">
-                <div className="tm-section-title">測試帳號列表</div>
+                <div className="tm-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  測試帳號列表
+                  <span className="tm-hint">已添加 {selectedStocks.length} / 100 個</span>
+                  <button
+                    className="tm-btn"
+                    type="button"
+                    style={{ marginLeft: 'auto' }}
+                    onClick={() => { setPickerOpen((v) => !v); if (!pickerOpen && stockList.length === 0) loadStock(''); }}
+                  >
+                    <Plus size={13} /> 添加測試帳號
+                  </button>
+                </div>
                 <div className="tm-grid2">
                   <div className="tm-field">
                     <label>試用開始 *</label>
@@ -901,17 +942,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       </div>
                     ))
                   )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <button
-                    className="tm-btn"
-                    type="button"
-                    onClick={() => { setPickerOpen((v) => !v); if (!pickerOpen && stockList.length === 0) loadStock(''); }}
-                  >
-                    <Plus size={13} /> 添加測試帳號
-                  </button>
-                  <span className="tm-hint">已添加 {selectedStocks.length} / 100 個</span>
                 </div>
 
                 {pickerOpen && (
