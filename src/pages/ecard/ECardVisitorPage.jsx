@@ -130,6 +130,7 @@ export default function ECardVisitorPage({ slug }) {
   const callStartTimeRef = useRef(0);
   const callTypeRef = useRef('voice');
   const activeCallStartedRef = useRef(false);
+  const keyframeKickRef = useRef(null);
   const iceTimeoutRef = useRef(null);
   const autoRegisterStartedRef = useRef(false);
   const isIntentionalHangupRef = useRef(false);
@@ -365,6 +366,10 @@ export default function ECardVisitorPage({ slug }) {
       clearTimeout(iceTimeoutRef.current);
       iceTimeoutRef.current = null;
     }
+    if (keyframeKickRef.current) {
+      clearInterval(keyframeKickRef.current);
+      keyframeKickRef.current = null;
+    }
     if (currentSessionRef.current) {
       try { currentSessionRef.current.terminate(); } catch {}
       currentSessionRef.current = null;
@@ -487,6 +492,23 @@ export default function ECardVisitorPage({ slug }) {
             enc.maxFramerate = 15;
           });
           await videoSender.setParameters(sendParams);
+          // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
+          // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
+          if (keyframeKickRef.current) clearInterval(keyframeKickRef.current);
+          let kickAlt = false;
+          keyframeKickRef.current = setInterval(async () => {
+            try {
+              kickAlt = !kickAlt;
+              const p = videoSender.getParameters();
+              if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
+              p.encodings.forEach((enc) => {
+                enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
+                enc.maxBitrate = 300000;
+                enc.maxFramerate = 15;
+              });
+              await videoSender.setParameters(p);
+            } catch {}
+          }, 2000);
         }
       } catch {}
       if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
