@@ -547,6 +547,20 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         }
         #trial-management .tm-banner.success, #trial-management-modal .tm-banner.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
         #trial-management .tm-banner.error, #trial-management-modal .tm-banner.error { background: #3b1111; color: #ef4444; border: 1px solid #7f1d1d; }
+        /* 悬浮提示：贴底固定于弹窗面板（滚动任意位置都可见），替代顶部横幅 */
+        #trial-management-modal .tm-toast {
+          position: absolute;
+          left: 24px;
+          right: 24px;
+          bottom: 78px;
+          z-index: 6;
+          padding: 10px 16px;
+          border-radius: 8px;
+          font-size: 12px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        }
+        #trial-management-modal .tm-toast.error { background: #3b1111; color: #f87171; border: 1px solid #7f1d1d; }
+        #trial-management-modal .tm-toast.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
         #trial-management-modal .tm-field { display: flex; flex-direction: column; gap: 6px; }
         #trial-management-modal .tm-field label { font-size: 12px; color: #9ca3af; }
         #trial-management-modal .tm-field input,
@@ -581,6 +595,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           background: rgba(0, 0, 0, 0.6);
         }
         #trial-management-modal .tm-modal-panel {
+          position: relative;
           background: #111827;
           border: 1px solid #1f2937;
           border-radius: 12px;
@@ -871,10 +886,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>關閉</button>
             </div>
             <div className="tm-modal-body">
-              {formMessage.text && (
-                <div className={`tm-banner ${formMessage.type || 'success'}`}>{formMessage.text}</div>
-              )}
-
               {/* 第一部分：租戶信息 */}
               <div className="tm-section">
                 <div className="tm-section-title">租戶信息</div>
@@ -1092,6 +1103,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                 </div>
               </div>
             </div>
+            {formMessage.text && (
+              <div className={`tm-toast ${formMessage.type || 'error'}`}>{formMessage.text}</div>
+            )}
             <div className="tm-modal-foot">
               <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>取消</button>
               <button className="tm-btn primary" type="button" onClick={submitAssign} disabled={assigning}>
