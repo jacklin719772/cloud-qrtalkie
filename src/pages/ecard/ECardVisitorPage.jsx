@@ -360,7 +360,7 @@ export default function ECardVisitorPage({ slug }) {
     }, 1000);
   }
 
-  function cleanupCurrentCall() {
+  function cleanupCurrentCall({ keepSession = false } = {}) {
     if (iceTimeoutRef.current) {
       clearTimeout(iceTimeoutRef.current);
       iceTimeoutRef.current = null;
@@ -369,7 +369,7 @@ export default function ECardVisitorPage({ slug }) {
       try { currentSessionRef.current.terminate(); } catch {}
       currentSessionRef.current = null;
     }
-    if (uaRef.current) {
+    if (uaRef.current && !keepSession) {
       isIntentionalHangupRef.current = true;
       try { uaRef.current.stop(); } catch {}
       uaRef.current = null;
@@ -391,8 +391,10 @@ export default function ECardVisitorPage({ slug }) {
     candidateBufferRef.current = [];
     setCallBusy(false);
     clearIdleTimer();
-    setRegistrationStatus('hangup');
-    setRegistrationMessage('');
+    if (!keepSession) {
+      setRegistrationStatus('hangup');
+      setRegistrationMessage('');
+    }
   }
 
   function cleanupRegistrationUa() {
@@ -490,8 +492,17 @@ export default function ECardVisitorPage({ slug }) {
   }
 
   function handleHangup() {
-    cleanupCurrentCall();
+    // 通話結束：只清理通話本身，保持註冊；掛斷後重新開始閒置倒計時
+    cleanupCurrentCall({ keepSession: true });
     cleanupCallResources();
+    if (uaRef.current) {
+      setRegistrationStatus('registered');
+      setRegistrationMessage('');
+      startIdleTimer();
+    } else {
+      setRegistrationStatus('hangup');
+      setRegistrationMessage('');
+    }
   }
 
   function handleToggleVideo() {
@@ -616,7 +627,10 @@ export default function ECardVisitorPage({ slug }) {
         });
         setRegistrationStatus('registered');
         setRegistrationMessage('');
-        startIdleTimer();
+        // 通話進行中不得重新啟動閒置倒計時（否則計時到點會停止 UA，通話被 30 秒自動掛斷）
+        if (!activeCallStartedRef.current && !currentSessionRef.current) {
+          startIdleTimer();
+        }
         injectSdpPatch(uaInstance, callSession.sipServerPublicIp);
       });
 
