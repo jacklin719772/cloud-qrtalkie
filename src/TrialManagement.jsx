@@ -49,7 +49,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [trials, setTrials] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const pageSize = 50;
+  const [pageSize, setPageSize] = useState(10);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterQInput, setFilterQInput] = useState('');
   const [filterQ, setFilterQ] = useState('');
@@ -83,7 +83,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     try {
       const params = new URLSearchParams();
       params.set('page', String(targetPage));
-      params.set('pageSize', String(pageSize));
+      params.set('pageSize', String(pageSize === 'all' ? 1000 : pageSize));
       if (status && status !== 'all') params.set('status', status);
       if (q) params.set('q', q);
       if (isPlatform && tenantId) params.set('ownerTenantId', tenantId);
@@ -111,7 +111,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   useEffect(() => {
     loadTrials();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterStatus, filterTenantId, filterQ]);
+  }, [page, pageSize, filterStatus, filterTenantId, filterQ]);
 
   useEffect(() => {
     loadTenants();
@@ -259,7 +259,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
 
   return (
     <div id="trial-management" style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minHeight: 0, height: '100%', background: '#111827', boxSizing: 'border-box' }}>
@@ -391,16 +392,75 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           font-weight: 600;
         }
         #trial-management .tm-footer {
+          min-height: 74px;
+          padding: 0 30px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 14px 20px;
-          color: #9ca3af;
-          font-size: 12px;
           background: #111827;
           border-top: 1px solid #1f2937;
         }
-        #trial-management .tm-footer .tm-page-btns { display: flex; gap: 8px; align-items: center; }
+        #trial-management .tm-total { color: #9ca3af; font-size: 12px; }
+        #trial-management .tm-pagination { display: flex; align-items: center; gap: 12px; }
+        #trial-management .tm-page-size {
+          height: 38px;
+          padding: 0 14px;
+          border-radius: 8px;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #e5e7eb;
+          font-size: 11px;
+          display: inline-flex;
+          align-items: center;
+        }
+        #trial-management .tm-page-btn,
+        #trial-management .tm-page-current {
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          border: 1px solid #374151;
+          background: #1f2937;
+          color: #9ca3af;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+        }
+        #trial-management .tm-page-current {
+          border-color: #3b82f6;
+          color: #60a5fa;
+          background: #1e3a5f;
+          font-weight: 600;
+        }
+        #trial-management .tm-page-btn {
+          cursor: pointer;
+          font-size: 18px;
+          line-height: 1;
+        }
+        #trial-management .tm-page-btn:disabled {
+          opacity: 0.4;
+          background: #1a2332;
+          color: #4b5563;
+          cursor: not-allowed;
+        }
+        #trial-management .tm-page-jump {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #9ca3af;
+          font-size: 11px;
+        }
+        #trial-management .tm-page-input {
+          width: 56px;
+          height: 36px;
+          border-radius: 8px;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #e5e7eb;
+          text-align: center;
+          outline: none;
+          font-size: 11px;
+        }
         #trial-management .tm-banner {
           padding: 10px 16px;
           border-radius: 8px;
@@ -598,10 +658,22 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           </div>
         )}
         <div className="tm-footer">
-          <span>共 {total} 條 · 第 {page} / {totalPages} 頁</span>
-          <div className="tm-page-btns">
-            <button className="tm-btn" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>上一頁</button>
-            <button className="tm-btn" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>下一頁</button>
+          <div className="tm-total">共 {total} 條</div>
+          <div className="tm-pagination">
+            <select
+              className="tm-page-size"
+              value={pageSize}
+              onChange={(e) => { const v = e.target.value; setPageSize(v === 'all' ? 'all' : Number(v)); setPage(1); }}
+            >
+              <option value={10}>10 條/页</option>
+              <option value={20}>20 條/页</option>
+              <option value={50}>50 條/页</option>
+              <option value="all">全部</option>
+            </select>
+            <button className="tm-page-btn" type="button" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+            <span className="tm-page-current">{page}</span>
+            <button className="tm-page-btn" type="button" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>›</button>
+            <span className="tm-page-jump">前往<input className="tm-page-input" value={page} readOnly />頁</span>
           </div>
         </div>
       </div>

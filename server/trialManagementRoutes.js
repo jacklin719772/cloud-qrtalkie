@@ -105,7 +105,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
 
     const page = Math.max(1, Number.parseInt(request.query?.page || "1", 10) || 1);
-    const pageSize = Math.min(200, Math.max(1, Number.parseInt(request.query?.pageSize || "50", 10) || 50));
+    const pageSize = Math.min(1000, Math.max(1, Number.parseInt(request.query?.pageSize || "50", 10) || 50));
     const offset = (page - 1) * pageSize;
     const statusFilter = clean(request.query?.status, 20) || "all";
     const keyword = clean(request.query?.q, 120);
