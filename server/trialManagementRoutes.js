@@ -12,6 +12,9 @@ import { expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
+// 未上傳企業 Logo 時使用的默認品牌 Logo（渲染器支持 SVG；同目錄經 /ecard-images 對外）
+const DEFAULT_ECARD_LOGO_FILE = path.join(ecardImagesDir, "qrtalkie-logo.svg");
+const DEFAULT_ECARD_LOGO_URL = "/ecard-images/qrtalkie-logo.svg";
 
 function parseJsonMaybe(raw, fallback = null) {
   if (raw == null) return fallback;
@@ -637,6 +640,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     const phone = clean(request.body?.phone, 40);
     const email = clean(request.body?.email, 255);
     const avatarDataUrl = typeof request.body?.avatarDataUrl === "string" ? request.body.avatarDataUrl : "";
+    const logoDataUrl = typeof request.body?.logoDataUrl === "string" ? request.body.logoDataUrl : "";
 
     let connection;
     try {
@@ -688,7 +692,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         localStyles: {},
         localDisplayConfig: {},
         avatarUrl: avatarDataUrl.startsWith("data:") ? avatarDataUrl : null,
-        logoUrl: null,
+        logoUrl: logoDataUrl.startsWith("data:") ? logoDataUrl : DEFAULT_ECARD_LOGO_FILE,
         qrDataUrl,
         showQrCode: true,
         companyNameEnabled: Boolean(styleRow.company_name_enabled),
@@ -716,6 +720,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
     let backgroundId = Number(request.body?.backgroundId) || 0;
     const company = clean(request.body?.company, 120);
+    const logoDataUrl = typeof request.body?.logoDataUrl === "string" ? request.body.logoDataUrl : "";
     const rawAccounts = Array.isArray(request.body?.accounts) ? request.body.accounts : null;
     let accountsInput = [];
     if (rawAccounts) {
@@ -807,7 +812,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         }
         const sipUserId = Number(trial.sip_user_id);
         const [existing] = await connection.query(
-          "SELECT id, access_slug, avatar_url FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
+          "SELECT id, access_slug, avatar_url, logo_url FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
           [sipUserId],
         );
         const accessSlug = existing?.access_slug || `ec-${sipUserId}-${Math.random().toString(36).slice(2, 8)}`;
@@ -822,6 +827,18 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           }
         } else {
           avatarPath = existing?.avatar_url || "";
+        }
+        // 企業 Logo：本次上傳 > 沿用原 Logo > 默認 QRTalkie Logo
+        let logoPath = DEFAULT_ECARD_LOGO_URL;
+        if (logoDataUrl) {
+          try {
+            logoPath = await saveEcardImageFile(logoDataUrl);
+          } catch (imageError) {
+            await connection.rollback();
+            return response.status(imageError.statusCode || 400).json({ message: imageError.message || "Logo 圖片無效。" });
+          }
+        } else if (existing?.logo_url) {
+          logoPath = existing.logo_url;
         }
         const cardData = {
           name: input.name || String(trial.display_name || trial.username || "").trim() || String(trial.username || ""),
@@ -844,14 +861,14 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           showQrCode: true,
           callPublicSlug: accessSlug,
           avatarDataUrl: avatarPath || "",
-          logoDataUrl: "",
+          logoDataUrl: logoPath,
         };
         await connection.query(
           `INSERT INTO tenant_ecards (
              tenant_id, sip_user_id, access_slug, status, enable_video_call, enable_text_chat,
-             avatar_url, created_by_admin_id, ecard_data_json, created_at, updated_at
+             avatar_url, logo_url, created_by_admin_id, ecard_data_json, created_at, updated_at
            )
-           VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, NOW(), NOW())
+           VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, NOW(), NOW())
            ON DUPLICATE KEY UPDATE
              tenant_id = VALUES(tenant_id),
              access_slug = VALUES(access_slug),
@@ -859,6 +876,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
              enable_video_call = VALUES(enable_video_call),
              enable_text_chat = VALUES(enable_text_chat),
              avatar_url = VALUES(avatar_url),
+             logo_url = VALUES(logo_url),
              ecard_data_json = VALUES(ecard_data_json),
              updated_at = NOW()`,
           [
@@ -868,6 +886,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
             input.enableVideoCall ? 1 : 0,
             input.enableTextChat ? 1 : 0,
             avatarPath || null,
+            logoPath,
             request.admin.id,
             JSON.stringify(ecardDataJson),
           ],

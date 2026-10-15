@@ -79,7 +79,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [ecardStep, setEcardStep] = useState({ open: false, accounts: [], results: null, submitting: false });
   const [ecardStylesList, setEcardStylesList] = useState([]);
   const [ecardBackgrounds, setEcardBackgrounds] = useState([]);
-  const [ecardForm, setEcardForm] = useState({ templateId: '', backgroundId: '', company: '' });
+  const [ecardForm, setEcardForm] = useState({ templateId: '', backgroundId: '', company: '', logoDataUrl: '' });
   const [ecardEditDraft, setEcardEditDraft] = useState(null);
   const [ecardPreviewImage, setEcardPreviewImage] = useState({ open: false, loading: false, dataUrl: '', username: '' });
   const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
@@ -255,7 +255,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }));
     setEcardStep({ open: true, accounts: prepared, results: null, submitting: false });
     setEcardSelectedIds(prepared.map((a) => a.trialId));
-    setEcardForm({ templateId: '', backgroundId: '', company: defaultCompany || '' });
+    setEcardForm({ templateId: '', backgroundId: '', company: defaultCompany || '', logoDataUrl: '' });
     setEcardMessage({ type: '', text: '' });
     setEcardBackgrounds([]);
     const styles = await loadEcardStyles();
@@ -297,6 +297,19 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     reader.readAsDataURL(file);
   }
 
+  function handleEcardLogoFile(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setEcardMessage({ type: 'error', text: 'Logo 不可超過 5MB。' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setEcardForm((f) => ({ ...f, logoDataUrl: String(reader.result || '') }));
+    reader.readAsDataURL(file);
+  }
+
   async function previewEcardAccount(account) {
     if (!ecardForm.templateId) {
       setEcardMessage({ type: 'error', text: '請先選擇名片樣式。' });
@@ -313,6 +326,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         phone: account.phone || '',
         email: account.email || '',
         avatarDataUrl: account.avatarDataUrl || '',
+        logoDataUrl: ecardForm.logoDataUrl || '',
       }, { timeoutMs: 60000 });
       setEcardPreviewImage((prev) => ({ ...prev, loading: false, dataUrl: res?.imageDataUrl || '' }));
     } catch (error) {
@@ -344,6 +358,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         templateId: Number(ecardForm.templateId),
         backgroundId: ecardForm.backgroundId ? Number(ecardForm.backgroundId) : null,
         company: ecardForm.company.trim(),
+        logoDataUrl: ecardForm.logoDataUrl || '',
         accounts: ecardStep.accounts
           .filter((a) => ecardSelectedIds.includes(a.trialId))
           .map((a) => ({
@@ -1445,6 +1460,24 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         <label>公司（預設為租戶單位名稱）</label>
                         <input value={ecardForm.company} onChange={(e) => setEcardForm((f) => ({ ...f, company: e.target.value }))} />
                       </div>
+                    </div>
+                    <div className="tm-field">
+                      <label>企業 Logo（不上傳時默認使用 QRTalkie Logo，統一套用於本批）</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {ecardForm.logoDataUrl ? (
+                          <img src={ecardForm.logoDataUrl} alt="" style={{ height: '40px', maxWidth: '140px', borderRadius: '6px', border: '1px solid #374151', objectFit: 'contain', background: '#0b1220', padding: '4px' }} />
+                        ) : (
+                          <span style={{ height: '40px', padding: '0 12px', borderRadius: '6px', background: '#0b1220', border: '1px dashed #374151', display: 'inline-flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>默認 QRTalkie Logo</span>
+                        )}
+                        <label className="tm-btn" style={{ cursor: 'pointer' }}>
+                          上傳 Logo
+                          <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleEcardLogoFile} />
+                        </label>
+                        {ecardForm.logoDataUrl && (
+                          <button className="tm-btn" type="button" onClick={() => setEcardForm((f) => ({ ...f, logoDataUrl: '' }))}>移除</button>
+                        )}
+                      </div>
+                      <span className="tm-hint">PNG / JPG / WebP，不超過 5MB</span>
                     </div>
                     <span className="tm-hint">職位/電話/郵件/頭像/功能開關為逐帳號設置，請在下方列表點「編輯」逐個設定；每行可「預覽」效果。</span>
                   </div>
