@@ -43,7 +43,7 @@ function emptyNewTenant() {
   return { companyName: '', password: '' };
 }
 
-const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpenTrialEcard }, ref) => {
+const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpenTrialEcard, onFormalPurchase }, ref) => {
   const [trials, setTrials] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -530,7 +530,57 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
       setAssignOpen(true);
     },
     reload: () => loadTrials(),
+    batchPauseSelected: () => batchTrialAction('end'),
+    batchResumeSelected: () => batchTrialAction('resume'),
+    startFormalPurchase,
   }));
+
+  // 批量暫停/恢復所選（逐條調用既有單條接口；失敗計數提示，成功後清空選擇並刷新）
+  async function batchTrialAction(action) {
+    if (selectedTrialIds.length === 0) {
+      setMessage({ type: 'error', text: '請先勾選試用帳號。' });
+      return;
+    }
+    const ids = [...selectedTrialIds];
+    const isPause = action === 'end';
+    const label = isPause ? '暫停' : '恢復';
+    const confirmed = window.confirm(
+      isPause
+        ? `確定暫停所選 ${ids.length} 個試用嗎？\n通訊核心將停用這些帳號（無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復。`
+        : `確定恢復所選 ${ids.length} 個試用嗎？\n通訊核心帳號、名片與 AI 將立即重新啟用。`,
+    );
+    if (!confirmed) return;
+    setMessage({ type: '', text: `批量${label}處理中…` });
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        if (isPause) {
+          await apiClient.post(`/admin/trials/${id}/end`, { action: 'end' });
+        } else {
+          await apiClient.post(`/admin/trials/${id}/resume`);
+        }
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setMessage({
+      type: fail > 0 ? 'error' : 'success',
+      text: `批量${label}完成：成功 ${ok} 個${fail > 0 ? `，失敗 ${fail} 個（可能狀態不符、已到期或無權限）` : ''}。`,
+    });
+    setSelectedTrialIds([]);
+    loadTrials();
+  }
+
+  // 正式購買：校驗選擇後交給上層進入購買流程（選擇隨購買上下文攜帶）
+  function startFormalPurchase() {
+    if (selectedTrialIds.length === 0) {
+      setMessage({ type: 'error', text: '請先勾選要正式購買的試用帳號。' });
+      return;
+    }
+    onFormalPurchase?.([...selectedTrialIds]);
+  }
 
   function toggleStock(account) {
     const exists = selectedStocks.some((s) => s.id === account.id);

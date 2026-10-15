@@ -575,14 +575,43 @@ export default function ConsoleLayout({ onLogout }) {
       };
       return (
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button
-            className="primary-btn"
-            type="button"
-            onClick={() => trialManagementRef.current?.openAssign()}
-            style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
-          >
-            <Plus size={14} /> 添加試用
-          </button>
+          {identity?.admin?.accountType === 'platform' ? (
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={() => trialManagementRef.current?.openAssign()}
+              style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+            >
+              <Plus size={14} /> 添加試用
+            </button>
+          ) : (
+            <>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.batchPauseSelected()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                批量停用
+              </button>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.batchResumeSelected()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                批量啟用
+              </button>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.startFormalPurchase()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                <ShoppingCart size={14} /> 正式購買
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={() => setShowTrialMgmtHelp(true)}
@@ -897,6 +926,11 @@ export default function ConsoleLayout({ onLogout }) {
               ref={trialManagementRef}
               isPlatform={identity?.admin?.accountType === 'platform'}
               tenantName={identity?.tenant?.companyName || ''}
+              onFormalPurchase={(trialIds) => {
+                // 正式購買：攜帶所選試用帳號進入購買流程（下一步接入保留清單）
+                setPurchaseContext({ mode: 'create', orderId: null, trialIds });
+                setCurrentView('purchase-plan');
+              }}
               onOpenTrialEcard={(trial) => {
                 setTrialEcardContext({
                   trialId: trial.id,
