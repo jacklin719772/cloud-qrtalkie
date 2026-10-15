@@ -2488,11 +2488,12 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       }
 
       if (flexisipAccountId) {
+        const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
         const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
         // Always include all fields to prevent Flexisip from clearing unchanged values
         flexisipPayload.display_name = displayName || null;
         flexisipPayload.email = email || null;
-        flexisipPayload.phone = phone || null;
+        flexisipPayload.phone = normalizedPhone || null;
         if (password) {
           flexisipPayload.password = password;
           flexisipPayload.algorithm = "SHA-256";
@@ -2516,11 +2517,25 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
           }
         } catch (flexisipErr) {
           await connection.rollback();
+          // AM 的 422 校驗錯誤轉為中文提示（不向界面暴露英文技術文案）
+          const errs = flexisipErr?.responseBody?.errors || {};
+          const phoneMsgs = Array.isArray(errs.phone) ? errs.phone : [];
+          if (phoneMsgs.length > 0) {
+            const taken = phoneMsgs.some((m) => /already/i.test(String(m)));
+            return response.status(400).json({
+              message: taken ? "該電話號碼已被其他帳號使用。" : "電話號碼無效，請使用國際格式（如 +886912345678）。",
+              code: "FLEXISIP_PHONE_REJECTED",
+            });
+          }
+          if (errs.email) {
+            return response.status(400).json({ message: "該電子郵箱已被其他帳號使用。", code: "FLEXISIP_EMAIL_REJECTED" });
+          }
           const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
           if (flexisipErr?.status === 404) {
             return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
           }
-          return response.status(502).json({ message: `Flexisip 更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
+          console.error("Flexisip update rejected:", flexisipErr?.status, errMsg);
+          return response.status(502).json({ message: "遠端帳號資訊同步失敗，請稍後重試。", code: "FLEXISIP_UPDATE_FAILED" });
         }
     }
 
@@ -8345,10 +8360,11 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       }
 
       if (flexisipAccountId) {
+        const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
         const flexisipPayload = { username: account.username, algorithm: "SHA-256" };
         flexisipPayload.display_name = displayName || null;
         flexisipPayload.email = email || null;
-        flexisipPayload.phone = phone || null;
+        flexisipPayload.phone = normalizedPhone || null;
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
@@ -8359,6 +8375,19 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
             await flexisipDeactivateAccount(flexisipAccountId);
           }
         } catch (flexisipErr) {
+          // AM 的 422 校驗錯誤轉為中文提示（不向界面暴露英文技術文案）
+          const errs = flexisipErr?.responseBody?.errors || {};
+          const phoneMsgs = Array.isArray(errs.phone) ? errs.phone : [];
+          if (phoneMsgs.length > 0) {
+            const taken = phoneMsgs.some((m) => /already/i.test(String(m)));
+            return response.status(400).json({
+              message: taken ? "該電話號碼已被其他帳號使用。" : "電話號碼無效，請使用國際格式（如 +886912345678）。",
+              code: "FLEXISIP_PHONE_REJECTED",
+            });
+          }
+          if (errs.email) {
+            return response.status(400).json({ message: "該電子郵箱已被其他帳號使用。", code: "FLEXISIP_EMAIL_REJECTED" });
+          }
           const now = new Date().toISOString().slice(0, 19).replace("T", " ");
           const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
           const c3 = await pool.getConnection();
@@ -8375,7 +8404,8 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
             [errMsg, now, accountId],
           );
           c3.release();
-          return response.status(502).json({ message: `遠端帳號更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
+          console.error("Flexisip update rejected:", flexisipErr?.status, errMsg);
+          return response.status(502).json({ message: "遠端帳號更新失敗，請稍後重試。", code: "FLEXISIP_UPDATE_FAILED" });
         }
       }
     }
