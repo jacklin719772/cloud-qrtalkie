@@ -88,6 +88,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
   const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
   const [openActionsId, setOpenActionsId] = useState(null);
+  // 列表多選（為後續「正式購買」選號打基礎；跨頁保留，全選作用於當前頁）
+  const [selectedTrialIds, setSelectedTrialIds] = useState([]);
   const [reclaimConfirm, setReclaimConfirm] = useState({ open: false, trial: null });
   const [aiEntitlementAccount, setAiEntitlementAccount] = useState(null);
   const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
@@ -1434,6 +1436,22 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
             <table>
               <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
+                  <th style={{ width: '48px', textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      title="全選本頁"
+                      checked={trials.length > 0 && trials.every((t) => selectedTrialIds.includes(t.id))}
+                      onChange={(e) => {
+                        const ids = trials.map((t) => t.id);
+                        if (e.target.checked) {
+                          setSelectedTrialIds((prev) => Array.from(new Set([...prev, ...ids])));
+                        } else {
+                          setSelectedTrialIds((prev) => prev.filter((id) => !ids.includes(id)));
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                  </th>
                   <th>帳號</th>
                   {isPlatform && <th>歸屬租戶</th>}
                   <th>聯繫人</th>
@@ -1452,6 +1470,20 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                   const canAccountSettings = !isPlatform && String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
                   return (
                     <tr key={t.id}>
+                      <td style={{ width: '48px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedTrialIds.includes(t.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTrialIds((prev) => [...prev, t.id]);
+                            } else {
+                              setSelectedTrialIds((prev) => prev.filter((id) => id !== t.id));
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td>
                         <div style={{ fontWeight: 600, color: '#ffffff' }}>{t.username}{t.webUsername ? `（${t.webUsername}）` : ''}</div>
                         {t.accountDisplayName && t.accountDisplayName !== t.username && (
