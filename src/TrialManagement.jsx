@@ -1466,6 +1466,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
                       />
                       添加時同步開通（到試用結束為止）
+                      <span className="tm-hint">（增值服務勾選「AI助手」亦等同開通）</span>
                     </label>
                   </div>
                   <div className="tm-field">

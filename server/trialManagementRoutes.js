@@ -508,6 +508,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           addonSort += 1;
         }
       }
+      // AI 開通來源：第 3 區塊獨立開關，或增值服務勾選「AI助手」（aiassistant）
+      const aiRequested = aiEnabled || addonCodes.includes("aiassistant");
 
       await connection.query(
         `UPDATE sip_users
@@ -628,7 +630,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
             company || null,
             startedAt,
             expiresAt,
-            aiEnabled ? 1 : 0,
+            aiRequested ? 1 : 0,
             batchOrderId,
             request.admin.id,
             notes || null,
@@ -637,7 +639,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         createdTrials.push({ id: Number(insertResult.insertId), sipUserId: Number(account.id), username: account.username || "" });
       }
 
-      if (aiEnabled) {
+      if (aiRequested) {
         await connection.query(
           `INSERT INTO ai_bot_account_entitlements (sip_user_id, enabled, expires_at, granted_by_admin_id, notes)
            SELECT u.id, 1, ?, ?, '試用開通'
