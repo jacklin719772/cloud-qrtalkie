@@ -349,6 +349,17 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     try {
       connection = await pool.getConnection();
 
+      // 代理商（名錄選擇）：僅接受啟用中的登記錄項；先於 AM 動作校驗，無效請求不產生任何副作用
+      if (agentId) {
+        const agentRows = await connection.query(
+          "SELECT id FROM agents WHERE id = ? AND status = 'active' LIMIT 1",
+          [agentId],
+        );
+        if (!agentRows[0]) {
+          return response.status(400).json({ message: "所選代理商不存在或已停用。" });
+        }
+      }
+
       // 先確保所選帳號在通訊核心（AM）處於啟用態（先 AM 後本地；失敗即中止，不產生任何本地數據）。
       // count 自動取號路徑帳號在事務內才確定，於選定後補激活。
       const preIds = requestedPairs.length > 0
@@ -402,18 +413,6 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (!reservedTenantId) {
         await connection.rollback();
         return response.status(500).json({ message: "系統保留租戶缺失，請先執行資料庫遷移。" });
-      }
-
-      // 代理商（名錄選擇）：僅接受啟用中的登記錄項
-      if (agentId) {
-        const agentRows = await connection.query(
-          "SELECT id FROM agents WHERE id = ? AND status = 'active' LIMIT 1",
-          [agentId],
-        );
-        if (!agentRows[0]) {
-          await connection.rollback();
-          return response.status(400).json({ message: "所選代理商不存在或已停用。" });
-        }
       }
 
       // 選號：pairs（所見配對）優先，其次兼容 sipUserIds/自動取庫存；皆須為 tenant_id IS NULL 且 active
