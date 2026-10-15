@@ -94,6 +94,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [aiEntitlementMessage, setAiEntitlementMessage] = useState({ type: '', text: '' });
   const [aiEntitlementLoading, setAiEntitlementLoading] = useState(false);
   const [aiEntitlementSaving, setAiEntitlementSaving] = useState(false);
+  const [accountSettingsTarget, setAccountSettingsTarget] = useState(null);
+  const [accountSettingsForm, setAccountSettingsForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [accountSettingsMessage, setAccountSettingsMessage] = useState({ type: '', text: '' });
+  const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
+  const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -163,6 +168,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     const timer = setTimeout(() => setAiEntitlementMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [aiEntitlementMessage]);
+
+  useEffect(() => {
+    if (!accountSettingsMessage.text) return undefined;
+    const timer = setTimeout(() => setAccountSettingsMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [accountSettingsMessage]);
 
   useEffect(() => {
     if (!ecardMessage.text) return undefined;
@@ -725,6 +736,67 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
+  // 帳號設置（對齊租戶端「帳號管理」的編輯彈窗）：顯示名/郵箱/電話/密碼
+  async function openAccountSettings(trial) {
+    setOpenActionsId(null);
+    setAccountSettingsTarget({ id: trial.id, username: trial.username });
+    setAccountSettingsForm({ displayName: trial.accountDisplayName || '', email: '', phone: '', password: '', confirmPassword: '' });
+    setAccountSettingsMessage({ type: '', text: '' });
+    setAccountSettingsLoading(true);
+    try {
+      const data = await apiClient.get(`/admin/trials/${trial.id}/account-settings`);
+      const a = data?.account || {};
+      setAccountSettingsForm({
+        displayName: a.displayName || '',
+        email: a.email || '',
+        phone: a.phone || '',
+        password: '',
+        confirmPassword: '',
+      });
+    } catch {
+      /* 讀取失敗時沿用列表值兜底 */
+    } finally {
+      setAccountSettingsLoading(false);
+    }
+  }
+
+  async function submitAccountSettings(e) {
+    e.preventDefault();
+    const email = accountSettingsForm.email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setAccountSettingsMessage({ type: 'error', text: '請輸入有效的電子郵箱。' });
+      return;
+    }
+    if (accountSettingsForm.password || accountSettingsForm.confirmPassword) {
+      if (accountSettingsForm.password.length < 6) {
+        setAccountSettingsMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
+        return;
+      }
+      if (accountSettingsForm.password !== accountSettingsForm.confirmPassword) {
+        setAccountSettingsMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
+        return;
+      }
+    }
+    setAccountSettingsSaving(true);
+    setAccountSettingsMessage({ type: '', text: '' });
+    try {
+      await apiClient.put(`/admin/trials/${accountSettingsTarget.id}/account-settings`, {
+        displayName: accountSettingsForm.displayName.trim(),
+        email,
+        phone: accountSettingsForm.phone.trim(),
+        password: accountSettingsForm.password,
+        confirmPassword: accountSettingsForm.confirmPassword,
+      });
+      setAccountSettingsMessage({ type: 'success', text: '帳號資訊已更新。' });
+      loadTrials();
+      setTimeout(() => setAccountSettingsTarget(null), 1200);
+    } catch (error) {
+      setAccountSettingsMessage({ type: 'error', text: error.message || '帳號資訊更新失敗。' });
+    } finally {
+      setAccountSettingsSaving(false);
+    }
+  }
+
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
 
@@ -1276,6 +1348,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   const actionable = ['active', 'expiring', 'grace', 'paused'].includes(t.phase);
                   const canPause = t.phase === 'active' || t.phase === 'expiring';
                   const canResume = t.phase === 'paused' && String(t.expiresAt || '') >= todayStr();
+                  const canAccountSettings = !isPlatform && String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
                   return (
                     <tr key={t.id}>
                       <td>
@@ -1316,6 +1389,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                           <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
                             {isPlatform && (
                               <button type="button" className="tm-actions-item" onClick={() => openAiEntitlement(t)}>AI助手</button>
+                            )}
+                            {canAccountSettings && (
+                              <button type="button" className="tm-actions-item" onClick={() => openAccountSettings(t)}>帳號設置</button>
                             )}
                             {canPause && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
@@ -1993,6 +2069,95 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             </form>
           </div>
         </div>
+        </div>,
+        document.body
+      )}
+
+      {accountSettingsTarget && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2147483646,
+            backgroundColor: 'rgba(15, 23, 42, 0.36)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !accountSettingsSaving) setAccountSettingsTarget(null);
+          }}
+        >
+          <form
+            onSubmit={submitAccountSettings}
+            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {accountSettingsTarget.username}</h3>
+              <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            {accountSettingsLoading ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                    <input
+                      value={accountSettingsForm.displayName}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, displayName: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
+                    <input
+                      type="email"
+                      value={accountSettingsForm.email}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, email: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
+                    <input
+                      value={accountSettingsForm.phone}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
+                    <input
+                      type="password"
+                      value={accountSettingsForm.password}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, password: event.target.value }))}
+                      placeholder="不修改請留空"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
+                    <input
+                      type="password"
+                      value={accountSettingsForm.confirmPassword}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, confirmPassword: event.target.value }))}
+                      placeholder="不修改請留空"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  {accountSettingsMessage.text && (
+                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: accountSettingsMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{accountSettingsMessage.text}</p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                  <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+                  <button className="primary-btn" type="submit" disabled={accountSettingsSaving}>{accountSettingsSaving ? '儲存中...' : '儲存修改'}</button>
+                </div>
+              </>
+            )}
+          </form>
         </div>,
         document.body
       )}

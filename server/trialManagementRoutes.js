@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "./db.js";
+import { getAccount as flexisipGetAccount, updateAccount as flexisipUpdateAccount, activateAccount as flexisipActivateAccount, searchAccountBySip } from "./flexisipAccountManagerClient.js";
+import { hashPassword } from "./security.js";
 import { activateTrialAccountInFlexisip, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment } from "./trialService.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -1058,6 +1060,192 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to resume trial assignment:", error);
       return response.status(500).json({ message: "恢復試用操作失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // 試用帳號資訊設置（對齊租戶端「帳號管理」編輯彈窗）：顯示名/郵箱/電話/密碼
+  // GET /api/admin/trials/:id/account-settings - 讀取當前帳號資訊（編輯回填）
+  app.get("/api/admin/trials/:id/account-settings", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const isPlatform = request.admin.accountType === "platform";
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const rows = await connection.query(
+        `SELECT ta.id, ta.owner_tenant_id, ta.sip_user_id,
+                u.username, u.display_name, u.email, u.phone_number
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ? LIMIT 1`,
+        [trialId],
+      );
+      const row = rows[0];
+      if (!row) return response.status(404).json({ message: "找不到試用記錄。" });
+      if (!isPlatform && Number(row.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+      }
+      return response.json({
+        account: {
+          id: Number(row.sip_user_id),
+          username: row.username || "",
+          displayName: row.display_name || "",
+          email: row.email || "",
+          phone: row.phone_number || "",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to read trial account settings:", error);
+      return response.status(500).json({ message: "讀取帳號資訊失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // PUT /api/admin/trials/:id/account-settings - 更新帳號資訊（同步 Flexisip，保留激活態）
+  app.put("/api/admin/trials/:id/account-settings", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const isPlatform = request.admin.accountType === "platform";
+    const displayName = clean(request.body?.displayName, 120);
+    const email = clean(request.body?.email, 255);
+    const phone = clean(request.body?.phone, 40);
+    const password = String(request.body?.password || "");
+    const confirmPassword = String(request.body?.confirmPassword || "");
+    if (email && !isEmailLike(email)) {
+      return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
+    }
+    if (password || confirmPassword) {
+      if (password.length < 6) {
+        return response.status(400).json({ message: "密碼至少需要 6 個字元。" });
+      }
+      if (password !== confirmPassword) {
+        return response.status(400).json({ message: "兩次輸入的密碼不一致。" });
+      }
+    }
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const rows = await connection.query(
+        `SELECT ta.id, ta.owner_tenant_id, ta.sip_user_id, ta.status,
+                DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_date, u.username
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ?
+         FOR UPDATE`,
+        [trialId],
+      );
+      const trial = rows[0];
+      if (!trial) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到試用記錄。" });
+      }
+      if (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        await connection.rollback();
+        return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+      }
+      if (String(trial.expires_date || "") < todayDate()) {
+        await connection.rollback();
+        return response.status(409).json({ message: "試用已到期，無法編輯帳號資訊。" });
+      }
+
+      const sipRows = await connection.query(
+        `SELECT id, username, sip_domain, display_name, email, phone_number, status,
+                flexisip_account_id, sip_uri, sync_status
+         FROM sip_users WHERE id = ? LIMIT 1 FOR UPDATE`,
+        [Number(trial.sip_user_id)],
+      );
+      const sipUser = sipRows[0];
+      if (!sipUser) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到帳號。" });
+      }
+
+      // ── Flexisip 同步：updateAccount 會重置激活態——先讀前態，更新後恢復（暫停帳號保持停用，不會被誤激活）──
+      let flexisipAccountId = sipUser.flexisip_account_id || null;
+      if (!flexisipAccountId && sipUser.sip_uri) {
+        try {
+          const sr = await searchAccountBySip(sipUser.sip_uri);
+          flexisipAccountId = sr?.id;
+        } catch {}
+      }
+      if (!flexisipAccountId && sipUser.sip_domain) {
+        try {
+          const constructed = `sip:${sipUser.username}@${sipUser.sip_domain}`;
+          const sr = await searchAccountBySip(constructed);
+          flexisipAccountId = sr?.id;
+          if (flexisipAccountId) {
+            await connection.query(
+              `UPDATE sip_users SET flexisip_account_id = ?, sip_uri = ? WHERE id = ?`,
+              [flexisipAccountId, constructed, sipUser.id],
+            );
+          }
+        } catch {}
+      }
+
+      if (flexisipAccountId) {
+        const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
+        flexisipPayload.display_name = displayName || null;
+        flexisipPayload.email = email || null;
+        flexisipPayload.phone = phone || null;
+        if (password) {
+          flexisipPayload.password = password;
+        }
+        let wasActivated = false;
+        try {
+          const remote = await flexisipGetAccount(flexisipAccountId);
+          wasActivated = remote?.activated === true || remote?.activated === 1;
+        } catch {}
+        try {
+          await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+          if (wasActivated) {
+            await flexisipActivateAccount(flexisipAccountId);
+          }
+        } catch (flexisipErr) {
+          await connection.rollback();
+          const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+          if (flexisipErr?.status === 404) {
+            return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+          }
+          return response.status(502).json({ message: `Flexisip 更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
+        }
+      }
+
+      let updateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?`;
+      const updateParams = [displayName || null, email, phone || null];
+      if (password) {
+        updateSql += `, password_hash = ?`;
+        updateParams.push(await hashPassword(password));
+      }
+      updateSql += ` WHERE id = ?`;
+      updateParams.push(Number(sipUser.id));
+      await connection.query(updateSql, updateParams);
+
+      await connection.commit();
+      console.log(JSON.stringify({
+        src: "trial-account-settings",
+        ts: new Date().toISOString(),
+        adminId: request.admin.id,
+        trialId,
+        username: sipUser.username || "",
+      }));
+      return response.json({
+        message: "帳號資訊已更新。",
+        account: { id: Number(sipUser.id), username: sipUser.username || "", displayName, email, phone },
+      });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to update trial account settings:", error);
+      return response.status(500).json({ message: "帳號資訊更新失敗。" });
     } finally {
       if (connection) connection.release();
     }
