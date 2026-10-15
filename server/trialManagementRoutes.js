@@ -991,7 +991,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       }));
       return response.json({
         message: action === "end"
-          ? `試用帳號 ${trial.username || trial.sip_user_id} 已提前結束，進入寬限期（功能已停，可轉正）。`
+          ? `試用帳號 ${trial.username || trial.sip_user_id} 已暫停，進入寬限期（功能已停，仍可轉正）。`
           : `試用帳號 ${trial.username || trial.sip_user_id} 已立即回庫。`,
       });
     } catch (error) {

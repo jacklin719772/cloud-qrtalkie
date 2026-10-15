@@ -1,6 +1,6 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 import apiClient from './apiClient';
 
 // 試用管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
@@ -85,6 +85,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [ecardPreviewImage, setEcardPreviewImage] = useState({ open: false, loading: false, dataUrl: '', username: '' });
   const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
   const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
+  const [openActionsId, setOpenActionsId] = useState(null);
+  const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
+  const actionsAnchorRef = useRef(null);
+  const actionsMenuRef = useRef(null);
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -148,6 +152,44 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     const timer = setTimeout(() => setEcardMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [ecardMessage]);
+
+  // 行操作菜单：外部点击关闭
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!event.target.closest('.tm-actions-menu') && !event.target.closest('.tm-actions-btn')) {
+        setOpenActionsId(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  // 行操作菜单：锚点定位（表格内滚动跟随、超出视口向上展开）
+  useEffect(() => {
+    if (!openActionsId || !actionsAnchorRef.current) return undefined;
+    const updatePosition = () => {
+      if (!actionsAnchorRef.current) return;
+      const rect = actionsAnchorRef.current.getBoundingClientRect();
+      const menuWidth = 132;
+      const viewportPadding = 12;
+      let left = rect.right - menuWidth;
+      if (left < viewportPadding) left = viewportPadding;
+      let top = rect.bottom + 4;
+      const menuElement = actionsMenuRef.current;
+      const menuHeight = menuElement ? menuElement.offsetHeight : 110;
+      if (top + menuHeight > window.innerHeight - viewportPadding) {
+        top = rect.top - 4 - menuHeight;
+      }
+      setActionsPosition({ top, left });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [openActionsId]);
 
   async function loadStock(keyword) {
     setStockLoading(true);
@@ -568,7 +610,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
   async function endTrial(trial, action) {
     const confirmText = action === 'end'
-      ? `確定提前結束「${trial.username}」的試用嗎？\n功能將立即停止，帳號進入寬限期（仍可轉正）。`
+      ? `確定暫停「${trial.username}」的試用嗎？\n功能將立即停止，帳號進入寬限期（仍可轉正）。`
       : `確定將「${trial.username}」立即回庫嗎？\n帳號將立刻釋放回庫存，且無法再轉正。`;
     if (!window.confirm(confirmText)) return;
     try {
@@ -806,6 +848,32 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         }
         #trial-management-modal .tm-toast.error { background: #3b1111; color: #f87171; border: 1px solid #7f1d1d; }
         #trial-management-modal .tm-toast.success { background: #0d2818; color: #22c55e; border: 1px solid #14532d; }
+        /* 行操作三点菜单（portal 到 body，故不加作用域前缀，tm- 前缀保证唯一） */
+        .tm-actions-menu {
+          position: fixed;
+          background: #1e293b;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+          z-index: 10050;
+          min-width: 132px;
+          display: flex;
+          flex-direction: column;
+          padding: 4px 0;
+        }
+        .tm-actions-menu .tm-actions-item {
+          padding: 8px 16px;
+          font-size: 13px;
+          color: #d1d5db;
+          background: transparent;
+          border: none;
+          text-align: left;
+          width: 100%;
+          cursor: pointer;
+        }
+        .tm-actions-menu .tm-actions-item:hover { background: #374151; color: #f3f4f6; }
+        .tm-actions-menu .tm-actions-item.danger { color: #fca5a5; }
+        .tm-actions-menu .tm-actions-item.danger:hover { background: #3b1111; color: #fecaca; }
         #trial-management-modal .tm-field { display: flex; flex-direction: column; gap: 6px; }
         #trial-management-modal .tm-field label { font-size: 12px; color: #9ca3af; }
         #trial-management-modal .tm-field input,
@@ -1086,7 +1154,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <th>試用週期</th>
                   <th>狀態</th>
                   <th>AI 助手</th>
-                  <th style={{ textAlign: 'right' }}>操作</th>
+                  <th style={{ textAlign: 'center' }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1111,17 +1179,33 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         <span className="tm-badge" style={{ color: meta.color, background: meta.bg }}>{meta.label}</span>
                       </td>
                       <td>{t.aiEnabled ? '已開通' : '—'}</td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td style={{ textAlign: 'center' }}>
                         {actionable ? (
-                          <div style={{ display: 'inline-flex', gap: '8px' }}>
-                            <button className="tm-btn danger" type="button" onClick={() => endTrial(t, 'end')}>提前結束</button>
-                            {isPlatform && (
-                              <button className="tm-btn danger" type="button" onClick={() => endTrial(t, 'reclaim_now')}>立即回庫</button>
-                            )}
-                          </div>
+                          <button
+                            className="tm-btn tm-actions-btn"
+                            type="button"
+                            title="更多操作"
+                            style={{ width: '32px', padding: 0, justifyContent: 'center' }}
+                            onClick={(e) => {
+                              if (openActionsId === t.id) { setOpenActionsId(null); return; }
+                              actionsAnchorRef.current = e.currentTarget;
+                              setOpenActionsId(t.id);
+                            }}
+                          >
+                            <MoreVertical size={15} />
+                          </button>
                         ) : (
                           <span style={{ color: '#4b5563' }}>—</span>
                         )}
+                        {openActionsId === t.id ? createPortal(
+                          <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
+                            <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
+                            {isPlatform && (
+                              <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); endTrial(t, 'reclaim_now'); }}>立即回庫</button>
+                            )}
+                          </div>,
+                          document.body,
+                        ) : null}
                       </td>
                     </tr>
                   );
