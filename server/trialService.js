@@ -68,36 +68,87 @@ export async function activateTrialAccountInFlexisip(sipUserId, connection = nul
   return setFlexisipActivated(sipUserId, true, connection);
 }
 
-// 提前到期：功能即停（权益置 expired / AI 关闭），帐号留在宽限期（挂靠保留，可转正）
-export async function expireTrialAssignment(connection, { trialId, sipUserId, expiresAt }) {
+// 暫停（可恢復）：先停用 AM 並回讀確認；本地只翻狀態位——
+// 到期日/掛靠/配對/訂單/名片內容全部保留，恢復時原樣翻回（見 resumeTrialAssignment）。
+export async function pauseTrialAssignment(connection, { trialId, sipUserId }) {
+  // ① AM 停用確認（映射異常時跳過 AM 步驟，與回收一致；其餘失敗拋錯由呼叫方回滾）
+  try {
+    await setFlexisipActivated(sipUserId, false, connection);
+  } catch (flexisipError) {
+    if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+      console.warn("[trial-pause] AM mapping mismatch, skip AM deactivate:", sipUserId, flexisipError.message);
+    } else {
+      throw flexisipError;
+    }
+  }
+
+  const reservedTenantId = await getReservedTrialTenantId(connection);
+  // ② 本地：只翻狀態（服務到期日不動，恢復判據即「是否未到期」）
   await connection.query(
-    "UPDATE trial_assignments SET expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    [expiresAt, trialId],
+    "UPDATE trial_assignments SET status = 'paused', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [trialId],
   );
   await connection.query(
-    "UPDATE sip_users SET service_expires_at = ? WHERE id = ?",
-    [expiresAt, sipUserId],
+    "UPDATE tenant_sip_account_entitlements SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ? AND status = 'active'",
+    [sipUserId, reservedTenantId || 0],
   );
   await connection.query(
-    "UPDATE tenant_sip_account_entitlements SET status = 'expired', service_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-    [expiresAt, sipUserId],
+    "UPDATE tenant_web_account_entitlements SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ? AND status = 'active'",
+    [sipUserId, reservedTenantId || 0],
   );
-  // 配對的 Web 帳號同步停用（到期日改為提前結束日）
+  // AI：僅停用試用開通的行（歷史來源行不屬試用範圍，暫停不動）
+  await connection.query(
+    "UPDATE ai_bot_account_entitlements SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND notes = '試用開通'",
+    [sipUserId],
+  );
+  // 名片停用（恢復時翻回；僅動當前 active 的行）
+  await connection.query(
+    "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ? AND status = 'active'",
+    [sipUserId],
+  );
+  // 推送設備 + 登入會話（暫停期間不應再有來電推送/會話）
+  const [account] = await connection.query(
+    "SELECT username, sip_domain FROM sip_users WHERE id = ? LIMIT 1",
+    [sipUserId],
+  );
+  if (account?.username) {
+    await connection.query(
+      "DELETE FROM push_devices WHERE sip_username = ? AND sip_domain = ?",
+      [account.username, account.sip_domain || "sip.qrtalkie.org"],
+    );
+  }
+  await connection.query(
+    "DELETE FROM admin_sessions WHERE user_type = 'sip' AND sip_user_id = ?",
+    [sipUserId],
+  );
+}
+
+// 恢復（僅限未到期，由呼叫方前置校驗）：先啟用 AM 並回讀確認；再把暫停時翻掉的狀態原樣翻回。
+// 到期日/掛靠/配對/訂單/名片內容在暫停時未動，無需重建。
+export async function resumeTrialAssignment(connection, { trialId, sipUserId }) {
+  // AM 啟用確認；映射異常或其他失敗直接拋錯，由呼叫方回滾（保持暫停態）
+  await setFlexisipActivated(sipUserId, true, connection);
+
   const reservedTenantId = await getReservedTrialTenantId(connection);
   await connection.query(
-    `UPDATE web_users w
-     JOIN tenant_web_account_entitlements e ON e.web_user_id = w.id
-     SET w.service_expires_at = ?
-     WHERE e.sip_user_id = ? AND e.tenant_id = ?`,
-    [expiresAt, sipUserId, reservedTenantId || 0],
+    "UPDATE trial_assignments SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [trialId],
   );
   await connection.query(
-    "UPDATE tenant_web_account_entitlements SET status = 'expired', service_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ?",
-    [expiresAt, sipUserId, reservedTenantId || 0],
+    "UPDATE tenant_sip_account_entitlements SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ? AND status = 'inactive'",
+    [sipUserId, reservedTenantId || 0],
   );
   await connection.query(
-    "UPDATE ai_bot_account_entitlements SET enabled = 0, expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
-    [`${expiresAt} 23:59:59`, sipUserId],
+    "UPDATE tenant_web_account_entitlements SET status = 'active', updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND tenant_id = ? AND status = 'inactive'",
+    [sipUserId, reservedTenantId || 0],
+  );
+  await connection.query(
+    "UPDATE ai_bot_account_entitlements SET enabled = 1, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ? AND notes = '試用開通' AND (expires_at IS NULL OR expires_at > NOW())",
+    [sipUserId],
+  );
+  await connection.query(
+    "UPDATE tenant_ecards SET status = 'active', updated_at = NOW() WHERE sip_user_id = ? AND status = 'disabled'",
+    [sipUserId],
   );
 }
 

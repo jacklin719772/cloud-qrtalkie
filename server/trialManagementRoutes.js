@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "./db.js";
-import { activateTrialAccountInFlexisip, expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment } from "./trialService.js";
+import { activateTrialAccountInFlexisip, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment } from "./trialService.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
@@ -95,6 +95,7 @@ function normalizeIds(list) {
 function trialPhase(row, today) {
   if (row.status === "converted") return "converted";
   if (row.status === "reclaimed") return "reclaimed";
+  if (row.status === "paused") return "paused";
   const expires = String(row.expires_at || "").slice(0, 10);
   if (!expires) return "active";
   if (expires < today) return "grace";
@@ -210,7 +211,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       whereClauses.push("ta.status = 'active' AND ta.expires_at >= CURDATE() AND ta.expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
     } else if (statusFilter === "grace") {
       whereClauses.push("ta.status = 'active' AND ta.expires_at < CURDATE()");
-    } else if (statusFilter === "converted" || statusFilter === "reclaimed") {
+    } else if (statusFilter === "converted" || statusFilter === "reclaimed" || statusFilter === "paused") {
       whereClauses.push("ta.status = ?");
       params.push(statusFilter);
     }
@@ -972,7 +973,77 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
   });
 
-  // 提前結束（進寬限，功能即停）/ 立即回庫（僅平台管理員）
+  // 恢復暫停的試用（僅限未到期；先啟用 AM 確認，再翻回本地狀態）
+  app.post("/api/admin/trials/:id/resume", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const isPlatform = request.admin.accountType === "platform";
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const rows = await connection.query(
+        `SELECT ta.*, u.username, DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_date
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ?
+         FOR UPDATE`,
+        [trialId],
+      );
+      const trial = rows[0];
+      if (!trial) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到試用記錄。" });
+      }
+      if (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        await connection.rollback();
+        return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+      }
+      if (trial.status !== "paused") {
+        await connection.rollback();
+        return response.status(409).json({ message: "該試用不在暫停狀態，無法恢復。" });
+      }
+      if (String(trial.expires_date || "") < todayDate()) {
+        await connection.rollback();
+        return response.status(409).json({ message: "試用已到期，無法恢復（可執行立即回庫）。" });
+      }
+
+      try {
+        await resumeTrialAssignment(connection, { trialId, sipUserId: Number(trial.sip_user_id) });
+      } catch (flexisipError) {
+        await connection.rollback();
+        console.error("Failed to resume trial (AM step):", flexisipError);
+        if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+          return response.status(409).json({ message: "帳號在通訊核心的映射異常，無法安全恢復，請聯繫技術處理。" });
+        }
+        return response.status(502).json({ message: "帳號在通訊核心（AM）啟用確認失敗，恢復已取消，請稍後重試。" });
+      }
+
+      await connection.commit();
+      console.log(JSON.stringify({
+        src: "trial-resume",
+        ts: new Date().toISOString(),
+        adminId: request.admin.id,
+        trialId,
+        username: trial.username || "",
+      }));
+      return response.json({
+        message: `試用帳號 ${trial.username || trial.sip_user_id} 已恢復，功能與帳號已重新啟用。`,
+      });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to resume trial assignment:", error);
+      return response.status(500).json({ message: "恢復試用操作失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // 暫停（可恢復）/ 立即回庫（僅平台管理員）
   app.post("/api/admin/trials/:id/end", requireAdmin, async (request, response) => {
     const trialId = Number(request.params.id);
     if (!Number.isInteger(trialId) || trialId <= 0) {
@@ -1014,14 +1085,11 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         return response.status(409).json({ message: "該試用已結束或已回收。" });
       }
 
-      const yesterday = addDays(todayDate(), -1);
-
       if (action === "end") {
-        // 提前到期：功能即停（权益置 expired / AI 关闭），帐号留在宽限期可转正
-        await expireTrialAssignment(connection, {
+        // 暫停（可恢復）：通訊核心停用 + 本地翻狀態；到期日/歸屬/配對全部保留
+        await pauseTrialAssignment(connection, {
           trialId,
           sipUserId: Number(trial.sip_user_id),
-          expiresAt: yesterday,
         });
       } else {
         // 立即回库：抹去挂靠与到期字段，帐号回到与库存一致的形态
@@ -1042,14 +1110,14 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       }));
       return response.json({
         message: action === "end"
-          ? `試用帳號 ${trial.username || trial.sip_user_id} 已暫停，進入寬限期（功能已停，仍可轉正）。`
+          ? `試用帳號 ${trial.username || trial.sip_user_id} 已暫停（試用期不變，到期前可隨時恢復）。`
           : `試用帳號 ${trial.username || trial.sip_user_id} 已立即回庫。`,
       });
     } catch (error) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to end trial assignment:", error);
       if (error?.code === "FLEXISIP_STATE_CONFIRM_FAILED") {
-        return response.status(502).json({ message: "帳號在通訊核心（AM）停用確認失敗，本次回庫已取消，請稍後重試。" });
+        return response.status(502).json({ message: "帳號在通訊核心（AM）停用確認失敗，本次操作已取消，請稍後重試。" });
       }
       return response.status(500).json({ message: "試用結束操作失敗。" });
     } finally {

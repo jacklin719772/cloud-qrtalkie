@@ -22,6 +22,7 @@ const PHASE_META = {
   active: { label: '試用中', color: '#4ade80', bg: '#0d2818' },
   expiring: { label: '即將到期', color: '#fbbf24', bg: '#3b2e11' },
   grace: { label: '寬限期', color: '#fb923c', bg: '#3b2411' },
+  paused: { label: '已暫停', color: '#c4b5fd', bg: '#312e81' },
   converted: { label: '已轉正', color: '#60a5fa', bg: '#1e3a5f' },
   reclaimed: { label: '已回收', color: '#9ca3af', bg: '#1f2937' },
 };
@@ -611,7 +612,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
   async function endTrial(trial, action) {
     if (action === 'end') {
-      const confirmed = window.confirm(`確定暫停「${trial.username}」的試用嗎？\n功能將立即停止，帳號進入寬限期（仍可轉正）。`);
+      const confirmed = window.confirm(`確定暫停「${trial.username}」的試用嗎？\n通訊核心將停用該帳號（無法註冊/通話），名片與 AI 一併停用。\n試用期不變，到期前可隨時恢復。`);
       if (!confirmed) return;
     }
     try {
@@ -620,6 +621,18 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       loadTrials();
     } catch (error) {
       setMessage({ type: 'error', text: error.message || '操作失敗。' });
+    }
+  }
+
+  async function resumeTrial(trial) {
+    const confirmed = window.confirm(`確定恢復「${trial.username}」的試用嗎？\n通訊核心帳號、名片與 AI 將立即重新啟用。`);
+    if (!confirmed) return;
+    try {
+      const res = await apiClient.post(`/admin/trials/${trial.id}/resume`);
+      setMessage({ type: 'success', text: res.message || '已恢復試用。' });
+      loadTrials();
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || '恢復失敗。' });
     }
   }
 
@@ -1112,6 +1125,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             <option value="active">試用中</option>
             <option value="expiring">即將到期</option>
             <option value="grace">寬限期</option>
+            <option value="paused">已暫停</option>
             <option value="converted">已轉正</option>
             <option value="reclaimed">已回收</option>
           </select>
@@ -1161,7 +1175,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <tbody>
                 {trials.map((t) => {
                   const meta = PHASE_META[t.phase] || PHASE_META.active;
-                  const actionable = ['active', 'expiring', 'grace'].includes(t.phase);
+                  const actionable = ['active', 'expiring', 'grace', 'paused'].includes(t.phase);
+                  const canPause = t.phase === 'active' || t.phase === 'expiring';
+                  const canResume = t.phase === 'paused' && String(t.expiresAt || '') >= todayStr();
                   return (
                     <tr key={t.id}>
                       <td>
@@ -1200,7 +1216,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         )}
                         {openActionsId === t.id ? createPortal(
                           <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
-                            <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
+                            {canPause && (
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
+                            )}
+                            {canResume && (
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); resumeTrial(t); }}>恢復</button>
+                            )}
                             {isPlatform && (
                               <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>
                             )}

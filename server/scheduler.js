@@ -137,12 +137,12 @@ async function scanExpiredSipAccounts(connection) {
 // 试用账号：7 天到期提醒 / 到期提醒 / 到期逾 7 天自动回收（邮件通知登记联系人）
 async function scanExpiredTrials(connection) {
   const rows = await connection.query(
-    `SELECT ta.id, ta.sip_user_id, ta.contact_name, ta.contact_email, ta.company,
+    `SELECT ta.id, ta.sip_user_id, ta.contact_name, ta.contact_email, ta.company, ta.status AS trial_status,
             u.username, DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_at,
             DATEDIFF(ta.expires_at, CURDATE()) AS days_left
      FROM trial_assignments ta
      JOIN sip_users u ON u.id = ta.sip_user_id
-     WHERE ta.status = 'active'
+     WHERE ta.status IN ('active', 'paused')
        AND ta.expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`
   );
 
@@ -166,7 +166,7 @@ async function scanExpiredTrials(connection) {
           "SELECT id, status FROM trial_assignments WHERE id = ? FOR UPDATE",
           [Number(row.id)],
         );
-        if (!locked || locked.status !== "active") {
+        if (!locked || (locked.status !== "active" && locked.status !== "paused")) {
           await connection.rollback();
           continue;
         }
@@ -184,6 +184,11 @@ async function scanExpiredTrials(connection) {
         subject: `QRTalkie 試用帳號已回收（${username}）`,
         body: `${greeting}\n\n試用帳號 ${username} 已於 ${row.expires_at} 到期逾 7 天，系統已自動回收。\n如需繼續使用，歡迎隨時與我們聯繫。\n\nQRTalkie Cloud`,
       });
+      continue;
+    }
+
+    if (row.trial_status === "paused") {
+      // 暫停中：不發提醒/到期通知（管理員操作態），僅等待到期逾 7 天後回收
       continue;
     }
 
