@@ -2124,6 +2124,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     <input
                       value={accountSettingsForm.phone}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
+                      placeholder="國際格式，如 +886912345678"
                       style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                     />
                   </label>

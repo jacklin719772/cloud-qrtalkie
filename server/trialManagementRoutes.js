@@ -1193,10 +1193,11 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       }
 
       if (flexisipAccountId) {
+        const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
         const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
         flexisipPayload.display_name = displayName || null;
         flexisipPayload.email = email || null;
-        flexisipPayload.phone = phone || null;
+        flexisipPayload.phone = normalizedPhone || null;
         if (password) {
           flexisipPayload.password = password;
         }
@@ -1212,11 +1213,24 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           }
         } catch (flexisipErr) {
           await connection.rollback();
-          const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
           if (flexisipErr?.status === 404) {
             return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
           }
-          return response.status(502).json({ message: `Flexisip 更新失敗：${errMsg}`, code: "FLEXISIP_UPDATE_FAILED" });
+          // AM 的 422 校驗錯誤轉為中文提示（不向界面暴露英文技術文案）
+          const errs = flexisipErr?.responseBody?.errors || {};
+          const phoneMsgs = Array.isArray(errs.phone) ? errs.phone : [];
+          if (phoneMsgs.length > 0) {
+            const taken = phoneMsgs.some((m) => /already/i.test(String(m)));
+            return response.status(400).json({
+              message: taken ? "該電話號碼已被其他帳號使用。" : "電話號碼無效，請使用國際格式（如 +886912345678）。",
+              code: "FLEXISIP_PHONE_REJECTED",
+            });
+          }
+          if (errs.email) {
+            return response.status(400).json({ message: "該電子郵箱已被其他帳號使用。", code: "FLEXISIP_EMAIL_REJECTED" });
+          }
+          console.error("Flexisip update rejected:", flexisipErr?.status, JSON.stringify(errs).substring(0, 500));
+          return response.status(502).json({ message: "遠端帳號資訊同步失敗，請稍後重試。", code: "FLEXISIP_UPDATE_FAILED" });
         }
       }
 
