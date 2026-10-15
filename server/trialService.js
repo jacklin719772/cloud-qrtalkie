@@ -52,24 +52,28 @@ export async function expireTrialAssignment(connection, { trialId, sipUserId, ex
   );
 }
 
-// 回收：抹去挂靠与到期字段并删除试用权益行，帐号回到与库存完全一致的形态（可再次分配）
+// 回收（完整清理）：帳號回初始形態 + 清 AI 權限/Key + 停用 Ecard + 清推送設備/會話
+// 手动「立即回庫」与到期自动回收共用此逻辑
 export async function reclaimTrialAssignment(connection, { trialId, sipUserId }) {
-  await connection.query(
-    "UPDATE sip_users SET tenant_id = NULL, service_expires_at = NULL WHERE id = ?",
+  const reservedTenantId = await getReservedTrialTenantId(connection);
+  const [account] = await connection.query(
+    "SELECT username, sip_domain FROM sip_users WHERE id = ? LIMIT 1",
     [sipUserId],
   );
-  // 权益行直接删除（置 revoked 会在库存账号上留残行，与「回到库存形态」不符）；
-  // 业务痕迹保留在 trial_assignments
-  const reservedTenantId = await getReservedTrialTenantId(connection);
+
+  // ① SIP/Web 帳號恢復初始狀態（解掛靠、清到期、清激活時間）
+  await connection.query(
+    "UPDATE sip_users SET tenant_id = NULL, service_expires_at = NULL, activated_at = NULL WHERE id = ?",
+    [sipUserId],
+  );
   await connection.query(
     "DELETE FROM tenant_sip_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
     [sipUserId, reservedTenantId || 0],
   );
-  // 配對的 Web 帳號同步回庫（解掛靠 + 刪權益行）
   await connection.query(
     `UPDATE web_users w
      JOIN tenant_web_account_entitlements e ON e.web_user_id = w.id
-     SET w.tenant_id = NULL, w.service_expires_at = NULL
+     SET w.tenant_id = NULL, w.service_expires_at = NULL, w.activated_at = NULL
      WHERE e.sip_user_id = ? AND e.tenant_id = ?`,
     [sipUserId, reservedTenantId || 0],
   );
@@ -77,10 +81,36 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
     "DELETE FROM tenant_web_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
     [sipUserId, reservedTenantId || 0],
   );
+
+  // ② AI：刪除試用開通的行；其餘來源（歷史授予）僅禁用；該帳號 API Key 全刪
+  await connection.query(
+    "DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ? AND notes = '試用開通'",
+    [sipUserId],
+  );
   await connection.query(
     "UPDATE ai_bot_account_entitlements SET enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE sip_user_id = ?",
     [sipUserId],
   );
+  await connection.query("DELETE FROM ai_api_keys WHERE sip_user_id = ?", [sipUserId]);
+
+  // ③ Ecard：停用（現網約定軟刪；硬刪受訪客聊天歷史 RESTRICT 保護）
+  await connection.query(
+    "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ?",
+    [sipUserId],
+  );
+
+  // ④ 推送設備 + SIP 登入會話
+  if (account?.username) {
+    await connection.query(
+      "DELETE FROM push_devices WHERE sip_username = ? AND sip_domain = ?",
+      [account.username, account.sip_domain || "sip.qrtalkie.org"],
+    );
+  }
+  await connection.query(
+    "DELETE FROM admin_sessions WHERE user_type = 'sip' AND sip_user_id = ?",
+    [sipUserId],
+  );
+
   await connection.query(
     "UPDATE trial_assignments SET status = 'reclaimed', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
     [trialId],

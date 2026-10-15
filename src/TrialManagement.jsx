@@ -86,6 +86,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
   const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
   const [openActionsId, setOpenActionsId] = useState(null);
+  const [reclaimConfirm, setReclaimConfirm] = useState({ open: false, trial: null });
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -609,10 +610,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   }
 
   async function endTrial(trial, action) {
-    const confirmText = action === 'end'
-      ? `確定暫停「${trial.username}」的試用嗎？\n功能將立即停止，帳號進入寬限期（仍可轉正）。`
-      : `確定將「${trial.username}」立即回庫嗎？\n帳號將立刻釋放回庫存，且無法再轉正。`;
-    if (!window.confirm(confirmText)) return;
+    if (action === 'end') {
+      const confirmed = window.confirm(`確定暫停「${trial.username}」的試用嗎？\n功能將立即停止，帳號進入寬限期（仍可轉正）。`);
+      if (!confirmed) return;
+    }
     try {
       const res = await apiClient.post(`/admin/trials/${trial.id}/end`, { action });
       setMessage({ type: 'success', text: res.message || '操作成功。' });
@@ -1201,7 +1202,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                           <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
                             <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
                             {isPlatform && (
-                              <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); endTrial(t, 'reclaim_now'); }}>立即回庫</button>
+                              <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>
                             )}
                           </div>,
                           document.body,
@@ -1771,6 +1772,44 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               ) : (
                 <img src={ecardPreviewImage.dataUrl} alt="名片預覽" style={{ width: '100%', borderRadius: '10px', border: '1px solid #1f2937' }} />
               )}
+            </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {reclaimConfirm.open && reclaimConfirm.trial && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '500px' }}>
+            <div className="tm-modal-head">
+              <h3>立即回庫確認 — {reclaimConfirm.trial.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setReclaimConfirm({ open: false, trial: null })}>關閉</button>
+            </div>
+            <div className="tm-modal-body">
+              <span className="tm-hint" style={{ color: '#fca5a5' }}>以下操作將立即執行且不可撤銷：</span>
+              <ul style={{ margin: 0, paddingLeft: '18px', color: '#e5e7eb', fontSize: '13px', lineHeight: 2 }}>
+                <li>SIP 帳號與配對 Web 帳號釋放回庫存（恢復初始狀態）</li>
+                <li>刪除該帳號的 AI 使用權限與 API Key</li>
+                <li>該帳號的 Ecard 名片將被停用（名片連結立即失效）</li>
+                <li>清除該帳號的推送設備與登入會話</li>
+              </ul>
+              <span className="tm-hint">回庫後該帳號可被再次分配給其他用戶。</span>
+            </div>
+            <div className="tm-modal-foot">
+              <button className="tm-btn" type="button" onClick={() => setReclaimConfirm({ open: false, trial: null })}>取消</button>
+              <button
+                className="tm-btn danger"
+                type="button"
+                onClick={() => {
+                  const target = reclaimConfirm.trial;
+                  setReclaimConfirm({ open: false, trial: null });
+                  endTrial(target, 'reclaim_now');
+                }}
+              >
+                確認回庫
+              </button>
             </div>
           </div>
         </div>
