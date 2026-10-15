@@ -79,7 +79,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [ecardStep, setEcardStep] = useState({ open: false, accounts: [], results: null, submitting: false });
   const [ecardStylesList, setEcardStylesList] = useState([]);
   const [ecardBackgrounds, setEcardBackgrounds] = useState([]);
-  const [ecardForm, setEcardForm] = useState({ templateId: '', backgroundId: '', company: '', position: '', phone: '', enableVideoCall: true, enableTextChat: true });
+  const [ecardForm, setEcardForm] = useState({ templateId: '', backgroundId: '', company: '' });
+  const [ecardEditDraft, setEcardEditDraft] = useState(null);
+  const [ecardPreviewImage, setEcardPreviewImage] = useState({ open: false, loading: false, dataUrl: '', username: '' });
   const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
   const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
 
@@ -225,10 +227,20 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
-  async function openEcardStep(accounts) {
-    setEcardStep({ open: true, accounts, results: null, submitting: false });
-    setEcardSelectedIds(accounts.map((a) => a.trialId));
-    setEcardForm({ templateId: '', backgroundId: '', company: '', position: '', phone: '', enableVideoCall: true, enableTextChat: true });
+  async function openEcardStep(accounts, defaultCompany = '') {
+    const prepared = accounts.map((a) => ({
+      ...a,
+      name: a.name || a.displayName || a.username || '',
+      titleZh: '',
+      phone: '',
+      email: '',
+      avatarDataUrl: '',
+      enableVideoCall: true,
+      enableTextChat: true,
+    }));
+    setEcardStep({ open: true, accounts: prepared, results: null, submitting: false });
+    setEcardSelectedIds(prepared.map((a) => a.trialId));
+    setEcardForm({ templateId: '', backgroundId: '', company: defaultCompany || '' });
     setEcardMessage({ type: '', text: '' });
     setEcardBackgrounds([]);
     const styles = await loadEcardStyles();
@@ -240,16 +252,72 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
+  function openEcardEdit(account) {
+    setEcardEditDraft({ ...account });
+  }
+
+  function saveEcardEdit() {
+    const draft = ecardEditDraft;
+    if (!draft) return;
+    setEcardStep((prev) => ({
+      ...prev,
+      accounts: prev.accounts.map((a) => (a.trialId === draft.trialId ? { ...a, ...draft } : a)),
+    }));
+    setEcardEditDraft(null);
+    setEcardMessage({ type: 'success', text: '帳號名片設置已更新（生成時生效）。' });
+  }
+
+  function handleEcardAvatarFile(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setEcardMessage({ type: 'error', text: '頭像不可超過 5MB。' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEcardEditDraft((draft) => (draft ? { ...draft, avatarDataUrl: String(reader.result || '') } : draft));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function previewEcardAccount(account) {
+    if (!ecardForm.templateId) {
+      setEcardMessage({ type: 'error', text: '請先選擇名片樣式。' });
+      return;
+    }
+    setEcardPreviewImage({ open: true, loading: true, dataUrl: '', username: account.username });
+    try {
+      const res = await apiClient.post('/admin/trials/ecards/preview', {
+        templateId: Number(ecardForm.templateId),
+        backgroundId: ecardForm.backgroundId ? Number(ecardForm.backgroundId) : null,
+        company: ecardForm.company.trim(),
+        name: account.name || account.displayName || account.username || '',
+        titleZh: account.titleZh || '',
+        phone: account.phone || '',
+        email: account.email || '',
+        avatarDataUrl: account.avatarDataUrl || '',
+      }, { timeoutMs: 60000 });
+      setEcardPreviewImage((prev) => ({ ...prev, loading: false, dataUrl: res?.imageDataUrl || '' }));
+    } catch (error) {
+      setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' });
+      setEcardMessage({ type: 'error', text: error.message || '生成預覽失敗。' });
+    }
+  }
+
   // 【臨時】Ecard 設置彈窗預覽入口：用示例帳號打開第二步彈窗（不生成名片）
   function openEcardPreview() {
     openEcardStep([
       { trialId: -1, sipUserId: -1, username: '50010001', webUsername: '950001', displayName: '範例 一' },
       { trialId: -2, sipUserId: -2, username: '50010002', webUsername: '950002', displayName: '範例 二' },
-    ]);
+    ], '示例科技有限公司');
   }
 
   function closeEcardStep() {
     setEcardStep({ open: false, accounts: [], results: null, submitting: false });
+    setEcardEditDraft(null);
+    setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' });
     setEcardMessage({ type: '', text: '' });
   }
 
@@ -270,14 +338,21 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setEcardMessage({ type: '', text: '' });
     try {
       const res = await apiClient.post('/admin/trials/ecards', {
-        trialIds: ecardSelectedIds,
         templateId: Number(ecardForm.templateId),
         backgroundId: ecardForm.backgroundId ? Number(ecardForm.backgroundId) : null,
         company: ecardForm.company.trim(),
-        position: ecardForm.position.trim(),
-        phone: ecardForm.phone.trim(),
-        enableVideoCall: ecardForm.enableVideoCall,
-        enableTextChat: ecardForm.enableTextChat,
+        accounts: ecardStep.accounts
+          .filter((a) => ecardSelectedIds.includes(a.trialId))
+          .map((a) => ({
+            trialId: a.trialId,
+            name: a.name || '',
+            titleZh: a.titleZh || '',
+            phone: a.phone || '',
+            email: a.email || '',
+            avatarDataUrl: a.avatarDataUrl || '',
+            enableVideoCall: a.enableVideoCall !== false,
+            enableTextChat: a.enableTextChat !== false,
+          })),
       }, { timeoutMs: 120000 });
       const results = res?.data?.results || [];
       setEcardStep((prev) => ({ ...prev, results, submitting: false }));
@@ -452,7 +527,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           displayName: stockRow?.displayName || '',
         };
       });
-      if (ecardAccounts.length > 0) openEcardStep(ecardAccounts);
+      if (ecardAccounts.length > 0) openEcardStep(ecardAccounts, res?.data?.ownerTenantName || '');
     } catch (error) {
       setFormMessage({
         type: 'error',
@@ -1352,32 +1427,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         </select>
                       </div>
                       <div className="tm-field">
-                        <label>公司</label>
+                        <label>公司（預設為租戶單位名稱）</label>
                         <input value={ecardForm.company} onChange={(e) => setEcardForm((f) => ({ ...f, company: e.target.value }))} />
                       </div>
-                      <div className="tm-field">
-                        <label>職位</label>
-                        <input value={ecardForm.position} onChange={(e) => setEcardForm((f) => ({ ...f, position: e.target.value }))} />
-                      </div>
-                      <div className="tm-field">
-                        <label>電話</label>
-                        <input value={ecardForm.phone} onChange={(e) => setEcardForm((f) => ({ ...f, phone: e.target.value }))} />
-                      </div>
-                      <div className="tm-field">
-                        <label>功能開關</label>
-                        <span style={{ display: 'inline-flex', gap: '14px', alignItems: 'center', color: '#e5e7eb', fontSize: '13px', paddingTop: '6px' }}>
-                          <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                            <input type="checkbox" checked={ecardForm.enableVideoCall} onChange={(e) => setEcardForm((f) => ({ ...f, enableVideoCall: e.target.checked }))} />
-                            視頻通話
-                          </label>
-                          <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                            <input type="checkbox" checked={ecardForm.enableTextChat} onChange={(e) => setEcardForm((f) => ({ ...f, enableTextChat: e.target.checked }))} />
-                            文字聊天
-                          </label>
-                        </span>
-                      </div>
                     </div>
-                    <span className="tm-hint">姓名按各帳號顯示名自動帶入；頭像/Logo/精修可轉正後在租戶端補充。</span>
+                    <span className="tm-hint">職位/電話/郵件/頭像/功能開關為逐帳號設置，請在下方列表點「編輯」逐個設定；每行可「預覽」效果。</span>
                   </div>
 
                   <div className="tm-section">
@@ -1393,6 +1447,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                             <th>SIP 帳號</th>
                             <th>Web 帳號</th>
                             <th>顯示名</th>
+                            <th style={{ textAlign: 'right' }}>操作</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1407,7 +1462,13 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                                 <td style={{ textAlign: 'center' }}><input type="checkbox" checked={checked} readOnly /></td>
                                 <td className="mono">{a.username}</td>
                                 <td className="mono">{a.webUsername || '—'}</td>
-                                <td>{a.displayName || '—'}</td>
+                                <td>{a.name || a.displayName || '—'}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <span style={{ display: 'inline-flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                                    <button className="tm-btn" type="button" onClick={() => openEcardEdit(a)}>編輯</button>
+                                    <button className="tm-btn" type="button" onClick={() => previewEcardAccount(a)}>預覽</button>
+                                  </span>
+                                </td>
                               </tr>
                             );
                           })}
@@ -1478,6 +1539,96 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                 </>
               ) : (
                 <button className="tm-btn primary" type="button" onClick={closeEcardStep}>完成</button>
+              )}
+            </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {ecardEditDraft && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal" onClick={() => setEcardEditDraft(null)}>
+          <div className="tm-modal-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="tm-modal-head">
+              <h3>編輯名片 — {ecardEditDraft.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setEcardEditDraft(null)}>關閉</button>
+            </div>
+            <div className="tm-modal-body">
+              <div className="tm-grid2">
+                <div className="tm-field">
+                  <label>頭像</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {ecardEditDraft.avatarDataUrl ? (
+                      <img src={ecardEditDraft.avatarDataUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <span style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#0b1220', border: '1px dashed #374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</span>
+                    )}
+                    <label className="tm-btn" style={{ cursor: 'pointer' }}>
+                      上傳頭像
+                      <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleEcardAvatarFile} />
+                    </label>
+                    {ecardEditDraft.avatarDataUrl && (
+                      <button className="tm-btn" type="button" onClick={() => setEcardEditDraft((d) => ({ ...d, avatarDataUrl: '' }))}>移除</button>
+                    )}
+                  </div>
+                  <span className="tm-hint">PNG / JPG / WebP，不超過 5MB</span>
+                </div>
+                <div className="tm-field">
+                  <label>顯示名</label>
+                  <input value={ecardEditDraft.name || ''} onChange={(e) => setEcardEditDraft((d) => ({ ...d, name: e.target.value }))} />
+                </div>
+                <div className="tm-field">
+                  <label>職務</label>
+                  <input value={ecardEditDraft.titleZh || ''} onChange={(e) => setEcardEditDraft((d) => ({ ...d, titleZh: e.target.value }))} />
+                </div>
+                <div className="tm-field">
+                  <label>電話</label>
+                  <input value={ecardEditDraft.phone || ''} onChange={(e) => setEcardEditDraft((d) => ({ ...d, phone: e.target.value }))} />
+                </div>
+                <div className="tm-field">
+                  <label>郵件</label>
+                  <input value={ecardEditDraft.email || ''} onChange={(e) => setEcardEditDraft((d) => ({ ...d, email: e.target.value }))} />
+                </div>
+                <div className="tm-field">
+                  <label>功能開關</label>
+                  <span style={{ display: 'inline-flex', gap: '14px', alignItems: 'center', color: '#e5e7eb', fontSize: '13px', paddingTop: '6px' }}>
+                    <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                      <input type="checkbox" checked={ecardEditDraft.enableVideoCall !== false} onChange={(e) => setEcardEditDraft((d) => ({ ...d, enableVideoCall: e.target.checked }))} />
+                      視頻通話
+                    </label>
+                    <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                      <input type="checkbox" checked={ecardEditDraft.enableTextChat !== false} onChange={(e) => setEcardEditDraft((d) => ({ ...d, enableTextChat: e.target.checked }))} />
+                      文字聊天
+                    </label>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="tm-modal-foot">
+              <button className="tm-btn" type="button" onClick={() => setEcardEditDraft(null)}>取消</button>
+              <button className="tm-btn primary" type="button" onClick={saveEcardEdit}>保存</button>
+            </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {ecardPreviewImage.open && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal" onClick={() => setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' })}>
+          <div className="tm-modal-panel" style={{ width: '460px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="tm-modal-head">
+              <h3>名片預覽 — {ecardPreviewImage.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' })}>關閉</button>
+            </div>
+            <div className="tm-modal-body" style={{ alignItems: 'center' }}>
+              {ecardPreviewImage.loading || !ecardPreviewImage.dataUrl ? (
+                <span className="tm-hint">生成中…</span>
+              ) : (
+                <img src={ecardPreviewImage.dataUrl} alt="名片預覽" style={{ width: '100%', borderRadius: '10px', border: '1px solid #1f2937' }} />
               )}
             </div>
           </div>

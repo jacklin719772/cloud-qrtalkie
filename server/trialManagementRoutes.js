@@ -2,8 +2,49 @@
 // 方案：试用账号模块设计方案-实施参考.md（2026-10-14）
 // 設計要點：試用帳號掛在保留租戶（is_system=1）名下；分配時為保留租戶靜默建一張
 // order_type='trial' 的批次訂單（金額 0、已付款、已審核），後續回收/轉正均以 trial_assignments 為業務憑據。
+import path from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
+import QRCode from "qrcode";
 import { pool } from "./db.js";
 import { expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment } from "./trialService.js";
+
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
+
+function parseJsonMaybe(raw, fallback = null) {
+  if (raw == null) return fallback;
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// 保存名片头像（data URL → /ecard-images/ 文件），与 index.js saveEcardImage 同规则（5MB 上限）
+async function saveEcardImageFile(dataUrl) {
+  const match = String(dataUrl || "").trim().match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) {
+    const error = new Error("無效的圖片格式");
+    error.statusCode = 400;
+    throw error;
+  }
+  const buffer = Buffer.from(match[2], "base64");
+  if (buffer.length > 5 * 1024 * 1024) {
+    const error = new Error("圖片不可超過 5MB。");
+    error.statusCode = 400;
+    throw error;
+  }
+  const extension = match[1] === "image/jpeg" ? "jpg" : match[1].split("/")[1];
+  await mkdir(ecardImagesDir, { recursive: true });
+  const filename = `ecard-${Date.now()}-${randomUUID()}.${extension}`;
+  await writeFile(path.join(ecardImagesDir, filename), buffer);
+  return `/ecard-images/${filename}`;
+}
 
 const MAX_ASSIGN_COUNT = 100;
 
@@ -585,6 +626,83 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
   });
 
+  // 名片渲染預覽（不入庫）：按當前設置即時渲染 PNG 返回
+  app.post("/api/admin/trials/ecards/preview", requireAdmin, async (request, response) => {
+    const styleId = Number(request.body?.templateId) || 0;
+    if (!styleId) return response.status(400).json({ message: "請選擇名片樣式。" });
+    const backgroundId = Number(request.body?.backgroundId) || 0;
+    const company = clean(request.body?.company, 120);
+    const name = clean(request.body?.name, 120);
+    const titleZh = clean(request.body?.titleZh, 120);
+    const phone = clean(request.body?.phone, 40);
+    const email = clean(request.body?.email, 255);
+    const avatarDataUrl = typeof request.body?.avatarDataUrl === "string" ? request.body.avatarDataUrl : "";
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const [styleRow] = await connection.query(
+        "SELECT id, company_name_enabled FROM ecard_styles WHERE id = ? AND status = 'active' LIMIT 1",
+        [styleId],
+      );
+      if (!styleRow) return response.status(400).json({ message: "名片樣式不存在或已停用。" });
+      const bgRows = await connection.query(
+        `SELECT id, image_url, layout_json, default_style_json, display_config_json
+         FROM ecard_style_backgrounds
+         WHERE style_id = ?${backgroundId ? " AND id = ?" : ""}
+         ORDER BY sort_order ASC, id ASC LIMIT 1`,
+        backgroundId ? [styleId, backgroundId] : [styleId],
+      );
+      const bgRow = bgRows[0];
+      if (!bgRow) return response.status(400).json({ message: "名片背景不存在。" });
+
+      const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+      let qrDataUrl = "";
+      try {
+        qrDataUrl = await QRCode.toDataURL(`${baseUrl}/u/ecard-preview`, { width: 512, margin: 2, errorCorrectionLevel: "M" });
+      } catch (qrError) {
+        console.error("[trial-ecard-preview] QR generation failed:", qrError?.message || qrError);
+      }
+
+      const cardData = {
+        name,
+        titleZh,
+        titleEn: "",
+        phone,
+        email,
+        zipCode: "",
+        address: "",
+        qrDesc: "掃碼二維碼 · 交換名片",
+        companyZh: company,
+        companyEn: company,
+        sloganZh: "",
+        sloganEn: "",
+      };
+
+      const { renderEcard } = await import("./ecardRenderer.js");
+      const pngBuffer = await renderEcard({
+        layoutJson: parseJsonMaybe(bgRow.layout_json, {}),
+        defaultStyleJson: parseJsonMaybe(bgRow.default_style_json, {}),
+        displayConfigJson: parseJsonMaybe(bgRow.display_config_json, {}),
+        cardData,
+        localStyles: {},
+        localDisplayConfig: {},
+        avatarUrl: avatarDataUrl.startsWith("data:") ? avatarDataUrl : null,
+        logoUrl: null,
+        qrDataUrl,
+        showQrCode: true,
+        companyNameEnabled: Boolean(styleRow.company_name_enabled),
+        backgroundImagePath: bgRow.image_url ? path.join(ecardImagesDir, path.basename(String(bgRow.image_url))) : null,
+      });
+      return response.json({ imageDataUrl: `data:image/png;base64,${pngBuffer.toString("base64")}` });
+    } catch (error) {
+      console.error("Failed to render trial ecard preview:", error);
+      return response.status(500).json({ message: "生成名片預覽失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
   // 為本批試用帳號批量生成/更新電子名片（添加成功後的第二步）
   app.post("/api/admin/trials/ecards", requireAdmin, async (request, response) => {
     const isPlatform = request.admin.accountType === "platform";
@@ -592,20 +710,49 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     if (!isPlatform && !ownTenantId) {
       return response.status(403).json({ message: "沒有可用的租戶身分。" });
     }
-    const trialIds = normalizeIds(request.body?.trialIds).slice(0, MAX_ASSIGN_COUNT);
-    if (trialIds.length === 0) {
-      return response.status(400).json({ message: "請選擇要生成名片的帳號。" });
-    }
     const styleId = Number(request.body?.templateId) || 0;
     if (!styleId) {
       return response.status(400).json({ message: "請選擇名片樣式。" });
     }
     let backgroundId = Number(request.body?.backgroundId) || 0;
     const company = clean(request.body?.company, 120);
-    const position = clean(request.body?.position, 120);
-    const phone = clean(request.body?.phone, 40);
-    const enableVideoCall = request.body?.enableVideoCall !== false;
-    const enableTextChat = request.body?.enableTextChat !== false;
+    const rawAccounts = Array.isArray(request.body?.accounts) ? request.body.accounts : null;
+    let accountsInput = [];
+    if (rawAccounts) {
+      accountsInput = rawAccounts
+        .map((item) => ({
+          trialId: Number(item?.trialId),
+          name: clean(item?.name, 120),
+          titleZh: clean(item?.titleZh, 120),
+          phone: clean(item?.phone, 40),
+          email: clean(item?.email, 255),
+          avatarDataUrl: typeof item?.avatarDataUrl === "string" ? item.avatarDataUrl : "",
+          enableVideoCall: item?.enableVideoCall !== false,
+          enableTextChat: item?.enableTextChat !== false,
+        }))
+        .filter((item) => Number.isInteger(item.trialId) && item.trialId > 0)
+        .slice(0, MAX_ASSIGN_COUNT);
+    } else {
+      // 兼容旧结构：trialIds + 统一 position/phone/开关
+      const position = clean(request.body?.position, 120);
+      const phone = clean(request.body?.phone, 40);
+      const enableVideoCall = request.body?.enableVideoCall !== false;
+      const enableTextChat = request.body?.enableTextChat !== false;
+      const trialIds = normalizeIds(request.body?.trialIds).slice(0, MAX_ASSIGN_COUNT);
+      accountsInput = trialIds.map((trialId) => ({
+        trialId,
+        name: "",
+        titleZh: position,
+        phone,
+        email: "",
+        avatarDataUrl: "",
+        enableVideoCall,
+        enableTextChat,
+      }));
+    }
+    if (accountsInput.length === 0) {
+      return response.status(400).json({ message: "請選擇要生成名片的帳號。" });
+    }
 
     let connection;
     try {
@@ -640,7 +787,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       const reservedTenantId = await getReservedTrialTenantId(connection);
       const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
       const results = [];
-      for (const trialId of trialIds) {
+      for (const input of accountsInput) {
+        const trialId = input.trialId;
         const [trial] = await connection.query(
           `SELECT ta.id, ta.sip_user_id, ta.owner_tenant_id, ta.status, u.username, u.display_name
            FROM trial_assignments ta
@@ -659,16 +807,28 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         }
         const sipUserId = Number(trial.sip_user_id);
         const [existing] = await connection.query(
-          "SELECT id, access_slug FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
+          "SELECT id, access_slug, avatar_url FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
           [sipUserId],
         );
         const accessSlug = existing?.access_slug || `ec-${sipUserId}-${Math.random().toString(36).slice(2, 8)}`;
+        // 頭像：本次提供 data URL 則存檔；未提供則沿用原頭像
+        let avatarPath = "";
+        if (input.avatarDataUrl) {
+          try {
+            avatarPath = await saveEcardImageFile(input.avatarDataUrl);
+          } catch (imageError) {
+            await connection.rollback();
+            return response.status(imageError.statusCode || 400).json({ message: imageError.message || "頭像圖片無效。" });
+          }
+        } else {
+          avatarPath = existing?.avatar_url || "";
+        }
         const cardData = {
-          name: String(trial.display_name || trial.username || "").trim() || String(trial.username || ""),
-          titleZh: position,
+          name: input.name || String(trial.display_name || trial.username || "").trim() || String(trial.username || ""),
+          titleZh: input.titleZh,
           titleEn: "",
-          phone,
-          email: "",
+          phone: input.phone,
+          email: input.email,
           zipCode: "",
           address: "",
           qrDesc: "掃碼二維碼 · 交換名片",
@@ -683,29 +843,31 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           selectedBackgroundId: backgroundId,
           showQrCode: true,
           callPublicSlug: accessSlug,
-          avatarDataUrl: "",
+          avatarDataUrl: avatarPath || "",
           logoDataUrl: "",
         };
         await connection.query(
           `INSERT INTO tenant_ecards (
              tenant_id, sip_user_id, access_slug, status, enable_video_call, enable_text_chat,
-             created_by_admin_id, ecard_data_json, created_at, updated_at
+             avatar_url, created_by_admin_id, ecard_data_json, created_at, updated_at
            )
-           VALUES (?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())
+           VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, NOW(), NOW())
            ON DUPLICATE KEY UPDATE
              tenant_id = VALUES(tenant_id),
              access_slug = VALUES(access_slug),
              status = 'active',
              enable_video_call = VALUES(enable_video_call),
              enable_text_chat = VALUES(enable_text_chat),
+             avatar_url = VALUES(avatar_url),
              ecard_data_json = VALUES(ecard_data_json),
              updated_at = NOW()`,
           [
             reservedTenantId || 0,
             sipUserId,
             accessSlug,
-            enableVideoCall ? 1 : 0,
-            enableTextChat ? 1 : 0,
+            input.enableVideoCall ? 1 : 0,
+            input.enableTextChat ? 1 : 0,
+            avatarPath || null,
             request.admin.id,
             JSON.stringify(ecardDataJson),
           ],
