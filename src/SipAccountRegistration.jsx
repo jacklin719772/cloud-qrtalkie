@@ -16,6 +16,8 @@ const emptyAccountForm = {
   status: 'active',
   phone: '',
   email: '',
+  company: '',
+  jobTitle: '',
   hasExternal: false,
   externalUsername: '',
   externalDomain: '',
@@ -50,6 +52,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const dropdownMenuRef = useRef(null);
 
   const [formData, setFormData] = useState(emptyAccountForm);
+  const [formAvatar, setFormAvatar] = useState({ preview: '', dataUrl: '', removed: false });
   const [isSaving, setIsSaving] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
   const [batchAddOpen, setBatchAddOpen] = useState(false);
@@ -188,6 +191,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     returnToList: () => {
       setViewMode('list');
       setFormData(emptyAccountForm);
+      setFormAvatar({ preview: '', dataUrl: '', removed: false });
       setFormMessage({ type: '', text: '' });
       setImportStep(1);
       setParsedData([]);
@@ -199,7 +203,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     handleExportCsv,
     startImport: () => { setViewMode('import'); setImportStep(1); setParsedData([]); },
     startServerImport,
-    startAdd: () => { setViewMode('add'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); },
+    startAdd: () => { setViewMode('add'); setFormData(emptyAccountForm); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); },
     startBatchAdd: openBatchAddModal,
     handleBatchUnassign,
     handleBatchDelete
@@ -521,6 +525,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setTimeout(async () => {
           setViewMode('list');
           setFormData(emptyAccountForm);
+          setFormAvatar({ preview: '', dataUrl: '', removed: false });
           setEditingOriginal(null);
           await loadAccounts();
         }, 800);
@@ -696,6 +701,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         status: account.status || 'active',
         phone: account.phone || '',
         email: account.email || '',
+        company: '',
+        jobTitle: '',
         hasExternal: !!(account.externalUsername || account.externalDomain),
         externalUsername: account.externalUsername || '',
         externalDomain: account.externalDomain || '',
@@ -708,6 +715,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setFormData(initialData);
       setEditingOriginal(initialData);
       setViewMode('edit');
+      // 賬號資料卡（頭像/工作單位/職務）：與 App 聯繫人編輯頁同一存儲，異步回填
+      setFormAvatar({ preview: '', dataUrl: '', removed: false });
+      apiClient.get(`/admin/sip-accounts/${account.id}/account-profile`)
+        .then((profile) => {
+          setFormData((data) => ({ ...data, company: profile?.company || '', jobTitle: profile?.jobTitle || '' }));
+          setFormAvatar((current) => (current.dataUrl ? current : { preview: profile?.avatarUrl || '', dataUrl: '', removed: false }));
+        })
+        .catch(() => { /* 無資料卡時留空 */ });
       return;
     }
 
@@ -873,6 +888,18 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
   };
 
+  const handleFormAvatarPick = (event) => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = String(e.target?.result || '');
+      if (dataUrl) setFormAvatar({ preview: dataUrl, dataUrl, removed: false });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveAccount = async (e) => {
     e.preventDefault();
     if (!formData.username.trim()) {
@@ -950,7 +977,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           displayName: formData.displayName.trim(),
           email: formData.email.trim(),
           phone: formData.phone.trim(),
+          company: formData.company.trim(),
+          jobTitle: formData.jobTitle.trim(),
         };
+        if (formAvatar.dataUrl) editPayload.avatarDataUrl = formAvatar.dataUrl;
+        if (formAvatar.removed) editPayload.removeAvatar = true;
         await apiClient.put(`/admin/sip-accounts/${formData.id}`, editPayload);
         setFormMessage({ type: 'success', text: '帳號更新成功！' });
       } else {
@@ -960,6 +991,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setTimeout(() => {
         setViewMode('list');
         setFormData(emptyAccountForm);
+        setFormAvatar({ preview: '', dataUrl: '', removed: false });
         setFormMessage({ type: '', text: '' });
         loadAccounts();
       }, 1500);
@@ -1109,6 +1141,29 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名</span>
                   <input value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder={formData.username || '預設與使用者名稱相同'} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>頭像</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {formAvatar.preview ? (
+                      <img src={formAvatar.preview} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</div>
+                    )}
+                    <label style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#9ca3af', fontSize: '13px' }}>
+                      選擇圖片
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFormAvatarPick} />
+                    </label>
+                    {formAvatar.preview && (
+                      <button
+                        type="button"
+                        onClick={() => setFormAvatar({ preview: '', dataUrl: '', removed: true })}
+                        style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #7f1d1d', background: 'transparent', color: '#fca5a5', fontSize: '13px', cursor: 'pointer' }}
+                      >
+                        移除
+                      </button>
+                    )}
+                  </div>
+                </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼 {viewMode === 'add' && <RequiredMark />} <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 400 }}>(至少 6 個字符)</span></span>
                   <input type="password" autoComplete="new-password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={viewMode === 'edit' ? '不修改請留空' : ''} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} required={viewMode === 'add'} minLength={6} />
@@ -1138,6 +1193,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>郵箱</span>
                   <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>工作單位</span>
+                  <input autoComplete="off" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職務</span>
+                  <input autoComplete="off" value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'} />
                 </label>
               </div>
 
@@ -1186,7 +1249,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登記')}</button>
             </div>
           </form>

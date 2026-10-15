@@ -111,6 +111,7 @@ import {
 } from "./flexisipAccountManagerClient.js";
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
+import { parseVcardText, mergeVcardText, readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
 import { getReservedTrialTenantId, isReservedTrialTenant } from "./trialService.js";
 import {
   createContactList,
@@ -2387,6 +2388,47 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
   }
 });
 
+// GET /api/tenant/sip-accounts/:id/account-profile - 讀取賬號資料卡（工作單位/職務/頭像）供編輯回填
+app.get("/api/tenant/sip-accounts/:id/account-profile", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ message: "只有租戶管理員可以維護帳號。" });
+  }
+  const paramId = Number(request.params.id);
+  if (!Number.isInteger(paramId) || paramId <= 0) {
+    return response.status(400).json({ message: "帳號編號無效。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT u.username, u.sip_domain, u.avatar_url
+       FROM billing_order_sip_accounts b
+       JOIN sip_users u ON u.id = b.sip_user_id
+       WHERE b.id = ? AND b.tenant_id = ? LIMIT 1`,
+      [paramId, request.admin.tenantId],
+    );
+    if (!rows[0]) return response.status(404).json({ message: "找不到帳號。" });
+    const account = rows[0];
+    let vcardData = null;
+    try {
+      const vcard = await readAccountVcard(account.username, account.sip_domain);
+      vcardData = vcard?.data || null;
+    } catch (vcardErr) {
+      console.error("[tenant-account-profile] vcard read failed:", vcardErr?.message || vcardErr);
+    }
+    return response.json({
+      company: vcardData?.company || "",
+      jobTitle: vcardData?.jobTitle || "",
+      avatarUrl: account.avatar_url || vcardData?.photoUrl || "",
+    });
+  } catch (error) {
+    console.error("Failed to read tenant account profile:", error);
+    return response.status(500).json({ message: "讀取賬號資料卡失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, next) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ message: "只有租戶管理員可以維護帳號。" });
@@ -2404,6 +2446,14 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
   const phone = sanitizeString(request.body?.phone, 40);
   const password = String(request.body?.password || "");
   const confirmPassword = String(request.body?.confirmPassword || "");
+  // 賬號資料卡字段（與 App 聯繫人編輯頁同一存儲；presence 判斷避免誤清空）
+  const hasCompany = request.body?.company !== undefined;
+  const company = hasCompany ? String(request.body?.company || "").trim().slice(0, 120) : "";
+  const hasJobTitle = request.body?.jobTitle !== undefined;
+  const jobTitle = hasJobTitle ? String(request.body?.jobTitle || "").trim().slice(0, 120) : "";
+  const avatarDataUrl = typeof request.body?.avatarDataUrl === "string" ? request.body.avatarDataUrl : "";
+  const removeAvatar = request.body?.removeAvatar === true;
+  const hasProfileUpdate = hasCompany || hasJobTitle || Boolean(avatarDataUrl) || removeAvatar;
 
   if (email && !isValidEmail(email)) {
     return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
@@ -2462,6 +2512,31 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
     if (!sipUser) {
       await connection.rollback();
       return response.status(404).json({ message: "找不到帳號。" });
+    }
+
+    // ── 賬號資料卡（vCard）與頭像：寫入與 App 同源存儲（登錄後自動使用）──
+    if (hasProfileUpdate) {
+      try {
+        const vcardUpdates = { displayName };
+        vcardUpdates.phone = phone ? phone.replace(/[\s\-\(\)]/g, '') : "";
+        if (hasCompany) vcardUpdates.company = company;
+        if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
+        let nextAvatarUrl = null;
+        if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(sipUser.username, avatarDataUrl);
+        if (removeAvatar) nextAvatarUrl = "";
+        if (nextAvatarUrl !== null) {
+          vcardUpdates.photoUrl = nextAvatarUrl;
+          await connection.query(`UPDATE sip_users SET avatar_url = ? WHERE id = ?`, [nextAvatarUrl || null, sipUser.id]);
+        }
+        await mergeAccountVcard(sipUser.username, sipUser.sip_domain, vcardUpdates);
+      } catch (profileErr) {
+        await connection.rollback();
+        if (profileErr?.statusCode) {
+          return response.status(profileErr.statusCode).json({ message: profileErr.message });
+        }
+        console.error("Tenant account profile (vcard/avatar) update failed:", profileErr?.message || profileErr);
+        return response.status(502).json({ message: "賬號資料卡儲存失敗，請稍後重試。", code: "ACCOUNT_PROFILE_FAILED" });
+      }
     }
 
     // ── Flexisip sync (always attempt for data consistency) ──
@@ -8292,6 +8367,14 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
   const status = payload.status || 'active';
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
+  // 賬號資料卡字段（與 App 聯繫人編輯頁同一存儲；presence 判斷避免誤清空）
+  const hasCompany = payload.company !== undefined;
+  const company = hasCompany ? String(payload.company || "").trim().slice(0, 120) : "";
+  const hasJobTitle = payload.jobTitle !== undefined;
+  const jobTitle = hasJobTitle ? String(payload.jobTitle || "").trim().slice(0, 120) : "";
+  const avatarDataUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl : "";
+  const removeAvatar = payload.removeAvatar === true;
+  const hasProfileUpdate = hasCompany || hasJobTitle || Boolean(avatarDataUrl) || removeAvatar;
 
   let connection;
   try {
@@ -8335,8 +8418,34 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
     connection.release();
 
     // 如果没有任何字段变化，直接返回
-    if (changedFields.length === 0) {
+    if (changedFields.length === 0 && !hasProfileUpdate) {
       return response.json({ success: true, no_change: true, message: "沒有可儲存的修改。" });
+    }
+
+    // ── 賬號資料卡（vCard）與頭像：寫入與 App 同源存儲（登錄後自動使用）──
+    if (hasProfileUpdate) {
+      try {
+        const vcardUpdates = { displayName };
+        vcardUpdates.phone = phone ? phone.replace(/[\s\-\(\)]/g, '') : "";
+        if (hasCompany) vcardUpdates.company = company;
+        if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
+        let nextAvatarUrl = null;
+        if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(account.username, avatarDataUrl);
+        if (removeAvatar) nextAvatarUrl = "";
+        if (nextAvatarUrl !== null) {
+          vcardUpdates.photoUrl = nextAvatarUrl;
+          const avatarConn = await pool.getConnection();
+          await avatarConn.query(`UPDATE sip_users SET avatar_url = ? WHERE id = ?`, [nextAvatarUrl || null, accountId]);
+          avatarConn.release();
+        }
+        await mergeAccountVcard(account.username, account.sip_domain, vcardUpdates);
+      } catch (profileErr) {
+        if (profileErr?.statusCode) {
+          return response.status(profileErr.statusCode).json({ message: profileErr.message });
+        }
+        console.error("Account profile (vcard/avatar) update failed:", profileErr?.message || profileErr);
+        return response.status(502).json({ message: "賬號資料卡儲存失敗，請稍後重試。", code: "ACCOUNT_PROFILE_FAILED" });
+      }
     }
 
     // ── Flexisip sync（非 local_only 帳號，且 display_name/email/phone 有变化）──
@@ -8463,6 +8572,44 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
     if (connection) await connection.rollback();
     console.error("Failed to update SIP account:", error);
     return response.status(500).json({ message: "帳號更新失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/admin/sip-accounts/:id/account-profile - 讀取賬號資料卡（工作單位/職務/頭像）供編輯回填
+app.get("/api/admin/sip-accounts/:id/account-profile", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
+  }
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ message: "無效的帳號 ID。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT username, sip_domain, avatar_url FROM sip_users WHERE id = ? LIMIT 1`,
+      [accountId],
+    );
+    if (!rows[0]) return response.status(404).json({ message: "帳號不存在。" });
+    const account = rows[0];
+    let vcardData = null;
+    try {
+      const vcard = await readAccountVcard(account.username, account.sip_domain);
+      vcardData = vcard?.data || null;
+    } catch (vcardErr) {
+      console.error("[account-profile] vcard read failed:", vcardErr?.message || vcardErr);
+    }
+    return response.json({
+      company: vcardData?.company || "",
+      jobTitle: vcardData?.jobTitle || "",
+      avatarUrl: account.avatar_url || vcardData?.photoUrl || "",
+    });
+  } catch (error) {
+    console.error("Failed to read account profile:", error);
+    return response.status(500).json({ message: "讀取賬號資料卡失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -20585,74 +20732,7 @@ app.post("/api/external-api/account-display-name", async (request, response) => 
 });
 
 // ── account-vcard：账号 vCard 读取/合并更新（AM vcards_storage 直连，只增）──
-
-function vcardEscape(value) {
-	return String(value).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,");
-}
-
-function vcardUnescape(value) {
-	return String(value).replace(/\\n/g, "\n").replace(/\\,/g, ",");
-}
-
-// 解析 vCard 文本：displayName(FN) / photoUrl(PHOTO) / phone(TEL) / company(ORG) / jobTitle(TITLE)
-// 兼容 RFC 6350 折行：行首空格/制表符的行是上一属性的续行
-function parseVcardText(text) {
-	const data = { displayName: "", photoUrl: "", phone: "", company: "", jobTitle: "" };
-	if (!text) return data;
-	let lastProp = null;
-	for (const rawLine of String(text).split(/\r?\n/)) {
-		if (!rawLine.length) continue;
-		if (rawLine[0] === " " || rawLine[0] === "\t") {
-			const cont = vcardUnescape(rawLine.slice(1));
-			if (lastProp === "FN") data.displayName += cont;
-			else if (lastProp === "PHOTO") data.photoUrl += cont;
-			else if (lastProp === "TEL") data.phone += cont;
-			else if (lastProp === "ORG") data.company += cont;
-			else if (lastProp === "TITLE") data.jobTitle += cont;
-			continue;
-		}
-		const line = rawLine.trim();
-		const idx = line.indexOf(":");
-		if (idx <= 0) continue;
-		const prop = line.slice(0, idx).toUpperCase();
-		const value = vcardUnescape(line.slice(idx + 1));
-		lastProp = null;
-		if (prop === "FN") { data.displayName = value; lastProp = "FN"; }
-		else if (prop.startsWith("PHOTO")) { data.photoUrl = value; lastProp = "PHOTO"; }
-		else if (prop.startsWith("TEL") && !data.phone) { data.phone = value.replace(/^tel:/i, ""); lastProp = "TEL"; }
-		else if (prop === "ORG") { data.company = value.split(";")[0]; lastProp = "ORG"; }
-		else if (prop === "TITLE") { data.jobTitle = value; lastProp = "TITLE"; }
-	}
-	return data;
-}
-
-// 合并式序列化：只更新传入字段，其余保留；无 UID 时生成新 UUID
-function mergeVcardText(existingText, username, domain, updates) {
-	const cur = parseVcardText(existingText);
-	const next = {
-		displayName: updates.displayName !== undefined ? updates.displayName : cur.displayName,
-		photoUrl: updates.photoUrl !== undefined ? updates.photoUrl : cur.photoUrl,
-		phone: updates.phone !== undefined ? updates.phone : cur.phone,
-		company: updates.company !== undefined ? updates.company : cur.company,
-		jobTitle: updates.jobTitle !== undefined ? updates.jobTitle : cur.jobTitle,
-	};
-	let uid = null;
-	if (existingText) {
-		const m = String(existingText).match(/^UID:(.+)$/m);
-		if (m && m[1]) uid = m[1].trim();
-	}
-	if (!uid) uid = "urn:uuid:" + randomUUID();
-	const lines = ["BEGIN:VCARD", "VERSION:4.0"];
-	lines.push("FN:" + vcardEscape(next.displayName || username));
-	lines.push("UID:" + uid);
-	lines.push("IMPP:sip:" + username + "@" + domain);
-	if (next.photoUrl) lines.push("PHOTO;VALUE=URI:" + next.photoUrl);
-	if (next.phone) lines.push("TEL;VALUE=URI:tel:" + vcardEscape(next.phone));
-	if (next.company) lines.push("ORG:" + vcardEscape(next.company));
-	if (next.jobTitle) lines.push("TITLE:" + vcardEscape(next.jobTitle));
-	lines.push("END:VCARD");
-	return { text: lines.join("\n") + "\n", uuid: uid };
-}
+// vcardEscape/vcardUnescape/parseVcardText/mergeVcardText 已移至 accountProfileService.js（與管理端共用）
 
 // GET /api/external-api/account-vcard?sipAccount= — 读取账号 vCard（无则空字段）
 app.get("/api/external-api/account-vcard", async (request, response) => {

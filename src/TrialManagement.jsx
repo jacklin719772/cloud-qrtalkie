@@ -95,7 +95,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [aiEntitlementLoading, setAiEntitlementLoading] = useState(false);
   const [aiEntitlementSaving, setAiEntitlementSaving] = useState(false);
   const [accountSettingsTarget, setAccountSettingsTarget] = useState(null);
-  const [accountSettingsForm, setAccountSettingsForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [accountSettingsForm, setAccountSettingsForm] = useState({ displayName: '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
+  const [accountSettingsAvatar, setAccountSettingsAvatar] = useState({ preview: '', dataUrl: '', removed: false });
   const [accountSettingsMessage, setAccountSettingsMessage] = useState({ type: '', text: '' });
   const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
   const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
@@ -736,11 +737,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
-  // 帳號設置（對齊租戶端「帳號管理」的編輯彈窗）：顯示名/郵箱/電話/密碼
+  // 帳號設置（對齊租戶端「帳號管理」的編輯彈窗）：顯示名/郵箱/電話/密碼/頭像/工作單位/職務
   async function openAccountSettings(trial) {
     setOpenActionsId(null);
     setAccountSettingsTarget({ id: trial.id, username: trial.username });
-    setAccountSettingsForm({ displayName: trial.accountDisplayName || '', email: '', phone: '', password: '', confirmPassword: '' });
+    setAccountSettingsForm({ displayName: trial.accountDisplayName || '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
+    setAccountSettingsAvatar({ preview: '', dataUrl: '', removed: false });
     setAccountSettingsMessage({ type: '', text: '' });
     setAccountSettingsLoading(true);
     try {
@@ -750,14 +752,29 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         displayName: a.displayName || '',
         email: a.email || '',
         phone: a.phone || '',
+        company: a.company || '',
+        jobTitle: a.jobTitle || '',
         password: '',
         confirmPassword: '',
       });
+      setAccountSettingsAvatar({ preview: a.avatarUrl || '', dataUrl: '', removed: false });
     } catch {
       /* 讀取失敗時沿用列表值兜底 */
     } finally {
       setAccountSettingsLoading(false);
     }
+  }
+
+  function handleAccountSettingsAvatarPick(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = String(e.target?.result || '');
+      if (dataUrl) setAccountSettingsAvatar({ preview: dataUrl, dataUrl, removed: false });
+    };
+    reader.readAsDataURL(file);
   }
 
   async function submitAccountSettings(e) {
@@ -780,13 +797,18 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setAccountSettingsSaving(true);
     setAccountSettingsMessage({ type: '', text: '' });
     try {
-      await apiClient.put(`/admin/trials/${accountSettingsTarget.id}/account-settings`, {
+      const payload = {
         displayName: accountSettingsForm.displayName.trim(),
         email,
         phone: accountSettingsForm.phone.trim(),
+        company: accountSettingsForm.company.trim(),
+        jobTitle: accountSettingsForm.jobTitle.trim(),
         password: accountSettingsForm.password,
         confirmPassword: accountSettingsForm.confirmPassword,
-      });
+      };
+      if (accountSettingsAvatar.dataUrl) payload.avatarDataUrl = accountSettingsAvatar.dataUrl;
+      if (accountSettingsAvatar.removed) payload.removeAvatar = true;
+      await apiClient.put(`/admin/trials/${accountSettingsTarget.id}/account-settings`, payload);
       setAccountSettingsMessage({ type: 'success', text: '帳號資訊已更新。' });
       loadTrials();
       setTimeout(() => setAccountSettingsTarget(null), 1200);
@@ -2113,6 +2135,29 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>頭像</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {accountSettingsAvatar.preview ? (
+                        <img src={accountSettingsAvatar.preview} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                      ) : (
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</div>
+                      )}
+                      <label style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px' }}>
+                        選擇圖片
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAccountSettingsAvatarPick} />
+                      </label>
+                      {accountSettingsAvatar.preview && (
+                        <button
+                          type="button"
+                          onClick={() => setAccountSettingsAvatar({ preview: '', dataUrl: '', removed: true })}
+                          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #7f1d1d', background: 'transparent', color: '#fca5a5', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          移除
+                        </button>
+                      )}
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
                     <input
                       className="acct-settings-input"
@@ -2141,6 +2186,26 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       value={accountSettingsForm.phone}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
                       placeholder="國際格式，如 +886912345678"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>工作單位</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.company}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, company: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職務</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.jobTitle}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, jobTitle: event.target.value }))}
                       style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                     />
                   </label>

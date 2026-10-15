@@ -114,7 +114,8 @@ const TenantAccountManagement = forwardRef(({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [detailAccount, setDetailAccount] = useState(null);
   const [editAccount, setEditAccount] = useState(null);
-  const [editForm, setEditForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [editForm, setEditForm] = useState({ displayName: '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
+  const [editAvatar, setEditAvatar] = useState({ preview: '', dataUrl: '', removed: false });
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
@@ -328,17 +329,40 @@ const TenantAccountManagement = forwardRef(({
       displayName: account.displayName || '',
       email: account.email || '',
       phone: account.phone || '',
+      company: '',
+      jobTitle: '',
       password: '',
       confirmPassword: '',
     });
+    setEditAvatar({ preview: '', dataUrl: '', removed: false });
     setEditMessage({ type: '', text: '' });
+    // 賬號資料卡（頭像/工作單位/職務）：與 App 聯繫人編輯頁同一存儲，異步回填
+    apiClient.get(`${apiBasePath}/${account.id}/account-profile`)
+      .then((profile) => {
+        setEditForm((form) => ({ ...form, company: profile?.company || '', jobTitle: profile?.jobTitle || '' }));
+        setEditAvatar((current) => (current.dataUrl ? current : { preview: profile?.avatarUrl || '', dataUrl: '', removed: false }));
+      })
+      .catch(() => { /* 無資料卡時留空 */ });
   }
 
   function closeEditAccount() {
     if (isSavingEdit) return;
     setEditAccount(null);
-    setEditForm({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+    setEditForm({ displayName: '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
+    setEditAvatar({ preview: '', dataUrl: '', removed: false });
     setEditMessage({ type: '', text: '' });
+  }
+
+  function handleEditAvatarPick(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = String(e.target?.result || '');
+      if (dataUrl) setEditAvatar({ preview: dataUrl, dataUrl, removed: false });
+    };
+    reader.readAsDataURL(file);
   }
 
   async function submitEditAccount(event) {
@@ -356,7 +380,10 @@ const TenantAccountManagement = forwardRef(({
     setIsSavingEdit(true);
     setEditMessage({ type: '', text: '' });
     try {
-      const result = await apiClient.put(`${apiBasePath}/${editAccount.id}`, editForm);
+      const payload = { ...editForm };
+      if (editAvatar.dataUrl) payload.avatarDataUrl = editAvatar.dataUrl;
+      if (editAvatar.removed) payload.removeAvatar = true;
+      const result = await apiClient.put(`${apiBasePath}/${editAccount.id}`, payload);
       const updatedAccount = {
         ...editAccount,
         displayName: result.account?.displayName ?? editForm.displayName,
@@ -368,7 +395,8 @@ const TenantAccountManagement = forwardRef(({
       setEditMessage({ type: 'success', text: result.message || '帳號已更新。' });
       window.setTimeout(() => {
         setEditAccount(null);
-        setEditForm({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+        setEditForm({ displayName: '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
+        setEditAvatar({ preview: '', dataUrl: '', removed: false });
         setEditMessage({ type: '', text: '' });
       }, 600);
     } catch (error) {
@@ -1277,6 +1305,29 @@ const TenantAccountManagement = forwardRef(({
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>頭像</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {editAvatar.preview ? (
+                    <img src={editAvatar.preview} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                  ) : (
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</div>
+                  )}
+                  <label style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px' }}>
+                    選擇圖片
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditAvatarPick} />
+                  </label>
+                  {editAvatar.preview && (
+                    <button
+                      type="button"
+                      onClick={() => setEditAvatar({ preview: '', dataUrl: '', removed: true })}
+                      style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #7f1d1d', background: 'transparent', color: '#fca5a5', fontSize: '13px', cursor: 'pointer' }}
+                    >
+                      移除
+                    </button>
+                  )}
+                </div>
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
                 <input autoComplete="off" value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
@@ -1287,6 +1338,14 @@ const TenantAccountManagement = forwardRef(({
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
                 <input autoComplete="off" value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} placeholder="國際格式，如 +886912345678" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>工作單位</span>
+                <input autoComplete="off" value={editForm.company} onChange={(event) => setEditForm((form) => ({ ...form, company: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職務</span>
+                <input autoComplete="off" value={editForm.jobTitle} onChange={(event) => setEditForm((form) => ({ ...form, jobTitle: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>

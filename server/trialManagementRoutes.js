@@ -10,6 +10,7 @@ import QRCode from "qrcode";
 import { pool } from "./db.js";
 import { getAccount as flexisipGetAccount, updateAccount as flexisipUpdateAccount, activateAccount as flexisipActivateAccount, searchAccountBySip } from "./flexisipAccountManagerClient.js";
 import { hashPassword } from "./security.js";
+import { readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
 import { activateTrialAccountInFlexisip, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment } from "./trialService.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -1078,7 +1079,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       connection = await pool.getConnection();
       const rows = await connection.query(
         `SELECT ta.id, ta.owner_tenant_id, ta.sip_user_id,
-                u.username, u.display_name, u.email, u.phone_number
+                u.username, u.sip_domain, u.display_name, u.email, u.phone_number, u.avatar_url
          FROM trial_assignments ta
          JOIN sip_users u ON u.id = ta.sip_user_id
          WHERE ta.id = ? LIMIT 1`,
@@ -1089,6 +1090,13 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (!isPlatform && Number(row.owner_tenant_id) !== Number(request.admin.tenantId)) {
         return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
       }
+      let vcardData = null;
+      try {
+        const vcard = await readAccountVcard(row.username, row.sip_domain);
+        vcardData = vcard?.data || null;
+      } catch (vcardErr) {
+        console.error("[trial-account-settings] vcard read failed:", vcardErr?.message || vcardErr);
+      }
       return response.json({
         account: {
           id: Number(row.sip_user_id),
@@ -1096,6 +1104,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           displayName: row.display_name || "",
           email: row.email || "",
           phone: row.phone_number || "",
+          company: vcardData?.company || "",
+          jobTitle: vcardData?.jobTitle || "",
+          avatarUrl: row.avatar_url || vcardData?.photoUrl || "",
         },
       });
     } catch (error) {
@@ -1118,6 +1129,14 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     const phone = clean(request.body?.phone, 40);
     const password = String(request.body?.password || "");
     const confirmPassword = String(request.body?.confirmPassword || "");
+    // 賬號資料卡字段（與 App 聯繫人編輯頁同一存儲；presence 判斷避免誤清空）
+    const hasCompany = request.body?.company !== undefined;
+    const company = hasCompany ? clean(request.body?.company, 120) : "";
+    const hasJobTitle = request.body?.jobTitle !== undefined;
+    const jobTitle = hasJobTitle ? clean(request.body?.jobTitle, 120) : "";
+    const avatarDataUrl = typeof request.body?.avatarDataUrl === "string" ? request.body.avatarDataUrl : "";
+    const removeAvatar = request.body?.removeAvatar === true;
+    const hasProfileUpdate = hasCompany || hasJobTitle || Boolean(avatarDataUrl) || removeAvatar;
     if (email && !isEmailLike(email)) {
       return response.status(400).json({ message: "請輸入有效的電子郵箱。" });
     }
@@ -1168,6 +1187,31 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (!sipUser) {
         await connection.rollback();
         return response.status(404).json({ message: "找不到帳號。" });
+      }
+
+      // ── 賬號資料卡（vCard）與頭像：寫入與 App 同源存儲（登錄後自動使用）──
+      if (hasProfileUpdate) {
+        try {
+          const vcardUpdates = { displayName };
+          vcardUpdates.phone = phone ? phone.replace(/[\s\-\(\)]/g, '') : "";
+          if (hasCompany) vcardUpdates.company = company;
+          if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
+          let nextAvatarUrl = null;
+          if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(sipUser.username, avatarDataUrl);
+          if (removeAvatar) nextAvatarUrl = "";
+          if (nextAvatarUrl !== null) {
+            vcardUpdates.photoUrl = nextAvatarUrl;
+            await connection.query(`UPDATE sip_users SET avatar_url = ? WHERE id = ?`, [nextAvatarUrl || null, sipUser.id]);
+          }
+          await mergeAccountVcard(sipUser.username, sipUser.sip_domain, vcardUpdates);
+        } catch (profileErr) {
+          await connection.rollback();
+          if (profileErr?.statusCode) {
+            return response.status(profileErr.statusCode).json({ message: profileErr.message });
+          }
+          console.error("Trial account profile (vcard/avatar) update failed:", profileErr?.message || profileErr);
+          return response.status(502).json({ message: "賬號資料卡儲存失敗，請稍後重試。", code: "ACCOUNT_PROFILE_FAILED" });
+        }
       }
 
       // ── Flexisip 同步：updateAccount 會重置激活態——先讀前態，更新後恢復（暫停帳號保持停用，不會被誤激活）──
