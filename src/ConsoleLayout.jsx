@@ -121,6 +121,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [webAccountMode, setWebAccountMode] = useState('list');
   const [deviceManagementMode, setDeviceManagementMode] = useState('list');
   const [ecardGenerationMode, setEcardGenerationMode] = useState('list');
+  const [trialEcardContext, setTrialEcardContext] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showAdminHelp, setShowAdminHelp] = useState(false);
   const [showLegalHelp, setShowLegalHelp] = useState(false);
@@ -821,8 +822,8 @@ export default function ConsoleLayout({ onLogout }) {
         userType={userType}
       />
 
-      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
-        <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}), ...(['app-releases', 'platform-admin-management'].includes(currentView) ? { marginBottom: '18px' } : {}) }}>
+      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'trial-ecard-generate', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users'].includes(currentView) ? 'domain-home-mode' : ''}`}>
+        <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add', 'trial-ecard-generate'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}), ...(['app-releases', 'platform-admin-management'].includes(currentView) ? { marginBottom: '18px' } : {}) }}>
           <h1 id="page-title">{
             currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平臺概覽' :
             currentView === 'purchase-plan'
@@ -896,6 +897,24 @@ export default function ConsoleLayout({ onLogout }) {
               ref={trialManagementRef}
               isPlatform={identity?.admin?.accountType === 'platform'}
               tenantName={identity?.tenant?.companyName || ''}
+              onOpenTrialEcard={(trial) => {
+                setTrialEcardContext({
+                  trialId: trial.id,
+                  sipUserId: trial.sipUserId,
+                  username: trial.username,
+                  displayName: trial.accountDisplayName || trial.username || '',
+                  tenantName: trial.ownerTenantName || '',
+                  validFrom: trial.startedAt || '',
+                  validTo: trial.expiresAt || '',
+                });
+                setCurrentView('trial-ecard-generate');
+              }}
+            />
+          )}
+          {currentView === 'trial-ecard-generate' && trialEcardContext && (
+            <EcardGeneration
+              trialContext={trialEcardContext}
+              onTrialBack={() => { setTrialEcardContext(null); setCurrentView('trial-management'); }}
             />
           )}
           {currentView === 'reports-management' && <ReportManagement />}

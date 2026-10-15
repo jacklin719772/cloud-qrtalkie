@@ -88,9 +88,11 @@ const mockEcardAccounts = [
   }
 ];
 
-const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelfServiceBack }, ref) => {
+const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelfServiceBack, trialContext, onTrialBack }, ref) => {
   const isSelfService = !!selfServiceSipUserId;
-  const [viewMode, setViewMode] = useState(isSelfService ? 'add' : 'list');
+  const isTrialMode = !!trialContext;
+  const isContextMode = isSelfService || isTrialMode;
+  const [viewMode, setViewMode] = useState(isContextMode ? 'add' : 'list');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -383,7 +385,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           
           if (active.length > 0) {
             setTemplates(active);
-            if (!isSelfService || !selectedTemplateId) {
+            if (!isContextMode || !selectedTemplateId) {
               setSelectedTemplateId(active[0].id);
               setSelectedTemplate(active[0]);
               if (active[0].backgrounds && active[0].backgrounds.length > 0) {
@@ -513,6 +515,69 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       }
     })();
   }, [selfServiceSipUserId]);
+
+  // 試用上下文模式：從試用接口載入賬號與現有名片（與 selfService 同套路，僅數據源不同）
+  useEffect(() => {
+    if (!trialContext) return;
+    (async () => {
+      let existingEcard, ecardMeta;
+      try {
+        const ecRes = await apiClient.get(`/admin/trials/${trialContext.trialId}/ecard`);
+        const hasJson = ecRes.ecardDataJson && Object.keys(ecRes.ecardDataJson).length > 0;
+        existingEcard = hasJson ? ecRes.ecardDataJson : null;
+        ecardMeta = { validFrom: ecRes.validFrom, validTo: ecRes.validTo, status: ecRes.status, thumbnailUrl: ecRes.thumbnailUrl, avatarUrl: ecRes.avatarUrl, accessSlug: ecRes.accessSlug };
+      } catch {}
+
+      const accountInfo = {
+        id: trialContext.sipUserId,
+        sip_user_id: trialContext.sipUserId,
+        trialId: trialContext.trialId,
+        sipAccount: trialContext.username || '',
+        userName: trialContext.displayName || '',
+        tenantName: trialContext.tenantName || '',
+        accessUrl: ecardMeta?.accessSlug ? `https://ecard.qrtalkie.org/u/${ecardMeta.accessSlug}` : '',
+        validFrom: ecardMeta?.validFrom || trialContext.validFrom || '—',
+        validTo: ecardMeta?.validTo || trialContext.validTo || '—',
+        ecardThumbnailUrl: ecardMeta?.thumbnailUrl || '',
+        enabled: ecardMeta?.status === 'active',
+      };
+
+      setSelectedAccountForCreate(existingEcard
+        ? { ...accountInfo, configured: true }
+        : accountInfo
+      );
+
+      if (existingEcard) {
+        // 一次性載入全部已保存狀態（與 selfService 相同）
+        if (existingEcard.selectedTemplateId) setSelectedTemplateId(existingEcard.selectedTemplateId);
+        if (existingEcard.selectedBackgroundId) setSelectedBackgroundId(existingEcard.selectedBackgroundId);
+        if (existingEcard.cardData) setCardData(existingEcard.cardData);
+        if (existingEcard.localStyles) setLocalStyles(existingEcard.localStyles);
+        if (existingEcard.localDisplayConfig) setLocalDisplayConfig(existingEcard.localDisplayConfig);
+        if (typeof existingEcard.showQrCode === 'boolean') setShowQrCode(existingEcard.showQrCode);
+        if (existingEcard.callPublicSlug) setCallPublicSlug(existingEcard.callPublicSlug);
+        if (existingEcard.avatarDataUrl) setAvatarDataUrl(existingEcard.avatarDataUrl);
+        if (existingEcard.logoDataUrl) setLogoDataUrl(existingEcard.logoDataUrl);
+      } else {
+        // 無名片：以試用信息填默認值
+        setCardData({
+          name: trialContext.displayName || trialContext.username || '',
+          titleZh: '', titleEn: '',
+          phone: trialContext.phone || '',
+          email: trialContext.email || '',
+          zipCode: '', address: '',
+          qrDesc: '掃碼二維碼 · 交換名片',
+          companyZh: trialContext.tenantName || '',
+          companyEn: '', sloganZh: '', sloganEn: '',
+        });
+        setLocalStyles({});
+        setShowQrCode(false);
+        setAvatarDataUrl('');
+        setLogoDataUrl('');
+        generateRandomSlug();
+      }
+    })();
+  }, [trialContext?.trialId]);
 
   const handleEcardListSort = (key) => { if (ecardSortKey === key) { setEcardSortDir(d => d === "asc" ? "desc" : "asc"); } else { setEcardSortKey(key); setEcardSortDir("asc"); } };
 
@@ -699,10 +764,15 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         enableTextChat
       };
 
-      await apiClient.post(`/tenant/ecard-accounts/${selectedAccountForCreate.sip_user_id || selectedAccountForCreate.id}/ecard`, payload);
+      const saveUrl = isTrialMode
+        ? `/admin/trials/${trialContext.trialId}/ecard`
+        : `/tenant/ecard-accounts/${selectedAccountForCreate.sip_user_id || selectedAccountForCreate.id}/ecard`;
+      await apiClient.post(saveUrl, payload);
       alert('名片已成功儲存並產生圖片！');
-      
-      loadEcardAccounts();
+
+      if (!isTrialMode) {
+        loadEcardAccounts();
+      }
       setSelectedAccountForCreate(prev => ({
         ...prev,
         configured: true,
@@ -1322,9 +1392,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           </div>
           <div className="ecard-add-actions">
             <button type="button" style={{ padding: '8px 16px', fontSize: '13px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => {
+              if (isTrialMode) { onTrialBack?.(); return; }
               if (isSelfService) { onSelfServiceBack?.(); return; }
               setViewMode('list');
-            }}>{isSelfService ? '返回我的帳號' : '返回列表'}</button>
+            }}>{isTrialMode ? '返回試用管理' : isSelfService ? '返回我的帳號' : '返回列表'}</button>
             {/* <button type="button" className="ghost-btn" style={{ padding: '8px 16px', fontSize: '13px' }}>儲存草稿</button> */}
             <button type="button" className="primary-btn" disabled={isGenerating} style={{ padding: '8px 16px', fontSize: '13px' }} onClick={handleSaveAndGenerateImage}>
               {isGenerating ? '產生中...' : '儲存並產生圖片'}

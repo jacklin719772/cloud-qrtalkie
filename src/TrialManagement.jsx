@@ -43,7 +43,7 @@ function emptyNewTenant() {
   return { companyName: '', password: '' };
 }
 
-const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref) => {
+const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpenTrialEcard }, ref) => {
   const [trials, setTrials] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -100,12 +100,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [accountSettingsMessage, setAccountSettingsMessage] = useState({ type: '', text: '' });
   const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
   const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
-  const [ecardSettingsTarget, setEcardSettingsTarget] = useState(null);
-  const [ecardSettingsInfo, setEcardSettingsInfo] = useState(null);
-  const [ecardSettingsForm, setEcardSettingsForm] = useState(null);
-  const [ecardSettingsLoading, setEcardSettingsLoading] = useState(false);
-  const [ecardSettingsSaving, setEcardSettingsSaving] = useState(false);
-  const [ecardSettingsMessage, setEcardSettingsMessage] = useState({ type: '', text: '' });
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -181,12 +175,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     const timer = setTimeout(() => setAccountSettingsMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [accountSettingsMessage]);
-
-  useEffect(() => {
-    if (!ecardSettingsMessage.text) return undefined;
-    const timer = setTimeout(() => setEcardSettingsMessage({ type: '', text: '' }), 5000);
-    return () => clearTimeout(timer);
-  }, [ecardSettingsMessage]);
 
   useEffect(() => {
     if (!ecardMessage.text) return undefined;
@@ -831,172 +819,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
-  // 電子名片設置（復用電子名片管理完整字段）：讀當前名片回填 / 保存並產生 / 即時預覽
-  async function openEcardSettings(trial) {
-    setOpenActionsId(null);
-    setEcardSettingsTarget({ trialId: trial.id, username: trial.username });
-    setEcardSettingsInfo(null);
-    setEcardSettingsForm(null);
-    setEcardSettingsMessage({ type: '', text: '' });
-    setEcardSettingsLoading(true);
-    try {
-      const data = await apiClient.get(`/admin/trials/${trial.id}/ecard`);
-      const ecard = data || {};
-      const styles = await loadEcardStyles();
-      const initialStyleId = ecard.templateId ? String(ecard.templateId) : (styles[0] ? String(styles[0].id) : '');
-      let backgrounds = [];
-      if (initialStyleId) backgrounds = await loadEcardBackgrounds(Number(initialStyleId), styles);
-      const initialBgId = ecard.backgroundId ? String(ecard.backgroundId) : (backgrounds[0] ? String(backgrounds[0].id) : '');
-      const exists = Boolean(ecard.exists);
-      setEcardSettingsInfo({
-        exists,
-        accessUrl: ecard.accessUrl || '',
-        validFrom: ecard.validFrom || '',
-        validTo: ecard.validTo || '',
-        avatarUrl: ecard.avatarUrl || '',
-        logoUrl: ecard.logoUrl || '',
-      });
-      setEcardSettingsForm({
-        styleId: initialStyleId,
-        backgroundId: initialBgId,
-        companyZh: ecard.companyZh || '',
-        companyEn: ecard.companyEn || '',
-        sloganZh: ecard.sloganZh || '',
-        sloganEn: ecard.sloganEn || '',
-        logoDataUrl: '',
-        avatarDataUrl: '',
-        name: exists ? (ecard.name || '') : (trial.accountDisplayName || trial.username || ''),
-        titleZh: ecard.titleZh || '',
-        titleEn: ecard.titleEn || '',
-        phone: ecard.phone || '',
-        email: ecard.email || '',
-        zipCode: ecard.zipCode || '',
-        address: ecard.address || '',
-        qrDesc: ecard.qrDesc || '掃碼二維碼 · 交換名片',
-        showQrCode: exists ? ecard.showQrCode !== false : true,
-        enableVideoCall: exists ? ecard.enableVideoCall !== false : true,
-        enableTextChat: exists ? ecard.enableTextChat !== false : true,
-      });
-    } catch (error) {
-      setEcardSettingsMessage({ type: 'error', text: error.message || '讀取名片設置失敗。' });
-    } finally {
-      setEcardSettingsLoading(false);
-    }
-  }
-
-  function closeEcardSettings() {
-    if (ecardSettingsSaving) return;
-    setEcardSettingsTarget(null);
-    setEcardSettingsInfo(null);
-    setEcardSettingsForm(null);
-    setEcardSettingsMessage({ type: '', text: '' });
-  }
-
-  function handleEcardSettingsAvatarFile(event) {
-    const file = event.target.files && event.target.files[0];
-    event.target.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setEcardSettingsForm((f) => (f ? { ...f, avatarDataUrl: String(reader.result || '') } : f));
-    reader.readAsDataURL(file);
-  }
-
-  function handleEcardSettingsLogoFile(event) {
-    const file = event.target.files && event.target.files[0];
-    event.target.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setEcardSettingsForm((f) => (f ? { ...f, logoDataUrl: String(reader.result || '') } : f));
-    reader.readAsDataURL(file);
-  }
-
-  async function handleEcardSettingsStyleChange(styleId) {
-    setEcardSettingsForm((f) => (f ? { ...f, styleId, backgroundId: '' } : f));
-    if (!styleId) {
-      setEcardBackgrounds([]);
-      return;
-    }
-    const backgrounds = await loadEcardBackgrounds(Number(styleId), ecardStylesList);
-    setEcardSettingsForm((f) => (f ? { ...f, backgroundId: backgrounds[0] ? String(backgrounds[0].id) : '' } : f));
-  }
-
-  async function previewEcardSettings() {
-    if (!ecardSettingsForm?.styleId) {
-      setEcardSettingsMessage({ type: 'error', text: '請先選擇名片樣式。' });
-      return;
-    }
-    setEcardPreviewImage({ open: true, loading: true, dataUrl: '', username: ecardSettingsTarget?.username || '' });
-    try {
-      const res = await apiClient.post('/admin/trials/ecards/preview', {
-        templateId: Number(ecardSettingsForm.styleId),
-        backgroundId: ecardSettingsForm.backgroundId ? Number(ecardSettingsForm.backgroundId) : null,
-        name: ecardSettingsForm.name.trim(),
-        titleZh: ecardSettingsForm.titleZh.trim(),
-        titleEn: ecardSettingsForm.titleEn.trim(),
-        phone: ecardSettingsForm.phone.trim(),
-        email: ecardSettingsForm.email.trim(),
-        zipCode: ecardSettingsForm.zipCode.trim(),
-        address: ecardSettingsForm.address.trim(),
-        qrDesc: ecardSettingsForm.qrDesc.trim(),
-        companyZh: ecardSettingsForm.companyZh.trim(),
-        companyEn: ecardSettingsForm.companyEn.trim(),
-        sloganZh: ecardSettingsForm.sloganZh.trim(),
-        sloganEn: ecardSettingsForm.sloganEn.trim(),
-        showQrCode: ecardSettingsForm.showQrCode !== false,
-        avatarDataUrl: ecardSettingsForm.avatarDataUrl || '',
-        logoDataUrl: ecardSettingsForm.logoDataUrl || '',
-      }, { timeoutMs: 60000 });
-      setEcardPreviewImage((prev) => ({ ...prev, loading: false, dataUrl: res?.imageDataUrl || '' }));
-    } catch (error) {
-      setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' });
-      setEcardSettingsMessage({ type: 'error', text: error.message || '生成預覽失敗。' });
-    }
-  }
-
-  async function saveEcardSettings() {
-    if (!ecardSettingsForm || !ecardSettingsTarget) return;
-    if (!ecardSettingsForm.styleId) {
-      setEcardSettingsMessage({ type: 'error', text: '請選擇名片樣式。' });
-      return;
-    }
-    setEcardSettingsSaving(true);
-    setEcardSettingsMessage({ type: '', text: '' });
-    try {
-      await apiClient.post('/admin/trials/ecards', {
-        templateId: Number(ecardSettingsForm.styleId),
-        backgroundId: ecardSettingsForm.backgroundId ? Number(ecardSettingsForm.backgroundId) : null,
-        company: ecardSettingsForm.companyZh.trim(),
-        logoDataUrl: ecardSettingsForm.logoDataUrl || '',
-        showQrCode: ecardSettingsForm.showQrCode !== false,
-        accounts: [{
-          trialId: ecardSettingsTarget.trialId,
-          name: ecardSettingsForm.name.trim(),
-          titleZh: ecardSettingsForm.titleZh.trim(),
-          titleEn: ecardSettingsForm.titleEn.trim(),
-          phone: ecardSettingsForm.phone.trim(),
-          email: ecardSettingsForm.email.trim(),
-          zipCode: ecardSettingsForm.zipCode.trim(),
-          address: ecardSettingsForm.address.trim(),
-          qrDesc: ecardSettingsForm.qrDesc.trim(),
-          companyZh: ecardSettingsForm.companyZh.trim(),
-          companyEn: ecardSettingsForm.companyEn.trim(),
-          sloganZh: ecardSettingsForm.sloganZh.trim(),
-          sloganEn: ecardSettingsForm.sloganEn.trim(),
-          showQrCode: ecardSettingsForm.showQrCode !== false,
-          avatarDataUrl: ecardSettingsForm.avatarDataUrl || '',
-          enableVideoCall: ecardSettingsForm.enableVideoCall !== false,
-          enableTextChat: ecardSettingsForm.enableTextChat !== false,
-        }],
-      }, { timeoutMs: 120000 });
-      setEcardSettingsMessage({ type: 'success', text: '電子名片已保存並生成圖片。' });
-      setTimeout(() => closeEcardSettings(), 1200);
-    } catch (error) {
-      setEcardSettingsMessage({ type: 'error', text: error.message || '保存電子名片失敗。' });
-    } finally {
-      setEcardSettingsSaving(false);
-    }
-  }
-
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
 
@@ -1603,7 +1425,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                               <button type="button" className="tm-actions-item" onClick={() => openAccountSettings(t)}>帳號設置</button>
                             )}
                             {canAccountSettings && (
-                              <button type="button" className="tm-actions-item" onClick={() => openEcardSettings(t)}>電子名片</button>
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); onOpenTrialEcard?.(t); }}>電子名片</button>
                             )}
                             {canPause && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
@@ -2279,172 +2101,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-        </div>,
-        document.body
-      )}
-
-      {ecardSettingsTarget && createPortal(
-        <div id="trial-management-modal">
-        <div className="tm-modal">
-          <div className="tm-modal-panel" style={{ width: '640px' }}>
-            <div className="tm-modal-head">
-              <h3>電子名片設置 — {ecardSettingsTarget.username}</h3>
-              <button className="tm-btn" type="button" onClick={closeEcardSettings} disabled={ecardSettingsSaving}>關閉</button>
-            </div>
-            <div className="tm-modal-body">
-              {ecardSettingsLoading || !ecardSettingsForm ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af' }}>載入中…</div>
-              ) : (
-                <>
-                  {ecardSettingsInfo?.exists && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', border: '1px solid #374151', borderRadius: '8px', background: '#0b1220' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>Ecard 展示頁</span>
-                        <input readOnly value={ecardSettingsInfo.accessUrl} style={{ flex: 1, minWidth: 0, padding: '6px 10px', borderRadius: '6px', border: '1px solid #374151', background: '#111827', color: '#93c5fd', fontSize: '12px', outline: 'none' }} />
-                        <button type="button" className="tm-btn" onClick={async () => { try { await navigator.clipboard.writeText(ecardSettingsInfo.accessUrl); setEcardSettingsMessage({ type: 'success', text: '連結已複製。' }); } catch { /* 忽略 */ } }}>複製</button>
-                      </div>
-                      <span className="tm-hint">名片有效期：{ecardSettingsInfo.validFrom || '-'} ~ {ecardSettingsInfo.validTo || '-'}（跟隨試用期）</span>
-                    </div>
-                  )}
-                  <div className="tm-grid2">
-                    <div className="tm-field">
-                      <label>樣式模板</label>
-                      <select value={ecardSettingsForm.styleId} onChange={(e) => handleEcardSettingsStyleChange(e.target.value)}>
-                        {ecardStylesList.map((s) => (
-                          <option key={s.id} value={s.id}>{s.styleName || s.name || `樣式 ${s.id}`}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="tm-field">
-                      <label>背景</label>
-                      <select value={ecardSettingsForm.backgroundId} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, backgroundId: e.target.value }))}>
-                        <option value="">（樣式預設）</option>
-                        {ecardBackgrounds.map((bg) => (
-                          <option key={bg.id} value={bg.id}>{bg.backgroundName || `背景 ${bg.id}`}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="tm-field">
-                      <label>頭像</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {(ecardSettingsForm.avatarDataUrl || ecardSettingsInfo?.avatarUrl) ? (
-                          <img src={ecardSettingsForm.avatarDataUrl || ecardSettingsInfo?.avatarUrl} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
-                        ) : (
-                          <span style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#0b1220', border: '1px dashed #374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</span>
-                        )}
-                        <label className="tm-btn" style={{ cursor: 'pointer' }}>
-                          上傳頭像
-                          <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleEcardSettingsAvatarFile} />
-                        </label>
-                        {ecardSettingsForm.avatarDataUrl && (
-                          <button className="tm-btn" type="button" onClick={() => setEcardSettingsForm((f) => ({ ...f, avatarDataUrl: '' }))}>還原</button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="tm-field">
-                      <label>姓名</label>
-                      <input value={ecardSettingsForm.name} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, name: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>中文職位</label>
-                      <input value={ecardSettingsForm.titleZh} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, titleZh: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>英文職位</label>
-                      <input value={ecardSettingsForm.titleEn} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, titleEn: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>手機號</label>
-                      <input value={ecardSettingsForm.phone} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, phone: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>郵箱</label>
-                      <input value={ecardSettingsForm.email} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, email: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>郵編</label>
-                      <input value={ecardSettingsForm.zipCode} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, zipCode: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>地址</label>
-                      <input value={ecardSettingsForm.address} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, address: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>二維碼說明文字</label>
-                      <input value={ecardSettingsForm.qrDesc} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, qrDesc: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <div className="tm-section-title" style={{ marginTop: '4px' }}>公司信息</div>
-                  <div className="tm-grid2">
-                    <div className="tm-field" style={{ gridColumn: '1 / -1' }}>
-                      <label>企業 Logo（不上傳時默認使用 QRTalkie Logo）</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {(ecardSettingsForm.logoDataUrl || ecardSettingsInfo?.logoUrl) ? (
-                          <img src={ecardSettingsForm.logoDataUrl || ecardSettingsInfo?.logoUrl} alt="" style={{ height: '40px', maxWidth: '140px', borderRadius: '6px', border: '1px solid #374151', objectFit: 'contain', background: '#0b1220', padding: '4px' }} />
-                        ) : (
-                          <span style={{ height: '40px', padding: '0 12px', borderRadius: '6px', background: '#0b1220', border: '1px dashed #374151', display: 'inline-flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>默認 QRTalkie Logo</span>
-                        )}
-                        <label className="tm-btn" style={{ cursor: 'pointer' }}>
-                          上傳 Logo
-                          <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={handleEcardSettingsLogoFile} />
-                        </label>
-                        {ecardSettingsForm.logoDataUrl && (
-                          <button className="tm-btn" type="button" onClick={() => setEcardSettingsForm((f) => ({ ...f, logoDataUrl: '' }))}>還原</button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="tm-field">
-                      <label>公司中文名稱</label>
-                      <input value={ecardSettingsForm.companyZh} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, companyZh: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>公司英文名稱</label>
-                      <input value={ecardSettingsForm.companyEn} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, companyEn: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>中文 Slogan</label>
-                      <input value={ecardSettingsForm.sloganZh} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, sloganZh: e.target.value }))} />
-                    </div>
-                    <div className="tm-field">
-                      <label>英文 Slogan</label>
-                      <input value={ecardSettingsForm.sloganEn} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, sloganEn: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <div className="tm-field">
-                    <label>功能開關</label>
-                    <span style={{ display: 'inline-flex', gap: '18px', alignItems: 'center', color: '#e5e7eb', fontSize: '13px', paddingTop: '6px' }}>
-                      <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                        <input type="checkbox" checked={ecardSettingsForm.enableVideoCall !== false} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, enableVideoCall: e.target.checked }))} />
-                        允許視頻通話
-                      </label>
-                      <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                        <input type="checkbox" checked={ecardSettingsForm.enableTextChat !== false} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, enableTextChat: e.target.checked }))} />
-                        允許文字聊天
-                      </label>
-                      <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                        <input type="checkbox" checked={ecardSettingsForm.showQrCode !== false} onChange={(e) => setEcardSettingsForm((f) => ({ ...f, showQrCode: e.target.checked }))} />
-                        顯示二維碼
-                      </label>
-                    </span>
-                  </div>
-
-                  {ecardSettingsMessage.text && (
-                    <p style={{ margin: 0, fontSize: '13px', color: ecardSettingsMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{ecardSettingsMessage.text}</p>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="tm-modal-foot">
-              <button className="tm-btn" type="button" disabled={ecardSettingsSaving || ecardSettingsLoading} onClick={previewEcardSettings}>即時預覽</button>
-              <button className="tm-btn" type="button" disabled={ecardSettingsSaving} onClick={closeEcardSettings}>取消</button>
-              <button className="tm-btn primary" type="button" disabled={ecardSettingsSaving || ecardSettingsLoading || !ecardSettingsForm} onClick={saveEcardSettings}>
-                {ecardSettingsSaving ? '生成中…' : '保存並產生圖片'}
-              </button>
-            </div>
           </div>
         </div>
         </div>,

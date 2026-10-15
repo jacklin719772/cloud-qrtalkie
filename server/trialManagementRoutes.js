@@ -1135,7 +1135,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
   });
 
-  // GET /api/admin/trials/:id/ecard - 讀取當前電子名片（編輯回填；無則 exists:false + 試用期）
+  // GET /api/admin/trials/:id/ecard - 讀取當前電子名片（與租戶端 /tenant/ecard-accounts/:id/ecard 同形，供生成頁回填）
   app.get("/api/admin/trials/:id/ecard", requireAdmin, async (request, response) => {
     const trialId = Number(request.params.id);
     if (!Number.isInteger(trialId) || trialId <= 0) {
@@ -1160,52 +1160,132 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
         return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
       }
-      const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
       const ecardRows = await connection.query(
-        `SELECT access_slug, status, enable_video_call, enable_text_chat, avatar_url, logo_url, ecard_data_json
+        `SELECT ecard_data_json, card_data_json, thumbnail_url, avatar_url, access_slug, status
          FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1`,
         [Number(trial.sip_user_id)],
       );
       const ecard = ecardRows[0];
-      const base = {
-        exists: Boolean(ecard),
-        username: trial.username || "",
-        validFrom: trial.started_date || "",
-        validTo: trial.expires_date || "",
-        accessUrl: ecard?.access_slug ? `${baseUrl}/u/${ecard.access_slug}` : "",
-      };
-      if (!ecard) {
-        return response.json(base);
-      }
-      const parsed = parseJsonMaybe(ecard.ecard_data_json, {}) || {};
-      const cardData = parsed.cardData || {};
       return response.json({
-        ...base,
-        status: ecard.status || "",
-        accessSlug: ecard.access_slug || "",
-        templateId: Number(parsed.selectedTemplateId) || 0,
-        backgroundId: Number(parsed.selectedBackgroundId) || 0,
-        showQrCode: parsed.showQrCode !== false,
-        name: cardData.name || "",
-        titleZh: cardData.titleZh || "",
-        titleEn: cardData.titleEn || "",
-        phone: cardData.phone || "",
-        email: cardData.email || "",
-        zipCode: cardData.zipCode || "",
-        address: cardData.address || "",
-        qrDesc: cardData.qrDesc || "",
-        companyZh: cardData.companyZh || "",
-        companyEn: cardData.companyEn || "",
-        sloganZh: cardData.sloganZh || "",
-        sloganEn: cardData.sloganEn || "",
-        avatarUrl: ecard.avatar_url || "",
-        logoUrl: ecard.logo_url || "",
-        enableVideoCall: Number(ecard.enable_video_call) === 1 || ecard.enable_video_call === true,
-        enableTextChat: Number(ecard.enable_text_chat) === 1 || ecard.enable_text_chat === true,
+        ecardDataJson: parseJsonMaybe(ecard?.ecard_data_json || ecard?.card_data_json, {}) || {},
+        thumbnailUrl: ecard?.thumbnail_url || null,
+        avatarUrl: ecard?.avatar_url || null,
+        accessSlug: ecard?.access_slug || null,
+        validFrom: trial.started_date || null,
+        validTo: trial.expires_date || null,
+        status: ecard?.status || null,
       });
     } catch (error) {
       console.error("Failed to read trial ecard:", error);
       return response.status(500).json({ message: "讀取電子名片設置失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // POST /api/admin/trials/:id/ecard - 儲存電子名片（與租戶端同形 payload：cardData 全量 + 縮略圖；生成頁復用）
+  app.post("/api/admin/trials/:id/ecard", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const isPlatform = request.admin.accountType === "platform";
+    const payload = request.body || {};
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const rows = await connection.query(
+        `SELECT id, owner_tenant_id, sip_user_id, status FROM trial_assignments WHERE id = ? FOR UPDATE`,
+        [trialId],
+      );
+      const trial = rows[0];
+      if (!trial) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到試用記錄。" });
+      }
+      if (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        await connection.rollback();
+        return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+      }
+      if (trial.status !== "active" && trial.status !== "paused") {
+        await connection.rollback();
+        return response.status(409).json({ message: "該試用已結束或已回收，無法編輯電子名片。" });
+      }
+
+      const sipUserId = Number(trial.sip_user_id);
+      const reservedTenantId = await getReservedTrialTenantId(connection);
+      const existingRows = await connection.query(
+        "SELECT access_slug, avatar_url, logo_url FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
+        [sipUserId],
+      );
+      const existing = existingRows[0];
+
+      let avatarUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl : "";
+      if (avatarUrl.startsWith("data:")) {
+        avatarUrl = await saveEcardImageFile(avatarUrl);
+      } else {
+        avatarUrl = existing?.avatar_url || "";
+      }
+      let logoUrl = typeof payload.logoDataUrl === "string" ? payload.logoDataUrl : "";
+      if (logoUrl.startsWith("data:")) {
+        logoUrl = await saveEcardImageFile(logoUrl);
+      } else {
+        logoUrl = existing?.logo_url || DEFAULT_ECARD_LOGO_URL;
+      }
+      let thumbnailUrl = typeof payload.thumbnailDataUrl === "string" ? payload.thumbnailDataUrl : "";
+      if (thumbnailUrl.startsWith("data:")) {
+        thumbnailUrl = await saveEcardImageFile(thumbnailUrl);
+      } else {
+        thumbnailUrl = "";
+      }
+
+      const ecardDataJson = parseJsonMaybe(payload.ecardDataJson, {}) || {};
+      ecardDataJson.avatarDataUrl = avatarUrl;
+      ecardDataJson.logoDataUrl = logoUrl;
+      const enableVideoCall = payload.enableVideoCall !== false;
+      const enableTextChat = payload.enableTextChat !== false;
+      const accessSlug = clean(payload.accessSlug, 60)
+        || existing?.access_slug
+        || `ec-${sipUserId}-${Math.random().toString(36).slice(2, 8)}`;
+
+      await connection.query(
+        `INSERT INTO tenant_ecards (
+           tenant_id, sip_user_id, access_slug, avatar_url, logo_url, thumbnail_url, status, enable_video_call, enable_text_chat,
+           created_by_admin_id, ecard_data_json, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+           tenant_id = VALUES(tenant_id),
+           access_slug = VALUES(access_slug),
+           avatar_url = VALUES(avatar_url),
+           logo_url = VALUES(logo_url),
+           thumbnail_url = VALUES(thumbnail_url),
+           status = 'active',
+           enable_video_call = VALUES(enable_video_call),
+           enable_text_chat = VALUES(enable_text_chat),
+           ecard_data_json = VALUES(ecard_data_json),
+           updated_at = NOW()`,
+        [
+          reservedTenantId || 0,
+          sipUserId,
+          accessSlug,
+          avatarUrl || null,
+          logoUrl || null,
+          thumbnailUrl || null,
+          enableVideoCall ? 1 : 0,
+          enableTextChat ? 1 : 0,
+          request.admin.id,
+          JSON.stringify(ecardDataJson),
+        ],
+      );
+      await connection.commit();
+      console.log(JSON.stringify({ src: "trial-ecard-save", ts: new Date().toISOString(), adminId: request.admin.id, trialId, sipUserId }));
+      return response.json({ message: "電子名片已儲存", accessSlug });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to save trial ecard:", error);
+      return response.status(500).json({ message: "儲存失敗", detail: error.message || String(error) });
     } finally {
       if (connection) connection.release();
     }
