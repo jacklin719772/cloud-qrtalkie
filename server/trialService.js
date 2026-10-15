@@ -30,20 +30,31 @@ export async function isReservedTrialTenant(tenantId) {
 async function setFlexisipActivated(sipUserId, activated, connection = null) {
   const runner = connection || pool;
   const [account] = await runner.query(
-    "SELECT flexisip_account_id FROM sip_users WHERE id = ? LIMIT 1",
+    "SELECT username, flexisip_account_id FROM sip_users WHERE id = ? LIMIT 1",
     [sipUserId],
   );
   const flexisipAccountId = account?.flexisip_account_id ? String(account.flexisip_account_id) : "";
   if (!flexisipAccountId) return { skipped: true, activated };
+
+  const remote = await flexisipGetAccount(flexisipAccountId);
+  // 映射防護：AM 帳號用戶名必須與本地帳號一致，否則停用/啟用會誤傷其他帳號
+  //（存量存在「舊編號行與新編號行共用同一 AM 帳號」的錯位數據）
+  if (String(remote?.username || "").toLowerCase() !== String(account.username || "").toLowerCase()) {
+    const error = new Error("AM 帳號映射異常（用戶名不一致）");
+    error.code = "FLEXISIP_MAPPING_MISMATCH";
+    throw error;
+  }
+  const nowActivated = remote?.activated === true || remote?.activated === 1;
+  if (nowActivated === activated) return { skipped: false, activated, already: true };
 
   if (activated) {
     await flexisipActivateAccount(flexisipAccountId);
   } else {
     await flexisipDeactivateAccount(flexisipAccountId);
   }
-  const remote = await flexisipGetAccount(flexisipAccountId);
-  const nowActivated = remote?.activated === true || remote?.activated === 1;
-  if (nowActivated !== activated) {
+  const after = await flexisipGetAccount(flexisipAccountId);
+  const afterActivated = after?.activated === true || after?.activated === 1;
+  if (afterActivated !== activated) {
     const error = new Error(activated ? "AM 帳號啟用確認失敗" : "AM 帳號停用確認失敗");
     error.code = "FLEXISIP_STATE_CONFIRM_FAILED";
     throw error;
@@ -95,7 +106,17 @@ export async function expireTrialAssignment(connection, { trialId, sipUserId, ex
 export async function reclaimTrialAssignment(connection, { trialId, sipUserId }) {
   // ① 先停用通訊核心（AM）並回讀確認；失敗即拋錯，由呼叫方回滾本地（本地不動）+ 提示。
   //    方向安全：即使後續本地出錯回滾，帳號也只會停在「AM 已停用」一側，重試冪等。
-  await setFlexisipActivated(sipUserId, false, connection);
+  //    例外：映射異常（存量錯位數據，無法安全停用目標）→ 跳過 AM 步驟繼續本地回收，
+  //    避免自動回收任務因無法修復的映射無限重試。
+  try {
+    await setFlexisipActivated(sipUserId, false, connection);
+  } catch (flexisipError) {
+    if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+      console.warn("[trial-reclaim] AM mapping mismatch, skip AM deactivate:", sipUserId, flexisipError.message);
+    } else {
+      throw flexisipError;
+    }
+  }
 
   const reservedTenantId = await getReservedTrialTenantId(connection);
   const [account] = await connection.query(

@@ -361,6 +361,11 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
             await activateTrialAccountInFlexisip(Number(row.id), connection);
           } catch (flexisipError) {
             console.error("[trial-assign] AM activate failed:", row.username, flexisipError?.message || flexisipError);
+            if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+              return response.status(409).json({
+                message: `帳號 ${row.username} 在通訊核心的映射異常，無法安全開通，請更換帳號後重試。`,
+              });
+            }
             return response.status(502).json({
               message: `帳號 ${row.username} 在通訊核心（AM）啟用失敗，已取消本次添加，請稍後重試。`,
             });
@@ -449,6 +454,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           } catch (flexisipError) {
             await connection.rollback();
             console.error("[trial-assign] AM activate failed (auto path):", sipId, flexisipError?.message || flexisipError);
+            if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+              return response.status(409).json({ message: "所選帳號在通訊核心的映射異常，無法安全開通，請更換帳號後重試。" });
+            }
             return response.status(502).json({ message: "帳號在通訊核心（AM）啟用失敗，已取消本次添加，請稍後重試。" });
           }
         }
