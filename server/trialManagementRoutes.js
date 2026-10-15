@@ -383,6 +383,34 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       );
       const batchOrderId = Number(orderResult.insertId);
 
+      // 增值服務：與正式訂單同構，逐項寫入批次訂單明細（試用免費，金額按 0 計）
+      const addonCodes = (Array.isArray(request.body?.addonCodes) ? request.body.addonCodes : [])
+        .map((code) => String(code || "").trim())
+        .filter(Boolean)
+        .slice(0, 20);
+      if (addonCodes.length > 0) {
+        const addonRows = await connection.query(
+          `SELECT id, addon_code, name
+           FROM billing_addons
+           WHERE addon_code IN (${addonCodes.map(() => "?").join(",")})
+             AND status = 'active'
+           ORDER BY sort_order ASC, id ASC`,
+          addonCodes,
+        );
+        let addonSort = 20;
+        for (const addon of addonRows) {
+          await connection.query(
+            `INSERT INTO billing_order_items (
+               order_id, tenant_id, item_type, plan_id, addon_id, coupon_id, item_code, item_name,
+               account_quantity, quantity, months, currency, unit_price, discount_amount, line_amount, sort_order
+             )
+             VALUES (?, ?, 'addon', NULL, ?, NULL, ?, ?, NULL, 1, 1, 'USD', 0, 0, 0, ?)`,
+            [batchOrderId, reservedTenantId, Number(addon.id), addon.addon_code, addon.name, addonSort],
+          );
+          addonSort += 1;
+        }
+      }
+
       await connection.query(
         `UPDATE sip_users
          SET tenant_id = ?,

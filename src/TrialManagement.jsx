@@ -74,6 +74,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [pickerOpen, setPickerOpen] = useState(false);
   const [stockWebTotal, setStockWebTotal] = useState(0);
   const [addCount, setAddCount] = useState('1');
+  const [addonCatalog, setAddonCatalog] = useState([]);
+  const [selectedAddonCodes, setSelectedAddonCodes] = useState([]);
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -183,6 +185,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setFormMessage({ type: '', text: '' });
   }
 
+  async function loadAddonCatalog() {
+    try {
+      const data = await apiClient.get('/billing/addon-services');
+      setAddonCatalog(Array.isArray(data.addons) ? data.addons : []);
+    } catch {
+      setAddonCatalog([]);
+    }
+  }
+
   async function checkAdminEmail() {
     const email = form.contactEmail.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -214,6 +225,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setEmailCheck({ status: 'idle', text: '' });
       setPickerOpen(false);
       setAddCount('1');
+      setSelectedAddonCodes([]);
+      loadAddonCatalog();
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
@@ -317,6 +330,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         notes: form.notes.trim(),
         sipUserIds: selectedStocks.map((s) => s.id),
         pairs: selectedStocks.map((s) => ({ sipUserId: s.id, webUserId: s.webUserId || null })),
+        addonCodes: selectedAddonCodes,
       };
       const res = await apiClient.post('/admin/trials', payload, { timeoutMs: 120000 });
       setAssignOpen(false);
@@ -691,6 +705,22 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           gap: 12px;
         }
         #trial-management-modal .tm-section-title { font-size: 13px; font-weight: 600; color: #93c5fd; }
+        #trial-management-modal .tm-addon-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        #trial-management-modal .tm-addon-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 14px;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          background: #0b1220;
+          color: #e5e7eb;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        #trial-management-modal .tm-addon-item.checked { border-color: #3b82f6; background: #14304a; }
+        #trial-management-modal .tm-addon-item input[type="checkbox"] { accent-color: #3b82f6; }
+        #trial-management-modal .tm-addon-item .tm-hint { color: #6b7280; font-size: 11px; }
         #trial-management-modal .tm-account-list {
           border: 1px solid #374151;
           border-radius: 8px;
@@ -1114,6 +1144,32 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label>代理商</label>
                   <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
                 </div>
+              </div>
+
+              {/* 第四部分：增值服務 */}
+              <div className="tm-section">
+                <div className="tm-section-title">增值服務</div>
+                {addonCatalog.length === 0 ? (
+                  <span className="tm-hint">暫無可選增值服務</span>
+                ) : (
+                  <div className="tm-addon-grid">
+                    {addonCatalog.map((addon) => {
+                      const checked = selectedAddonCodes.includes(addon.addonCode);
+                      return (
+                        <label key={addon.addonCode} className={`tm-addon-item ${checked ? 'checked' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSelectedAddonCodes((prev) => (checked ? prev.filter((code) => code !== addon.addonCode) : [...prev, addon.addonCode]))}
+                          />
+                          <span className="tm-addon-name">{addon.name}</span>
+                          {addon.description && <span className="tm-hint">{addon.description}</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <span className="tm-hint">勾選項將寫入本批試用的內部批次訂單（與正式訂單明細同構，試用免費按 0 計）</span>
               </div>
             </div>
             {formMessage.text && (
