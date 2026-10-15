@@ -100,6 +100,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [accountSettingsMessage, setAccountSettingsMessage] = useState({ type: '', text: '' });
   const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
   const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
+  const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
+  const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
+  const [resetPasswordCurrent, setResetPasswordCurrent] = useState(null);
+  const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -175,6 +180,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     const timer = setTimeout(() => setAccountSettingsMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [accountSettingsMessage]);
+
+  useEffect(() => {
+    if (!resetPasswordMessage.text) return undefined;
+    const timer = setTimeout(() => setResetPasswordMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [resetPasswordMessage]);
 
   useEffect(() => {
     if (!ecardMessage.text) return undefined;
@@ -819,6 +830,65 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
+  // 重置密碼（对齐租户端帳號管理「重設密碼」）：复用 account-settings 接口，带既有資訊 + 新密碼
+  async function openResetPassword(trial) {
+    setOpenActionsId(null);
+    setResetPasswordTarget({ id: trial.id, username: trial.username });
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+    setResetPasswordCurrent(null);
+    setResetPasswordMessage({ type: '', text: '' });
+    try {
+      const data = await apiClient.get(`/admin/trials/${trial.id}/account-settings`);
+      const a = data?.account || {};
+      setResetPasswordCurrent({ displayName: a.displayName || '', email: a.email || '', phone: a.phone || '' });
+    } catch {
+      setResetPasswordCurrent(null);
+    }
+  }
+
+  async function submitResetPassword(e) {
+    e.preventDefault();
+    const { password, confirmPassword } = resetPasswordForm;
+    if (!password) {
+      setResetPasswordMessage({ type: 'error', text: '請輸入新密碼。' });
+      return;
+    }
+    if (password.length < 6) {
+      setResetPasswordMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
+      return;
+    }
+    if (password !== confirmPassword) {
+      setResetPasswordMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
+      return;
+    }
+    if (!resetPasswordCurrent) {
+      setResetPasswordMessage({ type: 'error', text: '帳號資訊讀取失敗，請關閉後重試。' });
+      return;
+    }
+    setIsResettingPassword(true);
+    setResetPasswordMessage({ type: '', text: '' });
+    try {
+      await apiClient.put(`/admin/trials/${resetPasswordTarget.id}/account-settings`, {
+        displayName: resetPasswordCurrent.displayName,
+        email: resetPasswordCurrent.email,
+        phone: resetPasswordCurrent.phone,
+        password,
+        confirmPassword,
+      });
+      setResetPasswordMessage({ type: 'success', text: '密碼已重設。' });
+      setTimeout(() => {
+        setResetPasswordTarget(null);
+        setResetPasswordForm({ password: '', confirmPassword: '' });
+        setResetPasswordCurrent(null);
+        setResetPasswordMessage({ type: '', text: '' });
+      }, 1200);
+    } catch (error) {
+      setResetPasswordMessage({ type: 'error', text: error.message || '密碼重設失敗。' });
+    } finally {
+      setIsResettingPassword(false);
+    }
+  }
+
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
 
@@ -1426,6 +1496,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                             )}
                             {canAccountSettings && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); onOpenTrialEcard?.(t); }}>電子名片</button>
+                            )}
+                            {canAccountSettings && (
+                              <button type="button" className="tm-actions-item" onClick={() => openResetPassword(t)}>重置密碼</button>
                             )}
                             {canPause && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
@@ -2099,6 +2172,52 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                 <button className="tm-btn primary" type="submit" disabled={aiEntitlementSaving || aiEntitlementLoading}>
                   {aiEntitlementSaving ? '儲存中…' : '確認'}
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {resetPasswordTarget && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '440px' }}>
+            <div className="tm-modal-head">
+              <h3>重設密碼 — {resetPasswordTarget.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setResetPasswordTarget(null)} disabled={isResettingPassword}>關閉</button>
+            </div>
+            <form onSubmit={submitResetPassword}>
+              <div className="tm-modal-body">
+                <div className="tm-field">
+                  <label>密碼</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={resetPasswordForm.password}
+                    onChange={(e) => setResetPasswordForm((f) => ({ ...f, password: e.target.value }))}
+                    placeholder="至少 6 個字元"
+                  />
+                </div>
+                <div className="tm-field">
+                  <label>密碼確認</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={resetPasswordForm.confirmPassword}
+                    onChange={(e) => setResetPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+                    placeholder="再次輸入新密碼"
+                  />
+                </div>
+                <span className="tm-hint">重設後該帳號在通訊核心的登入密碼立即生效（設備需用新密碼重新註冊）。</span>
+                {resetPasswordMessage.text && (
+                  <p style={{ margin: 0, fontSize: '13px', color: resetPasswordMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetPasswordMessage.text}</p>
+                )}
+              </div>
+              <div className="tm-modal-foot">
+                <button className="tm-btn" type="button" disabled={isResettingPassword} onClick={() => setResetPasswordTarget(null)}>取消</button>
+                <button className="tm-btn primary" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
               </div>
             </form>
           </div>
