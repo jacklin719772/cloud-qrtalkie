@@ -1085,6 +1085,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <th>聯繫人</th>
                   <th>試用週期</th>
                   <th>狀態</th>
+                  <th>AI 助手</th>
                   <th style={{ textAlign: 'right' }}>操作</th>
                 </tr>
               </thead>
@@ -1109,6 +1110,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       <td>
                         <span className="tm-badge" style={{ color: meta.color, background: meta.bg }}>{meta.label}</span>
                       </td>
+                      <td>{t.aiEnabled ? '已開通' : '—'}</td>
                       <td style={{ textAlign: 'right' }}>
                         {actionable ? (
                           <div style={{ display: 'inline-flex', gap: '8px' }}>
