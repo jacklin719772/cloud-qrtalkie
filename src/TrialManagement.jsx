@@ -34,6 +34,7 @@ function emptyForm() {
     contactPhone: '',
     startedAt: todayStr(),
     expiresAt: addMonthsMinusOneDay(todayStr(), 1),
+    aiEnabled: false,
     notes: '',
   };
 }
@@ -529,6 +530,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         company,
         startedAt: form.startedAt,
         expiresAt: form.expiresAt,
+        aiEnabled: form.aiEnabled,
         notes: form.notes.trim(),
         sipUserIds: selectedStocks.map((s) => s.id),
         pairs: selectedStocks.map((s) => ({ sipUserId: s.id, webUserId: s.webUserId || null })),
@@ -1367,9 +1369,22 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   </div>
                 )}
 
-                <div className="tm-field">
-                  <label>代理商</label>
-                  <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+                <div className="tm-grid2">
+                  <div className="tm-field">
+                    <label>開通 AI 助手</label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#e5e7eb', fontSize: '13px', paddingTop: '7px' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.aiEnabled}
+                        onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
+                      />
+                      添加時同步開通（到試用結束為止）
+                    </label>
+                  </div>
+                  <div className="tm-field">
+                    <label>代理商</label>
+                    <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+                  </div>
                 </div>
               </div>
 
