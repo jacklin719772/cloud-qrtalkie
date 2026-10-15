@@ -1501,10 +1501,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                               <button type="button" className="tm-actions-item" onClick={() => openResetPassword(t)}>重置密碼</button>
                             )}
                             {canPause && (
-                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停試用</button>
                             )}
                             {canResume && (
-                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); resumeTrial(t); }}>恢復</button>
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); resumeTrial(t); }}>恢復試用</button>
                             )}
                             {isPlatform && (
                               <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>

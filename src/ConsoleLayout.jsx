@@ -1341,8 +1341,8 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>添加試用</strong> — 選擇歸屬租戶（可現場新建租戶）與試用週期（預設 1 個月）；先填「新增試用帳號數量」，再從庫存勾選 SIP 帳號（顯示配對的 Web 帳號），可指定代理商（名錄中啟用項）與增值服務（預設全選）。保存成功後續接「Ecard 設置」為該批帳號生成電子名片。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>AI助手（⋮ 更多操作）</strong> — 設定該帳號的 AI 使用授權：啟用/停用、每日限額、每月限額、過期時間；亦可「取消授權」徹底移除。未設定時預設沿用到試用結束。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>暫停</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>恢復</strong> — 重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>立即回庫</strong> — 立即釋放 SIP 與配對 Web 帳號回庫存（恢復初始狀態），停用 AM 帳號、刪除 AI 授權、停用名片、清除推送與登入會話；不可撤銷。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按狀態、歸屬租戶、代理商（全部/無代理商/具體）篩選；按聯繫人/公司/郵箱/帳號搜尋。</li>
                 </ul>
@@ -1353,7 +1353,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#4ade80" }}>試用中</strong> — 正常使用中。</li>
                   <li><strong style={{ color: "#fbbf24" }}>即將到期</strong> — 距到期 ≤ 7 天，系統自動向登記聯繫人發送提醒郵件。</li>
                   <li><strong style={{ color: "#fb923c" }}>寬限期</strong> — 已到期但尚未回收（到期後 7 天內），帳號仍可操作。</li>
-                  <li><strong style={{ color: "#c4b5fd" }}>已暫停</strong> — 管理員手動暫停，可由「恢復」重新啟用。</li>
+                  <li><strong style={{ color: "#c4b5fd" }}>已暫停</strong> — 管理員手動暫停，可由「恢復試用」重新啟用。</li>
                   <li><strong style={{ color: "#60a5fa" }}>已轉正</strong> — 試用轉換為正式訂單。</li>
                   <li><strong style={{ color: "#9ca3af" }}>已回收</strong> — 帳號已釋放回庫存。</li>
                   <li><strong style={{ color: "#fbbf24" }}>&#9888; 自動回收</strong> — 到期逾 7 天後，系統排程（每 30 分鐘巡檢）自動回收帳號，無需人工操作。</li>
