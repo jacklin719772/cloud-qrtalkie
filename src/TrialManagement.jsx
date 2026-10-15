@@ -657,13 +657,14 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           border-collapse: collapse;
           font-size: 12px;
         }
-        #trial-management thead { background: #1a2332; }
+        #trial-management thead, #trial-management thead tr { background: #1a2332; }
         #trial-management th {
           height: 48px;
           padding: 0 18px;
           text-align: left;
           color: #e5e7eb;
           font-weight: 600;
+          background: #1a2332;
           border-bottom: 1px solid #1f2937;
           white-space: nowrap;
         }
