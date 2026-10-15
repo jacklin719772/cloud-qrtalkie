@@ -7711,8 +7711,25 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       });
     }
 
-    // createAccount 不会自动激活，必须显式调用 activateAccount
+    // createAccount 不會自動激活，必須顯式調用 activateAccount（驗證帳號可用）
     await flexisipActivateAccount(flexisipAccountId);
+    // 新號未分配前不可註冊：建號後立即停用（訂單審核/試用分配通過時再激活）
+    try {
+      await flexisipDeactivateAccount(flexisipAccountId);
+    } catch (deactivateErr) {
+      console.error("Flexisip deactivate failed for id:", flexisipAccountId, deactivateErr?.message || deactivateErr);
+      try { await flexisipDeleteAccount(flexisipAccountId); } catch (cleanupErr) {
+        console.error("FLEXISIP DEACTIVATE FAILED - cleanup also failed. id:", flexisipAccountId, "sipUri:", sipUri, "cleanupErr:", cleanupErr?.message);
+        return response.status(502).json({
+          message: "遠端帳號建立後停用失敗，且清理失敗，請聯絡管理員。",
+          code: "FLEXISIP_DEACTIVATE_FAILED_CLEANUP_FAILED",
+        });
+      }
+      return response.status(502).json({
+        message: "遠端帳號建立後停用失敗，已回滾。",
+        code: "FLEXISIP_DEACTIVATE_FAILED_ROLLED_BACK",
+      });
+    }
   } catch (createErr) {
     console.error("Flexisip create/activate failed:", createErr?.message || createErr);
 
@@ -8025,6 +8042,14 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       // Flexisip activate
       await withAmRateLimitRetry(() => flexisipActivateAccount(flexisipAccountId), realUsername);
       console.log(`[batch] ${realUsername}: activate 成功`);
+      // 新號未分配前不可註冊：建號後立即停用（停用失敗由外層 catch 的補償刪除兜底）
+      try {
+        await withAmRateLimitRetry(() => flexisipDeactivateAccount(flexisipAccountId), realUsername);
+        console.log(`[batch] ${realUsername}: 停用成功（未分配態）`);
+      } catch (deactivateErr) {
+        if (!deactivateErr.code) deactivateErr.code = "FLEXISIP_DEACTIVATE_FAILED";
+        throw deactivateErr;
+      }
 
       // 本地保存
       conn = await pool.getConnection();
@@ -8097,7 +8122,8 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
       const diffs = [];
       if ((local.display_name || '') !== (remote.display_name || '')) diffs.push({ field: 'display_name', label: '顯示名稱', localValue: local.display_name, remoteValue: remote.display_name });
       const rActive = remote.activated === true || remote.activated === 1;
-      if (local.status !== 'active' || !rActive) diffs.push({ field: 'status', label: '啟用狀態', localValue: local.status, remoteValue: rActive ? 'active' : 'inactive' });
+      // 建號後遠端應為停用態（未分配不可註冊；本地在庫仍為 active）——一致即 rActive === false
+      if (local.status !== 'active' || rActive) diffs.push({ field: 'status', label: '啟用狀態', localValue: local.status, remoteValue: rActive ? 'active' : 'inactive' });
 
       const checkedObj = { checked: true, consistent: diffs.length === 0, differences: bigIntSafe(diffs) };
       results.find(r => r.username === item.username).check = checkedObj;
