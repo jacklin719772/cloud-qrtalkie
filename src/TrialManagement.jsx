@@ -76,6 +76,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [addCount, setAddCount] = useState('1');
   const [addonCatalog, setAddonCatalog] = useState([]);
   const [selectedAddonCodes, setSelectedAddonCodes] = useState([]);
+  const [ecardStep, setEcardStep] = useState({ open: false, accounts: [], results: null, submitting: false });
+  const [ecardStylesList, setEcardStylesList] = useState([]);
+  const [ecardBackgrounds, setEcardBackgrounds] = useState([]);
+  const [ecardForm, setEcardForm] = useState({ templateId: '', backgroundId: '', company: '', position: '', phone: '', enableVideoCall: true, enableTextChat: true });
+  const [ecardSelectedIds, setEcardSelectedIds] = useState([]);
+  const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
 
   async function loadTrials(overrides = {}) {
     const q = overrides.q !== undefined ? overrides.q : filterQ;
@@ -134,6 +140,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     return () => clearTimeout(timer);
   }, [formMessage]);
 
+  useEffect(() => {
+    if (!ecardMessage.text) return undefined;
+    const timer = setTimeout(() => setEcardMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [ecardMessage]);
+
   async function loadStock(keyword) {
     setStockLoading(true);
     try {
@@ -183,6 +195,85 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     setNewTenantMode(false);
     setForm((f) => ({ ...f, contactName: '', contactEmail: '', contactPhone: '' }));
     setFormMessage({ type: '', text: '' });
+  }
+
+  async function loadEcardStyles() {
+    try {
+      const data = await apiClient.get('/admin/ecard-styles');
+      const list = (Array.isArray(data.styles) ? data.styles : []).filter((style) => style.status === 'active');
+      setEcardStylesList(list);
+      return list;
+    } catch {
+      setEcardStylesList([]);
+      return [];
+    }
+  }
+
+  async function loadEcardBackgrounds(styleId) {
+    if (!styleId) {
+      setEcardBackgrounds([]);
+      return [];
+    }
+    try {
+      const data = await apiClient.get(`/admin/ecard-styles/${styleId}`);
+      const list = data?.style?.backgrounds || [];
+      setEcardBackgrounds(Array.isArray(list) ? list : []);
+      return Array.isArray(list) ? list : [];
+    } catch {
+      setEcardBackgrounds([]);
+      return [];
+    }
+  }
+
+  async function openEcardStep(accounts) {
+    setEcardStep({ open: true, accounts, results: null, submitting: false });
+    setEcardSelectedIds(accounts.map((a) => a.trialId));
+    setEcardForm({ templateId: '', backgroundId: '', company: '', position: '', phone: '', enableVideoCall: true, enableTextChat: true });
+    setEcardMessage({ type: '', text: '' });
+    setEcardBackgrounds([]);
+    const styles = await loadEcardStyles();
+    if (styles.length > 0) {
+      const first = styles[0];
+      setEcardForm((f) => ({ ...f, templateId: String(first.id) }));
+      const backgrounds = await loadEcardBackgrounds(first.id);
+      setEcardForm((f) => ({ ...f, backgroundId: backgrounds[0] ? String(backgrounds[0].id) : '' }));
+    }
+  }
+
+  function closeEcardStep() {
+    setEcardStep({ open: false, accounts: [], results: null, submitting: false });
+    setEcardMessage({ type: '', text: '' });
+  }
+
+  async function submitEcards() {
+    if (ecardSelectedIds.length === 0) {
+      setEcardMessage({ type: 'error', text: '請至少勾選一個帳號。' });
+      return;
+    }
+    if (!ecardForm.templateId) {
+      setEcardMessage({ type: 'error', text: '請選擇名片樣式。' });
+      return;
+    }
+    setEcardStep((prev) => ({ ...prev, submitting: true }));
+    setEcardMessage({ type: '', text: '' });
+    try {
+      const res = await apiClient.post('/admin/trials/ecards', {
+        trialIds: ecardSelectedIds,
+        templateId: Number(ecardForm.templateId),
+        backgroundId: ecardForm.backgroundId ? Number(ecardForm.backgroundId) : null,
+        company: ecardForm.company.trim(),
+        position: ecardForm.position.trim(),
+        phone: ecardForm.phone.trim(),
+        enableVideoCall: ecardForm.enableVideoCall,
+        enableTextChat: ecardForm.enableTextChat,
+      }, { timeoutMs: 120000 });
+      const results = res?.data?.results || [];
+      setEcardStep((prev) => ({ ...prev, results, submitting: false }));
+      loadTrials();
+    } catch (error) {
+      setEcardStep((prev) => ({ ...prev, submitting: false }));
+      setEcardMessage({ type: 'error', text: error.message || '生成電子名片失敗。' });
+    }
   }
 
   async function loadAddonCatalog() {
@@ -337,6 +428,19 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setMessage({ type: 'success', text: res.message || '試用帳號已添加。' });
       setPage(1);
       loadTrials({ page: 1 });
+      // 保存成功後續接「Ecard 設置」第二步
+      const createdTrials = Array.isArray(res?.data?.trials) ? res.data.trials : [];
+      const ecardAccounts = createdTrials.map((t) => {
+        const stockRow = selectedStocks.find((s) => s.id === Number(t.sipUserId));
+        return {
+          trialId: Number(t.id),
+          sipUserId: Number(t.sipUserId),
+          username: t.username || stockRow?.username || '',
+          webUsername: stockRow?.webUsername || '',
+          displayName: stockRow?.displayName || '',
+        };
+      });
+      if (ecardAccounts.length > 0) openEcardStep(ecardAccounts);
     } catch (error) {
       setFormMessage({
         type: 'error',
@@ -1180,6 +1284,175 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <button className="tm-btn primary" type="button" onClick={submitAssign} disabled={assigning}>
                 <Plus size={13} /> {assigning ? '添加中…' : '確認添加'}
               </button>
+            </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {ecardStep.open && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal" onClick={() => { if (!ecardStep.submitting) closeEcardStep(); }}>
+          <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="tm-modal-head">
+              <h3>Ecard 設置 — 本批 {ecardStep.accounts.length} 個帳號</h3>
+              <button className="tm-btn" type="button" onClick={closeEcardStep} disabled={ecardStep.submitting}>關閉</button>
+            </div>
+            <div className="tm-modal-body">
+              {!ecardStep.results ? (
+                <>
+                  <div className="tm-section">
+                    <div className="tm-section-title">名片設置（統一套用於勾選帳號）</div>
+                    <div className="tm-grid3">
+                      <div className="tm-field">
+                        <label>名片樣式 *</label>
+                        <select
+                          value={ecardForm.templateId}
+                          onChange={async (e) => {
+                            const id = e.target.value;
+                            setEcardForm((f) => ({ ...f, templateId: id, backgroundId: '' }));
+                            const backgrounds = await loadEcardBackgrounds(Number(id));
+                            setEcardForm((f) => ({ ...f, backgroundId: backgrounds[0] ? String(backgrounds[0].id) : '' }));
+                          }}
+                        >
+                          {ecardStylesList.length === 0 && <option value="">（無可用樣式）</option>}
+                          {ecardStylesList.map((style) => (
+                            <option key={style.id} value={style.id}>{style.styleName}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="tm-field">
+                        <label>背景</label>
+                        <select value={ecardForm.backgroundId} onChange={(e) => setEcardForm((f) => ({ ...f, backgroundId: e.target.value }))}>
+                          <option value="">（樣式預設）</option>
+                          {ecardBackgrounds.map((bg) => (
+                            <option key={bg.id} value={bg.id}>{bg.backgroundName || `背景 ${bg.id}`}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="tm-field">
+                        <label>公司</label>
+                        <input value={ecardForm.company} onChange={(e) => setEcardForm((f) => ({ ...f, company: e.target.value }))} />
+                      </div>
+                      <div className="tm-field">
+                        <label>職位</label>
+                        <input value={ecardForm.position} onChange={(e) => setEcardForm((f) => ({ ...f, position: e.target.value }))} />
+                      </div>
+                      <div className="tm-field">
+                        <label>電話</label>
+                        <input value={ecardForm.phone} onChange={(e) => setEcardForm((f) => ({ ...f, phone: e.target.value }))} />
+                      </div>
+                      <div className="tm-field">
+                        <label>功能開關</label>
+                        <span style={{ display: 'inline-flex', gap: '14px', alignItems: 'center', color: '#e5e7eb', fontSize: '13px', paddingTop: '6px' }}>
+                          <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                            <input type="checkbox" checked={ecardForm.enableVideoCall} onChange={(e) => setEcardForm((f) => ({ ...f, enableVideoCall: e.target.checked }))} />
+                            視頻通話
+                          </label>
+                          <label style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                            <input type="checkbox" checked={ecardForm.enableTextChat} onChange={(e) => setEcardForm((f) => ({ ...f, enableTextChat: e.target.checked }))} />
+                            文字聊天
+                          </label>
+                        </span>
+                      </div>
+                    </div>
+                    <span className="tm-hint">姓名按各帳號顯示名自動帶入；頭像/Logo/精修可轉正後在租戶端補充。</span>
+                  </div>
+
+                  <div className="tm-section">
+                    <div className="tm-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      帳號列表
+                      <span className="tm-hint">已勾選 {ecardSelectedIds.length} / {ecardStep.accounts.length}</span>
+                    </div>
+                    <div className="tm-stock-list" style={{ maxHeight: '220px' }}>
+                      <table className="tm-stock-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '42px' }}></th>
+                            <th>SIP 帳號</th>
+                            <th>Web 帳號</th>
+                            <th>顯示名</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ecardStep.accounts.map((a) => {
+                            const checked = ecardSelectedIds.includes(a.trialId);
+                            return (
+                              <tr
+                                key={a.trialId}
+                                className={checked ? 'selected' : ''}
+                                onClick={() => setEcardSelectedIds((prev) => (checked ? prev.filter((id) => id !== a.trialId) : [...prev, a.trialId]))}
+                              >
+                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={checked} readOnly /></td>
+                                <td className="mono">{a.username}</td>
+                                <td className="mono">{a.webUsername || '—'}</td>
+                                <td>{a.displayName || '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="tm-section">
+                  <div className="tm-section-title">生成結果（{ecardStep.results.length} 張）</div>
+                  <div className="tm-stock-list" style={{ maxHeight: '320px' }}>
+                    <table className="tm-stock-table">
+                      <thead>
+                        <tr>
+                          <th>SIP 帳號</th>
+                          <th>名片連結</th>
+                          <th style={{ width: '90px' }}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ecardStep.results.map((r) => (
+                          <tr key={r.trialId}>
+                            <td className="mono">{r.username}</td>
+                            <td><a href={r.url} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{r.url}</a></td>
+                            <td>
+                              <button
+                                className="tm-btn"
+                                type="button"
+                                onClick={() => {
+                                  if (navigator.clipboard && navigator.clipboard.writeText) {
+                                    navigator.clipboard.writeText(r.url).then(
+                                      () => setEcardMessage({ type: 'success', text: '連結已複製。' }),
+                                      () => setEcardMessage({ type: 'error', text: '複製失敗，請手動複製。' }),
+                                    );
+                                  } else {
+                                    setEcardMessage({ type: 'error', text: '瀏覽器不支援自動複製，請手動複製。' });
+                                  }
+                                }}
+                              >
+                                複製
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+            {ecardMessage.text && (
+              <div className={`tm-toast ${ecardMessage.type || 'error'}`}>{ecardMessage.text}</div>
+            )}
+            <div className="tm-modal-foot">
+              {!ecardStep.results ? (
+                <>
+                  <button className="tm-btn" type="button" onClick={closeEcardStep} disabled={ecardStep.submitting}>跳過</button>
+                  <button className="tm-btn primary" type="button" onClick={submitEcards} disabled={ecardStep.submitting}>
+                    {ecardStep.submitting ? '生成中…' : '生成名片'}
+                  </button>
+                </>
+              ) : (
+                <button className="tm-btn primary" type="button" onClick={closeEcardStep}>完成</button>
+              )}
             </div>
           </div>
         </div>

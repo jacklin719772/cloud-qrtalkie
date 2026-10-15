@@ -585,6 +585,156 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     }
   });
 
+  // 為本批試用帳號批量生成/更新電子名片（添加成功後的第二步）
+  app.post("/api/admin/trials/ecards", requireAdmin, async (request, response) => {
+    const isPlatform = request.admin.accountType === "platform";
+    const ownTenantId = Number(request.admin.tenantId) || null;
+    if (!isPlatform && !ownTenantId) {
+      return response.status(403).json({ message: "沒有可用的租戶身分。" });
+    }
+    const trialIds = normalizeIds(request.body?.trialIds).slice(0, MAX_ASSIGN_COUNT);
+    if (trialIds.length === 0) {
+      return response.status(400).json({ message: "請選擇要生成名片的帳號。" });
+    }
+    const styleId = Number(request.body?.templateId) || 0;
+    if (!styleId) {
+      return response.status(400).json({ message: "請選擇名片樣式。" });
+    }
+    let backgroundId = Number(request.body?.backgroundId) || 0;
+    const company = clean(request.body?.company, 120);
+    const position = clean(request.body?.position, 120);
+    const phone = clean(request.body?.phone, 40);
+    const enableVideoCall = request.body?.enableVideoCall !== false;
+    const enableTextChat = request.body?.enableTextChat !== false;
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const [styleRow] = await connection.query(
+        "SELECT id FROM ecard_styles WHERE id = ? AND status = 'active' LIMIT 1",
+        [styleId],
+      );
+      if (!styleRow) {
+        await connection.rollback();
+        return response.status(400).json({ message: "名片樣式不存在或已停用。" });
+      }
+      if (backgroundId) {
+        const [bgRow] = await connection.query(
+          "SELECT id FROM ecard_style_backgrounds WHERE id = ? AND style_id = ? LIMIT 1",
+          [backgroundId, styleId],
+        );
+        if (!bgRow) {
+          await connection.rollback();
+          return response.status(400).json({ message: "背景不屬於所選樣式。" });
+        }
+      } else {
+        const [firstBg] = await connection.query(
+          "SELECT id FROM ecard_style_backgrounds WHERE style_id = ? ORDER BY sort_order ASC, id ASC LIMIT 1",
+          [styleId],
+        );
+        backgroundId = firstBg ? Number(firstBg.id) : 0;
+      }
+
+      const reservedTenantId = await getReservedTrialTenantId(connection);
+      const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+      const results = [];
+      for (const trialId of trialIds) {
+        const [trial] = await connection.query(
+          `SELECT ta.id, ta.sip_user_id, ta.owner_tenant_id, ta.status, u.username, u.display_name
+           FROM trial_assignments ta
+           JOIN sip_users u ON u.id = ta.sip_user_id
+           WHERE ta.id = ?
+           FOR UPDATE`,
+          [trialId],
+        );
+        if (!trial || trial.status !== "active") {
+          await connection.rollback();
+          return response.status(409).json({ message: "部分試用記錄不存在或已結束，請重新整理後重試。" });
+        }
+        if (!isPlatform && Number(trial.owner_tenant_id) !== ownTenantId) {
+          await connection.rollback();
+          return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+        }
+        const sipUserId = Number(trial.sip_user_id);
+        const [existing] = await connection.query(
+          "SELECT id, access_slug FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
+          [sipUserId],
+        );
+        const accessSlug = existing?.access_slug || `ec-${sipUserId}-${Math.random().toString(36).slice(2, 8)}`;
+        const cardData = {
+          name: String(trial.display_name || trial.username || "").trim() || String(trial.username || ""),
+          titleZh: position,
+          titleEn: "",
+          phone,
+          email: "",
+          zipCode: "",
+          address: "",
+          qrDesc: "掃碼二維碼 · 交換名片",
+          companyZh: company,
+          companyEn: company,
+          sloganZh: "",
+          sloganEn: "",
+        };
+        const ecardDataJson = {
+          cardData,
+          selectedTemplateId: styleId,
+          selectedBackgroundId: backgroundId,
+          showQrCode: true,
+          callPublicSlug: accessSlug,
+          avatarDataUrl: "",
+          logoDataUrl: "",
+        };
+        await connection.query(
+          `INSERT INTO tenant_ecards (
+             tenant_id, sip_user_id, access_slug, status, enable_video_call, enable_text_chat,
+             created_by_admin_id, ecard_data_json, created_at, updated_at
+           )
+           VALUES (?, ?, ?, 'active', ?, ?, ?, ?, NOW(), NOW())
+           ON DUPLICATE KEY UPDATE
+             tenant_id = VALUES(tenant_id),
+             access_slug = VALUES(access_slug),
+             status = 'active',
+             enable_video_call = VALUES(enable_video_call),
+             enable_text_chat = VALUES(enable_text_chat),
+             ecard_data_json = VALUES(ecard_data_json),
+             updated_at = NOW()`,
+          [
+            reservedTenantId || 0,
+            sipUserId,
+            accessSlug,
+            enableVideoCall ? 1 : 0,
+            enableTextChat ? 1 : 0,
+            request.admin.id,
+            JSON.stringify(ecardDataJson),
+          ],
+        );
+        results.push({
+          trialId,
+          sipUserId,
+          username: trial.username || "",
+          displayName: trial.display_name || "",
+          slug: accessSlug,
+          url: `${baseUrl}/u/${accessSlug}`,
+        });
+      }
+
+      await connection.commit();
+      console.log(JSON.stringify({ src: "trial-ecard", ts: new Date().toISOString(), adminId: request.admin.id, count: results.length }));
+      return response.json({
+        message: `已生成 ${results.length} 張電子名片。`,
+        data: { results },
+      });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to generate trial ecards:", error);
+      return response.status(500).json({ message: "生成電子名片失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
   // 提前結束（進寬限，功能即停）/ 立即回庫（僅平台管理員）
   app.post("/api/admin/trials/:id/end", requireAdmin, async (request, response) => {
     const trialId = Number(request.params.id);
