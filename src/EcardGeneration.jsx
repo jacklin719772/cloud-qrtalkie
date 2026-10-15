@@ -540,22 +540,26 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         : accountInfo
       );
 
+      // 「已執行存儲並生成圖片」的判據：有縮略圖（未生成過則信息字段回退賬號設置默認值）
+      const generated = Boolean(ecardMeta?.thumbnailUrl);
+      const useSavedInfo = Boolean(existingEcard) && generated;
+      const pickSaved = (saved, fallback) => (useSavedInfo ? (saved || fallback) : fallback);
+
       if (existingEcard) {
-        // 已保存狀態優先；空字段用帳號設置默認值補齊（用戶可改）
         const savedCard = existingEcard.cardData || {};
         setCardData({
-          name: savedCard.name || defaults.name,
-          titleZh: savedCard.titleZh || defaults.titleZh,
-          titleEn: savedCard.titleEn || '',
-          phone: savedCard.phone || defaults.phone,
-          email: savedCard.email || defaults.email,
-          zipCode: savedCard.zipCode || '',
-          address: savedCard.address || '',
-          qrDesc: savedCard.qrDesc || '掃碼二維碼 · 交換名片',
-          companyZh: savedCard.companyZh || defaults.companyZh,
-          companyEn: savedCard.companyEn || '',
-          sloganZh: savedCard.sloganZh || '',
-          sloganEn: savedCard.sloganEn || '',
+          name: pickSaved(savedCard.name, defaults.name),
+          titleZh: pickSaved(savedCard.titleZh, defaults.titleZh),
+          titleEn: pickSaved(savedCard.titleEn, ''),
+          phone: pickSaved(savedCard.phone, defaults.phone),
+          email: pickSaved(savedCard.email, defaults.email),
+          zipCode: pickSaved(savedCard.zipCode, ''),
+          address: pickSaved(savedCard.address, ''),
+          qrDesc: pickSaved(savedCard.qrDesc, '掃碼二維碼 · 交換名片'),
+          companyZh: pickSaved(savedCard.companyZh, defaults.companyZh),
+          companyEn: pickSaved(savedCard.companyEn, ''),
+          sloganZh: pickSaved(savedCard.sloganZh, ''),
+          sloganEn: pickSaved(savedCard.sloganEn, ''),
         });
         if (existingEcard.selectedTemplateId) setSelectedTemplateId(existingEcard.selectedTemplateId);
         if (existingEcard.selectedBackgroundId) setSelectedBackgroundId(existingEcard.selectedBackgroundId);
@@ -563,7 +567,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
         if (existingEcard.localDisplayConfig) setLocalDisplayConfig(existingEcard.localDisplayConfig);
         if (typeof existingEcard.showQrCode === 'boolean') setShowQrCode(existingEcard.showQrCode);
         if (existingEcard.callPublicSlug) setCallPublicSlug(existingEcard.callPublicSlug);
-        setAvatarDataUrl(existingEcard.avatarDataUrl || defaults.avatarUrl || '');
+        // 未生成過：頭像優先取賬號設置；生成過：沿用生成時頭像
+        setAvatarDataUrl(useSavedInfo
+          ? (existingEcard.avatarDataUrl || defaults.avatarUrl || '')
+          : (defaults.avatarUrl || existingEcard.avatarDataUrl || ''));
         if (existingEcard.logoDataUrl) setLogoDataUrl(existingEcard.logoDataUrl);
       } else {
         // 無名片：全部默認值取帳號設置
