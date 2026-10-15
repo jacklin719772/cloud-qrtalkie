@@ -2134,29 +2134,28 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>頭像</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {accountSettingsAvatar.preview ? (
-                        <img src={accountSettingsAvatar.preview} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
-                      ) : (
-                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</div>
-                      )}
-                      <label style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px' }}>
-                        選擇圖片
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
+                    {accountSettingsAvatar.preview ? (
+                      <img src={accountSettingsAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
+                        {accountSettingsAvatar.preview ? '修改圖像' : '添加圖像'}
                         <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAccountSettingsAvatarPick} />
                       </label>
                       {accountSettingsAvatar.preview && (
                         <button
                           type="button"
                           onClick={() => setAccountSettingsAvatar({ preview: '', dataUrl: '', removed: true })}
-                          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #7f1d1d', background: 'transparent', color: '#fca5a5', fontSize: '13px', cursor: 'pointer' }}
+                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
                         >
-                          移除
+                          刪除圖像
                         </button>
                       )}
                     </div>
-                  </label>
+                  </div>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
                     <input
@@ -2164,6 +2163,17 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       autoComplete="off"
                       value={accountSettingsForm.displayName}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, displayName: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.phone}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
+                      placeholder="國際格式，如 +886912345678"
                       style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                     />
                   </label>
@@ -2179,18 +2189,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      value={accountSettingsForm.phone}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
-                      placeholder="國際格式，如 +886912345678"
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>工作單位</span>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
                     <input
                       className="acct-settings-input"
                       autoComplete="off"
@@ -2200,7 +2199,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職務</span>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
                     <input
                       className="acct-settings-input"
                       autoComplete="off"
