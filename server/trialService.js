@@ -2,6 +2,11 @@
 // 保留租户由迁移 087 幂等创建；此处缓存 id 供各查询排除与删除守卫使用
 import { pool } from "./db.js";
 import { sendTrialNotificationEmail } from "./email.js";
+import {
+  activateAccount as flexisipActivateAccount,
+  deactivateAccount as flexisipDeactivateAccount,
+  getAccount as flexisipGetAccount,
+} from "./flexisipAccountManagerClient.js";
 
 let cachedReservedTenantId = null;
 
@@ -17,6 +22,39 @@ export async function getReservedTrialTenantId(connection = null) {
 export async function isReservedTrialTenant(tenantId) {
   const reservedId = await getReservedTrialTenantId();
   return Boolean(reservedId) && Number(tenantId) === reservedId;
+}
+
+// 切換帳號在 Flexisip AM 的啟用狀態：先調用、後回讀確認（不信調用結果）；
+// 帳號無 flexisip_account_id 時跳過（skipped）。失敗拋錯（FLEXISIP_STATE_CONFIRM_FAILED），
+// 由呼叫方回滾本地並提示。
+async function setFlexisipActivated(sipUserId, activated, connection = null) {
+  const runner = connection || pool;
+  const [account] = await runner.query(
+    "SELECT flexisip_account_id FROM sip_users WHERE id = ? LIMIT 1",
+    [sipUserId],
+  );
+  const flexisipAccountId = account?.flexisip_account_id ? String(account.flexisip_account_id) : "";
+  if (!flexisipAccountId) return { skipped: true, activated };
+
+  if (activated) {
+    await flexisipActivateAccount(flexisipAccountId);
+  } else {
+    await flexisipDeactivateAccount(flexisipAccountId);
+  }
+  const remote = await flexisipGetAccount(flexisipAccountId);
+  const nowActivated = remote?.activated === true || remote?.activated === 1;
+  if (nowActivated !== activated) {
+    const error = new Error(activated ? "AM 帳號啟用確認失敗" : "AM 帳號停用確認失敗");
+    error.code = "FLEXISIP_STATE_CONFIRM_FAILED";
+    throw error;
+  }
+  return { skipped: false, activated };
+}
+
+// 試用分配時使用：確保帳號在 AM 處於啟用態（覆蓋「本地 active 但 AM 被停用」的殘留態）。
+// 在本地寫入前調用；失敗由呼叫方中止分配。
+export async function activateTrialAccountInFlexisip(sipUserId, connection = null) {
+  return setFlexisipActivated(sipUserId, true, connection);
 }
 
 // 提前到期：功能即停（权益置 expired / AI 关闭），帐号留在宽限期（挂靠保留，可转正）
@@ -55,13 +93,17 @@ export async function expireTrialAssignment(connection, { trialId, sipUserId, ex
 // 回收（完整清理）：帳號回初始形態 + 清 AI 權限/Key + 停用 Ecard + 清推送設備/會話
 // 手动「立即回庫」与到期自动回收共用此逻辑
 export async function reclaimTrialAssignment(connection, { trialId, sipUserId }) {
+  // ① 先停用通訊核心（AM）並回讀確認；失敗即拋錯，由呼叫方回滾本地（本地不動）+ 提示。
+  //    方向安全：即使後續本地出錯回滾，帳號也只會停在「AM 已停用」一側，重試冪等。
+  await setFlexisipActivated(sipUserId, false, connection);
+
   const reservedTenantId = await getReservedTrialTenantId(connection);
   const [account] = await connection.query(
     "SELECT username, sip_domain FROM sip_users WHERE id = ? LIMIT 1",
     [sipUserId],
   );
 
-  // ① SIP/Web 帳號恢復初始狀態（解掛靠、清到期、清激活時間）
+  // ② SIP/Web 帳號恢復初始狀態（解掛靠、清到期、清激活時間）
   await connection.query(
     "UPDATE sip_users SET tenant_id = NULL, service_expires_at = NULL, activated_at = NULL WHERE id = ?",
     [sipUserId],
@@ -82,7 +124,7 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
     [sipUserId, reservedTenantId || 0],
   );
 
-  // ② AI：刪除試用開通的行；其餘來源（歷史授予）僅禁用；該帳號 API Key 全刪
+  // ③ AI：刪除試用開通的行；其餘來源（歷史授予）僅禁用；該帳號 API Key 全刪
   await connection.query(
     "DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ? AND notes = '試用開通'",
     [sipUserId],
@@ -93,13 +135,13 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
   );
   await connection.query("DELETE FROM ai_api_keys WHERE sip_user_id = ?", [sipUserId]);
 
-  // ③ Ecard：停用（現網約定軟刪；硬刪受訪客聊天歷史 RESTRICT 保護）
+  // ④ Ecard：停用（現網約定軟刪；硬刪受訪客聊天歷史 RESTRICT 保護）
   await connection.query(
     "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ?",
     [sipUserId],
   );
 
-  // ④ 推送設備 + SIP 登入會話
+  // ⑤ 推送設備 + SIP 登入會話
   if (account?.username) {
     await connection.query(
       "DELETE FROM push_devices WHERE sip_username = ? AND sip_domain = ?",

@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "./db.js";
-import { expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment } from "./trialService.js";
+import { activateTrialAccountInFlexisip, expireTrialAssignment, getReservedTrialTenantId, reclaimTrialAssignment } from "./trialService.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
@@ -339,6 +339,35 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     let connection;
     try {
       connection = await pool.getConnection();
+
+      // 先確保所選帳號在通訊核心（AM）處於啟用態（先 AM 後本地；失敗即中止，不產生任何本地數據）。
+      // count 自動取號路徑帳號在事務內才確定，於選定後補激活。
+      const preIds = requestedPairs.length > 0
+        ? Array.from(new Set(requestedPairs.map((item) => item.sipUserId)))
+        : requestedIds;
+      const preActivated = preIds.length > 0;
+      if (preActivated) {
+        const preRows = await connection.query(
+          `SELECT id, username FROM sip_users
+           WHERE id IN (${preIds.map(() => "?").join(",")})
+             AND tenant_id IS NULL AND status = 'active'`,
+          preIds,
+        );
+        if (preRows.length !== preIds.length) {
+          return response.status(409).json({ message: "部分所選帳號已被分配或不可用，請重新整理後重試。" });
+        }
+        for (const row of preRows) {
+          try {
+            await activateTrialAccountInFlexisip(Number(row.id), connection);
+          } catch (flexisipError) {
+            console.error("[trial-assign] AM activate failed:", row.username, flexisipError?.message || flexisipError);
+            return response.status(502).json({
+              message: `帳號 ${row.username} 在通訊核心（AM）啟用失敗，已取消本次添加，請稍後重試。`,
+            });
+          }
+        }
+      }
+
       await connection.beginTransaction();
 
       const ownerRows = await connection.query(
@@ -412,6 +441,18 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         pairsList = accounts.map((row) => ({ sipUserId: Number(row.id), webUserId: null }));
       }
       const accountIds = pairsList.map((item) => item.sipUserId);
+      if (!preActivated) {
+        // count 自動取號路徑：在事務內補激活；失敗回滾（本地尚無任何寫入）
+        for (const sipId of accountIds) {
+          try {
+            await activateTrialAccountInFlexisip(sipId, connection);
+          } catch (flexisipError) {
+            await connection.rollback();
+            console.error("[trial-assign] AM activate failed (auto path):", sipId, flexisipError?.message || flexisipError);
+            return response.status(502).json({ message: "帳號在通訊核心（AM）啟用失敗，已取消本次添加，請稍後重試。" });
+          }
+        }
+      }
       const providedWebIdList = pairsList.map((item) => item.webUserId).filter((id) => Number.isInteger(id) && id > 0);
       if (new Set(providedWebIdList).size !== providedWebIdList.length) {
         await connection.rollback();
@@ -997,6 +1038,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     } catch (error) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to end trial assignment:", error);
+      if (error?.code === "FLEXISIP_STATE_CONFIRM_FAILED") {
+        return response.status(502).json({ message: "帳號在通訊核心（AM）停用確認失敗，本次回庫已取消，請稍後重試。" });
+      }
       return response.status(500).json({ message: "試用結束操作失敗。" });
     } finally {
       if (connection) connection.release();
