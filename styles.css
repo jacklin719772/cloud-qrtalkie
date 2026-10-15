@@ -5899,7 +5899,9 @@ td {
   background: #ffffff;
   color: #050505;
   border-bottom: 1px solid #e5e7eb;
-  z-index: 4;
+  /* 顶栏须高于页面内容（内容层存在 z-index:10 的 flex 子项如 Ecard 生成页头，
+     此前 4 会被其盖住，导致头像下拉/消息面板被遮） */
+  z-index: 100;
 }
 
 .console-topbar-left {
