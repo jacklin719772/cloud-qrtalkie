@@ -85,7 +85,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
   };
 
   const handleCleanLogs = async () => {
-    if (!window.confirm('確定要清理 Asterisk 和 Flexisip 日誌嗎？\n\n安全清理策略：\n- 當前日誌檔案：truncate 清空（不影響服務執行）\n- 舊歸檔檔案（.gz）：直接刪除\n- .log.1 緩衝區：保留')) return;
+    if (!window.confirm('確定要清理伺服器日誌嗎？\n\n清理策略：\n- 當前日誌檔案：truncate 清空（不中斷服務）\n- 輪轉／歸檔檔案（.gz、.log.1 等）：直接刪除\n- Flexisip 明細目錄（errors/、users/）：僅保留最近 7 天\n- GCP 日誌代理緩衝：清空（代理自動重建）')) return;
     try {
       const res = await apiClient.post('/platform/health/clean-logs');
       alert(res.message || '日誌清理完成');

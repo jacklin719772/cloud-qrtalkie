@@ -15711,20 +15711,31 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
   try {
     const { execSync } = await import("node:child_process");
     const results = { deleted: [], truncated: [], freedMB: 0 };
+    const mbOf = (target) => {
+      try {
+        return Number(execSync("du -sm " + target + " 2>/dev/null | cut -f1", { encoding: "utf8", timeout: 5000 }).trim() || 0);
+      } catch { return 0; }
+    };
+    const beforeMB = mbOf(asteriskLogDir) + mbOf(flexisipLogDir) + mbOf("/var/log");
 
     // Clean Asterisk logs
     const asteriskDir = asteriskLogDir;
     try {
-      execSync("find " + asteriskDir + " -type f \\( -name '*.gz' -o -name 'backup-*.log' -o -name '*.log.1' -o -name '*_log.1' -o -name 'queue_log.1' -o -name 'fwjobs.log' -o -name 'core-*.log.1' \\) -delete", { timeout: 5000 });
+      execSync("find " + asteriskDir + " -type f \\( -name '*.gz' -o -name 'backup-*.log' -o -name '*.log.1' -o -name '*_log.1' -o -name 'queue_log.1' -o -name 'fwjobs.log' -o -name 'core-*.log.1' \\) -delete 2>/dev/null || true", { timeout: 5000 });
       // Truncate all full.* rotated logs and common error logs
-      execSync("find " + asteriskDir + " -type f \\( -name 'full' -o -name 'full.*' -o -name 'ucp_err.log' -o -name 'ucp_out.log' \\) -exec truncate -s 0 {} \\;", { timeout: 5000 });
-      results.freedMB = Math.round(Number(execSync("du -sm " + asteriskDir + " 2>/dev/null | cut -f1", { encoding: "utf8", timeout: 3000 }).trim() || 0));
+      execSync("find " + asteriskDir + " -type f \\( -name 'full' -o -name 'full.*' -o -name 'ucp_err.log' -o -name 'ucp_out.log' \\) -exec truncate -s 0 {} \\; 2>/dev/null || true", { timeout: 5000 });
+      results.truncated.push("asterisk: full / ucp_err.log / ucp_out.log");
+      results.deleted.push("asterisk: *.gz / *.log.1 / backup-*.log 等輪轉歸檔");
     } catch {}
 
-    // Clean Flexisip logs
+    // Clean Flexisip logs（/var/opt/belledonne-communications/log/flexisip）
     const flexisipDir = flexisipLogDir;
     try {
-      execSync("find " + flexisipDir + " -type f -name '*.log.*.gz' -delete", { timeout: 5000 });
+      // 輪轉與歸檔檔（.log.1 為每日輪轉；當前 .log 保留、下方 truncate）直接刪除
+      execSync("find " + flexisipDir + " -type f \\( -name '*.log.*.gz' -o -name '*.log.1' \\) -delete 2>/dev/null || true", { timeout: 8000 });
+      // errors/ 與 users/ 的按日明細：僅保留最近 7 天（依檔案修改時間）
+      execSync("find " + flexisipDir + "/errors " + flexisipDir + "/users -type f \\( -name '*.log' -o -name '*.log.*' \\) -mtime +7 -delete 2>/dev/null || true", { timeout: 10000 });
+      results.deleted.push("flexisip: *.log.1 輪轉檔；errors/ 與 users/ 明細僅保留 7 天");
       const patterns = ["flexisip-proxy.log", "flexisip-presence.log", "flexisip-conference.log", "flexisip-regevent.log", "flexisip-b2bua.log"];
       for (const p of patterns) {
         try { execSync("truncate -s 0 " + flexisipDir + "/" + p, { timeout: 3000 }); results.truncated.push(p); } catch {}
@@ -15735,7 +15746,7 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
     const systemLogDir = "/var/log";
     try {
       // Delete all rotated .gz archives across system logs
-      execSync("find " + systemLogDir + " -type f -name '*.gz' -delete", { timeout: 15000 });
+      execSync("find " + systemLogDir + " -type f -name '*.gz' -delete 2>/dev/null || true", { timeout: 15000 });
       // Truncate huge raw logs
       const truncLogs = [
         "fail2ban.log", "fail2ban.log.1",
@@ -15753,11 +15764,19 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
       }
       // Clean service subdirectories
       for (const dir of ["apache2", "mosquitto", "coturn", "redis", "mongodb"]) {
-        try { execSync("find " + systemLogDir + "/" + dir + " -type f -name '*.log*' -exec truncate -s 0 {} \\;", { timeout: 5000 }); } catch {}
+        try { execSync("find " + systemLogDir + "/" + dir + " -type f -name '*.log*' -exec truncate -s 0 {} \\; 2>/dev/null || true", { timeout: 5000 }); } catch {}
       }
+      // GCP Ops Agent 緩衝日誌：清空後由代理自動重建
+      try {
+        execSync("find " + systemLogDir + "/google-cloud-ops-agent -type f -name 'logging-module*.log' -exec truncate -s 0 {} \\; 2>/dev/null || true", { timeout: 5000 });
+        results.truncated.push("google-cloud-ops-agent: logging-module*.log");
+      } catch {}
     } catch {}
 
-    return response.json({ message: "日誌清理完成。當前日誌已清空，歸檔檔案已刪除。", ...results });
+    const afterMB = mbOf(asteriskLogDir) + mbOf(flexisipLogDir) + mbOf("/var/log");
+    results.freedMB = Math.max(0, Math.round(beforeMB - afterMB));
+
+    return response.json({ message: "日誌清理完成。當前日誌已清空，輪轉與歸檔檔案已刪除。", ...results });
   } catch (error) {
     console.error("Failed to clean logs:", error);
     return response.status(500).json({ message: "清理日誌失敗：" + (error.message || "") });
