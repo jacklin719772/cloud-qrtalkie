@@ -198,12 +198,19 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     const statusFilter = clean(request.query?.status, 20) || "all";
     const keyword = clean(request.query?.q, 120);
     const ownerFilter = isPlatform ? Number(request.query?.ownerTenantId) || null : ownTenantId;
+    const agentFilter = clean(request.query?.agentId, 20);
 
     const whereClauses = [];
     const params = [];
     if (ownerFilter) {
       whereClauses.push("ta.owner_tenant_id = ?");
       params.push(ownerFilter);
+    }
+    if (agentFilter === "none") {
+      whereClauses.push("ta.agent_id IS NULL");
+    } else if (/^\d+$/.test(agentFilter) && Number(agentFilter) > 0) {
+      whereClauses.push("ta.agent_id = ?");
+      params.push(Number(agentFilter));
     }
     if (statusFilter === "active") {
       whereClauses.push("ta.status = 'active' AND ta.expires_at > DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
@@ -311,6 +318,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     const company = clean(request.body?.company, 160);
     const notes = clean(request.body?.notes, 1000);
     const aiEnabled = request.body?.aiEnabled === true;
+    const agentId = Number(request.body?.agentId) || null;
     const today = todayDate();
     const startedAt = isDateString(request.body?.startedAt) ? String(request.body.startedAt) : today;
     const expiresAt = isDateString(request.body?.expiresAt)
@@ -394,6 +402,18 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (!reservedTenantId) {
         await connection.rollback();
         return response.status(500).json({ message: "系統保留租戶缺失，請先執行資料庫遷移。" });
+      }
+
+      // 代理商（名錄選擇）：僅接受啟用中的登記錄項
+      if (agentId) {
+        const agentRows = await connection.query(
+          "SELECT id FROM agents WHERE id = ? AND status = 'active' LIMIT 1",
+          [agentId],
+        );
+        if (!agentRows[0]) {
+          await connection.rollback();
+          return response.status(400).json({ message: "所選代理商不存在或已停用。" });
+        }
       }
 
       // 選號：pairs（所見配對）優先，其次兼容 sipUserIds/自動取庫存；皆須為 tenant_id IS NULL 且 active
@@ -618,13 +638,14 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       for (const account of accounts) {
         const insertResult = await connection.query(
           `INSERT INTO trial_assignments (
-             sip_user_id, owner_tenant_id, contact_name, contact_email, contact_phone, company,
+             sip_user_id, owner_tenant_id, agent_id, contact_name, contact_email, contact_phone, company,
              started_at, expires_at, status, ai_enabled, batch_order_id, created_by_admin_user_id, notes
            )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
           [
             Number(account.id),
             ownerTenantId,
+            agentId,
             contactName || null,
             contactEmail || null,
             contactPhone || null,

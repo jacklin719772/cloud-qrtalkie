@@ -35,8 +35,7 @@ function emptyForm() {
     contactPhone: '',
     startedAt: todayStr(),
     expiresAt: addMonthsMinusOneDay(todayStr(), 1),
-    aiEnabled: false,
-    notes: '',
+    agentId: '',
   };
 }
 
@@ -53,6 +52,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [filterQInput, setFilterQInput] = useState('');
   const [filterQ, setFilterQ] = useState('');
   const [filterTenantId, setFilterTenantId] = useState('');
+  const [filterAgentId, setFilterAgentId] = useState('');
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -78,6 +78,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [addCount, setAddCount] = useState('1');
   const [addonCatalog, setAddonCatalog] = useState([]);
   const [selectedAddonCodes, setSelectedAddonCodes] = useState([]);
+  const [allAgents, setAllAgents] = useState([]);
   const [ecardStep, setEcardStep] = useState({ open: false, accounts: [], results: null, submitting: false });
   const [ecardStylesList, setEcardStylesList] = useState([]);
   const [ecardBackgrounds, setEcardBackgrounds] = useState([]);
@@ -96,6 +97,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     const q = overrides.q !== undefined ? overrides.q : filterQ;
     const status = overrides.status !== undefined ? overrides.status : filterStatus;
     const tenantId = overrides.tenantId !== undefined ? overrides.tenantId : filterTenantId;
+    const agentId = overrides.agentId !== undefined ? overrides.agentId : filterAgentId;
     const targetPage = overrides.page !== undefined ? overrides.page : page;
     setLoading(true);
     try {
@@ -105,6 +107,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       if (status && status !== 'all') params.set('status', status);
       if (q) params.set('q', q);
       if (isPlatform && tenantId) params.set('ownerTenantId', tenantId);
+      if (agentId) params.set('agentId', agentId);
       const data = await apiClient.get(`/admin/trials?${params.toString()}`);
       setTrials(Array.isArray(data.trials) ? data.trials : []);
       setTotal(Number(data.total || 0));
@@ -129,10 +132,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   useEffect(() => {
     loadTrials();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageSize, filterStatus, filterTenantId, filterQ]);
+  }, [page, pageSize, filterStatus, filterTenantId, filterAgentId, filterQ]);
 
   useEffect(() => {
     loadTenants();
+    loadAgents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -438,6 +442,16 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
+  // 代理商名錄：全量載入（彈窗僅用啟用中；列表篩選含已停用——歷史試用仍可篩查）
+  async function loadAgents() {
+    try {
+      const data = await apiClient.get('/admin/agents');
+      setAllAgents(Array.isArray(data?.agents) ? data.agents : []);
+    } catch {
+      setAllAgents([]);
+    }
+  }
+
   async function checkAdminEmail() {
     const email = form.contactEmail.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -474,6 +488,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       loadAddonCatalog().then((list) => {
         setSelectedAddonCodes(list.map((addon) => addon.addonCode));
       });
+      loadAgents();
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
@@ -574,8 +589,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         company,
         startedAt: form.startedAt,
         expiresAt: form.expiresAt,
-        aiEnabled: form.aiEnabled,
-        notes: form.notes.trim(),
+        agentId: Number(form.agentId) || null,
         sipUserIds: selectedStocks.map((s) => s.id),
         pairs: selectedStocks.map((s) => ({ sipUserId: s.id, webUserId: s.webUserId || null })),
         addonCodes: selectedAddonCodes,
@@ -1137,6 +1151,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               ))}
             </select>
           )}
+          {isPlatform && (
+            <select value={filterAgentId} onChange={(e) => { setFilterAgentId(e.target.value); setPage(1); }}>
+              <option value="">全部代理商</option>
+              <option value="none">無代理商</option>
+              {allAgents.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          )}
           <div className="tm-search">
             <Search size={14} color="#6b7280" />
             <input
@@ -1479,20 +1502,13 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
                 <div className="tm-grid2">
                   <div className="tm-field">
-                    <label>開通 AI 助手</label>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#e5e7eb', fontSize: '13px', paddingTop: '7px' }}>
-                      <input
-                        type="checkbox"
-                        checked={form.aiEnabled}
-                        onChange={(e) => setForm((f) => ({ ...f, aiEnabled: e.target.checked }))}
-                      />
-                      添加時同步開通（到試用結束為止）
-                      <span className="tm-hint">（增值服務勾選「AI助手」亦等同開通）</span>
-                    </label>
-                  </div>
-                  <div className="tm-field">
                     <label>代理商</label>
-                    <input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+                    <select value={form.agentId} onChange={(e) => setForm((f) => ({ ...f, agentId: e.target.value }))}>
+                      <option value="">未指定</option>
+                      {allAgents.filter((a) => a.status === 'active').map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
