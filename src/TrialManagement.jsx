@@ -240,12 +240,24 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     }
   }
 
+  // 【臨時】Ecard 設置彈窗預覽入口：用示例帳號打開第二步彈窗（不生成名片）
+  function openEcardPreview() {
+    openEcardStep([
+      { trialId: -1, sipUserId: -1, username: '50010001', webUsername: '950001', displayName: '範例 一' },
+      { trialId: -2, sipUserId: -2, username: '50010002', webUsername: '950002', displayName: '範例 二' },
+    ]);
+  }
+
   function closeEcardStep() {
     setEcardStep({ open: false, accounts: [], results: null, submitting: false });
     setEcardMessage({ type: '', text: '' });
   }
 
   async function submitEcards() {
+    if (ecardStep.accounts.some((a) => Number(a.trialId) <= 0)) {
+      setEcardMessage({ type: 'error', text: '預覽模式：不執行生成。' });
+      return;
+    }
     if (ecardSelectedIds.length === 0) {
       setEcardMessage({ type: 'error', text: '請至少勾選一個帳號。' });
       return;
@@ -1279,11 +1291,16 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
             {formMessage.text && (
               <div className={`tm-toast ${formMessage.type || 'error'}`}>{formMessage.text}</div>
             )}
-            <div className="tm-modal-foot">
-              <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>取消</button>
-              <button className="tm-btn primary" type="button" onClick={submitAssign} disabled={assigning}>
-                <Plus size={13} /> {assigning ? '添加中…' : '確認添加'}
+            <div className="tm-modal-foot" style={{ justifyContent: 'space-between' }}>
+              <button className="tm-btn" type="button" onClick={openEcardPreview} disabled={assigning}>
+                Ecard 設置預覽（臨時）
               </button>
+              <span style={{ display: 'inline-flex', gap: '10px' }}>
+                <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>取消</button>
+                <button className="tm-btn primary" type="button" onClick={submitAssign} disabled={assigning}>
+                  <Plus size={13} /> {assigning ? '添加中…' : '確認添加'}
+                </button>
+              </span>
             </div>
           </div>
         </div>
@@ -1296,10 +1313,13 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         <div className="tm-modal" onClick={() => { if (!ecardStep.submitting) closeEcardStep(); }}>
           <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
             <div className="tm-modal-head">
-              <h3>Ecard 設置 — 本批 {ecardStep.accounts.length} 個帳號</h3>
+              <h3>Ecard 設置 — 本批 {ecardStep.accounts.length} 個帳號{ecardStep.accounts.some((a) => Number(a.trialId) <= 0) ? '（預覽）' : ''}</h3>
               <button className="tm-btn" type="button" onClick={closeEcardStep} disabled={ecardStep.submitting}>關閉</button>
             </div>
             <div className="tm-modal-body">
+              {ecardStep.accounts.some((a) => Number(a.trialId) <= 0) && (
+                <span className="tm-hint">預覽模式：以下為示例帳號，僅供目測彈窗佈局，「生成名片」不可用。</span>
+              )}
               {!ecardStep.results ? (
                 <>
                   <div className="tm-section">
@@ -1446,7 +1466,13 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               {!ecardStep.results ? (
                 <>
                   <button className="tm-btn" type="button" onClick={closeEcardStep} disabled={ecardStep.submitting}>跳過</button>
-                  <button className="tm-btn primary" type="button" onClick={submitEcards} disabled={ecardStep.submitting}>
+                  <button
+                    className="tm-btn primary"
+                    type="button"
+                    onClick={submitEcards}
+                    disabled={ecardStep.submitting || ecardStep.accounts.some((a) => Number(a.trialId) <= 0)}
+                    title={ecardStep.accounts.some((a) => Number(a.trialId) <= 0) ? '預覽模式不可提交' : undefined}
+                  >
                     {ecardStep.submitting ? '生成中…' : '生成名片'}
                   </button>
                 </>
