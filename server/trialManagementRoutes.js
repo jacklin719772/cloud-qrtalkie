@@ -717,8 +717,17 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     const company = clean(request.body?.company, 120);
     const name = clean(request.body?.name, 120);
     const titleZh = clean(request.body?.titleZh, 120);
+    const titleEn = request.body?.titleEn !== undefined ? clean(request.body.titleEn, 120) : undefined;
     const phone = clean(request.body?.phone, 40);
     const email = clean(request.body?.email, 255);
+    const zipCode = request.body?.zipCode !== undefined ? clean(request.body.zipCode, 40) : undefined;
+    const address = request.body?.address !== undefined ? clean(request.body.address, 240) : undefined;
+    const qrDesc = request.body?.qrDesc !== undefined ? clean(request.body.qrDesc, 120) : undefined;
+    const companyZh = request.body?.companyZh !== undefined ? clean(request.body.companyZh, 120) : undefined;
+    const companyEn = request.body?.companyEn !== undefined ? clean(request.body.companyEn, 120) : undefined;
+    const sloganZh = request.body?.sloganZh !== undefined ? clean(request.body.sloganZh, 160) : undefined;
+    const sloganEn = request.body?.sloganEn !== undefined ? clean(request.body.sloganEn, 160) : undefined;
+    const showQrCode = request.body?.showQrCode !== false;
     const avatarDataUrl = typeof request.body?.avatarDataUrl === "string" ? request.body.avatarDataUrl : "";
     const logoDataUrl = typeof request.body?.logoDataUrl === "string" ? request.body.logoDataUrl : "";
 
@@ -751,16 +760,16 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       const cardData = {
         name,
         titleZh,
-        titleEn: "",
+        titleEn: titleEn ?? "",
         phone,
         email,
-        zipCode: "",
-        address: "",
-        qrDesc: "掃碼二維碼 · 交換名片",
-        companyZh: company,
-        companyEn: company,
-        sloganZh: "",
-        sloganEn: "",
+        zipCode: zipCode ?? "",
+        address: address ?? "",
+        qrDesc: qrDesc ?? "掃碼二維碼 · 交換名片",
+        companyZh: companyZh ?? company,
+        companyEn: companyEn ?? (companyZh ?? company),
+        sloganZh: sloganZh ?? "",
+        sloganEn: sloganEn ?? "",
       };
 
       const { renderEcard } = await import("./ecardRenderer.js");
@@ -774,7 +783,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         avatarUrl: avatarDataUrl.startsWith("data:") ? avatarDataUrl : null,
         logoUrl: logoDataUrl.startsWith("data:") ? logoDataUrl : DEFAULT_ECARD_LOGO_FILE,
         qrDataUrl,
-        showQrCode: true,
+        showQrCode,
         companyNameEnabled: Boolean(styleRow.company_name_enabled),
         backgroundImagePath: bgRow.image_url ? path.join(ecardImagesDir, path.basename(String(bgRow.image_url))) : null,
       });
@@ -809,8 +818,17 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           trialId: Number(item?.trialId),
           name: clean(item?.name, 120),
           titleZh: clean(item?.titleZh, 120),
+          titleEn: item?.titleEn !== undefined ? clean(item.titleEn, 120) : undefined,
           phone: clean(item?.phone, 40),
           email: clean(item?.email, 255),
+          zipCode: item?.zipCode !== undefined ? clean(item.zipCode, 40) : undefined,
+          address: item?.address !== undefined ? clean(item.address, 240) : undefined,
+          qrDesc: item?.qrDesc !== undefined ? clean(item.qrDesc, 120) : undefined,
+          companyZh: item?.companyZh !== undefined ? clean(item.companyZh, 120) : undefined,
+          companyEn: item?.companyEn !== undefined ? clean(item.companyEn, 120) : undefined,
+          sloganZh: item?.sloganZh !== undefined ? clean(item.sloganZh, 160) : undefined,
+          sloganEn: item?.sloganEn !== undefined ? clean(item.sloganEn, 160) : undefined,
+          showQrCode: item?.showQrCode !== undefined ? item.showQrCode !== false : undefined,
           avatarDataUrl: typeof item?.avatarDataUrl === "string" ? item.avatarDataUrl : "",
           enableVideoCall: item?.enableVideoCall !== false,
           enableTextChat: item?.enableTextChat !== false,
@@ -882,7 +900,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            FOR UPDATE`,
           [trialId],
         );
-        if (!trial || trial.status !== "active") {
+        if (!trial || (trial.status !== "active" && trial.status !== "paused")) {
           await connection.rollback();
           return response.status(409).json({ message: "部分試用記錄不存在或已結束，請重新整理後重試。" });
         }
@@ -923,22 +941,22 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         const cardData = {
           name: input.name || String(trial.display_name || trial.username || "").trim() || String(trial.username || ""),
           titleZh: input.titleZh,
-          titleEn: "",
+          titleEn: input.titleEn ?? "",
           phone: input.phone,
           email: input.email,
-          zipCode: "",
-          address: "",
-          qrDesc: "掃碼二維碼 · 交換名片",
-          companyZh: company,
-          companyEn: company,
-          sloganZh: "",
-          sloganEn: "",
+          zipCode: input.zipCode ?? "",
+          address: input.address ?? "",
+          qrDesc: input.qrDesc ?? "掃碼二維碼 · 交換名片",
+          companyZh: input.companyZh ?? company,
+          companyEn: input.companyEn ?? (input.companyZh ?? company),
+          sloganZh: input.sloganZh ?? "",
+          sloganEn: input.sloganEn ?? "",
         };
         const ecardDataJson = {
           cardData,
           selectedTemplateId: styleId,
           selectedBackgroundId: backgroundId,
-          showQrCode: true,
+          showQrCode: input.showQrCode !== undefined ? input.showQrCode : (request.body?.showQrCode !== false),
           callPublicSlug: accessSlug,
           avatarDataUrl: avatarPath || "",
           logoDataUrl: logoPath,
@@ -1112,6 +1130,82 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     } catch (error) {
       console.error("Failed to read trial account settings:", error);
       return response.status(500).json({ message: "讀取帳號資訊失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // GET /api/admin/trials/:id/ecard - 讀取當前電子名片（編輯回填；無則 exists:false + 試用期）
+  app.get("/api/admin/trials/:id/ecard", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const isPlatform = request.admin.accountType === "platform";
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const rows = await connection.query(
+        `SELECT ta.id, ta.owner_tenant_id, ta.sip_user_id,
+                DATE_FORMAT(ta.started_at, '%Y-%m-%d') AS started_date,
+                DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_date,
+                u.username
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ? LIMIT 1`,
+        [trialId],
+      );
+      const trial = rows[0];
+      if (!trial) return response.status(404).json({ message: "找不到試用記錄。" });
+      if (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        return response.status(403).json({ message: "只能操作本租戶發出的試用。" });
+      }
+      const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
+      const ecardRows = await connection.query(
+        `SELECT access_slug, status, enable_video_call, enable_text_chat, avatar_url, logo_url, ecard_data_json
+         FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1`,
+        [Number(trial.sip_user_id)],
+      );
+      const ecard = ecardRows[0];
+      const base = {
+        exists: Boolean(ecard),
+        username: trial.username || "",
+        validFrom: trial.started_date || "",
+        validTo: trial.expires_date || "",
+        accessUrl: ecard?.access_slug ? `${baseUrl}/u/${ecard.access_slug}` : "",
+      };
+      if (!ecard) {
+        return response.json(base);
+      }
+      const parsed = parseJsonMaybe(ecard.ecard_data_json, {}) || {};
+      const cardData = parsed.cardData || {};
+      return response.json({
+        ...base,
+        status: ecard.status || "",
+        accessSlug: ecard.access_slug || "",
+        templateId: Number(parsed.selectedTemplateId) || 0,
+        backgroundId: Number(parsed.selectedBackgroundId) || 0,
+        showQrCode: parsed.showQrCode !== false,
+        name: cardData.name || "",
+        titleZh: cardData.titleZh || "",
+        titleEn: cardData.titleEn || "",
+        phone: cardData.phone || "",
+        email: cardData.email || "",
+        zipCode: cardData.zipCode || "",
+        address: cardData.address || "",
+        qrDesc: cardData.qrDesc || "",
+        companyZh: cardData.companyZh || "",
+        companyEn: cardData.companyEn || "",
+        sloganZh: cardData.sloganZh || "",
+        sloganEn: cardData.sloganEn || "",
+        avatarUrl: ecard.avatar_url || "",
+        logoUrl: ecard.logo_url || "",
+        enableVideoCall: Number(ecard.enable_video_call) === 1 || ecard.enable_video_call === true,
+        enableTextChat: Number(ecard.enable_text_chat) === 1 || ecard.enable_text_chat === true,
+      });
+    } catch (error) {
+      console.error("Failed to read trial ecard:", error);
+      return response.status(500).json({ message: "讀取電子名片設置失敗。" });
     } finally {
       if (connection) connection.release();
     }
