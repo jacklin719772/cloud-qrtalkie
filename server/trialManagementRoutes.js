@@ -241,6 +241,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            ta.created_at,
            u.username, u.sip_domain, u.display_name AS account_display_name,
            wu.username AS web_username,
+           ai.enabled AS ai_live_enabled,
+           ai.expires_at AS ai_live_expires_at,
            t.name AS owner_tenant_name
          FROM trial_assignments ta
          JOIN sip_users u ON u.id = ta.sip_user_id
@@ -248,6 +250,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
          LEFT JOIN tenant_web_account_entitlements we
            ON we.sip_user_id = ta.sip_user_id AND we.tenant_id = ?
          LEFT JOIN web_users wu ON wu.id = we.web_user_id
+         LEFT JOIN ai_bot_account_entitlements ai ON ai.sip_user_id = ta.sip_user_id
          ${whereSql}
          ORDER BY ta.created_at DESC, ta.id DESC
          LIMIT ${pageSize} OFFSET ${offset}`,
@@ -268,7 +271,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           expiresAt: row.expires_at || "",
           status: row.status,
           phase: trialPhase(row, today),
-          aiEnabled: Number(row.ai_enabled) === 1,
+          // AI 列显示「当前能否用」：以权益表实时状态为准（快照字段仅存档）
+          aiEnabled: Number(row.ai_live_enabled || 0) === 1
+            && (!row.ai_live_expires_at || new Date(row.ai_live_expires_at) > new Date()),
           batchOrderId: row.batch_order_id ? Number(row.batch_order_id) : null,
           convertedOrderId: row.converted_order_id ? Number(row.converted_order_id) : null,
           notes: row.notes || "",
