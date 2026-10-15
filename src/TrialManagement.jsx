@@ -369,9 +369,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   async function loadAddonCatalog() {
     try {
       const data = await apiClient.get('/billing/addon-services');
-      setAddonCatalog(Array.isArray(data.addons) ? data.addons : []);
+      const list = Array.isArray(data.addons) ? data.addons : [];
+      setAddonCatalog(list);
+      return list;
     } catch {
       setAddonCatalog([]);
+      return [];
     }
   }
 
@@ -407,7 +410,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       setPickerOpen(false);
       setAddCount('1');
       setSelectedAddonCodes([]);
-      loadAddonCatalog();
+      // 增值服務默認全選（加載完成後自動勾上全部有效項）
+      loadAddonCatalog().then((list) => {
+        setSelectedAddonCodes(list.map((addon) => addon.addonCode));
+      });
       setFormMessage({ type: '', text: '' });
       setMessage({ type: '', text: '' });
       setAssignOpen(true);
