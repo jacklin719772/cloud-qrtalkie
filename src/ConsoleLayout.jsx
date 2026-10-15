@@ -15,6 +15,7 @@ import PaymentMethods from './PaymentMethods';
 import DiscountData from './DiscountData';
 import AddonServices from './AddonServices';
 import TenantManagement from './TenantManagement';
+import AgentsDirectory from './AgentsDirectory';
 import TrialManagement from './TrialManagement';
 import ReportManagement from './ReportManagement';
 import TenantCouponManagement from './TenantCouponManagement';
@@ -57,6 +58,7 @@ const viewTitles = {
   'plan-management': '訂閱審核',
   'e-business-card': '電子名片',
   'ecard-styles-management': '電子名片管理',
+  'agents-management': '代理商名錄',
   'tenant-management': '租戶管理',
   'trial-management': '試用管理',
   'tenant-coupon-management': '優惠碼管理',
@@ -159,6 +161,7 @@ export default function ConsoleLayout({ onLogout }) {
   const discountDataRef = useRef(null);
   const addonServicesRef = useRef(null);
   const tenantManagementRef = useRef(null);
+  const agentsDirectoryRef = useRef(null);
   const trialManagementRef = useRef(null);
   const tenantCouponManagementRef = useRef(null);
   const sipAccountRegistrationRef = useRef(null);
@@ -646,6 +649,15 @@ export default function ConsoleLayout({ onLogout }) {
         </button>
       );
     }
+    if (currentView === 'agents-management') {
+      const mode = agentsDirectoryRef.current?.viewMode;
+      if (mode === 'add' || mode === 'edit') return null;
+      return (
+        <button className="primary-btn" type="button" onClick={() => agentsDirectoryRef.current?.startAdd()}>
+          新增代理商
+        </button>
+      );
+    }
     if (currentView === 'tenant-management') {
       const mode = tenantManagementRef.current?.viewMode;
       if (mode === 'add' || mode === 'edit') return null;
@@ -869,6 +881,7 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'app-releases' && <AppReleases ref={appReleasesRef} accountType={identity?.admin?.accountType} />}
           {currentView === 'tenant' && <Tenant onOpenLoginEmail={openLoginEmailDialog} />}
           {currentView === 'tenant-management' && <TenantManagement ref={tenantManagementRef} />}
+          {currentView === 'agents-management' && <AgentsDirectory ref={agentsDirectoryRef} />}
           {currentView === 'trial-management' && (
             <TrialManagement
               ref={trialManagementRef}
