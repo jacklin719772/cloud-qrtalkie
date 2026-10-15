@@ -48,7 +48,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState(isPlatform ? 'all' : 'active');
   const [filterQInput, setFilterQInput] = useState('');
   const [filterQ, setFilterQ] = useState('');
   const [filterTenantId, setFilterTenantId] = useState('');
@@ -1262,7 +1262,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                 <tr>
                   <th>帳號</th>
-                  <th>歸屬租戶</th>
+                  {isPlatform && <th>歸屬租戶</th>}
                   <th>聯繫人</th>
                   <th>試用週期</th>
                   <th>狀態</th>
@@ -1284,7 +1284,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                           <div style={{ color: '#9ca3af', fontSize: '11px' }}>{t.accountDisplayName}</div>
                         )}
                       </td>
-                      <td>{t.ownerTenantName}</td>
+                      {isPlatform && <td>{t.ownerTenantName}</td>}
                       <td>
                         <div>{t.contactName || '—'}</div>
                         {t.contactEmail && <div style={{ color: '#9ca3af', fontSize: '11px' }}>{t.contactEmail}</div>}
