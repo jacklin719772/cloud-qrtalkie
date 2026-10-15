@@ -433,27 +433,6 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     onModeChange?.(viewMode);
   }, [viewMode, onModeChange]);
 
-  // Sync all input widths to match tenant name input
-  useEffect(() => {
-    const apply = () => {
-      if (!tenantNameInputRef.current) return;
-      const width = tenantNameInputRef.current.offsetWidth;
-      if (width <= 0) return;
-      const left = tenantNameInputRef.current.closest('.ecard-add-left');
-      if (!left) return;
-      left.querySelectorAll('.ecard-form-grid input:not([type="checkbox"]):not([type="file"]), .ecard-form-grid select, .ecard-input-with-icon input').forEach(el => {
-        el.style.setProperty('width', `${width}px`, 'important');
-        el.style.setProperty('box-sizing', 'border-box', 'important');
-      });
-      left.querySelectorAll('.ecard-input-with-icon').forEach(el => {
-        el.style.setProperty('width', `${width}px`, 'important');
-      });
-    };
-    apply();
-    const timer = setTimeout(apply, 200);
-    return () => clearTimeout(timer);
-  });
-
   // Self-service mode: load data and enter add view
   useEffect(() => {
     if (!selfServiceSipUserId) return;
@@ -516,24 +495,38 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     })();
   }, [selfServiceSipUserId]);
 
-  // 試用上下文模式：從試用接口載入賬號與現有名片（與 selfService 同套路，僅數據源不同）
+  // 試用上下文模式：從試用接口載入賬號與現有名片（與 selfService 同套路，僅數據源不同）；
+  // 空字段從「帳號設置」取默認值（姓名/手機/郵箱/公司/職位/頭像），用戶可再修改
   useEffect(() => {
     if (!trialContext) return;
     (async () => {
-      let existingEcard, ecardMeta;
+      let existingEcard, ecardMeta, accountDefaults;
       try {
         const ecRes = await apiClient.get(`/admin/trials/${trialContext.trialId}/ecard`);
         const hasJson = ecRes.ecardDataJson && Object.keys(ecRes.ecardDataJson).length > 0;
         existingEcard = hasJson ? ecRes.ecardDataJson : null;
         ecardMeta = { validFrom: ecRes.validFrom, validTo: ecRes.validTo, status: ecRes.status, thumbnailUrl: ecRes.thumbnailUrl, avatarUrl: ecRes.avatarUrl, accessSlug: ecRes.accessSlug };
       } catch {}
+      try {
+        const settings = await apiClient.get(`/admin/trials/${trialContext.trialId}/account-settings`);
+        accountDefaults = settings?.account || null;
+      } catch {}
+
+      const defaults = {
+        name: accountDefaults?.displayName || trialContext.displayName || trialContext.username || '',
+        phone: accountDefaults?.phone || '',
+        email: accountDefaults?.email || '',
+        companyZh: accountDefaults?.company || trialContext.tenantName || '',
+        titleZh: accountDefaults?.jobTitle || '',
+        avatarUrl: accountDefaults?.avatarUrl || '',
+      };
 
       const accountInfo = {
         id: trialContext.sipUserId,
         sip_user_id: trialContext.sipUserId,
         trialId: trialContext.trialId,
         sipAccount: trialContext.username || '',
-        userName: trialContext.displayName || '',
+        userName: defaults.name,
         tenantName: trialContext.tenantName || '',
         accessUrl: ecardMeta?.accessSlug ? `https://ecard.qrtalkie.org/u/${ecardMeta.accessSlug}` : '',
         validFrom: ecardMeta?.validFrom || trialContext.validFrom || '—',
@@ -548,31 +541,46 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       );
 
       if (existingEcard) {
-        // 一次性載入全部已保存狀態（與 selfService 相同）
+        // 已保存狀態優先；空字段用帳號設置默認值補齊（用戶可改）
+        const savedCard = existingEcard.cardData || {};
+        setCardData({
+          name: savedCard.name || defaults.name,
+          titleZh: savedCard.titleZh || defaults.titleZh,
+          titleEn: savedCard.titleEn || '',
+          phone: savedCard.phone || defaults.phone,
+          email: savedCard.email || defaults.email,
+          zipCode: savedCard.zipCode || '',
+          address: savedCard.address || '',
+          qrDesc: savedCard.qrDesc || '掃碼二維碼 · 交換名片',
+          companyZh: savedCard.companyZh || defaults.companyZh,
+          companyEn: savedCard.companyEn || '',
+          sloganZh: savedCard.sloganZh || '',
+          sloganEn: savedCard.sloganEn || '',
+        });
         if (existingEcard.selectedTemplateId) setSelectedTemplateId(existingEcard.selectedTemplateId);
         if (existingEcard.selectedBackgroundId) setSelectedBackgroundId(existingEcard.selectedBackgroundId);
-        if (existingEcard.cardData) setCardData(existingEcard.cardData);
         if (existingEcard.localStyles) setLocalStyles(existingEcard.localStyles);
         if (existingEcard.localDisplayConfig) setLocalDisplayConfig(existingEcard.localDisplayConfig);
         if (typeof existingEcard.showQrCode === 'boolean') setShowQrCode(existingEcard.showQrCode);
         if (existingEcard.callPublicSlug) setCallPublicSlug(existingEcard.callPublicSlug);
-        if (existingEcard.avatarDataUrl) setAvatarDataUrl(existingEcard.avatarDataUrl);
+        setAvatarDataUrl(existingEcard.avatarDataUrl || defaults.avatarUrl || '');
         if (existingEcard.logoDataUrl) setLogoDataUrl(existingEcard.logoDataUrl);
       } else {
-        // 無名片：以試用信息填默認值
+        // 無名片：全部默認值取帳號設置
         setCardData({
-          name: trialContext.displayName || trialContext.username || '',
-          titleZh: '', titleEn: '',
-          phone: trialContext.phone || '',
-          email: trialContext.email || '',
+          name: defaults.name,
+          titleZh: defaults.titleZh,
+          titleEn: '',
+          phone: defaults.phone,
+          email: defaults.email,
           zipCode: '', address: '',
           qrDesc: '掃碼二維碼 · 交換名片',
-          companyZh: trialContext.tenantName || '',
+          companyZh: defaults.companyZh,
           companyEn: '', sloganZh: '', sloganEn: '',
         });
         setLocalStyles({});
         setShowQrCode(false);
-        setAvatarDataUrl('');
+        setAvatarDataUrl(defaults.avatarUrl || '');
         setLogoDataUrl('');
         generateRandomSlug();
       }
@@ -1194,17 +1202,19 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           .ecard-form-grid label { display: flex; flex-direction: column; gap: 8px; }
           .ecard-form-grid label span { font-size: 13px; font-weight: 500; color: #9ca3af; }
           .ecard-form-grid input, .ecard-form-grid select {
+            width: 100%; box-sizing: border-box;
             padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #e5e7eb; outline: none; background: #111827;
           }
           .ecard-form-grid input[readonly] { background: #1a2332; color: #9ca3af; border-color: #374151; }
-          
+
           .ecard-input-with-icon { position: relative; display: flex; align-items: center; }
-          .ecard-input-with-icon input { flex: 1; padding-right: 36px; }
+          .ecard-input-with-icon input { flex: 1; width: 100%; box-sizing: border-box; padding-right: 36px; }
           .ecard-input-with-icon button { position: absolute; right: 8px; background: none; border: none; color: #9ca3af; cursor: pointer; padding: 4px; display: flex; align-items: center; }
           
           .ecard-static-switch { display: inline-flex; width: 36px; height: 20px; background: #2563eb; border-radius: 999px; position: relative; transition: background 0.2s ease; cursor: pointer; }
           
           .ecard-media-layout { display: flex; gap: 24px; }
+          .ecard-media-layout .ecard-form-grid { min-width: 0; }
           .ecard-upload-area {
             flex: 0 0 140px; height: 140px; background: #1a2332; border: 1px dashed #cbd5e1; border-radius: 8px;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #9ca3af; cursor: pointer;

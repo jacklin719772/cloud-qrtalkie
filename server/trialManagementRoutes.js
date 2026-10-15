@@ -1222,9 +1222,11 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       );
       const existing = existingRows[0];
 
-      let avatarUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl : "";
+      let avatarUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl.trim() : "";
       if (avatarUrl.startsWith("data:")) {
         avatarUrl = await saveEcardImageFile(avatarUrl);
+      } else if (/^https?:\/\//.test(avatarUrl)) {
+        // 已托管地址（如帳號設置的頭像），直接採用
       } else {
         avatarUrl = existing?.avatar_url || "";
       }
