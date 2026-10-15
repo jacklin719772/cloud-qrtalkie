@@ -89,6 +89,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
   const [ecardMessage, setEcardMessage] = useState({ type: '', text: '' });
   const [openActionsId, setOpenActionsId] = useState(null);
   const [reclaimConfirm, setReclaimConfirm] = useState({ open: false, trial: null });
+  const [aiEntitlementAccount, setAiEntitlementAccount] = useState(null);
+  const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
+  const [aiEntitlementMessage, setAiEntitlementMessage] = useState({ type: '', text: '' });
+  const [aiEntitlementLoading, setAiEntitlementLoading] = useState(false);
+  const [aiEntitlementSaving, setAiEntitlementSaving] = useState(false);
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -152,6 +157,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
     const timer = setTimeout(() => setFormMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [formMessage]);
+
+  useEffect(() => {
+    if (!aiEntitlementMessage.text) return undefined;
+    const timer = setTimeout(() => setAiEntitlementMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [aiEntitlementMessage]);
 
   useEffect(() => {
     if (!ecardMessage.text) return undefined;
@@ -647,6 +658,70 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       loadTrials();
     } catch (error) {
       setMessage({ type: 'error', text: error.message || '恢復失敗。' });
+    }
+  }
+
+  // AI 助手詳細設定（與「帳號管理」頁同一組授權接口；試用帳號預設沿用到試用結束）
+  async function openAiEntitlement(trial) {
+    setOpenActionsId(null);
+    setAiEntitlementAccount({ id: trial.sipUserId, username: trial.username });
+    setAiEntitlementForm({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: trial.expiresAt || '', notes: '試用開通' });
+    setAiEntitlementMessage({ type: '', text: '' });
+    setAiEntitlementLoading(true);
+    try {
+      const result = await apiClient.get(`/admin/sip-accounts/${trial.sipUserId}/ai-entitlement`);
+      if (result && result.sip_user_id) {
+        setAiEntitlementForm({
+          enabled: result.enabled === 1 || result.enabled === true,
+          daily_limit: result.daily_limit ?? 50,
+          monthly_limit: result.monthly_limit ?? '',
+          expires_at: result.expires_at ? String(result.expires_at).substring(0, 10) : '',
+          notes: result.notes || '',
+        });
+      }
+    } catch {
+      /* 無授權記錄，沿用預設值 */
+    } finally {
+      setAiEntitlementLoading(false);
+    }
+  }
+
+  async function handleAiEntitlementSubmit(e) {
+    e.preventDefault();
+    setAiEntitlementSaving(true);
+    setAiEntitlementMessage({ type: '', text: '' });
+    try {
+      await apiClient.put(`/admin/sip-accounts/${aiEntitlementAccount.id}/ai-entitlement`, {
+        enabled: aiEntitlementForm.enabled,
+        daily_limit: aiEntitlementForm.daily_limit,
+        monthly_limit: aiEntitlementForm.monthly_limit || null,
+        // 過期日按「當日結束」存儲（與試用開通一致），避免存成當日 00:00 提前失效
+        expires_at: aiEntitlementForm.expires_at ? `${aiEntitlementForm.expires_at} 23:59:59` : null,
+        notes: aiEntitlementForm.notes,
+      });
+      setAiEntitlementMessage({ type: 'success', text: 'AI 助手設定已儲存。' });
+      loadTrials();
+      setTimeout(() => setAiEntitlementAccount(null), 1200);
+    } catch (error) {
+      setAiEntitlementMessage({ type: 'error', text: error.message || 'AI 助手設定儲存失敗。' });
+    } finally {
+      setAiEntitlementSaving(false);
+    }
+  }
+
+  async function handleAiEntitlementDelete() {
+    if (!window.confirm(`確定要取消「${aiEntitlementAccount.username}」的 AI 助手授權嗎？\n取消後該帳號將無法使用 AI 助手。`)) return;
+    setAiEntitlementSaving(true);
+    setAiEntitlementMessage({ type: '', text: '' });
+    try {
+      await apiClient.delete(`/admin/sip-accounts/${aiEntitlementAccount.id}/ai-entitlement`);
+      setAiEntitlementMessage({ type: 'success', text: 'AI 助手授權已取消。' });
+      loadTrials();
+      setTimeout(() => setAiEntitlementAccount(null), 1200);
+    } catch (error) {
+      setAiEntitlementMessage({ type: 'error', text: error.message || '取消 AI 助手授權失敗。' });
+    } finally {
+      setAiEntitlementSaving(false);
     }
   }
 
@@ -1239,6 +1314,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                         )}
                         {openActionsId === t.id ? createPortal(
                           <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
+                            {isPlatform && (
+                              <button type="button" className="tm-actions-item" onClick={() => openAiEntitlement(t)}>AI助手</button>
+                            )}
                             {canPause && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); endTrial(t, 'end'); }}>暫停</button>
                             )}
@@ -1811,6 +1889,108 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                 <img src={ecardPreviewImage.dataUrl} alt="名片預覽" style={{ width: '100%', borderRadius: '10px', border: '1px solid #1f2937' }} />
               )}
             </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {aiEntitlementAccount && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '460px' }}>
+            <div className="tm-modal-head">
+              <h3>AI 助手設定 — {aiEntitlementAccount.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setAiEntitlementAccount(null)}>關閉</button>
+            </div>
+            <form onSubmit={handleAiEntitlementSubmit}>
+              <div className="tm-modal-body">
+                {aiEntitlementLoading ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af' }}>載入中…</div>
+                ) : (
+                  <>
+                    <div className="tm-field">
+                      <label>啟用狀態</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setAiEntitlementForm((f) => ({ ...f, enabled: !f.enabled }))}
+                          style={{
+                            width: '48px', height: '26px', borderRadius: '13px', border: 'none', cursor: 'pointer',
+                            backgroundColor: aiEntitlementForm.enabled ? '#22c55e' : '#374151',
+                            position: 'relative', transition: 'background-color 0.2s',
+                          }}
+                        >
+                          <span style={{
+                            position: 'absolute', top: '3px', left: aiEntitlementForm.enabled ? '25px' : '3px',
+                            width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff',
+                            transition: 'left 0.2s',
+                          }} />
+                        </button>
+                        <span style={{ fontSize: '13px', color: aiEntitlementForm.enabled ? '#22c55e' : '#9ca3af' }}>
+                          {aiEntitlementForm.enabled ? '已啟用' : '已停用'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="tm-grid2">
+                      <div className="tm-field">
+                        <label>每日限額</label>
+                        <input
+                          type="number" min="0" step="1"
+                          value={aiEntitlementForm.daily_limit}
+                          onChange={(e) => setAiEntitlementForm((f) => ({ ...f, daily_limit: Number(e.target.value) }))}
+                        />
+                      </div>
+                      <div className="tm-field">
+                        <label>每月限額（留空不限）</label>
+                        <input
+                          type="number" min="0" step="1"
+                          value={aiEntitlementForm.monthly_limit}
+                          onChange={(e) => setAiEntitlementForm((f) => ({ ...f, monthly_limit: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="tm-grid2">
+                      <div className="tm-field">
+                        <label>過期時間（留空永久）</label>
+                        <input
+                          type="date"
+                          value={aiEntitlementForm.expires_at}
+                          onChange={(e) => setAiEntitlementForm((f) => ({ ...f, expires_at: e.target.value }))}
+                        />
+                      </div>
+                      <div className="tm-field">
+                        <label>備註</label>
+                        <input
+                          type="text" maxLength="255"
+                          value={aiEntitlementForm.notes}
+                          onChange={(e) => setAiEntitlementForm((f) => ({ ...f, notes: e.target.value }))}
+                          placeholder="授權備註（可選）"
+                        />
+                      </div>
+                    </div>
+                    {aiEntitlementMessage.text && (
+                      <p style={{ margin: 0, fontSize: '13px', color: aiEntitlementMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{aiEntitlementMessage.text}</p>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="tm-modal-foot">
+                <button
+                  type="button"
+                  className="tm-btn danger"
+                  style={{ marginRight: 'auto' }}
+                  disabled={aiEntitlementSaving || aiEntitlementLoading}
+                  onClick={handleAiEntitlementDelete}
+                >
+                  取消授權
+                </button>
+                <button className="tm-btn" type="button" disabled={aiEntitlementSaving} onClick={() => setAiEntitlementAccount(null)}>取消</button>
+                <button className="tm-btn primary" type="submit" disabled={aiEntitlementSaving || aiEntitlementLoading}>
+                  {aiEntitlementSaving ? '儲存中…' : '確認'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
         </div>,
