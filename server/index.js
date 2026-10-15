@@ -2522,7 +2522,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
         if (hasCompany) vcardUpdates.company = company;
         if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
         let nextAvatarUrl = null;
-        if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(sipUser.username, avatarDataUrl);
+        if (avatarDataUrl) nextAvatarUrl = await saveAccountAvatar(sipUser.username, avatarDataUrl);
         if (removeAvatar) nextAvatarUrl = "";
         if (nextAvatarUrl !== null) {
           vcardUpdates.photoUrl = nextAvatarUrl;
@@ -8430,7 +8430,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
         if (hasCompany) vcardUpdates.company = company;
         if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
         let nextAvatarUrl = null;
-        if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(account.username, avatarDataUrl);
+        if (avatarDataUrl) nextAvatarUrl = await saveAccountAvatar(account.username, avatarDataUrl);
         if (removeAvatar) nextAvatarUrl = "";
         if (nextAvatarUrl !== null) {
           vcardUpdates.photoUrl = nextAvatarUrl;
@@ -20885,7 +20885,9 @@ app.get("/api/avatars/:file", (request, response) => {
   const filePath = "/opt/saas/uploads/avatars/" + file;
   try {
     if (existsSync(filePath)) {
-      response.setHeader("Content-Type", "image/png");
+      // 壓縮上傳後擴展名為 .jpg，按擴展名返回正確 Content-Type（歷史 .png 保持不變）
+      const contentType = /\.jpe?g$/i.test(file) ? "image/jpeg" : "image/png";
+      response.setHeader("Content-Type", contentType);
       response.sendFile(filePath);
     } else {
       response.status(404).type("text/plain").send("Not found");

@@ -1197,7 +1197,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           if (hasCompany) vcardUpdates.company = company;
           if (hasJobTitle) vcardUpdates.jobTitle = jobTitle;
           let nextAvatarUrl = null;
-          if (avatarDataUrl) nextAvatarUrl = saveAccountAvatar(sipUser.username, avatarDataUrl);
+          if (avatarDataUrl) nextAvatarUrl = await saveAccountAvatar(sipUser.username, avatarDataUrl);
           if (removeAvatar) nextAvatarUrl = "";
           if (nextAvatarUrl !== null) {
             vcardUpdates.photoUrl = nextAvatarUrl;

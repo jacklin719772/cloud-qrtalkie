@@ -6,6 +6,7 @@ import * as mariadb from "mariadb";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
+import { Canvas, loadImage } from "skia-canvas";
 
 // Flexisip AM（Laravel）庫直連池：與 index.js 的 flexisipDbPool 同源配置
 const flexisipDbPool = mariadb.createPool({
@@ -137,8 +138,32 @@ export async function mergeAccountVcard(username, domain, updates) {
   }
 }
 
-// 保存頭像圖片（data URL 或裸 base64）→ 寫文件並返回 URL；格式錯誤拋 { statusCode }
-export function saveAccountAvatar(sipAccount, imageBase64) {
+// 保存頭像圖片（data URL 或裸 base64）→ 壓縮（對齊 App 端 compressAvatarImage：
+// 長邊 512px、JPEG q0.8，僅縮小不放大）→ 寫文件並返回 URL；格式錯誤拋 { statusCode }
+const AVATAR_MAX_DIMENSION = 512;
+const AVATAR_JPEG_QUALITY = 0.8;
+
+async function compressAvatarBuffer(input) {
+  try {
+    const image = await loadImage(input);
+    const longest = Math.max(image.width, image.height);
+    if (!longest) return null;
+    const scale = Math.min(1, AVATAR_MAX_DIMENSION / longest);
+    const canvas = new Canvas(
+      Math.max(1, Math.round(image.width * scale)),
+      Math.max(1, Math.round(image.height * scale)),
+    );
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const jpeg = await canvas.toBuffer("jpeg", { quality: AVATAR_JPEG_QUALITY });
+    return jpeg && jpeg.length ? Buffer.from(jpeg) : null;
+  } catch (error) {
+    console.error("[account-avatar] compress failed, fallback to raw:", error?.message || error);
+    return null;
+  }
+}
+
+export async function saveAccountAvatar(sipAccount, imageBase64) {
   const raw = String(imageBase64 || "");
   if (!raw || raw.length > 10 * 1024 * 1024) {
     const err = new Error("頭像圖片缺失或過大（上限約 10MB）。");
@@ -151,8 +176,15 @@ export function saveAccountAvatar(sipAccount, imageBase64) {
     err.statusCode = 400;
     throw err;
   }
+  let outBuf = await compressAvatarBuffer(buf);
+  let ext = "jpg";
+  if (!outBuf) {
+    // 解碼失敗回退原圖保存（保底不丟）
+    outBuf = buf;
+    ext = "png";
+  }
   if (!existsSync(AVATAR_DIR)) mkdirSync(AVATAR_DIR, { recursive: true });
-  const fileName = sipAccount + "-" + randomBytes(12).toString("hex") + ".png";
-  writeFileSync(path.join(AVATAR_DIR, fileName), buf);
+  const fileName = sipAccount + "-" + randomBytes(12).toString("hex") + "." + ext;
+  writeFileSync(path.join(AVATAR_DIR, fileName), outBuf);
   return AVATAR_URL_PREFIX + fileName;
 }
