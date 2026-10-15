@@ -881,10 +881,19 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management-modal .tm-stock-table tbody tr.selected { background: #14304a; }
         #trial-management-modal .tm-stock-table input[type="checkbox"] { accent-color: #3b82f6; }
         #trial-management-modal .tm-stock-table .mono { font-weight: 600; }
-        #trial-management-modal .tm-ecard-table { table-layout: fixed; }
+        #trial-management-modal .tm-ecard-table { table-layout: fixed; width: 100%; }
         #trial-management-modal .tm-ecard-table th,
         #trial-management-modal .tm-ecard-table td { padding: 7px 8px; overflow: hidden; text-overflow: ellipsis; }
         #trial-management-modal .tm-ecard-table .tm-btn { height: 28px; padding: 0 10px; font-size: 11px; }
+        /* 操作列钉住右侧：不随横向内容滚动（与设备管理页同款） */
+        #trial-management-modal .tm-ecard-table th:last-child,
+        #trial-management-modal .tm-ecard-table td:last-child {
+          position: sticky;
+          right: 0;
+          box-shadow: -1px 0 0 #374151;
+        }
+        #trial-management-modal .tm-ecard-table th:last-child { z-index: 3; background: #131d31; }
+        #trial-management-modal .tm-ecard-table td:last-child { z-index: 2; background: inherit; }
         #trial-management-modal .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
         #trial-management-modal .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
         #trial-management-modal .tm-radio-row input[type="radio"],
@@ -1443,15 +1452,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                       新增帳號列表
                       <span className="tm-hint">已勾選 {ecardSelectedIds.length} / {ecardStep.accounts.length}</span>
                     </div>
-                    <div className="tm-stock-list" style={{ maxHeight: '260px' }}>
+                    <div className="tm-stock-list" style={{ maxHeight: '260px', overflowX: 'hidden' }}>
                       <table className="tm-stock-table tm-ecard-table">
                         <thead>
                           <tr>
                             <th style={{ width: '36px' }}></th>
-                            <th style={{ width: '112px' }}>SIP 帳號</th>
-                            <th style={{ width: '112px' }}>Web 帳號</th>
-                            <th>顯示名</th>
-                            <th style={{ width: '128px', textAlign: 'right' }}>操作</th>
+                            <th style={{ width: '120px' }}>SIP 帳號</th>
+                            <th style={{ width: '120px' }}>Web 帳號</th>
+                            <th style={{ width: '96px' }}>顯示名</th>
+                            <th style={{ width: '126px', textAlign: 'right' }}>操作</th>
                           </tr>
                         </thead>
                         <tbody>
