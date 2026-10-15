@@ -1073,6 +1073,15 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
           -webkit-text-fill-color: #e5e7eb;
           transition: background-color 5000s ease-in-out 0s;
         }
+        /* 帳號設置彈窗（內聯樣式輸入框）的自動填充白底覆蓋 */
+        #trial-management-modal .acct-settings-input:-webkit-autofill,
+        #trial-management-modal .acct-settings-input:-webkit-autofill:hover,
+        #trial-management-modal .acct-settings-input:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0 1000px #1a2332 inset;
+          -webkit-text-fill-color: #e5e7eb;
+          caret-color: #e5e7eb;
+          transition: background-color 5000s ease-in-out 0s;
+        }
         #trial-management-modal .tm-modal {
           position: fixed;
           inset: 0;
@@ -2074,6 +2083,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
       )}
 
       {accountSettingsTarget && createPortal(
+        <div id="trial-management-modal">
         <div
           style={{
             position: 'fixed',
@@ -2105,6 +2115,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
                     <input
+                      className="acct-settings-input"
+                      autoComplete="off"
                       value={accountSettingsForm.displayName}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, displayName: event.target.value }))}
                       style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
@@ -2113,6 +2125,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
                     <input
+                      className="acct-settings-input"
+                      autoComplete="off"
                       type="email"
                       value={accountSettingsForm.email}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, email: event.target.value }))}
@@ -2122,6 +2136,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
                     <input
+                      className="acct-settings-input"
+                      autoComplete="off"
                       value={accountSettingsForm.phone}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
                       placeholder="國際格式，如 +886912345678"
@@ -2131,6 +2147,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
                     <input
+                      className="acct-settings-input"
+                      autoComplete="new-password"
                       type="password"
                       value={accountSettingsForm.password}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, password: event.target.value }))}
@@ -2141,6 +2159,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
                     <input
+                      className="acct-settings-input"
+                      autoComplete="new-password"
                       type="password"
                       value={accountSettingsForm.confirmPassword}
                       onChange={(event) => setAccountSettingsForm((form) => ({ ...form, confirmPassword: event.target.value }))}
@@ -2159,6 +2179,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
               </>
             )}
           </form>
+        </div>
         </div>,
         document.body
       )}
