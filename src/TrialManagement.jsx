@@ -881,6 +881,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
         #trial-management-modal .tm-stock-table tbody tr.selected { background: #14304a; }
         #trial-management-modal .tm-stock-table input[type="checkbox"] { accent-color: #3b82f6; }
         #trial-management-modal .tm-stock-table .mono { font-weight: 600; }
+        #trial-management-modal .tm-ecard-table { table-layout: fixed; }
+        #trial-management-modal .tm-ecard-table th,
+        #trial-management-modal .tm-ecard-table td { padding: 7px 8px; overflow: hidden; text-overflow: ellipsis; }
+        #trial-management-modal .tm-ecard-table .tm-btn { height: 28px; padding: 0 10px; font-size: 11px; }
         #trial-management-modal .tm-radio-row { display: flex; gap: 18px; align-items: center; color: #e5e7eb; font-size: 13px; }
         #trial-management-modal .tm-radio-row label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
         #trial-management-modal .tm-radio-row input[type="radio"],
@@ -1113,8 +1117,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
       {assignOpen && createPortal(
         <div id="trial-management-modal">
-        <div className="tm-modal" onClick={() => { if (!assigning) setAssignOpen(false); }}>
-          <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="tm-modal">
+          <div className="tm-modal-panel">
             <div className="tm-modal-head">
               <h3>添加試用帳號</h3>
               <button className="tm-btn" type="button" onClick={() => setAssignOpen(false)} disabled={assigning}>關閉</button>
@@ -1385,8 +1389,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
       {ecardStep.open && createPortal(
         <div id="trial-management-modal">
-        <div className="tm-modal" onClick={() => { if (!ecardStep.submitting) closeEcardStep(); }}>
-          <div className="tm-modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="tm-modal">
+          <div className="tm-modal-panel">
             <div className="tm-modal-head">
               <h3>Ecard 設置 — 本批 {ecardStep.accounts.length} 個帳號{ecardStep.accounts.some((a) => Number(a.trialId) <= 0) ? '（預覽）' : ''}</h3>
               <button className="tm-btn" type="button" onClick={closeEcardStep} disabled={ecardStep.submitting}>關閉</button>
@@ -1436,18 +1440,18 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
                   <div className="tm-section">
                     <div className="tm-section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      帳號列表
+                      新增帳號列表
                       <span className="tm-hint">已勾選 {ecardSelectedIds.length} / {ecardStep.accounts.length}</span>
                     </div>
-                    <div className="tm-stock-list" style={{ maxHeight: '220px' }}>
-                      <table className="tm-stock-table">
+                    <div className="tm-stock-list" style={{ maxHeight: '260px' }}>
+                      <table className="tm-stock-table tm-ecard-table">
                         <thead>
                           <tr>
-                            <th style={{ width: '42px' }}></th>
-                            <th>SIP 帳號</th>
-                            <th>Web 帳號</th>
+                            <th style={{ width: '36px' }}></th>
+                            <th style={{ width: '112px' }}>SIP 帳號</th>
+                            <th style={{ width: '112px' }}>Web 帳號</th>
                             <th>顯示名</th>
-                            <th style={{ textAlign: 'right' }}>操作</th>
+                            <th style={{ width: '128px', textAlign: 'right' }}>操作</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1549,8 +1553,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
       {ecardEditDraft && createPortal(
         <div id="trial-management-modal">
-        <div className="tm-modal" onClick={() => setEcardEditDraft(null)}>
-          <div className="tm-modal-panel" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '520px' }}>
             <div className="tm-modal-head">
               <h3>編輯名片 — {ecardEditDraft.username}</h3>
               <button className="tm-btn" type="button" onClick={() => setEcardEditDraft(null)}>關閉</button>
@@ -1618,8 +1622,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '' }, ref)
 
       {ecardPreviewImage.open && createPortal(
         <div id="trial-management-modal">
-        <div className="tm-modal" onClick={() => setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' })}>
-          <div className="tm-modal-panel" style={{ width: '460px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '460px' }}>
             <div className="tm-modal-head">
               <h3>名片預覽 — {ecardPreviewImage.username}</h3>
               <button className="tm-btn" type="button" onClick={() => setEcardPreviewImage({ open: false, loading: false, dataUrl: '', username: '' })}>關閉</button>
