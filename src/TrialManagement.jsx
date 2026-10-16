@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
+import { Copy, MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 import apiClient from './apiClient';
 
 // 試用管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
@@ -110,7 +110,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [overviewTarget, setOverviewTarget] = useState(null);
   const [overviewPassword, setOverviewPassword] = useState('');
   const [overviewText, setOverviewText] = useState('');
-  const [overviewCopied, setOverviewCopied] = useState(false);
+  const [overviewCopyHint, setOverviewCopyHint] = useState('');
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -1002,7 +1002,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     setOverviewTarget(target);
     setOverviewPassword('');
     setOverviewText(buildOverviewMessage(target, ''));
-    setOverviewCopied(false);
+    setOverviewCopyHint('');
   }
 
   function handleOverviewPasswordChange(value) {
@@ -1010,25 +1010,26 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     setOverviewText(buildOverviewMessage(overviewTarget, value.trim()));
   }
 
-  async function copyOverviewText() {
+  async function copyToClipboard(text, hint) {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(overviewText);
+      await navigator.clipboard.writeText(text);
     } catch {
       const textarea = document.createElement('textarea');
-      textarea.value = overviewText;
+      textarea.value = text;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
     }
-    setOverviewCopied(true);
+    setOverviewCopyHint(hint);
   }
 
   useEffect(() => {
-    if (!overviewCopied) return undefined;
-    const timer = setTimeout(() => setOverviewCopied(false), 5000);
+    if (!overviewCopyHint) return undefined;
+    const timer = setTimeout(() => setOverviewCopyHint(''), 5000);
     return () => clearTimeout(timer);
-  }, [overviewCopied]);
+  }, [overviewCopyHint]);
 
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
@@ -2372,12 +2373,31 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                 ['試用期', `${overviewTarget.startedAt} ~ ${overviewTarget.expiresAt}`],
                 ['狀態', overviewTarget.statusLabel],
                 ['AI 助手', overviewTarget.aiEnabled ? '已開通' : '—'],
-                ['名片訪問連結', overviewTarget.ecardAccessUrl || '—'],
-                ['名片圖片連結', overviewTarget.ecardImageUrl || '—'],
               ].map(([label, value]) => (
                 <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
                   <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
                   <span style={{ color: '#e5e7eb', fontSize: '13px', wordBreak: 'break-all' }}>{value || '—'}</span>
+                </div>
+              ))}
+              {[
+                ['名片訪問連結', overviewTarget.ecardAccessUrl, '已複製名片訪問連結。'],
+                ['名片圖片連結', overviewTarget.ecardImageUrl, '已複製名片圖片連結。'],
+              ].map(([label, url, hint]) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
+                  <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0 }}>
+                    <span style={{ color: '#e5e7eb', fontSize: '13px', wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{url || '—'}</span>
+                    {url && (
+                      <button
+                        type="button"
+                        title="複製連結"
+                        onClick={() => copyToClipboard(url, hint)}
+                        style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: '0 2px', display: 'flex', flexShrink: 0 }}
+                      >
+                        <Copy size={14} />
+                      </button>
+                    )}
+                  </span>
                 </div>
               ))}
               <div className="tm-field">
@@ -2400,9 +2420,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
               </div>
             </div>
             <div className="tm-modal-foot">
-              {overviewCopied && <span style={{ marginRight: 'auto', color: '#22c55e', fontSize: '13px' }}>已複製至剪貼簿。</span>}
+              {overviewCopyHint && <span style={{ marginRight: 'auto', color: '#22c55e', fontSize: '13px' }}>{overviewCopyHint}</span>}
               <button className="tm-btn" type="button" onClick={() => setOverviewTarget(null)}>關閉</button>
-              <button className="tm-btn primary" type="button" onClick={copyOverviewText}>複製文案</button>
+              <button className="tm-btn primary" type="button" onClick={() => copyToClipboard(overviewText, '已複製至剪貼簿。')}>複製文案</button>
             </div>
           </div>
         </div>
