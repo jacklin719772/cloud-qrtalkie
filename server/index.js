@@ -2490,8 +2490,13 @@ app.get("/api/tenant/sip-accounts/:id/account-profile", requireAdmin, async (req
     } catch (vcardErr) {
       console.error("[tenant-account-profile] vcard read failed:", vcardErr?.message || vcardErr);
     }
+    // 首次設置（資料卡尚無公司）時以租戶名稱作默認值，用戶可再修改
+    const [tenantRow] = await connection.query(
+      `SELECT name FROM tenants WHERE id = ? LIMIT 1`,
+      [request.admin.tenantId],
+    );
     return response.json({
-      company: vcardData?.company || "",
+      company: vcardData?.company || tenantRow?.name || "",
       jobTitle: vcardData?.jobTitle || "",
       avatarUrl: account.avatar_url || vcardData?.photoUrl || "",
     });

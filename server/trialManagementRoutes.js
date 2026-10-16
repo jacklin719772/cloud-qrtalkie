@@ -1125,6 +1125,11 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       } catch (vcardErr) {
         console.error("[trial-account-settings] vcard read failed:", vcardErr?.message || vcardErr);
       }
+      // 首次設置（資料卡尚無公司）時以歸屬租戶名稱作默認值，用戶可再修改
+      const [tenantRow] = await connection.query(
+        `SELECT name FROM tenants WHERE id = ? LIMIT 1`,
+        [row.owner_tenant_id],
+      );
       return response.json({
         account: {
           id: Number(row.sip_user_id),
@@ -1132,7 +1137,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           displayName: row.display_name || "",
           email: row.email || "",
           phone: row.phone_number || "",
-          company: vcardData?.company || "",
+          company: vcardData?.company || tenantRow?.name || "",
           jobTitle: vcardData?.jobTitle || "",
           avatarUrl: row.avatar_url || vcardData?.photoUrl || "",
         },
