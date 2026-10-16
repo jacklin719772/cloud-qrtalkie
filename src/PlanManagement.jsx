@@ -920,6 +920,11 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-track { background: #1a2332; }
+        /* 審核第四步：Web 帳號分配卡片區滾動條（深色） */
+        #plan-management-review .pr-web-grid-wrap { scrollbar-color: #4b5563 #1a2332; }
+        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
+        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
+        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar-track { background: #1a2332; }
       `}</style>
       {!reviewOrder ? (
       <section className="view active" id="plan-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
@@ -1362,7 +1367,7 @@ export default function PlanManagement({ onNavigate }) {
                                   帳號有效期 <strong style={{ color: '#e5e7eb' }}>{getAccountEffectiveRange(reviewOrder)}</strong>
                                 </div>
                               </div>
-                              <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', alignContent: 'start', gap: '12px', paddingRight: '4px' }}>
+                              <div className="pr-web-grid-wrap" style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', alignContent: 'start', gap: '12px', paddingRight: '4px' }}>
                                 {sipPreviewAccounts.map((sipAccount, index) => {
                                   const webAccountIndex = sipPreviewAccounts.slice(0, index).filter((account) => !account.reuseWeb).length;
                                   const webAccount = sipAccount.reuseWeb ? null : unassignedWebAccounts[webAccountIndex];
