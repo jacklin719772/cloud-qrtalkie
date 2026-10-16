@@ -45,6 +45,7 @@ const PlanManagement = forwardRef(function PlanManagement({ onNavigate, onModeCh
   }, [reviewOrder]);
   useImperativeHandle(ref, () => ({
     returnToList: () => setReviewOrder(null),
+    refreshList: () => loadOrders(),
     get viewMode() { return reviewOrder ? 'review' : 'list'; },
   }));
   const [unassignedSipAccounts, setUnassignedSipAccounts] = useState([]);

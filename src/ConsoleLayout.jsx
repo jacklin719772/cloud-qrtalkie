@@ -790,6 +790,7 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="primary-btn" type="button" onClick={() => { setPurchaseContext({ mode: 'create', orderId: null }); setCurrentView('purchase-plan'); }} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}><ShoppingCart size={14} /> 購買套餐</button>
           <button className="primary-btn" type="button" onClick={() => domainRef.current?.showPayments()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>💳 付款記錄</button>
+          <button type="button" onClick={() => domainRef.current?.refreshOrders()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="刷新訂單狀態"><RefreshCw size={18} /></button>
           <button type="button" onClick={() => setShowDomainHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
@@ -860,6 +861,7 @@ export default function ConsoleLayout({ onLogout }) {
     if (currentView === 'plan-management') {
       return (
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button type="button" onClick={() => planManagementRef.current?.refreshList()} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="刷新訂單狀態"><RefreshCw size={18} /></button>
           {planManagementMode === 'review' && (
             <button
               className="ghost-btn"

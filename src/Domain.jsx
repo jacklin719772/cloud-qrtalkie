@@ -121,6 +121,9 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
         if (res?.data) setPaymentData(res.data);
       }).catch(() => {}).finally(() => setPaymentLoading(false));
     },
+    refreshOrders() {
+      loadOrders();
+    },
   }));
 
   async function loadOrders() {
