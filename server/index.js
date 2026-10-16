@@ -10425,6 +10425,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     let renewalExpiresDate = "";
     let trialSipUserIds = [];
     let reservedTrialTenantId = null;
+    let retainedBySip = new Map();
 
     const dateOnly = (value) => {
       if (!value) return "";
@@ -10751,7 +10752,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
 
         // 放行三类账号：库存（tenant_id 为空）、保留清单内状态有效的试用账号；其余拒绝
         reservedTrialTenantId = await getReservedTrialTenantId(connection);
-        const retainedBySip = new Map(
+        retainedBySip = new Map(
           retainedTrialRows
             .filter((row) => row.status === "pending")
             .map((row) => [Number(row.sip_user_id), row]),
