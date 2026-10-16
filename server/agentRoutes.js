@@ -206,7 +206,7 @@ export function registerAgentRoutes(app, { requireAdmin }) {
     }
   });
 
-  // 启用/停用（不提供删除——只停用不删除，避免历史失联）
+  // 启用/停用
   app.put("/api/admin/agents/:id/status", requireAdmin, async (request, response) => {
     if (!requirePlatform(request, response)) return;
     const agentId = Number(request.params.id);
@@ -231,6 +231,29 @@ export function registerAgentRoutes(app, { requireAdmin }) {
     } catch (error) {
       console.error("Failed to update agent status:", error);
       return response.status(500).json({ message: "更新代理商狀態失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // 删除（关联的 trial_assignments.agent_id 由外键 ON DELETE SET NULL 自动置空）
+  app.delete("/api/admin/agents/:id", requireAdmin, async (request, response) => {
+    if (!requirePlatform(request, response)) return;
+    const agentId = Number(request.params.id);
+    if (!Number.isInteger(agentId) || agentId <= 0) {
+      return response.status(400).json({ message: "代理商編號無效。" });
+    }
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const result = await connection.query("DELETE FROM agents WHERE id = ?", [agentId]);
+      if (Number(result.affectedRows || 0) === 0) {
+        return response.status(404).json({ message: "找不到代理商。" });
+      }
+      return response.json({ message: "代理商已刪除。" });
+    } catch (error) {
+      console.error("Failed to delete agent:", error);
+      return response.status(500).json({ message: "刪除代理商失敗。" });
     } finally {
       if (connection) connection.release();
     }

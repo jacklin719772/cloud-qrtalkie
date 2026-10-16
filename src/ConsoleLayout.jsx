@@ -58,7 +58,7 @@ const viewTitles = {
   'plan-management': '訂閱審核',
   'e-business-card': '電子名片',
   'ecard-styles-management': '電子名片管理',
-  'agents-management': '代理商名錄',
+  'agents-management': '代理商管理',
   'tenant-management': '租戶管理',
   'trial-management': '試用管理',
   'tenant-coupon-management': '優惠碼管理',
@@ -691,10 +691,46 @@ export default function ConsoleLayout({ onLogout }) {
     if (currentView === 'agents-management') {
       const mode = agentsDirectoryRef.current?.viewMode;
       if (mode === 'add' || mode === 'edit') return null;
+      const actionBaseStyle = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        height: '44px',
+        minHeight: '44px',
+        padding: '0 18px',
+        borderRadius: '8px',
+        fontSize: '12px',
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+      };
       return (
-        <button className="primary-btn" type="button" onClick={() => agentsDirectoryRef.current?.startAdd()}>
-          新增代理商
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => agentsDirectoryRef.current?.startAdd()}
+            style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+          >
+            <Plus size={14} /> 新增代理商
+          </button>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => agentsDirectoryRef.current?.batchDisableSelected()}
+            style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+          >
+            <UserMinus size={14} /> 批量停用
+          </button>
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={() => agentsDirectoryRef.current?.batchDeleteSelected()}
+            style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}
+          >
+            <Trash2 size={14} /> 批量刪除
+          </button>
+        </div>
       );
     }
     if (currentView === 'tenant-management') {

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import apiClient from './apiClient';
 
-// 代理商名錄（登记表）：参照租户管理页结构（列表 + 页头新增 + 表单视图 + 详情弹窗 + 状态启停）
-// 银行账号为纯登记用途：列表/详情脱敏（尾 4 位），编辑回填完整值；不提供删除（只停用不删除）
+// 代理商管理（登记表）：参照租户管理页结构（列表 + 页头新增 + 表单视图 + 详情弹窗 + 状态启停 + 多选批量停用/删除）
+// 银行账号为纯登记用途：列表/详情脱敏（尾 4 位），编辑回填完整值
 
 function RequiredMark() {
   return <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>;
@@ -37,6 +37,8 @@ export default forwardRef(function AgentsDirectory(props, ref) {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [selectedAgentDetails, setSelectedAgentDetails] = useState(null);
+  const [selectedAgentIds, setSelectedAgentIds] = useState([]);
+  const [listMessage, setListMessage] = useState({ type: '', text: '' });
 
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'add' | 'edit'
@@ -47,10 +49,14 @@ export default forwardRef(function AgentsDirectory(props, ref) {
 
   const dropdownAnchorRef = useRef(null);
   const messageTimerRef = useRef(null);
+  const listMessageTimerRef = useRef(null);
+  const batchBusyRef = useRef(false);
   const dropdownMenuRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
     startAdd,
+    batchDisableSelected,
+    batchDeleteSelected,
     get viewMode() { return viewMode; },
   }));
 
@@ -71,6 +77,77 @@ export default forwardRef(function AgentsDirectory(props, ref) {
       }, 5000);
     }
   };
+
+  const showListMessage = (type, text) => {
+    setListMessage({ type, text });
+    if (listMessageTimerRef.current) window.clearTimeout(listMessageTimerRef.current);
+    if (text) {
+      listMessageTimerRef.current = window.setTimeout(() => {
+        setListMessage({ type: '', text: '' });
+        listMessageTimerRef.current = null;
+      }, 5000);
+    }
+  };
+
+  async function batchDisableSelected() {
+    if (batchBusyRef.current) return;
+    if (selectedAgentIds.length === 0) {
+      showListMessage('error', '請先勾選代理商。');
+      return;
+    }
+    const targets = agents.filter((agent) => selectedAgentIds.includes(agent.id) && agent.status === 'active');
+    if (targets.length === 0) {
+      showListMessage('error', '勾選的代理商均已是停用狀態。');
+      return;
+    }
+    if (!window.confirm(`確定要停用選中的 ${targets.length} 個代理商嗎？`)) return;
+    batchBusyRef.current = true;
+    let ok = 0;
+    let fail = 0;
+    for (const agent of targets) {
+      try {
+        await apiClient.put(`/admin/agents/${agent.id}/status`, { status: 'disabled' });
+        ok += 1;
+      } catch (err) {
+        console.error('Failed to disable agent:', agent.id, err);
+        fail += 1;
+      }
+    }
+    setSelectedAgentIds([]);
+    await loadAgents();
+    showListMessage(fail === 0 ? 'success' : 'error', fail === 0 ? `已停用 ${ok} 個代理商。` : `已停用 ${ok} 個代理商，${fail} 個失敗。`);
+    batchBusyRef.current = false;
+  }
+
+  async function batchDeleteSelected() {
+    if (batchBusyRef.current) return;
+    if (selectedAgentIds.length === 0) {
+      showListMessage('error', '請先勾選代理商。');
+      return;
+    }
+    const targets = agents.filter((agent) => selectedAgentIds.includes(agent.id));
+    if (targets.length === 0) {
+      showListMessage('error', '找不到勾選的代理商，請重新整理後再試。');
+      return;
+    }
+    if (!window.confirm(`確定要刪除選中的 ${targets.length} 個代理商嗎？\n刪除後不可恢復，關聯的試用記錄將失去代理商資訊。`)) return;
+    batchBusyRef.current = true;
+    let ok = 0;
+    let fail = 0;
+    for (const agent of targets) {
+      try {
+        await apiClient.delete(`/admin/agents/${agent.id}`);
+        ok += 1;
+      } catch (err) {
+        console.error('Failed to delete agent:', agent.id, err);
+        fail += 1;
+      }
+    }
+    setSelectedAgentIds([]);
+    await loadAgents();
+    showListMessage(fail === 0 ? 'success' : 'error', fail === 0 ? `已刪除 ${ok} 個代理商。` : `已刪除 ${ok} 個代理商，${fail} 個失敗。`);
+    batchBusyRef.current = false;
+  }
 
   const updateAddField = (field) => (event) => {
     setAddForm((current) => ({ ...current, [field]: event.target.value }));
@@ -694,11 +771,34 @@ export default forwardRef(function AgentsDirectory(props, ref) {
             <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#3b1111', color: '#fca5a5', borderRadius: '8px', fontSize: '13px' }}>{error}</div>
           )}
 
+          {listMessage.text && (
+            <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '8px', fontSize: '13px', background: listMessage.type === 'success' ? '#0d2818' : '#3b1111', color: listMessage.type === 'success' ? '#4ade80' : '#fca5a5' }}>{listMessage.text}</div>
+          )}
+
           <div className="agent-table-card">
             <div className="agent-table-wrapper">
               <table className="agent-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#1a2332' }}>
                   <tr>
+                    <th style={{ width: '48px', background: '#1a2332', textAlign: 'center', padding: '0 10px' }}>
+                      <input
+                        type="checkbox"
+                        title="全選（當前篩選結果）"
+                        checked={sortedFilteredAgents.length > 0 && sortedFilteredAgents.every((agent) => selectedAgentIds.includes(agent.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const next = new Set(selectedAgentIds);
+                            sortedFilteredAgents.forEach((agent) => next.add(agent.id));
+                            setSelectedAgentIds(Array.from(next));
+                          } else {
+                            const next = new Set(selectedAgentIds);
+                            sortedFilteredAgents.forEach((agent) => next.delete(agent.id));
+                            setSelectedAgentIds(Array.from(next));
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     {[
                       ['name', '代理商名稱', '190px'],
                       ['contactName', '聯絡人', '120px'],
@@ -720,17 +820,31 @@ export default forwardRef(function AgentsDirectory(props, ref) {
                 <tbody>
                   {isLoading ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>載入代理商名錄中...</td>
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>載入代理商名錄中...</td>
                     </tr>
                   ) : paginatedAgents.length === 0 ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '60px 32px', color: '#9ca3af', fontSize: '14px' }}>
                         {searchKeyword || statusFilter !== 'all' ? '沒有符合條件的代理商' : '目前尚無代理商資料'}
                       </td>
                     </tr>
                   ) : (
                     paginatedAgents.map((agent) => (
                       <tr key={agent.id}>
+                        <td style={{ width: '48px', textAlign: 'center', padding: '0 10px' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedAgentIds.includes(agent.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedAgentIds((current) => (current.includes(agent.id) ? current : [...current, agent.id]));
+                              } else {
+                                setSelectedAgentIds((current) => current.filter((id) => id !== agent.id));
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
                         <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{agent.name || '-'}</td>
                         <td>{agent.contactName || '-'}</td>
                         <td>{agent.contactPhone || '-'}</td>

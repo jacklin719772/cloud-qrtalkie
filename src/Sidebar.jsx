@@ -23,6 +23,7 @@ import {
   Download,
   Flag,
   Rocket,
+  Handshake,
 } from 'lucide-react';
 
 const navItems = [
@@ -47,7 +48,6 @@ const baseDataItems = [
   { id: 'payment-methods', label: '在線支付' },
   { id: 'offline-account', label: '收款帳戶' },
   { id: 'e-business-card', label: '電子名片' },
-  { id: 'agents-management', label: '代理商名錄' },
   { id: 'terms-of-service', label: '服務條款' },
   { id: 'privacy-policy', label: '隱私政策' },
 ];
@@ -127,6 +127,17 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             >
               <Building className="nav-icon" size={20} aria-hidden="true" />
               {!isCollapsed && <span>租戶管理</span>}
+            </button>
+
+            <button
+              className={`nav-item ${currentView === 'agents-management' ? 'active' : ''}`}
+              type="button"
+              title={isCollapsed ? '代理商管理' : undefined}
+              aria-label="代理商管理"
+              onClick={() => onViewChange('agents-management')}
+            >
+              <Handshake className="nav-icon" size={20} aria-hidden="true" />
+              {!isCollapsed && <span>代理商管理</span>}
             </button>
 
             <button
@@ -235,9 +246,9 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
                     key={item.id}
                     className={`sub-nav-item ${currentView === item.id ? 'active' : ''}`}
                     type="button"
-                  title={['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'agents-management', 'terms-of-service', 'privacy-policy'].includes(item.id) ? item.label : `${item.label}（暫未實作）`}
+                  title={['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy'].includes(item.id) ? item.label : `${item.label}（暫未實作）`}
                     onClick={() => {
-                    if (['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'agents-management', 'terms-of-service', 'privacy-policy'].includes(item.id)) onViewChange(item.id);
+                    if (['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy'].includes(item.id)) onViewChange(item.id);
                     }}
                   >
                     {item.label}
