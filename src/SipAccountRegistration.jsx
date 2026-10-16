@@ -37,6 +37,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [tenantFilter, setTenantFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSizeOptions = [10, 20, 50, "全部"];
   const [pageSize, setPageSize] = useState(10);
@@ -251,14 +252,23 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     return { total: accounts.length, active, disabled, assigned };
   }, [accounts]);
 
+  // 租戶篩選選項：由帳號列表歸納（僅列有帳號掛靠的租戶）
+  const tenantOptions = useMemo(() => {
+    const map = new Map();
+    accounts.forEach((acc) => {
+      if (acc.tenantId != null && acc.tenantName) map.set(Number(acc.tenantId), acc.tenantName);
+    });
+    return Array.from(map.entries()).sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'zh-Hans-CN'));
+  }, [accounts]);
+
   // 列表過濾
   const filteredAccounts = useMemo(() => {
     return accounts.filter((acc) => {
-      const matchesSearch = !searchKeyword || 
+      const matchesSearch = !searchKeyword ||
         (acc.username && acc.username.toLowerCase().includes(searchKeyword.toLowerCase())) ||
         (acc.email && acc.email.toLowerCase().includes(searchKeyword.toLowerCase())) ||
         (acc.phone && acc.phone.includes(searchKeyword));
-      
+
       let matchesStatus = true;
       if (statusFilter !== 'all') {
         if (statusFilter === 'assigned') {
@@ -269,10 +279,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
           matchesStatus = acc.status === statusFilter;
         }
       }
-      
-      return matchesSearch && matchesStatus;
+
+      const matchesTenant = tenantFilter === 'all' || Number(acc.tenantId) === Number(tenantFilter);
+
+      return matchesSearch && matchesStatus && matchesTenant;
     });
-  }, [accounts, searchKeyword, statusFilter]);
+  }, [accounts, searchKeyword, statusFilter, tenantFilter]);
 
   const sortedAccounts = useMemo(() => {
     let sortableItems = [...filteredAccounts];
@@ -299,7 +311,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [searchKeyword, statusFilter, sortConfig, pageSize]);
+  }, [searchKeyword, statusFilter, tenantFilter, sortConfig, pageSize]);
 
   // 頁碼夾取：刪除/篩選後總頁數變少時，避免停留在越界頁導致列表顯示為空
   useEffect(() => {
@@ -1685,8 +1697,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         }
         #sip-account-registration .sip-search {
           position: relative;
-          width: clamp(280px, 30vw, 360px);
-          flex: 0 1 360px;
+          width: clamp(200px, 20vw, 240px);
+          flex: 0 1 240px;
           max-width: 100%;
         }
         #sip-account-registration .sip-search svg {
@@ -1967,6 +1979,18 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <option value="active">啟用中</option>
                 <option value="disabled">已停用</option>
                 <option value="assigned">已分配</option>
+              </select>
+              <select
+                className="sip-status-select"
+                value={tenantFilter}
+                onChange={(e) => setTenantFilter(e.target.value)}
+                aria-label="租戶篩選"
+                style={{ minWidth: '140px', maxWidth: '200px', width: 'auto' }}
+              >
+                <option value="all">全部租戶</option>
+                {tenantOptions.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
               </select>
             </div>
             <div className="sip-stats">

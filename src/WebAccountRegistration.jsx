@@ -239,6 +239,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         || String(account.displayName || '').toLowerCase().includes(keyword)
         || String(account.domain || '').toLowerCase().includes(keyword)
         || String(account.email || '').toLowerCase().includes(keyword)
+        || String(account.assignedSipUsername || '').toLowerCase().includes(keyword)
         || String(account.phone || '').includes(keyword);
 
       let matchesStatus = true;

@@ -7816,6 +7816,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         e.registrar,
         e.outbound_proxy,
         e.protocol,
+        u.tenant_id,
         t.name AS tenant_name,
         ent.service_expires_at
       FROM sip_users u
@@ -7845,6 +7846,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       externalProtocol: r.protocol || '',
       createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') : '',
       creatorName: r.creator_name || '-',
+      tenantId: r.tenant_id == null ? null : Number(r.tenant_id),
       tenantName: r.tenant_name || '',
       expiresAt: r.service_expires_at || null
     }));
