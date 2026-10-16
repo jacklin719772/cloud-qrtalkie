@@ -7553,6 +7553,17 @@ app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) =>
     }
 
     await connection.query(`DELETE FROM billing_orders WHERE id = ? AND tenant_id = ?`, [orderId, request.admin.tenantId]);
+    // 清理该订单的通知事件与回执（避免删除后残留「訂單待支付」等悬空通知）
+    await connection.query(
+      `DELETE FROM notification_receipts WHERE event_id IN (
+         SELECT id FROM notification_events WHERE scope_type = 'billing_order' AND scope_id = ?
+       )`,
+      [orderId],
+    );
+    await connection.query(
+      `DELETE FROM notification_events WHERE scope_type = 'billing_order' AND scope_id = ?`,
+      [orderId],
+    );
     await connection.commit();
     return response.json({ message: "訂單已刪除。" });
   } catch (error) {
