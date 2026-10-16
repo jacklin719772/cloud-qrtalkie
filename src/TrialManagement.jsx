@@ -955,7 +955,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
       `▸ 密碼：${password || '（請與管理員確認）'}`,
       `▸ 試用期：${target.startedAt || '-'} ~ ${target.expiresAt || '-'}`,
     ];
-    if (target.ecardUrl) lines.push(`▸ 電子名片：${target.ecardUrl}`);
+    if (target.ecardAccessUrl) lines.push(`▸ 電子名片（訪問）：${target.ecardAccessUrl}`);
+    if (target.ecardImageUrl) lines.push(`▸ 名片圖片：${target.ecardImageUrl}`);
     lines.push(
       '',
       '使用步驟：',
@@ -983,13 +984,20 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
       expiresAt: trial.expiresAt || '',
       statusLabel: (PHASE_META[trial.phase] || {}).label || '',
       aiEnabled: Boolean(trial.aiEnabled),
-      ecardUrl: '',
+      ecardAccessUrl: '',
+      ecardImageUrl: '',
     };
     try {
       const ecard = await apiClient.get(`/admin/trials/${trial.id}/ecard`);
-      if (ecard?.accessSlug) target.ecardUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+      if (ecard?.accessSlug) target.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+      const rawImage = ecard?.thumbnailUrl || '';
+      if (rawImage) {
+        target.ecardImageUrl = rawImage.startsWith('http')
+          ? rawImage
+          : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+      }
     } catch {
-      /* 無名片或讀取失敗則不顯示該行 */
+      /* 無名片或讀取失敗則不顯示名片行 */
     }
     setOverviewTarget(target);
     setOverviewPassword('');
@@ -2364,7 +2372,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                 ['試用期', `${overviewTarget.startedAt} ~ ${overviewTarget.expiresAt}`],
                 ['狀態', overviewTarget.statusLabel],
                 ['AI 助手', overviewTarget.aiEnabled ? '已開通' : '—'],
-                ['電子名片', overviewTarget.ecardUrl || '—'],
+                ['名片訪問連結', overviewTarget.ecardAccessUrl || '—'],
+                ['名片圖片連結', overviewTarget.ecardImageUrl || '—'],
               ].map(([label, value]) => (
                 <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
                   <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
