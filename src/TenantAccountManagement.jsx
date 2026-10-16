@@ -293,7 +293,6 @@ const TenantAccountManagement = forwardRef(({
   const sortedAccounts = useMemo(() => {
     const getSortValue = (account) => {
       if (sortConfig.key === 'username') return account.username || '';
-      if (sortConfig.key === 'displayName') return account.displayName || '';
       if (sortConfig.key === 'orderNo') return account.orderNo || '';
       if (sortConfig.key === 'status') return account.status || '';
       if (sortConfig.key === 'serviceStartsAt') return account.serviceStartsAt || '';
@@ -1144,7 +1143,6 @@ const TenantAccountManagement = forwardRef(({
                 </th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('username')}><span>帳號</span><span>{getSortIndicator('username')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('status')}><span>狀態</span><span>{getSortIndicator('status')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('displayName')}><span>顯示名稱</span><span>{getSortIndicator('displayName')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('webAccount')}><span>Web 帳號</span><span>{getSortIndicator('webAccount')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('contactBookName')}><span>通訊錄</span><span>{getSortIndicator('contactBookName')}</span></button></th>
                 <th>電子名片</th>
@@ -1157,7 +1155,7 @@ const TenantAccountManagement = forwardRef(({
             <tbody>
               {paginatedAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ padding: 0, textAlign: 'center' }}>
+                  <td colSpan={10} style={{ padding: 0, textAlign: 'center' }}>
               <div className="account-empty">
                     {isLoading ? '載入中...' : '暫無帳號'}
                   </div>
@@ -1175,9 +1173,17 @@ const TenantAccountManagement = forwardRef(({
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
-                    <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{account.username}</td>
+                    <td>
+                      {account.displayName && account.displayName !== account.username ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ color: '#f3f4f6', fontWeight: 500 }}>{account.displayName}</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#9ca3af' }}>{account.username}</span>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#f3f4f6', fontWeight: 500 }}>{account.username}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>{getStatusBadge(account.status)}</td>
-                    <td>{account.displayName || '-'}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.webAccount || '—'}</td>
                     <td style={{ fontSize: '12px' }}>{account.contactBookName || '—'}</td>
                     <td style={{ padding: '12px 16px' }}>{getEcardBadge(account.ecard)}</td>
