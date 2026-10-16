@@ -460,6 +460,28 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     }
   };
 
+  // 保留帳號（續訂）：只可減不可加——只能取消勾選原單已有帳號，且至少保留 1 個
+  const toggleRetainedAccount = (sipUserId) => {
+    const numericId = Number(sipUserId);
+    setSelectedRetainedSipUserIds(prev => {
+      const next = new Set(prev);
+      if (next.has(numericId)) {
+        if (next.size <= 1) return prev; // 至少保留一個
+        next.delete(numericId);
+        return next;
+      }
+      // 只允許原單帳號範圍內調整（不允許加）
+      const isExistingAccount = renewalAccounts.some(account => Number(account.sipUserId) === numericId);
+      if (!isExistingAccount) return prev;
+      next.add(numericId);
+      return next;
+    });
+  };
+
+  const selectAllRetainedAccounts = () => {
+    setSelectedRetainedSipUserIds(new Set(renewalAccounts.map(account => Number(account.sipUserId)).filter(Boolean)));
+  };
+
   const handleCheckout = async (e) => {
     e.preventDefault();
     if (paymentType === 'online') {
@@ -471,6 +493,10 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
       : !offlinePaymentInfo;
     if (!selectedPlanId || termMonths <= 0 || missingPaymentMethod) {
       setError('請完整選擇套餐、時長與支付方式。');
+      return;
+    }
+    if (isRenewalMode && currentRenewalAccountCount > 0 && selectedRetainedSipUserIds.size === 0) {
+      setError('續訂至少需保留 1 個帳號。');
       return;
     }
     if (isRenewalMode && currentRenewalAccountCount > 0 && desiredRenewalAccountCount > currentRenewalAccountCount) {
@@ -809,6 +835,17 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         #purchase-plan .retained-trial-text small { color: #9ca3af; font-size: 12px; }
         #purchase-plan .retained-trial-remove { color: #f87171; font-size: 12px; }
         #purchase-plan .retained-trial-hint { color: #9ca3af; font-size: 12px; }
+        /* 續訂保留帳號面板：暗色覆蓋（原為淺色全域樣式） */
+        #purchase-plan .renewal-account-panel { background: #111827; border: 1px solid #374151; }
+        #purchase-plan .renewal-account-toolbar { background: #1a2332; border-bottom-color: #1f2937; }
+        #purchase-plan .renewal-account-summary { color: #9ca3af; }
+        #purchase-plan .renewal-account-actions .link-btn { color: #60a5fa; }
+        #purchase-plan .renewal-account-actions .link-btn:disabled { color: #4b5563; }
+        #purchase-plan .renewal-account-option { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #purchase-plan .renewal-account-option:hover { background: #1e293b; border-color: #3b82f6; }
+        #purchase-plan .renewal-account-option.selected { background: #1e3a5f; border-color: #3b82f6; box-shadow: none; }
+        #purchase-plan .renewal-account-text strong { color: #f3f4f6; }
+        #purchase-plan .renewal-account-text small { color: #9ca3af; }
         #purchase-plan .offline-payment-info {
           background: #1a2332 !important;
           border: 1px solid #1f2937 !important;
@@ -891,15 +928,26 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
               <div className="renewal-account-panel">
                 <div className="renewal-account-toolbar">
                   <div className="renewal-account-summary">
-                    當前共有 {currentRenewalAccountCount} 個帳號，續訂後全部原樣保留（號碼不變），僅延長使用期限。
+                    當前共有 {currentRenewalAccountCount} 個帳號，本次保留 {selectedRetainedSipUserIds.size} 個（至少保留 1 個）；取消的帳號將在審核通過後釋放回庫存，帳號只可減不可加。
+                  </div>
+                  <div className="renewal-account-actions" aria-label="保留帳號選擇操作">
+                    <button type="button" className="link-btn" onClick={selectAllRetainedAccounts}>全選</button>
                   </div>
                 </div>
                 <div className="renewal-account-listbox" role="group" aria-label="原訂單已分配賬號">
                   {renewalAccounts.map(account => {
                     const sipUserId = Number(account.sipUserId);
+                    const checked = selectedRetainedSipUserIds.has(sipUserId);
+                    const isLastSelected = checked && selectedRetainedSipUserIds.size <= 1;
                     return (
-                      <label key={sipUserId} className="renewal-account-option selected">
-                        <input type="checkbox" checked disabled readOnly />
+                      <label key={sipUserId} className={`renewal-account-option ${checked ? 'selected' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isLastSelected}
+                          title={isLastSelected ? '至少保留一個帳號' : undefined}
+                          onChange={() => toggleRetainedAccount(sipUserId)}
+                        />
                         <span className="renewal-account-text">
                           <strong>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</strong>
                           {account.displayName && account.displayName !== account.username && <small>{account.displayName}</small>}

@@ -6943,8 +6943,11 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
   const requestedPaymentMethod = sanitizeString(payload.paymentMethod, 20);
   const requestedPaymentChannel = sanitizeString(payload.paymentChannel, 80);
   const requestedBillingAddress = sanitizeString(payload.billingAddress, 500);
-  // 續訂鎖定：數量固定=原單數量、帳號全部原樣保留；僅「時長」與「套餐」可調整
+  // 續訂：數量固定為原單、號碼只可減不可加（不保留的帳號釋放回庫存）、至少保留 1 個；僅時長與套餐可調
   const requestedMonths = Math.max(1, Number(payload.months || 1));
+  const requestedRetainedSipUserIds = Array.isArray(payload.retainedSipUserIds)
+    ? Array.from(new Set(payload.retainedSipUserIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)))
+    : [];
   const formatSqlDate = (value) => {
     if (!value) return null;
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
@@ -7043,16 +7046,20 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const sourceQuantity = Math.max(1, Number(sourcePlanItem.quantity || 1));
     const sourceAccountCount = Number(sourcePlanItem.account_quantity || entitlementRows.length || 0);
     const accountsPerQuantity = Math.max(1, Math.round(sourceAccountCount / sourceQuantity));
-    // 數量鎖定：應分配帳號數=單份帳號數 × 原單數量
-    const requestedAccountCount = accountsPerQuantity * sourceQuantity;
-    if (requestedAccountCount > entitlementRows.length) {
+    // 號碼鎖定（只減不加）：保留=原帳號的子集，至少 1 個；不保留部分審核通過時釋放回庫存
+    if (requestedRetainedSipUserIds.length === 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "原訂單帳號權益不完整，暫不能續訂，請聯絡平臺管理員處理。" });
+      return response.status(400).json({ message: "請至少保留 1 個帳號。" });
     }
-    // 號碼鎖定：全部原帳號原樣保留（不接受前端名單調整；無釋放、無補位）
-    const retainedEntitlements = entitlementRows;
+    const retainedEntitlements = entitlementRows.filter((item) => requestedRetainedSipUserIds.includes(Number(item.sip_user_id)));
+    if (retainedEntitlements.length !== requestedRetainedSipUserIds.length) {
+      await connection.rollback();
+      return response.status(400).json({ message: "保留帳號中包含不屬於原訂單的帳號，請重新整理後重試。" });
+    }
+    // 數量鎖定：續訂帳號數=勾選保留數（≤ 原帳號數，不可加）
+    const requestedAccountCount = retainedEntitlements.length;
 
-    // 換套餐（可選）：不限時機，但須為啟用中且帳號數與現有帳號數一致
+    // 換套餐（可選）：不限時機，須為啟用中且每份帳號數與原套餐一致
     const requestedPlanCode = sanitizeString(payload.planCode, 80);
     const planChanged = Boolean(requestedPlanCode) && requestedPlanCode !== String(sourcePlanItem.item_code || "");
     let renewalPlan = null;
@@ -7072,10 +7079,10 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         await connection.rollback();
         return response.status(404).json({ message: "所選套餐不存在或已停用。" });
       }
-      const newPlanAccountCount = Number(renewalPlan.account_quantity || 0) * sourceQuantity;
-      if (newPlanAccountCount !== requestedAccountCount) {
+      const newPlanPack = Math.max(1, Number(renewalPlan.account_quantity || 1));
+      if (newPlanPack !== accountsPerQuantity) {
         await connection.rollback();
-        return response.status(400).json({ message: `所選套餐的帳號數量（${newPlanAccountCount}）與現有帳號數（${requestedAccountCount}）不符，不能續訂。` });
+        return response.status(400).json({ message: `所選套餐每份帳號數（${newPlanPack}）與原套餐（${accountsPerQuantity}）不符，不能續訂。` });
       }
     }
     // 不換套餐＝沿用原單快照價；換套餐＝新套餐當前價
@@ -7088,7 +7095,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     if (renewalPlan) {
       // 換套餐：套餐行按新套餐當前價；增值服務沿用原單勾選項、按現價（依新套餐價格行）
       const planUnitPrice = Number(renewalPlan.unit_price || 0);
-      const planLineAmount = planUnitPrice * sourceQuantity * requestedMonths;
+      const planLineAmount = planUnitPrice * requestedAccountCount * requestedMonths;
       subtotal += planLineAmount;
       renewalItems.push({
         item_type: "plan",
@@ -7098,8 +7105,8 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         item_code: renewalPlan.plan_code,
         item_name: `${renewalPlan.name} 套餐`,
         description: null,
-        account_quantity: Number(renewalPlan.account_quantity || 0) * sourceQuantity,
-        quantity: sourceQuantity,
+        account_quantity: requestedAccountCount,
+        quantity: requestedAccountCount,
         months: requestedMonths,
         currency: renewalCurrency,
         unit_price: planUnitPrice,
@@ -7112,7 +7119,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         const addonOrderRows = await loadAddonOrderRows(connection, Number(renewalPlan.id), sourceAddonCodes, renewalCurrency);
         addonOrderRows.forEach((addon, index) => {
           const lineMonths = addon.syncWithPlanTerm ? requestedMonths : 1;
-          const lineAmount = Number(addon.unitPrice) * sourceQuantity * lineMonths;
+          const lineAmount = Number(addon.unitPrice) * requestedAccountCount * lineMonths;
           subtotal += lineAmount;
           renewalItems.push({
             item_type: "addon",
@@ -7123,7 +7130,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
             item_name: addon.name,
             description: null,
             account_quantity: null,
-            quantity: sourceQuantity,
+            quantity: requestedAccountCount,
             months: lineMonths,
             currency: addon.currency || renewalCurrency,
             unit_price: Number(addon.unitPrice),
@@ -7136,7 +7143,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     } else {
       itemRows.forEach((item) => {
         if (item.item_type === "discount") return;
-        const quantity = sourceQuantity;
+        const quantity = requestedAccountCount;
         const itemMonths = item.item_type === "plan"
           ? requestedMonths
           : item.sync_with_plan_term == null || Boolean(item.sync_with_plan_term)
