@@ -10379,6 +10379,14 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
   const sipAccountIds = Array.isArray(request.body?.sipAccountIds)
     ? request.body.sipAccountIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
     : [];
+  const webPairs = Array.isArray(request.body?.webPairs)
+    ? request.body.webPairs
+        .map((item) => ({
+          sipUserId: Number(item?.sipUserId),
+          webUserId: item?.webUserId == null ? null : Number(item.webUserId),
+        }))
+        .filter((item) => Number.isInteger(item.sipUserId) && item.sipUserId > 0)
+    : [];
   if (!["review_approved", "review_rejected"].includes(status)) {
     return response.status(400).json({ message: "稽核結果無效。" });
   }
@@ -10510,7 +10518,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
       }
     };
-    const allocateWebAccountsForSip = async (sipUserIds, serviceStartsAt, serviceExpiresAt, reuseExisting, trialSourceSipUserIds = []) => {
+    const allocateWebAccountsForSip = async (sipUserIds, serviceStartsAt, serviceExpiresAt, reuseExisting, trialSourceSipUserIds = [], explicitWebBySip = null) => {
       if (!requiresWebAccounts) return;
       const finalSipUserIds = Array.from(new Set((sipUserIds || []).map((id) => Number(id)).filter((id) => id > 0)));
       if (finalSipUserIds.length !== requiredAccountCount) {
@@ -10585,23 +10593,56 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       }
 
       const sipIdsStillNeedingWeb = finalSipUserIds.filter((id) => !assignedSipIdSet.has(id));
-      if (sipIdsStillNeedingWeb.length > 0) {
+      // 三步合一（新購）：按前端提交的配對名單顯式落庫（展示即實際）
+      const explicitSipIds = explicitWebBySip
+        ? sipIdsStillNeedingWeb.filter((id) => explicitWebBySip.get(Number(id)) != null)
+        : [];
+      if (explicitSipIds.length > 0) {
+        const explicitWebIds = explicitSipIds.map((id) => Number(explicitWebBySip.get(Number(id))));
+        const explicitRows = await connection.query(
+          `SELECT id
+           FROM web_users
+           WHERE id IN (${explicitWebIds.map(() => "?").join(",")})
+             AND tenant_id IS NULL
+             AND status = 'active'
+           FOR UPDATE`,
+          explicitWebIds,
+        );
+        const availableWebIds = new Set(explicitRows.map((row) => Number(row.id)));
+        const missingExplicit = explicitWebIds.filter((id) => !availableWebIds.has(id));
+        if (missingExplicit.length > 0) {
+          const error = new Error("所選 WebRTC 帳號不可用或已被占用，請返回重新選擇。");
+          error.httpStatus = 409;
+          error.exposeMessage = true;
+          throw error;
+        }
+        for (const sipUserId of explicitSipIds) {
+          assignments.push({
+            sipUserId,
+            webUserId: Number(explicitWebBySip.get(Number(sipUserId))),
+            entitlementId: null,
+            reused: false,
+          });
+        }
+      }
+      const sipIdsForRandomWeb = sipIdsStillNeedingWeb.filter((id) => !explicitSipIds.includes(id));
+      if (sipIdsForRandomWeb.length > 0) {
         const webRows = await connection.query(
           `SELECT id
            FROM web_users
            WHERE tenant_id IS NULL
              AND status = 'active'
            ORDER BY RAND()
-           LIMIT ${sipIdsStillNeedingWeb.length}
+           LIMIT ${sipIdsForRandomWeb.length}
            FOR UPDATE`,
         );
-        if (webRows.length !== sipIdsStillNeedingWeb.length) {
-          const error = new Error(`未分配 WebRTC 帳號不足，還需要 ${sipIdsStillNeedingWeb.length} 個帳號用於訂單增值服務。`);
+        if (webRows.length !== sipIdsForRandomWeb.length) {
+          const error = new Error(`未分配 WebRTC 帳號不足，還需要 ${sipIdsForRandomWeb.length} 個帳號用於訂單增值服務。`);
           error.httpStatus = 409;
           error.exposeMessage = true;
           throw error;
         }
-        sipIdsStillNeedingWeb.forEach((sipUserId, index) => {
+        sipIdsForRandomWeb.forEach((sipUserId, index) => {
           assignments.push({
             sipUserId,
             webUserId: Number(webRows[index].id),
@@ -10992,6 +11033,43 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         const serviceStartsAt = todayDate();
         const serviceExpiresAt = addMonthsMinusOneDay(serviceStartsAt, months);
         const serviceExpiresExpression = `DATE_SUB(DATE_ADD(CURDATE(), INTERVAL ? MONTH), INTERVAL 1 DAY)`;
+        // 三步合一：校驗 WebRTC 配對名單（webPairs）——試用轉正項必須沿用原配對；庫存項必須逐一給出顯式 webId
+        let explicitWebBySip = null;
+        if (requiresWebAccounts && webPairs.length > 0) {
+          explicitWebBySip = new Map();
+          const webIdList = [];
+          for (const pair of webPairs) {
+            if (pair.webUserId != null) {
+              explicitWebBySip.set(pair.sipUserId, pair.webUserId);
+              webIdList.push(pair.webUserId);
+            } else {
+              explicitWebBySip.set(pair.sipUserId, null);
+            }
+          }
+          if (new Set(webIdList).size !== webIdList.length) {
+            await connection.rollback();
+            return response.status(400).json({ message: "WebRTC 帳號選擇重複，請返回重新選擇。" });
+          }
+          const trialSipSet = new Set(trialSipUserIds.map((id) => Number(id)));
+          let trialReplaced = false;
+          let incompletePairs = false;
+          for (const sipUserId of uniqueSipAccountIds) {
+            const hasExplicit = explicitWebBySip.get(Number(sipUserId)) != null;
+            if (trialSipSet.has(Number(sipUserId))) {
+              if (hasExplicit) trialReplaced = true;
+            } else if (!hasExplicit) {
+              incompletePairs = true;
+            }
+          }
+          if (trialReplaced) {
+            await connection.rollback();
+            return response.status(409).json({ message: "試用轉正帳號必須沿用原配對的 WebRTC 帳號，不能更換。" });
+          }
+          if (incompletePairs) {
+            await connection.rollback();
+            return response.status(400).json({ message: "WebRTC 帳號配對不完整，請返回重新選擇。" });
+          }
+        }
         // 先 AM（檢查/啟用+回讀），後本地寫入；失敗即回滾
         await ensureFlexisipActivatedForAccounts(uniqueSipAccountIds);
         await connection.query(
@@ -11056,7 +11134,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
 
         if (requiresWebAccounts) {
-          await allocateWebAccountsForSip(uniqueSipAccountIds, serviceStartsAt, serviceExpiresAt, false, trialSipUserIds);
+          await allocateWebAccountsForSip(uniqueSipAccountIds, serviceStartsAt, serviceExpiresAt, false, trialSipUserIds, explicitWebBySip);
         }
 
         // —— 试用转正收尾：试用记录置转正 / 保留行状态 / 名片租户迁移 / AI 期限对齐 ——

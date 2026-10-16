@@ -226,26 +226,31 @@ export default function PlanManagement({ onNavigate }) {
     }
 
     let webAccountIds = [];
+    let webPairs = null;
     if (reviewData.status === 'review_approved' && orderRequiresWebAccounts(reviewOrder)) {
-      let missingWebCount = 0;
       if (isRenewalReview) {
         const retainedAccounts = Array.isArray(reviewOrder?.retainedAccounts) ? reviewOrder.retainedAccounts : [];
         const replacementCount = Math.max(0, requiredAccountCount - retainedAccounts.length);
         const retainedWithoutWebCount = retainedAccounts.filter(acc => !(acc.webAccountId || acc.hasWebAccount || acc.webAccountUsername)).length;
-        missingWebCount = replacementCount + retainedWithoutWebCount;
+        const missingWebCount = replacementCount + retainedWithoutWebCount;
+        if (unassignedWebAccounts.length < missingWebCount) {
+          alert(`當前可用 Web 帳號不足，帳號不足不能完成分配工作。\n\n需要分配 Web 帳號：${missingWebCount} 個\n目前未分配帳號：${unassignedWebAccounts.length} 個`);
+          return;
+        }
+        webAccountIds = unassignedWebAccounts.slice(0, missingWebCount).map(a => a.id);
       } else {
-        // 试用转正保留项自带成对 Web，不占库存新增名额
-        const selectedTrialRetainedCount = selectedSipAccountIds
-          .filter((id) => unassignedSipAccounts.some((a) => Number(a.id) === Number(id) && a.retained))
-          .length;
-        missingWebCount = Math.max(0, requiredAccountCount - selectedTrialRetainedCount);
+        // 三步合一：按第三步呈現的配對提交（保留項 null＝沿用原配對；庫存項顯式指定 webId）
+        const pairings = getSipWebPairings();
+        const missingWebCount = [...pairings.values()].filter((p) => !p.reuseWeb && !p.web).length;
+        if (missingWebCount > 0) {
+          alert(`當前可用 Web 帳號不足，還需 ${missingWebCount} 個，請先補充庫存後再提交審核。`);
+          return;
+        }
+        webPairs = [];
+        for (const [sipUserId, pairing] of pairings) {
+          webPairs.push({ sipUserId: Number(sipUserId), webUserId: pairing.reuseWeb ? null : Number(pairing.web.id) });
+        }
       }
-
-      if (unassignedWebAccounts.length < missingWebCount) {
-        alert(`當前可用 Web 帳號不足，帳號不足不能完成分配工作。\n\n需要分配 Web 帳號：${missingWebCount} 個\n目前未分配帳號：${unassignedWebAccounts.length} 個`);
-        return;
-      }
-      webAccountIds = unassignedWebAccounts.slice(0, missingWebCount).map(a => a.id);
     }
 
     const resultText = reviewData.status === 'review_approved' ? '審核通過' : '審核不通過';
@@ -259,7 +264,8 @@ export default function PlanManagement({ onNavigate }) {
         status: reviewData.status,
         comments: reviewData.comments,
         sipAccountIds: reviewData.status === 'review_approved' && !isRenewalReview ? selectedSipAccountIds : [],
-        webAccountIds
+        webAccountIds,
+        webPairs: webPairs || undefined,
       });
       alert('審核結果已提交成功。');
       setReviewOrder(null);
@@ -291,32 +297,6 @@ export default function PlanManagement({ onNavigate }) {
     }
     setSelectedSipAccountIds(unassignedSipAccounts.slice(0, requiredCount).map(account => account.id));
     setReviewStep(3);
-  };
-
-  const goToWebAccountAssignmentStep = () => {
-    const requiredCount = Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0);
-    if (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== requiredCount) {
-      alert(`當前已選擇 ${selectedSipAccountIds.length} 個 SIP 帳號，需要選擇 ${requiredCount} 個帳號後才能進入 Web 帳號分配。`);
-      return;
-    }
-
-    let missingWebCount = 0;
-    if (isRenewalOrder(reviewOrder)) {
-      const retainedAccounts = Array.isArray(reviewOrder?.retainedAccounts) ? reviewOrder.retainedAccounts : [];
-      const replacementCount = Math.max(0, requiredCount - retainedAccounts.length);
-      // 检查保留的 SIP 帳號中，有多少個尚未分配 Web 帳號
-      const retainedWithoutWebCount = retainedAccounts.filter(acc => !(acc.webAccountId || acc.hasWebAccount || acc.webAccountUsername)).length;
-      missingWebCount = replacementCount + retainedWithoutWebCount;
-    } else {
-      missingWebCount = requiredCount;
-    }
-
-    const availableCount = unassignedWebAccounts.length;
-    if (availableCount < missingWebCount) {
-      alert(`當前可用 Web 帳號不足，帳號不足不能完成分配工作。\n\n需要分配 Web 帳號：${missingWebCount} 個\n目前未分配帳號：${availableCount} 個`);
-      return;
-    }
-    setReviewStep(4);
   };
 
   const itemFormula = (item) => {
@@ -469,47 +449,23 @@ export default function PlanManagement({ onNavigate }) {
     return `${formatDate(start)} - ${formatDate(end)}`;
   };
 
-  const getReviewSipPreviewAccounts = () => {
-    const requiredCount = Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0);
-    if (isRenewalOrder(reviewOrder)) {
-      const retainedAccounts = Array.isArray(reviewOrder?.retainedAccounts) ? reviewOrder.retainedAccounts : [];
-      const retained = retainedAccounts.map((account) => ({
-        id: `retained-${account.sipUserId}`,
-        sipUserId: account.sipUserId,
-        username: account.username || '',
-        domain: account.sipDomain || '',
-        displayName: account.displayName || account.username || '',
-        kind: '保留',
-        reuseWeb: Boolean(account.webAccountId || account.hasWebAccount || account.webAccountUsername)
-      }));
-      const replacementCount = Math.max(0, requiredCount - retained.length);
-      const replacements = Array.from({ length: replacementCount }, (_, index) => ({
-        id: `replacement-${index + 1}`,
-        username: `系統隨機補分配 ${index + 1}`,
-        domain: '',
-        displayName: '待補分配 SIP',
-        kind: '補充',
-        reuseWeb: false
-      }));
-      return [...retained, ...replacements];
+  // 第三步（三步合一）：對已選 SIP 帳號生成 WebRTC 配對——
+  // 保留（試用轉正）項沿用原配對；庫存項按清單順序預配庫存 Web（提交時作為 webPairs 上送，服務端按此落庫）
+  const getSipWebPairings = () => {
+    const pairings = new Map(); // sipUserId(number) -> { reuseWeb, web }
+    let webCursor = 0;
+    for (const account of unassignedSipAccounts) {
+      const accountId = Number(account.id);
+      if (!selectedSipAccountIds.includes(accountId)) continue;
+      if (account.retained) {
+        pairings.set(accountId, { reuseWeb: true, web: null });
+      } else {
+        const web = unassignedWebAccounts[webCursor] || null;
+        webCursor += 1;
+        pairings.set(accountId, { reuseWeb: false, web });
+      }
     }
-    const accountById = new Map(unassignedSipAccounts.map((account) => [Number(account.id), account]));
-    return selectedSipAccountIds.map((id) => {
-      const account = accountById.get(Number(id));
-      return {
-        id: account?.id || id,
-        sipUserId: account?.id || id,
-        username: account?.username || '',
-        domain: account?.domain || '',
-        displayName: account?.displayName || account?.username || '',
-        kind: account?.retained ? '試用轉正' : '新分配',
-        reuseWeb: Boolean(account?.retained)
-      };
-    });
-  };
-
-  const getRequiredNewWebAccountCount = () => {
-    return getReviewSipPreviewAccounts().filter((account) => !account.reuseWeb).length;
+    return pairings;
   };
 
   const cellText = (value) => {
@@ -522,8 +478,7 @@ export default function PlanManagement({ onNavigate }) {
   const reviewSteps = [
     '確認訂單詳情',
     '審核意見',
-    '分配SIP帳號',
-    ...(requiresWebAccountReview ? ['分配Web帳號'] : [])
+    '分配帳號',
   ];
 
   return (
@@ -920,11 +875,6 @@ export default function PlanManagement({ onNavigate }) {
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
         #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-track { background: #1a2332; }
-        /* 審核第四步：Web 帳號分配卡片區滾動條（深色） */
-        #plan-management-review .pr-web-grid-wrap { scrollbar-color: #4b5563 #1a2332; }
-        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
-        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
-        #plan-management-review .pr-web-grid-wrap::-webkit-scrollbar-track { background: #1a2332; }
       `}</style>
       {!reviewOrder ? (
       <section className="view active" id="plan-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
@@ -1246,6 +1196,11 @@ export default function PlanManagement({ onNavigate }) {
                                 <div style={{ padding: '14px 16px', borderRadius: '8px', border: '1px solid #dbeafe', backgroundColor: '#eff6ff', color: '#1e3a8a', fontSize: '14px', lineHeight: 1.6 }}>
                                   本次续订需要帳號 <strong>{requiredCount}</strong> 個，已保留原帳號 <strong>{retainedAccounts.length}</strong> 個，審核通過后系统将自动随机补分配 <strong>{replacementCount}</strong> 個未分配帳號。
                                 </div>
+                                {requiresWebAccountReview && (
+                                  <div style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #1f2937', backgroundColor: '#111827', color: '#9ca3af', fontSize: '13px', lineHeight: 1.6 }}>
+                                    WebRTC 帳號：保留帳號沿用原配對；補位帳號（含保留項缺配對者）將由庫存自動配對。
+                                  </div>
+                                )}
                                 {retainedAccounts.length > 0 && (
                                   <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827' }}>
                                     {retainedAccounts.map((account) => (
@@ -1263,12 +1218,22 @@ export default function PlanManagement({ onNavigate }) {
                           const selectedCount = selectedSipAccountIds.length;
                           const isSelectionFull = selectedCount >= requiredCount;
                           const isSelectionComplete = selectedCount === requiredCount;
+                          const sipWebPairings = getSipWebPairings();
+                          const requiredNewWebCount = [...sipWebPairings.values()].filter((p) => !p.reuseWeb).length;
+                          const isWebReady = unassignedWebAccounts.length >= requiredNewWebCount;
                           return (
                             <>
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isSelectionComplete ? '#bbf7d0' : '#fed7aa'}`, backgroundColor: isSelectionComplete ? '#f0fdf4' : '#fff7ed', color: isSelectionComplete ? '#166534' : '#9a3412', fontSize: '13px' }}>
-                            <span>已選擇 <strong>{selectedCount}</strong> / 需分配 <strong>{requiredCount}</strong> 個帳號</span>
-                            {!isSelectionComplete && <span>{selectedCount < requiredCount ? `還需選擇 ${requiredCount - selectedCount} 個` : `已超出 ${selectedCount - requiredCount} 個`}</span>}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isSelectionComplete ? '#bbf7d0' : '#fed7aa'}`, backgroundColor: isSelectionComplete ? '#f0fdf4' : '#fff7ed', color: isSelectionComplete ? '#166534' : '#9a3412', fontSize: '13px' }}>
+                              <span>已選擇 <strong>{selectedCount}</strong> / 需分配 <strong>{requiredCount}</strong> 個帳號</span>
+                              {!isSelectionComplete && <span>{selectedCount < requiredCount ? `還需選擇 ${requiredCount - selectedCount} 個` : `已超出 ${selectedCount - requiredCount} 個`}</span>}
+                            </div>
+                            {requiresWebAccountReview && (
+                              <div style={{ padding: '6px 10px', borderRadius: '6px', border: `1px solid ${isWebReady ? '#bbf7d0' : '#fecaca'}`, backgroundColor: isWebReady ? '#f0fdf4' : '#fef2f2', color: isWebReady ? '#166534' : '#991b1b', fontSize: '13px' }}>
+                                WebRTC 本次需新增 <strong>{requiredNewWebCount}</strong> 個，當前可用 <strong>{unassignedWebAccounts.length}</strong> 個
+                              </div>
+                            )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', color: '#9ca3af', fontSize: '13px' }}>
 	                            <span>帳號有效期</span>
@@ -1296,6 +1261,7 @@ export default function PlanManagement({ onNavigate }) {
                                   />
                                 </th>
 	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>帳號</th>
+	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>WebRTC帳號</th>
 	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>狀態</th>
 	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>添加人</th>
 	                                <th style={{ fontSize: '12px', fontWeight: 500, color: '#e5e7eb', padding: '7px 10px', borderBottom: '1px solid #1f2937', textAlign: 'left', background: '#1a2332' }}>添加时间</th>
@@ -1305,7 +1271,7 @@ export default function PlanManagement({ onNavigate }) {
                             <tbody>
                               {unassignedSipAccounts.length === 0 ? (
                                 <tr>
-                                  <td colSpan="6" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                                  <td colSpan="7" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                                     {isLoadingSipAccounts ? '載入中...' : '暫無未分配SIP帳號'}
                                   </td>
                                 </tr>
@@ -1334,6 +1300,16 @@ export default function PlanManagement({ onNavigate }) {
                                       {account.username}
                                       {account.retained && <span style={{ marginLeft: '6px', fontSize: '11px', color: '#60a5fa', border: '1px solid #2563eb', borderRadius: '4px', padding: '0 4px', whiteSpace: 'nowrap' }}>保留·試用轉正</span>}
                                     </td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937', whiteSpace: 'nowrap' }}>
+                                      {(() => {
+                                        if (!selectedSipAccountIds.includes(account.id)) return '-';
+                                        const pairing = sipWebPairings.get(Number(account.id));
+                                        if (!pairing) return '-';
+                                        if (pairing.reuseWeb) return <span style={{ color: '#60a5fa' }}>沿用原配對</span>;
+                                        if (pairing.web) return pairing.web.username || '-';
+                                        return <span style={{ color: '#dc2626' }}>庫存不足</span>;
+                                      })()}
+                                    </td>
                                     <td style={{ padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{getSipStatusBadge(account.status)}</td>
                                     <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.creatorName || '-'}</td>
                                     <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.createdAt || '-'}</td>
@@ -1350,63 +1326,6 @@ export default function PlanManagement({ onNavigate }) {
                       </div>
                     )}
 
-                    {reviewStep === 4 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, flex: 1 }}>
-                        {(() => {
-                          const sipPreviewAccounts = getReviewSipPreviewAccounts();
-                          const requiredCount = Number(reviewOrder.account_quantity || reviewOrder.accountQuantity || 0);
-                          const requiredNewWebCount = sipPreviewAccounts.filter((account) => !account.reuseWeb).length;
-                          const isWebReady = unassignedWebAccounts.length >= requiredNewWebCount;
-                          return (
-                            <>
-                              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                <div style={{ padding: '8px 12px', borderRadius: '6px', border: `1px solid ${isWebReady ? '#bbf7d0' : '#fecaca'}`, backgroundColor: isWebReady ? '#f0fdf4' : '#fef2f2', color: isWebReady ? '#166534' : '#991b1b', fontSize: '13px' }}>
-                                  共需绑定 <strong>{requiredCount}</strong> 個 WebRTC 帳號，本次需新增 <strong>{requiredNewWebCount}</strong> 個，當前可用 <strong>{unassignedWebAccounts.length}</strong> 個。
-                                </div>
-                                <div style={{ color: '#9ca3af', fontSize: '13px' }}>
-                                  帳號有效期 <strong style={{ color: '#e5e7eb' }}>{getAccountEffectiveRange(reviewOrder)}</strong>
-                                </div>
-                              </div>
-                              <div className="pr-web-grid-wrap" style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', alignContent: 'start', gap: '12px', paddingRight: '4px' }}>
-                                {sipPreviewAccounts.map((sipAccount, index) => {
-                                  const webAccountIndex = sipPreviewAccounts.slice(0, index).filter((account) => !account.reuseWeb).length;
-                                  const webAccount = sipAccount.reuseWeb ? null : unassignedWebAccounts[webAccountIndex];
-                                  return (
-                                    <div key={sipAccount.id} style={{ border: '1px solid #1f2937', borderRadius: '8px', backgroundColor: '#111827', padding: '12px', display: 'grid', gap: '10px', minWidth: 0 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '12px', color: '#64748b' }}>SIP帳號</span>
-                                        <span style={{ fontSize: '12px', color: sipAccount.kind === '補充' ? '#f97316' : '#2563eb', backgroundColor: sipAccount.kind === '補充' ? '#fff7ed' : '#eff6ff', borderRadius: '999px', padding: '2px 8px' }}>{sipAccount.kind}</span>
-                                      </div>
-                                      <div title={`${sipAccount.username}${sipAccount.domain ? ` | ${sipAccount.domain}` : ''}`} style={{ minWidth: 0 }}>
-                                        <div style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.displayName || sipAccount.username}</div>
-                                        <div style={{ color: '#64748b', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sipAccount.username}{sipAccount.domain ? ` | ${sipAccount.domain}` : ''}</div>
-                                      </div>
-                                      <div style={{ height: '1px', backgroundColor: '#f1f5f9' }} />
-                                      <div>
-                                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>WebRTC帳號</div>
-                                        {sipAccount.reuseWeb ? (
-                                          <div style={{ color: '#166534', fontSize: '13px', lineHeight: 1.5 }}>沿用原 WebRTC 帳號，提交審核时同步更新有效期。</div>
-                                        ) : webAccount ? (
-                                          <div title={`${webAccount.username}${webAccount.domain ? ` | ${webAccount.domain}` : ''}`} style={{ minWidth: 0 }}>
-                                            <div style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webAccount.displayName || webAccount.username}</div>
-                                            <div style={{ color: '#64748b', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webAccount.username}{webAccount.domain ? ` | ${webAccount.domain}` : ''}</div>
-                                          </div>
-                                        ) : (
-                                          <div style={{ color: '#dc2626', fontSize: '13px' }}>可用 WebRTC 帳號不足</div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                                {isLoadingWebAccounts && (
-                                  <div style={{ color: '#64748b', fontSize: '14px' }}>載入 WebRTC 帳號中...</div>
-                                )}
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
 	                    </>
                 )}
               </div>
@@ -1429,13 +1348,7 @@ export default function PlanManagement({ onNavigate }) {
                 )}
                 
                 {reviewStep === 3 && (
-                  requiresWebAccountReview ?
-                    <button onClick={goToWebAccountAssignmentStep} disabled={isLoadingReview || isLoadingWebAccounts || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))} style={{ padding: '7px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#3b82f6', color: '#fff', cursor: (isLoadingReview || isLoadingWebAccounts || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', opacity: (isLoadingReview || isLoadingWebAccounts || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 0.7 : 1 }}>下一步</button> :
-                    <button onClick={submitReview} disabled={isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))} style={{ padding: '7px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: '#fff', cursor: (isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', opacity: (isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 0.7 : 1 }}>{isLoadingReview ? '提交中...' : '提交審核'}</button>
-                )}
-
-                {reviewStep === 4 && (
-                  <button onClick={submitReview} disabled={isLoadingReview} style={{ padding: '7px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: '#fff', cursor: isLoadingReview ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', opacity: isLoadingReview ? 0.7 : 1 }}>{isLoadingReview ? '提交中...' : '提交審核'}</button>
+                  <button onClick={submitReview} disabled={isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))} style={{ padding: '7px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#10b981', color: '#fff', cursor: (isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 'not-allowed' : 'pointer', fontSize: '13px', fontWeight: '500', opacity: (isLoadingReview || (!isRenewalOrder(reviewOrder) && selectedSipAccountIds.length !== Number(reviewOrder?.account_quantity || reviewOrder?.accountQuantity || 0))) ? 0.7 : 1 }}>{isLoadingReview ? '提交中...' : '提交審核'}</button>
                 )}
               </div>
             </div>
