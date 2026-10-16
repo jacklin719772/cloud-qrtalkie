@@ -108,7 +108,12 @@ DELETE we FROM tenant_web_account_entitlements we
 LEFT JOIN trial_assignments ta ON ta.sip_user_id = we.sip_user_id
 WHERE we.current_order_id = @orderId AND ta.id IS NULL;
 
--- 3) 清订单与关联数据
+-- 3) 试用记录复位（必须在删除订单之前：converted_order_id 外键 ON DELETE SET NULL 会先清零导致漏复位）
+UPDATE trial_assignments
+SET status = 'active', converted_order_id = NULL
+WHERE converted_order_id = @orderId;
+
+-- 4) 清订单与关联数据
 DELETE FROM billing_order_retained_accounts WHERE order_id = @orderId;
 DELETE FROM billing_order_sip_accounts WHERE order_id = @orderId;
 DELETE FROM billing_order_web_accounts WHERE order_id = @orderId;
@@ -120,11 +125,6 @@ DELETE FROM notification_receipts WHERE event_id IN (
 );
 DELETE FROM notification_events WHERE scope_type = 'billing_order' AND scope_id = @orderId;
 DELETE FROM billing_orders WHERE id = @orderId;
-
--- 4) 试用记录复位（最后执行：上面的关联依赖 converted_order_id）
-UPDATE trial_assignments
-SET status = 'active', converted_order_id = NULL
-WHERE converted_order_id = @orderId;
 
 COMMIT;
 SQL

@@ -11018,6 +11018,22 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
                WHERE sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
               [months, ...trialSipUserIds],
             );
+            // 订单未含增值服务（未走 Web 分配管道）时，成对 Web 账号仍需随转正迁移
+            if (!requiresWebAccounts) {
+              await connection.query(
+                `UPDATE web_users w
+                 JOIN tenant_web_account_entitlements we ON we.web_user_id = w.id
+                 SET w.tenant_id = ?, w.service_expires_at = ?
+                 WHERE we.status = 'active' AND we.tenant_id = ? AND we.sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
+                [Number(order.tenant_id), serviceExpiresAt, Number(reservedTrialTenantId), ...trialSipUserIds],
+              );
+              await connection.query(
+                `UPDATE tenant_web_account_entitlements we
+                 SET we.tenant_id = ?, we.current_order_id = ?, we.service_starts_at = CURDATE(), we.service_expires_at = ?
+                 WHERE we.status = 'active' AND we.tenant_id = ? AND we.sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
+                [Number(order.tenant_id), orderId, serviceExpiresAt, Number(reservedTrialTenantId), ...trialSipUserIds],
+              );
+            }
           }
         }
         // 未纳入本单的保留项 → 剔除留痕
