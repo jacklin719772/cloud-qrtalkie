@@ -179,10 +179,7 @@ const TenantAccountManagement = forwardRef(({
   async function loadAccounts() {
     setIsLoading(true);
     try {
-      const keyword = searchKeyword.trim();
-      const orderQuery = /^ORD/i.test(keyword) ? keyword : '';
-      const queryString = orderQuery ? `?q=${encodeURIComponent(orderQuery)}` : '';
-      const data = await apiClient.get(`${apiBasePath}${queryString}`);
+      const data = await apiClient.get(apiBasePath);
       setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
     } catch (error) {
       console.error(`Failed to load tenant ${accountLabel} accounts:`, error);
@@ -209,16 +206,6 @@ const TenantAccountManagement = forwardRef(({
   useEffect(() => {
     loadAccounts();
   }, []);
-
-  useEffect(() => {
-    const keyword = searchKeyword.trim();
-    const timer = setTimeout(() => {
-      if (/^ORD/i.test(keyword) || keyword === '') {
-        loadAccounts();
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchKeyword]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -281,7 +268,10 @@ const TenantAccountManagement = forwardRef(({
       const matchesSearch = !keyword
         || String(account.username || '').toLowerCase().includes(keyword)
         || String(account.displayName || '').toLowerCase().includes(keyword)
-        || String(account.orderNo || '').toLowerCase().includes(keyword);
+        || String(account.webAccount || '').toLowerCase().includes(keyword)
+        || String(account.phone || '').toLowerCase().includes(keyword)
+        || String(account.orderNo || '').toLowerCase().includes(keyword)
+        || (account.orders || []).some((item) => String(item.orderNo || '').toLowerCase().includes(keyword));
       const matchesPackage = packageFilter === 'all'
         || (packageFilter === 'active' && isPackageActive(account.serviceExpiresAt))
         || (packageFilter === 'expired' && isPackageExpired(account.serviceExpiresAt));
@@ -1101,7 +1091,7 @@ const TenantAccountManagement = forwardRef(({
           <div className="account-filter-left">
             <label className="account-search">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-              <input type="search" placeholder={`搜尋 ${accountLabel} 帳號、顯示名稱或訂單編號`} value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} />
+              <input type="search" placeholder={`搜尋 ${accountLabel} 帳號、Web 帳號、顯示名稱、電話或訂單編號`} value={searchKeyword} onChange={(event) => setSearchKeyword(event.target.value)} />
             </label>
             <select className="account-package-select" value={packageFilter} onChange={(event) => setPackageFilter(event.target.value)}>
               <option value="all">全部套餐</option>
