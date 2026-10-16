@@ -125,6 +125,7 @@ const TenantAccountManagement = forwardRef(({
   onStatsChange,
   onNavigate,
   onModeChange,
+  onOpenAccountEcard,
   apiBasePath = '/tenant/sip-accounts',
   accountLabel = 'SIP',
   showDomain = true,
@@ -1210,6 +1211,7 @@ const TenantAccountManagement = forwardRef(({
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>帳號設置</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重置密碼</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => { setOpenDropdownId(null); onOpenAccountEcard?.(account); }}>電子名片</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱歷史</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>

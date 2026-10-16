@@ -88,10 +88,11 @@ const mockEcardAccounts = [
   }
 ];
 
-const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelfServiceBack, trialContext, onTrialBack }, ref) => {
+const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelfServiceBack, trialContext, onTrialBack, accountContext, onAccountBack }, ref) => {
   const isSelfService = !!selfServiceSipUserId;
   const isTrialMode = !!trialContext;
-  const isContextMode = isSelfService || isTrialMode;
+  const isAccountMode = !!accountContext;
+  const isContextMode = isSelfService || isTrialMode || isAccountMode;
   const [viewMode, setViewMode] = useState(isContextMode ? 'add' : 'list');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -594,6 +595,104 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     })();
   }, [trialContext?.trialId]);
 
+  // 訂閱帳號上下文模式（從訂閱帳號管理「電子名片」進入）：租戶端接口載入該賬號名片與資料卡默認值
+  useEffect(() => {
+    if (!accountContext) return;
+    (async () => {
+      let existingEcard, ecardMeta, profile;
+      try {
+        const ecRes = await apiClient.get(`/tenant/ecard-accounts/${accountContext.sipUserId}/ecard`);
+        const hasJson = ecRes.ecardDataJson && Object.keys(ecRes.ecardDataJson).length > 0;
+        existingEcard = hasJson ? ecRes.ecardDataJson : null;
+        ecardMeta = { validFrom: ecRes.validFrom, validTo: ecRes.validTo, status: ecRes.status, thumbnailUrl: ecRes.thumbnailUrl, avatarUrl: ecRes.avatarUrl, accessSlug: ecRes.accessSlug };
+      } catch {}
+      try {
+        if (accountContext.accountId) {
+          profile = await apiClient.get(`/tenant/sip-accounts/${accountContext.accountId}/account-profile`);
+        }
+      } catch {}
+
+      const defaults = {
+        name: accountContext.displayName || accountContext.username || '',
+        phone: accountContext.phone || '',
+        email: accountContext.email || '',
+        companyZh: profile?.company || '',
+        titleZh: profile?.jobTitle || '',
+        avatarUrl: profile?.avatarUrl || '',
+      };
+
+      const accountInfo = {
+        id: accountContext.sipUserId,
+        sip_user_id: accountContext.sipUserId,
+        sipAccount: accountContext.username || '',
+        userName: defaults.name,
+        tenantName: accountContext.tenantName || '',
+        accessUrl: ecardMeta?.accessSlug ? `https://ecard.qrtalkie.org/u/${ecardMeta.accessSlug}` : '',
+        validFrom: ecardMeta?.validFrom || accountContext.serviceStartsAt || '—',
+        validTo: ecardMeta?.validTo || accountContext.serviceExpiresAt || '—',
+        ecardThumbnailUrl: ecardMeta?.thumbnailUrl || '',
+        enabled: ecardMeta?.status === 'active',
+      };
+
+      setSelectedAccountForCreate(existingEcard
+        ? { ...accountInfo, configured: true }
+        : accountInfo
+      );
+
+      // 「已執行存儲並生成圖片」的判據：有縮略圖（未生成過則信息字段回退賬號設置默認值）
+      const generated = Boolean(ecardMeta?.thumbnailUrl);
+      const useSavedInfo = Boolean(existingEcard) && generated;
+      const pickSaved = (saved, fallback) => (useSavedInfo ? (saved || fallback) : fallback);
+
+      if (existingEcard) {
+        const savedCard = existingEcard.cardData || {};
+        setCardData({
+          name: pickSaved(savedCard.name, defaults.name),
+          titleZh: pickSaved(savedCard.titleZh, defaults.titleZh),
+          titleEn: pickSaved(savedCard.titleEn, ''),
+          phone: pickSaved(savedCard.phone, defaults.phone),
+          email: pickSaved(savedCard.email, defaults.email),
+          zipCode: pickSaved(savedCard.zipCode, ''),
+          address: pickSaved(savedCard.address, ''),
+          qrDesc: pickSaved(savedCard.qrDesc, '掃碼二維碼 · 交換名片'),
+          companyZh: pickSaved(savedCard.companyZh, defaults.companyZh),
+          companyEn: pickSaved(savedCard.companyEn, ''),
+          sloganZh: pickSaved(savedCard.sloganZh, ''),
+          sloganEn: pickSaved(savedCard.sloganEn, ''),
+        });
+        if (existingEcard.selectedTemplateId) setSelectedTemplateId(existingEcard.selectedTemplateId);
+        if (existingEcard.selectedBackgroundId) setSelectedBackgroundId(existingEcard.selectedBackgroundId);
+        if (existingEcard.localStyles) setLocalStyles(existingEcard.localStyles);
+        if (existingEcard.localDisplayConfig) setLocalDisplayConfig(existingEcard.localDisplayConfig);
+        if (typeof existingEcard.showQrCode === 'boolean') setShowQrCode(existingEcard.showQrCode);
+        if (existingEcard.callPublicSlug) setCallPublicSlug(existingEcard.callPublicSlug);
+        // 未生成過：頭像優先取賬號設置；生成過：沿用生成時頭像
+        setAvatarDataUrl(useSavedInfo
+          ? (existingEcard.avatarDataUrl || defaults.avatarUrl || '')
+          : (defaults.avatarUrl || existingEcard.avatarDataUrl || ''));
+        if (existingEcard.logoDataUrl) setLogoDataUrl(existingEcard.logoDataUrl);
+      } else {
+        // 無名片：全部默認值取賬號設置
+        setCardData({
+          name: defaults.name,
+          titleZh: defaults.titleZh,
+          titleEn: '',
+          phone: defaults.phone,
+          email: defaults.email,
+          zipCode: '', address: '',
+          qrDesc: '掃碼二維碼 · 交換名片',
+          companyZh: defaults.companyZh,
+          companyEn: '', sloganZh: '', sloganEn: '',
+        });
+        setLocalStyles({});
+        setShowQrCode(false);
+        setAvatarDataUrl(defaults.avatarUrl || '');
+        setLogoDataUrl('');
+        generateRandomSlug();
+      }
+    })();
+  }, [accountContext?.sipUserId]);
+
   const handleEcardListSort = (key) => { if (ecardSortKey === key) { setEcardSortDir(d => d === "asc" ? "desc" : "asc"); } else { setEcardSortKey(key); setEcardSortDir("asc"); } };
 
   const sortedEcardAccounts = useMemo(() => { const list = [...ecardAccounts]; list.sort((a, b) => { const va = String(a[ecardSortKey] || ""); const vb = String(b[ecardSortKey] || ""); return va.localeCompare(vb) * (ecardSortDir === "asc" ? 1 : -1); }); return list; }, [ecardAccounts, ecardSortKey, ecardSortDir]);
@@ -785,7 +884,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       await apiClient.post(saveUrl, payload);
       alert('名片已成功儲存並產生圖片！');
 
-      if (!isTrialMode) {
+      if (!isTrialMode && !isAccountMode) {
         loadEcardAccounts();
       }
       setSelectedAccountForCreate(prev => ({
@@ -1410,9 +1509,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
           <div className="ecard-add-actions">
             <button type="button" style={{ padding: '8px 16px', fontSize: '13px', backgroundColor: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => {
               if (isTrialMode) { onTrialBack?.(); return; }
+              if (isAccountMode) { onAccountBack?.(); return; }
               if (isSelfService) { onSelfServiceBack?.(); return; }
               setViewMode('list');
-            }}>{isTrialMode ? '返回試用帳號管理' : isSelfService ? '返回我的帳號' : '返回列表'}</button>
+            }}>{isTrialMode ? '返回試用帳號管理' : isAccountMode ? '返回訂閱帳號管理' : isSelfService ? '返回我的帳號' : '返回列表'}</button>
             {/* <button type="button" className="ghost-btn" style={{ padding: '8px 16px', fontSize: '13px' }}>儲存草稿</button> */}
             <button type="button" className="primary-btn" disabled={isGenerating} style={{ padding: '8px 16px', fontSize: '13px' }} onClick={handleSaveAndGenerateImage}>
               {isGenerating ? '產生中...' : '儲存並產生圖片'}
