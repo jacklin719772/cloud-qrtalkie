@@ -1368,17 +1368,30 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127873; 試用管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>試用管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放（從庫存中選取 SIP 帳號，系統自動隨機配對 Web 帳號），掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>試用管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放，掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。平台管理員側重發放與回收；租戶管理員側重帳號維護、名片與批量操作（含正式購買入口）。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 頁頭按鈕</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>添加試用</strong> — 選擇歸屬租戶（可現場新建租戶）與試用週期（預設 1 個月）；先填「新增試用帳號數量」，再從庫存勾選 SIP 帳號（顯示配對的 Web 帳號），可指定代理商（名錄中啟用項）與增值服務（預設全選）。保存成功後續接「Ecard 設置」為該批帳號生成電子名片。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>AI助手（⋮ 更多操作）</strong> — 設定該帳號的 AI 使用授權：啟用/停用、每日限額、每月限額、過期時間；亦可「取消授權」徹底移除。未設定時預設沿用到試用結束。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>添加試用（平台管理員）</strong> — 選擇歸屬租戶（可現場新建租戶）與試用週期（預設 1 個月）；先填「新增試用帳號數量」，再從庫存勾選 SIP 帳號（顯示配對的 Web 帳號），可指定代理商（名錄中啟用項）與增值服務（預設全選）。保存成功後續接「Ecard 設置」為該批帳號生成電子名片。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量停用（租戶管理員）</strong> — 對勾選的試用批量暫停（同「暫停試用」，逐條執行並彙總結果）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用（租戶管理員）</strong> — 對勾選的已暫停試用批量恢復（同「恢復試用」，已到期的會失敗計數）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>正式購買（租戶管理員）</strong> — 勾選要購買的試用帳號後點擊，攜帶所選帳號進入「購買套餐」頁面（後續以保留清單方式納入訂單轉正）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作指南</strong> — 頁面右上角「?」打開本說明。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 列表（⋮ 更多操作）</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「帳號管理」編輯同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（帳號管理）；重設後設備需用新密碼重新註冊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>立即回庫</strong> — 立即釋放 SIP 與配對 Web 帳號回庫存（恢復初始狀態），停用 AM 帳號、刪除 AI 授權、停用名片、清除推送與登入會話；不可撤銷。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按狀態、歸屬租戶、代理商（全部/無代理商/具體）篩選；按聯繫人/公司/郵箱/帳號搜尋。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號概覽</strong> — 概要列出帳號資訊（帳號/顯示名/歸屬租戶/聯繫人/試用期/狀態/AI/名片連結），並自動生成可複製的開通通知文案（帳號、密碼、試用期、名片訪問與圖片連結、雲平台改密與 App 下載步驟），一鍵複製發送給使用者；兩個名片連結旁可單獨複製。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>AI助手（平台管理員）</strong> — 設定該帳號的 AI 使用授權：啟用/停用、每日限額、每月限額、過期時間；亦可「取消授權」徹底移除。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>立即回庫（平台管理員）</strong> — 立即釋放 SIP 與配對 Web 帳號回庫存（恢復初始狀態），停用 AM 帳號、刪除 AI 授權、停用名片、清除推送與登入會話；不可撤銷。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按狀態、歸屬租戶、代理商（全部/無代理商/具體）篩選；按聯繫人/公司/郵箱/帳號搜尋。租戶端默認篩選「試用中」。</li>
                 </ul>
               </div>
               <div style={{ marginBottom: "24px" }}>
@@ -1396,18 +1409,19 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 列表欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>勾選</strong> — 多選框；表頭全選作用於當前頁，跨頁保留選擇（配合批量停用/啟用與正式購買）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — SIP 帳號（配對 Web 帳號），下方小字為顯示名。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>歸屬租戶</strong> — 試用掛靠的租戶。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>歸屬租戶</strong> — 試用掛靠的租戶（僅平台端顯示）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>聯繫人</strong> — 登記的聯繫人與郵箱（提醒郵件發送對象）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>試用期</strong> — 開始日期 ~ 結束日期。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 見上方「狀態與生命週期」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>AI 助手</strong> — 以權益表即時狀態為準（已開通 / —）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — ⋮ 更多操作（AI助手、暫停/恢復、立即回庫）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — ⋮ 更多操作（按角色顯示：帳號設置/電子名片/重置密碼/暫停試用·恢復試用/帳號概覽/AI助手/立即回庫）。</li>
                 </ul>
               </div>
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>試用列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials</code><br/>添加試用：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials</code><br/>庫存選號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials/stock-accounts</code><br/>暫停/回庫：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/end</code><br/>恢復：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/resume</code></p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>試用列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials</code><br/>添加試用：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials</code><br/>庫存選號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials/stock-accounts</code><br/>暫停/回庫：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/end</code><br/>恢復：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/resume</code><br/>帳號設置：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/admin/trials/:id/account-settings</code><br/>名片讀取/保存：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/POST /api/admin/trials/:id/ecard</code></p>
               </div>
             </div>
           </div>
