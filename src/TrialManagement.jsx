@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Copy, MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 import apiClient from './apiClient';
 
-// 試用管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
+// 試用帳號管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
 // 方案：试用账号模块设计方案-实施参考.md（2026-10-14）
 
 function todayStr() {
@@ -740,7 +740,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // AI 助手詳細設定（與「帳號管理」頁同一組授權接口；試用帳號預設沿用到試用結束）
+  // AI 助手詳細設定（與「正式帳號管理」頁同一組授權接口；試用帳號預設沿用到試用結束）
   async function openAiEntitlement(trial) {
     setOpenActionsId(null);
     setAiEntitlementAccount({ id: trial.sipUserId, username: trial.username });
@@ -804,7 +804,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // 帳號設置（對齊租戶端「帳號管理」的編輯彈窗）：顯示名/郵箱/電話/密碼/頭像/工作單位/職務
+  // 帳號設置（對齊租戶端「正式帳號管理」的編輯彈窗）：顯示名/郵箱/電話/密碼/頭像/工作單位/職務
   async function openAccountSettings(trial) {
     setOpenActionsId(null);
     setAccountSettingsTarget({ id: trial.id, username: trial.username });
@@ -886,7 +886,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // 重置密碼（对齐租户端帳號管理「重設密碼」）：复用 account-settings 接口，带既有資訊 + 新密碼
+  // 重置密碼（对齐租户端正式帳號管理「重設密碼」）：复用 account-settings 接口，带既有資訊 + 新密碼
   async function openResetPassword(trial) {
     setOpenActionsId(null);
     setResetPasswordTarget({ id: trial.id, username: trial.username });

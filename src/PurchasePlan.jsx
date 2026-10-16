@@ -81,7 +81,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         setBillingAddress(savedList[0]?.address || '');
         setSelectedAddressId(savedList[0] ? String(savedList[0].id) : '');
 
-        // 試用轉正保留清單：由試用管理「正式購買」帶入的 trialIds 加載明細
+        // 試用轉正保留清單：由試用帳號管理「正式購買」帶入的 trialIds 加載明細
         if (!purchaseContext?.orderId && Array.isArray(purchaseContext?.trialIds) && purchaseContext.trialIds.length > 0) {
           try {
             const trialsRes = await apiClient.get(`/admin/trials?ids=${purchaseContext.trialIds.join(',')}&pageSize=200`);

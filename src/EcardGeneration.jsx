@@ -1412,7 +1412,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               if (isTrialMode) { onTrialBack?.(); return; }
               if (isSelfService) { onSelfServiceBack?.(); return; }
               setViewMode('list');
-            }}>{isTrialMode ? '返回試用管理' : isSelfService ? '返回我的帳號' : '返回列表'}</button>
+            }}>{isTrialMode ? '返回試用帳號管理' : isSelfService ? '返回我的帳號' : '返回列表'}</button>
             {/* <button type="button" className="ghost-btn" style={{ padding: '8px 16px', fontSize: '13px' }}>儲存草稿</button> */}
             <button type="button" className="primary-btn" disabled={isGenerating} style={{ padding: '8px 16px', fontSize: '13px' }} onClick={handleSaveAndGenerateImage}>
               {isGenerating ? '產生中...' : '儲存並產生圖片'}

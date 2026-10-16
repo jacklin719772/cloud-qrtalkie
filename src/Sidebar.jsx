@@ -32,8 +32,8 @@ const navItems = [
   { id: 'dashboard', label: '平台概覽', icon: Gauge },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
-  { id: 'tenant-account-management', label: '帳號管理', icon: Users },
-  { id: 'trial-management', label: '試用管理', icon: Rocket },
+  { id: 'tenant-account-management', label: '正式帳號管理', icon: Users },
+  { id: 'trial-management', label: '試用帳號管理', icon: Rocket },
   { id: 'contact-books', label: '通訊錄管理', icon: Book },
   { id: 'ecard-styles-management', label: '電子名片管理', icon: IdCard },
   { id: 'call-center', label: '呼叫中心設定', icon: Headset },
@@ -143,12 +143,12 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             <button
               className={`nav-item ${currentView === 'trial-management' ? 'active' : ''}`}
               type="button"
-              title={isCollapsed ? '試用管理' : undefined}
-              aria-label="試用管理"
+              title={isCollapsed ? '試用帳號管理' : undefined}
+              aria-label="試用帳號管理"
               onClick={() => onViewChange('trial-management')}
             >
               <Rocket className="nav-icon" size={20} aria-hidden="true" />
-              {!isCollapsed && <span>試用管理</span>}
+              {!isCollapsed && <span>試用帳號管理</span>}
             </button>
 
             <button

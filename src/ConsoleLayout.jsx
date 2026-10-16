@@ -50,7 +50,7 @@ const viewTitles = {
   users: '租戶概覽',
   registrations: '我的帳號',
   domain: '我的套餐',
-  'tenant-account-management': '帳號管理',
+  'tenant-account-management': '正式帳號管理',
   'contact-books': '通訊錄管理',
   'sip-account-registration': 'SIP帳號管理',
   'sip-account-allocation': 'Web帳號管理',
@@ -60,7 +60,7 @@ const viewTitles = {
   'ecard-styles-management': '電子名片管理',
   'agents-management': '代理商管理',
   'tenant-management': '租戶管理',
-  'trial-management': '試用管理',
+  'trial-management': '試用帳號管理',
   'tenant-coupon-management': '優惠碼管理',
   'device-management': '裝置管理',
   'offline-account': '收款帳戶',
@@ -1400,13 +1400,13 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowTrialMgmtHelp(false)}>
           <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>試用管理 操作指南</h2>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>試用帳號管理 操作指南</h2>
               <button onClick={() => setShowTrialMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127873; 試用管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>試用管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放，掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。平台管理員側重發放與回收；租戶管理員側重帳號維護、名片與批量操作（含正式購買入口）。</p>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127873; 試用帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>試用帳號管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放，掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。平台管理員側重發放與回收；租戶管理員側重帳號維護、名片與批量操作（含正式購買入口）。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 頁頭按鈕</h3>
@@ -1421,9 +1421,9 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 列表（⋮ 更多操作）</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「帳號管理」編輯同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「正式帳號管理」編輯同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（帳號管理）；重設後設備需用新密碼重新註冊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（正式帳號管理）；重設後設備需用新密碼重新註冊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號概覽</strong> — 概要列出帳號資訊（帳號/顯示名/歸屬租戶/聯繫人/試用期/狀態/AI/名片連結），並自動生成可複製的開通通知文案（帳號、密碼、試用期、名片訪問與圖片連結、雲平台改密與 App 下載步驟），一鍵複製發送給使用者；兩個名片連結旁可單獨複製。</li>
@@ -1524,7 +1524,7 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#129309; 代理商管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>代理商管理維護代理商名錄（登記表），供試用管理指派與篩選。名錄記錄代理商名稱、聯絡人、聯絡方式與銀行帳號（僅登記用途，不參與任何打款流程）。本頁僅平台管理員可見。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>代理商管理維護代理商名錄（登記表），供試用帳號管理指派與篩選。名錄記錄代理商名稱、聯絡人、聯絡方式與銀行帳號（僅登記用途，不參與任何打款流程）。本頁僅平台管理員可見。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
@@ -1532,7 +1532,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>新增代理商</strong> — 點擊頁頭「新增代理商」，代理商名稱必填且不可重複；銀行帳號等資訊可選填。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 彈窗查看代理商完整資訊（銀行帳號脫敏顯示尾 4 位）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯</strong> — 「更多 &gt; 編輯」進入編輯頁，銀行帳號自動回填完整值；修改後保存生效。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 「更多 &gt; 停用/啟用」切換狀態；僅「啟用中」的代理商出現在試用管理的代理商下拉中。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 「更多 &gt; 停用/啟用」切換狀態；僅「啟用中」的代理商出現在試用帳號管理的代理商下拉中。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按名稱、聯絡人、電話、信箱搜尋；按狀態篩選（全部/啟用中/已停用）。</li>
                 </ul>
               </div>
@@ -1545,7 +1545,7 @@ export default function ConsoleLayout({ onLogout }) {
                 </ul>
               </div>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 與試用管理的關聯</h3>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 與試用帳號管理的關聯</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>添加試用</strong> — 彈窗中的「代理商」下拉來源為本名錄的啟用項；選擇後該批次試用歸屬該代理商。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>試用列表篩選</strong> — 可按代理商篩選（全部/無代理商/具體代理商，含停用項）。</li>
@@ -1947,13 +1947,13 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAccountMgmtHelp(false)}>
           <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>帳號管理 操作說明</h2>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>正式帳號管理 操作說明</h2>
               <button onClick={() => setShowAccountMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>帳號管理用於管理已分配至當前租戶的 SIP 帳號。管理員可在此查看帳號資訊、編輯顯示名稱與郵箱、重設密碼、啟用/停用帳號，以及進行通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 正式帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>正式帳號管理用於管理已分配至當前租戶的 SIP 帳號。管理員可在此查看帳號資訊、編輯顯示名稱與郵箱、重設密碼、啟用/停用帳號，以及進行通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
               </div>
 
               <div style={{ marginBottom: "24px" }}>

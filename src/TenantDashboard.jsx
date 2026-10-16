@@ -235,7 +235,7 @@ export default function TenantDashboard({ onNavigate }) {
 
         {/* 3. 帳號情況 */}
         <div className="td-section">
-          <h2 className="td-section-title"><span className="td-num">3</span>已分配帳號 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('tenant-account-management')}>帳號管理</button></h2>
+          <h2 className="td-section-title"><span className="td-num">3</span>已分配帳號 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('tenant-account-management')}>正式帳號管理</button></h2>
           <div className="td-card td-panel">
             <div className="td-metrics-6">
               <div className="td-metric small"><div className="td-m-label">總帳號數</div><div className="td-m-value">{d.sipAccounts.total.toLocaleString()}</div></div>
