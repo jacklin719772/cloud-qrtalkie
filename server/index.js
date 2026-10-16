@@ -7433,10 +7433,13 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
       if (order.payment_status !== 'paid') {
         const payable = Number(order.payable_amount || 0);
         if (payable <= 0) {
-          // 金額 0 訂單：免付款憑證，提交稽核時自動視為已付
+          // 金額 0 訂單：免付款憑證，提交稽核時自動視為已付（同步推進訂單狀態，等同付款憑證上傳後的狀態）
           await connection.query(
             `UPDATE billing_orders
-             SET payment_status = 'paid', paid_amount = 0, updated_by_admin_user_id = ?
+             SET payment_status = 'paid',
+                 paid_amount = 0,
+                 order_status = CASE WHEN order_status = 'pending_payment' THEN 'payment_submitted' ELSE order_status END,
+                 updated_by_admin_user_id = ?
              WHERE id = ? AND tenant_id = ?`,
             [request.admin.id, orderId, request.admin.tenantId],
           );
@@ -7446,6 +7449,8 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
              WHERE order_id = ? AND tenant_id = ?`,
             [orderId, request.admin.tenantId],
           );
+          order.payment_status = 'paid';
+          if (order.order_status === 'pending_payment') order.order_status = 'payment_submitted';
         } else {
           await connection.rollback();
           return response.status(409).json({ message: "訂單尚未完成支付，請先上傳付款憑證或完成支付。" });
