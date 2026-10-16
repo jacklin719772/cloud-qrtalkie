@@ -215,7 +215,10 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
         .domain-stat-pill.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
         .domain-stat-pill strong { font-weight: 700; color: inherit; }
         .domain-table-card { flex: 1; min-height: 0; background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: none; overflow: hidden; display: flex; flex-direction: column; }
-        .domain-table-wrap { flex: 1; overflow: auto; scrollbar-width: none; } .domain-table-wrap::-webkit-scrollbar { display: none; }
+        .domain-table-wrap { flex: 1; overflow: auto; scrollbar-color: #4b5563 #1a2332; }
+        .domain-table-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
+        .domain-table-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
+        .domain-table-wrap::-webkit-scrollbar-track { background: #1a2332; }
         .domain-table { width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px; }
         .domain-table thead { position: sticky; top: 0; z-index: 2; background: #1a2332; }
         .domain-table th { background: #1a2332; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 12px; color: #9ca3af; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }

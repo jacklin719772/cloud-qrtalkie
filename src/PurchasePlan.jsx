@@ -511,11 +511,13 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
       const order = orderRes.order || orderRes;
 
       if (paymentType === 'offline') {
-        alert(purchaseContext?.mode === 'edit'
-          ? '訂單修改已儲存，原付款憑證已清空，支付狀態已重置為未支付。請重新上傳付款憑證後再提交稽核。'
-          : isRenewalMode
-            ? '訂單續訂已儲存。請在付款後上傳付款憑證，然後提交稽核。'
-            : '儲存成功。請在付款後上傳付款憑證，然後提交稽核。');
+        if (purchaseContext?.mode === 'edit') {
+          alert('訂單修改已儲存，原付款憑證已清空，支付狀態已重置為未支付。請重新上傳付款憑證後再提交稽核。');
+        } else if (Number(order.payableAmount || 0) > 0) {
+          alert('訂單已生成，請付款後提交審核。');
+        } else {
+          alert('訂單已生成，請及時提交審核。');
+        }
         onBack(); // 返回我的套餐頁面
       } else {
         // TODO: 處理線上支付跳轉
