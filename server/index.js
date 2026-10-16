@@ -677,7 +677,7 @@ async function savePaymentMethodIcon(dataUrl, methodCode) {
   const mimeType = match[1];
   const buffer = Buffer.from(match[2], "base64");
   if (buffer.length > 512 * 1024) {
-    const error = new Error("鍦栨妾旀涓嶅彲瓚呴亷 512KB銆?");
+    const error = new Error("圖標檔案不可超過 512KB。");
     error.statusCode = 400;
     throw error;
   }
@@ -685,7 +685,7 @@ async function savePaymentMethodIcon(dataUrl, methodCode) {
   if (mimeType === "image/svg+xml") {
     const svgText = buffer.toString("utf8");
     if (/<script[\s>]/i.test(svgText) || /\son[a-z]+\s*=/i.test(svgText) || /javascript:/i.test(svgText)) {
-      const error = new Error("SVG 鍦栨鍖呭惈涓嶅畨鍏ㄥ収瀹癸紝璜嬫洿鎻涙獢妗堛€?");
+      const error = new Error("SVG 圖標包含不安全內容，請更換檔案。");
       error.statusCode = 400;
       throw error;
     }
@@ -1856,7 +1856,7 @@ app.get("/api/auth/verify-email", async (request, response) => {
     const verification = tokens[0];
     if (!verification || verification.used_at) {
       await connection.rollback();
-      return response.status(400).json({ message: "驗證連結無效鎴栧凡浣跨敤" });
+      return response.status(400).json({ message: "驗證連結無效或已使用" });
     }
 
     if (new Date(verification.expires_at).getTime() < Date.now()) {
@@ -4000,13 +4000,13 @@ app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => 
 // GET /api/contact-books/validate
 
 
-// GET /api/admin/tenants - 鐛插彇棣栭爜绉熸埗鍒楄〃鑸囩当瑷堣硣鏂?
+// GET /api/admin/tenants - 獲取首頁租戶列表與統計資料
 app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
 
-    // 鑱〃鏌ヨ锛氬彇寰楃鎴跺熀鏈硣瑷娿€佽▊璩兼暩閲?(user_limit) 鑸囩疮瑷堟敮浠?(totalPaid)
+    // 聯表查詢：取得租戶基本資訊、訂購數量(user_limit) 與累計支付(totalPaid)
     const query = `
       SELECT 
         t.id,
@@ -4030,7 +4030,7 @@ app.get("/api/admin/tenants", requireAdmin, async (request, response) => {
 
     const rows = await connection.query(query);
 
-    // 鏍煎紡鍖栬硣鏂欏瀷鎱嬶紝纰轰繚 JSON 鍥炴噳鑸囧墠绔浉瀹?
+    // 格式化資料型態，確保 JSON 回應與前端相符
     const formattedRows = rows.map((row) => ({
       ...row,
       id: row.id ? row.id.toString() : null,
@@ -4080,10 +4080,10 @@ app.get("/api/admin/tenants/with-active-sip", requireAdmin, async (request, resp
   }
 });
 
-// GET /api/admin/tenants/:id - 鐛插彇鍠竴绉熸埗鐨勮┏绱拌硣瑷?
+// GET /api/admin/tenants/:id - 獲取單一租戶的詳細資料
 app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   const tenantId = Number(request.params.id);
-  if (!tenantId) return response.status(400).json({ message: "鐒℃晥鐨勭鎴?ID銆?" });
+  if (!tenantId) return response.status(400).json({ message: "無效的租戶ID。" });
 
   let connection;
   try {
@@ -4109,7 +4109,7 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
       [tenantId]
     );
     const row = rows[0];
-    if (!row) return response.status(404).json({ message: "鎵句笉鍒扮鎴惰硣鏂欍€?" });
+    if (!row) return response.status(404).json({ message: "找不到租戶資料。" });
 
     return response.json({
       tenant: {
@@ -4140,21 +4140,21 @@ app.get("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   }
 });
 
-// PUT /api/admin/tenants/:id/status - 鏇存柊绉熸埗鐙€鎱?
+// PUT /api/admin/tenants/:id/status - 更新租戶狀態
 app.put("/api/admin/tenants/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ュ煼琛屾錼嶄綔銆?" });
+    return response.status(403).json({ message: "只有平台管理員可以執行此操作。" });
   }
 
   const tenantId = Number(request.params.id);
   const { status } = request.body || {};
 
-  if (!tenantId) return response.status(400).json({ message: "鐒℃晥鐨勭鎴?ID銆?" });
+  if (!tenantId) return response.status(400).json({ message: "無效的租戶ID。" });
   if (!['active', "inactive", 'disabled'].includes(status)) {
-    return response.status(400).json({ message: "鐒℃晥鐨勭嬃鎱嬪€箋€?" });
+    return response.status(400).json({ message: "無效的狀態值。" });
   }
 
-  // 灏囧墠绔彲鑳藉偝渚嗙殑 inactive 绲变竴鏄犲皠鐐鸿硣鏂欏韩鐨?disabled
+  // 將前端可能傳來的 inactive 統一映射為資料庫的disabled
   const dbStatus = status === "inactive" ? 'disabled' : status;
 
   let connection;
@@ -4168,9 +4168,9 @@ app.put("/api/admin/tenants/:id/status", requireAdmin, async (request, response)
       return response.status(404).json({ message: "找不到指定的租戶。" });
     }
 
-    // 鍚屾鏇存柊绉熸埗涓嬫墍鏈夌鐞嗗摗鐨勭媭鎱?    await connection.query(`UPDATE admin_users SET status = ? WHERE tenant_id = ?`, [dbStatus, tenantId]);
+    // 同步更新租戶下所有管理員的狀態    await connection.query(`UPDATE admin_users SET status = ? WHERE tenant_id = ?`, [dbStatus, tenantId]);
 
-    // 鑻ュ仠鐢ㄧ鎴讹紝寮峰埗鐧诲嚭瑭茬鎴剁殑鎵€鏈夌鐞嗗摗
+    // 若停用租戶，強制登出該租戶的所有管理員
     if (dbStatus === 'disabled') {
       await connection.query(`DELETE s FROM admin_sessions s JOIN admin_users a ON s.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
     }
@@ -4278,7 +4278,7 @@ app.put("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   }
 });
 
-// DELETE /api/admin/tenants/:id - 寰瑰簳鍒櫎绉熸埗鍙婂叾鎵€鏈夐棞鑱硣鏂?
+// DELETE /api/admin/tenants/:id - 徹底刪除租戶及其所有關聯資料
 app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以執行此操作。" });
@@ -4325,7 +4325,7 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
       }
     }
 
-    // 3. 鍒櫎闂滆伅鐨?Token 鑸?Session (鑱〃鍒櫎)
+    // 3. 刪除關聯的Token 與Session (聯表刪除)
     await connection.query(`DELETE s FROM admin_sessions s JOIN admin_users a ON s.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE e FROM email_verification_tokens e JOIN admin_users a ON e.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE p FROM password_reset_tokens p JOIN admin_users a ON p.admin_user_id = a.id WHERE a.tenant_id = ?`, [tenantId]);
@@ -4364,7 +4364,7 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
 
 app.get("/api/admin/tenant-coupons", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ユ煡鐪嬩紭鎯犵爜鍒嗛厤璧勬枡銆?" });
+    return response.status(403).json({ message: "只有平台管理员可以查看优惠码分配资料。" });
   }
 
   const page = Math.max(1, Number.parseInt(request.query.page || "1", 10));
@@ -4626,7 +4626,7 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
 
   const assignmentId = Number(request.params.id || 0);
   if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
-    return response.status(400).json({ message: "鏃犳晥鐨勪紭鎯犵爜鍒嗛厤璁板綍銆?" });
+    return response.status(400).json({ message: "无效的优惠码分配记录。" });
   }
 
   let connection;
@@ -4646,7 +4646,7 @@ app.post("/api/admin/tenant-coupons/:id/enable", requireAdmin, async (request, r
     const assignment = rows[0];
     if (!assignment) {
       await connection.rollback();
-      return response.status(404).json({ message: "浼樻儬鐮佸垎閰嶈褰曚笉瀛樺湪銆?" });
+      return response.status(404).json({ message: "优惠码分配记录不存在。" });
     }
     if (assignment.status === "used" || assignment.used_order_id) {
       await connection.rollback();
@@ -4689,7 +4689,7 @@ app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, respon
 
   const assignmentId = Number(request.params.id || 0);
   if (!Number.isFinite(assignmentId) || assignmentId <= 0) {
-    return response.status(400).json({ message: "鏃犳晥鐨勪紭鎯犵爜鍒嗛厤璁板綍銆?" });
+    return response.status(400).json({ message: "无效的优惠码分配记录。" });
   }
 
   let connection;
@@ -4708,11 +4708,11 @@ app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, respon
     const assignment = rows[0];
     if (!assignment) {
       await connection.rollback();
-      return response.status(404).json({ message: "浼樻儬鐮佸垎閰嶈褰曚笉瀛樺湪銆?" });
+      return response.status(404).json({ message: "优惠码分配记录不存在。" });
     }
     if (assignment.status === "used" || assignment.used_order_id) {
       await connection.rollback();
-      return response.status(409).json({ message: "宸蹭嬌鐢ㄤ紭鎯犵爜涓嶈兘鍒犻櫎銆?" });
+      return response.status(409).json({ message: "已使用优惠码不能删除。" });
     }
     if (assignment.status !== "revoked") {
       await connection.rollback();
@@ -4725,7 +4725,7 @@ app.delete("/api/admin/tenant-coupons/:id", requireAdmin, async (request, respon
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鍒犻櫎浼樻儬鐮佸垎閰嶈褰曞け璐ャ€?" });
+    return response.status(500).json({ message: "删除优惠码分配记录失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -4754,7 +4754,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
 
     const row = rows[0];
     if (!row) {
-      return response.status(404).json({ message: "鎵句笉鍒扮窔涓嬫敹嬈捐硣璦娿€?" });
+      return response.status(404).json({ message: "找不到線下收款資訊。" });
     }
 
     return response.json({
@@ -4776,7 +4776,7 @@ app.get("/api/billing/offline-payment-account", requireAdmin, async (request, re
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栫窔涓嬫敹嬈捐硣璦婂け鏁椼€?" });
+    return response.status(500).json({ message: "讀取線下收款資訊失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5130,7 +5130,7 @@ async function savePlanData(connection, payload, planId = null) {
 
 app.post("/api/billing/plans", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护套餐资料。" });
   }
   let connection;
   try {
@@ -5151,10 +5151,10 @@ app.post("/api/billing/plans", requireAdmin, async (request, response) => {
 
 app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护套餐资料。" });
   }
   const planId = Number(request.params.id);
-  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫槨?ID銆?" });
+  if (!planId) return response.status(400).json({ message: "无效的套餐ID。" });
 
   let connection;
   try {
@@ -5175,10 +5175,10 @@ app.put("/api/billing/plans/:id", requireAdmin, async (request, response) => {
 
 app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゅ槨愯祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护套餐资料。" });
   }
   const planId = Number(request.params.id);
-  if (!planId) return response.status(400).json({ message: "鏃犳晥鐨勫槨?ID銆?" });
+  if (!planId) return response.status(400).json({ message: "无效的套餐ID。" });
 
   let connection;
   try {
@@ -5188,7 +5188,7 @@ app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => 
     const refs = await connection.query(`SELECT id FROM billing_order_items WHERE plan_id = ? LIMIT 1`, [planId]);
     if (refs.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ゅ槨愬凡琚鍗曚嬌鐢紝鏃犳硶鍒犻櫎銆傛偍鍙互灝嗗叾鐘舵€佹敼涓哄仠鐢ㄣ€?" });
+      return response.status(409).json({ message: "此套餐已被订单使用，无法删除。您可以将其状态改为停用。" });
     }
 
     await connection.query(`DELETE FROM billing_plan_addons WHERE plan_id = ?`, [planId]);
@@ -5197,7 +5197,7 @@ app.delete("/api/billing/plans/:id", requireAdmin, async (request, response) => 
 
     if (result.affectedRows === 0) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌鍒犻櫎鐨勫槨愩€?" });
+      return response.status(404).json({ message: "找不到要删除的套餐。" });
     }
 
     await connection.commit();
@@ -5293,7 +5293,7 @@ app.get("/api/billing/purchase-options", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栧槨愯硣鏂欏け鏁椼€?" });
+    return response.status(500).json({ message: "讀取套餐資料失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5307,7 +5307,7 @@ app.get("/api/billing/coupons/validate", requireAdmin, async (request, response)
   try {
     connection = await pool.getConnection();
     const row = await loadTenantCouponForOrder(connection, request.admin.tenantId, { couponCode: code });
-    if (!row) return response.status(404).json({ message: "姝ょ鎴朵笉瀛樺湪瑭插劒鎯犵⒓銆?" });
+    if (!row) return response.status(404).json({ message: "此租戶不存在該優惠碼。" });
 
     return response.json({
       coupon: {
@@ -5323,7 +5323,7 @@ app.get("/api/billing/coupons/validate", requireAdmin, async (request, response)
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "椹楄瓑鍎儬紕煎け鏁椼€?" });
+    return response.status(500).json({ message: "驗證優惠碼失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5415,7 +5415,7 @@ app.get("/api/billing/available-coupons", requireAdmin, async (request, response
     return response.json({ coupons: rows.map(mapAvailableTenantCoupon) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璇誨彇鍙敤浼樻儬鐮佸け璐ャ€?" });
+    return response.status(500).json({ message: "读取可用优惠码失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5446,7 +5446,7 @@ function mapCoupon(row) {
 
 app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护折扣资料。" });
   }
 
   let connection;
@@ -5465,7 +5465,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
     return response.json({ coupons: rows.map(mapCoupon) });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "鏃犳硶璇誨彇鎶樻墸璧勬枡銆?" });
+    return response.status(500).json({ message: "无法读取折扣资料。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5473,7 +5473,7 @@ app.get("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 
 app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护折扣资料。" });
   }
 
   const payload = request.body || {};
@@ -5489,18 +5489,18 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
   const maxRedemptions = Number.isFinite(rawMaxRedemptions) && rawMaxRedemptions > 0 ? Math.floor(rawMaxRedemptions) : null;
   const status = sanitizeString(payload.status, 20);
 
-  if (!couponCode) return response.status(400).json({ message: "璇瘋緭鍏ユ姌鎵ｄ唬鐮併€?" });
-  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "鎶樻墸浠ｇ爜鍙兘浣跨敤鑻辨枃澶у啟瀛楁瘝銆佹暟瀛椼€佸簳綰挎垨榪炲瓧絎︼紝涓旇嚦灝?2 涓瓧絎︺€?" });
+  if (!couponCode) return response.status(400).json({ message: "请输入折扣代码。" });
+  if (!/^[A-Z0-9][A-Z0-9_-]{1,79}$/.test(couponCode)) return response.status(400).json({ message: "折扣代码只能使用英文大写字母、数字、底线或连字符，且至少2 个字符。" });
   if (!displayName) return response.status(400).json({ message: "請輸入顯示名稱。" });
   if (!["percent", "fixed_amount"].includes(discountType)) return response.status(400).json({ message: "請選擇折扣型別。" });
-  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "鎶樻墸鍊煎繀欏誨ぇ浜?0銆?" });
-  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "鐧懼垎姣旀姌鎵ｄ笉鍙秴榪?100%銆?" });
-  if (discountType === "fixed_amount" && !couponCurrencyCodes.has(currency)) return response.status(400).json({ message: "璇烽€夋嫨鏈夋晥甯佺銆?" });
-  if (!validUntil) return response.status(400).json({ message: "璇烽€夋嫨鍒版湡鏃ユ湡銆?" });
-  if (payload.validFrom && !validFrom) return response.status(400).json({ message: "鐢熸晥鏃ユ湡鏍煎紡鏃犳晥銆?" });
-  if (payload.validUntil && !validUntil) return response.status(400).json({ message: "鍒版湡鏃ユ湡鏍煎紡鏃犳晥銆?" });
-  if (validFrom && validUntil < validFrom) return response.status(400).json({ message: "鍒版湡鏃ユ湡涓嶅彲鏃╀簬鐢熸晥鏃ユ湡銆?" });
-  if (!['active', 'disabled', "expired"].includes(status)) return response.status(400).json({ message: "璇烽€夋嫨鐘舵€併€?" });
+  if (!Number.isFinite(discountValue) || discountValue <= 0) return response.status(400).json({ message: "折扣值必须大于0。" });
+  if (discountType === "percent" && discountValue > 100) return response.status(400).json({ message: "百分比折扣不可超过100%。" });
+  if (discountType === "fixed_amount" && !couponCurrencyCodes.has(currency)) return response.status(400).json({ message: "请选择有效币种。" });
+  if (!validUntil) return response.status(400).json({ message: "请选择到期日期。" });
+  if (payload.validFrom && !validFrom) return response.status(400).json({ message: "生效日期格式无效。" });
+  if (payload.validUntil && !validUntil) return response.status(400).json({ message: "到期日期格式无效。" });
+  if (validFrom && validUntil < validFrom) return response.status(400).json({ message: "到期日期不可早于生效日期。" });
+  if (!['active', 'disabled', "expired"].includes(status)) return response.status(400).json({ message: "请选择状态。" });
 
   let connection;
   try {
@@ -5525,7 +5525,7 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
           id,
         ],
       );
-      if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
+      if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "折扣资料不存在。" });
     } else {
       const result = await connection.query(
         `INSERT INTO billing_coupons (
@@ -5548,11 +5548,11 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
       savedId = Number(result.insertId || 0);
     }
 
-    return response.json({ message: "鎶樻墸璧勬枡宸蹭繚瀛樸€?", id: savedId });
+    return response.json({ message: "折扣资料已保存。", id: savedId });
   } catch (error) {
     console.error(error);
-    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "鎶樻墸浠ｇ爜宸插瓨鍦紝璇鋒洿鎹㈠悗鍐嶄繚瀛樸€?" });
-    return response.status(500).json({ message: "鏃犳硶淇濆瓨鎶樻墸璧勬枡銆?" });
+    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "折扣代码已存在，请更换后再保存。" });
+    return response.status(500).json({ message: "无法保存折扣资料。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5560,24 +5560,24 @@ app.put("/api/billing/coupon-settings", requireAdmin, async (request, response) 
 
 app.delete("/api/billing/coupon-settings/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍛樺彲浠ョ淮鎶ゆ姌鎵ｈ祫鏂欍€?" });
+    return response.status(403).json({ message: "只有平台管理员可以维护折扣资料。" });
   }
 
   const couponId = Number(request.params.id || 0);
-  if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
+  if (!Number.isFinite(couponId) || couponId <= 0) return response.status(400).json({ message: "折扣资料不存在。" });
 
   let connection;
   try {
     connection = await pool.getConnection();
     const result = await connection.query(`DELETE FROM billing_coupons WHERE id = ?`, [couponId]);
-    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "鎶樻墸璧勬枡涓嶅瓨鍦ㄣ€?" });
-    return response.json({ message: "鎶樻墸璧勬枡宸插垹闄ゃ€?" });
+    if (Number(result.affectedRows || 0) === 0) return response.status(404).json({ message: "折扣资料不存在。" });
+    return response.json({ message: "折扣资料已删除。" });
   } catch (error) {
     console.error(error);
     if (error?.code === "ER_ROW_IS_REFERENCED_2") {
-      return response.status(409).json({ message: "姝ゆ姌鎵ｅ凡琚鍗曚嬌鐢紝涓嶈兘鍒犻櫎錛涘彲鏀逛負鍋滅敤銆?" });
+      return response.status(409).json({ message: "此折扣已被订单使用，不能删除；可改为停用。" });
     }
-    return response.status(500).json({ message: "鏃犳硶鍒犻櫎鎶樻墸璧勬枡銆?" });
+    return response.status(500).json({ message: "无法删除折扣资料。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5608,7 +5608,7 @@ app.get("/api/billing/payment-methods", requireAdmin, async (request, response) 
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栦粯嬈炬柟寮忓け鏁椼€?" });
+    return response.status(500).json({ message: "讀取付款方式失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5616,7 +5616,7 @@ app.get("/api/billing/payment-methods", requireAdmin, async (request, response) 
 
 app.get("/api/billing/payment-method-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
+    return response.status(403).json({ message: "只有平台管理員可以維護付款方式。" });
   }
 
   let connection;
@@ -5642,7 +5642,7 @@ app.get("/api/billing/payment-method-settings", requireAdmin, async (request, re
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栦粯嬈炬柟寮忚ō瀹氬け鏁椼€?" });
+    return response.status(500).json({ message: "讀取付款方式設定失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5650,7 +5650,7 @@ app.get("/api/billing/payment-method-settings", requireAdmin, async (request, re
 
 app.put("/api/billing/payment-method-settings", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
+    return response.status(403).json({ message: "只有平台管理員可以維護付款方式。" });
   }
 
   const methods = Array.isArray(request.body?.methods) ? request.body.methods.slice(0, 50) : [];
@@ -5673,19 +5673,19 @@ app.put("/api/billing/payment-method-settings", requireAdmin, async (request, re
 
     if (!methodCode) return response.status(400).json({ message: "請輸入方式程式碼。" });
     if (!/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(methodCode)) {
-      return response.status(400).json({ message: "鏂瑰紡浠ｇ⒓鍙兘浣跨敤鑻辨枃瀛楁瘝銆佹暩瀛椼€佸簳綬氭垨閫ｅ瓧鉶燂紝涓旇嚦灝?2 鍊嬪瓧鍏冦€?" });
+      return response.status(400).json({ message: "方式代碼只能使用英文字母、數字、底線或連字號，且至少2 個字元。" });
     }
-    if (seenCodes.has(methodCode)) return response.status(400).json({ message: "鏂瑰紡浠ｇ⒓涓嶅彲閲嶈銆?" });
+    if (seenCodes.has(methodCode)) return response.status(400).json({ message: "方式代碼不可重複。" });
     seenCodes.add(methodCode);
-    if (!displayName) return response.status(400).json({ message: "璜嬭幾鍏ラ’紺哄悕紼便€?" });
+    if (!displayName) return response.status(400).json({ message: "請輸入顯示名稱。" });
     if (!["online", "offline"].includes(methodType)) return response.status(400).json({ message: "請選擇付款型別。" });
     if (!['active', 'disabled'].includes(status)) return response.status(400).json({ message: "請選擇啟用狀態。" });
-    if (iconUrl && !iconUrl.startsWith("/payment-method-icons/")) return response.status(400).json({ message: "浠樻鏂瑰紡鍦栨璺緫鐒℃晥銆?" });
+    if (iconUrl && !iconUrl.startsWith("/payment-method-icons/")) return response.status(400).json({ message: "付款方式圖標路徑無效。" });
     if (iconDataUrl) {
       try {
         iconUrl = await savePaymentMethodIcon(iconDataUrl, methodCode);
       } catch (error) {
-        return response.status(error.statusCode || 400).json({ message: error.message || "鐒℃硶鍎插瓨浠樻鏂瑰紡鍦栨銆?" });
+        return response.status(error.statusCode || 400).json({ message: error.message || "無法儲存付款方式圖標。" });
       }
     }
 
@@ -5751,12 +5751,12 @@ app.put("/api/billing/payment-method-settings", requireAdmin, async (request, re
     }
 
     await connection.commit();
-    return response.json({ message: "浠樻鏂瑰紡宸插劜瀛樸€?" });
+    return response.json({ message: "付款方式已儲存。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "鏂瑰紡浠ｇ⒓宸插瓨鍦紝璜嬫洿鎻涘緦鍐嶅劜瀛樸€?" });
-    return response.status(500).json({ message: "鐒℃硶鍎插瓨浠樻鏂瑰紡銆?" });
+    if (error?.code === "ER_DUP_ENTRY") return response.status(409).json({ message: "方式代碼已存在，請更換後再儲存。" });
+    return response.status(500).json({ message: "無法儲存付款方式。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5764,12 +5764,12 @@ app.put("/api/billing/payment-method-settings", requireAdmin, async (request, re
 
 app.delete("/api/billing/payment-method-settings/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
-    return response.status(403).json({ message: "鍙湁騫衝彴綆＄悊鍝″彲浠ョ董璀蜂粯嬈炬柟寮忋€?" });
+    return response.status(403).json({ message: "只有平台管理員可以維護付款方式。" });
   }
 
   const methodId = Number(request.params.id || 0);
   if (!Number.isFinite(methodId) || methodId <= 0) {
-    return response.status(400).json({ message: "浠樻鏂瑰紡涓嶅瓨鍦ㄣ€?" });
+    return response.status(400).json({ message: "付款方式不存在。" });
   }
 
   let connection;
@@ -5781,21 +5781,21 @@ app.delete("/api/billing/payment-method-settings/:id", requireAdmin, async (requ
     const total = Number(countRows[0]?.total || 0);
     if (total <= 1) {
       await connection.rollback();
-      return response.status(400).json({ message: "鑷衝皯闇€淇濈暀涓€鍊嬩粯嬈炬柟寮忋€?" });
+      return response.status(400).json({ message: "至少需保留一個付款方式。" });
     }
 
     const result = await connection.query(`DELETE FROM billing_payment_methods WHERE id = ?`, [methodId]);
     if (Number(result.affectedRows || 0) === 0) {
       await connection.rollback();
-      return response.status(404).json({ message: "浠樻鏂瑰紡涓嶅瓨鍦ㄣ€?" });
+      return response.status(404).json({ message: "付款方式不存在。" });
     }
 
     await connection.commit();
-    return response.json({ message: "浠樻鏂瑰紡宸插埅闄ゃ€?" });
+    return response.json({ message: "付款方式已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鍒櫎浠樻鏂瑰紡銆?" });
+    return response.status(500).json({ message: "無法刪除付款方式。" });
   } finally {
     if (connection) connection.release();
   }
@@ -5859,7 +5859,7 @@ app.get("/api/billing/orders", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栬▊鍠垪琛ㄥけ鏁椼€?" });
+    return response.status(500).json({ message: "讀取訂單列表失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6012,7 +6012,7 @@ async function buildBillingOrderDraft(connection, request, payload) {
   if (tenantCouponId > 0 || couponCode) {
     coupon = await loadTenantCouponForOrder(connection, request.admin.tenantId, { tenantCouponId, couponCode });
     if (!coupon) {
-      const error = new Error("姝ょ鎴朵笉瀛樺湪瑭插劒鎯犵⒓銆?");
+      const error = new Error("此租戶不存在該優惠碼。");
       error.statusCode = 404;
       throw error;
     }
@@ -6024,7 +6024,7 @@ async function buildBillingOrderDraft(connection, request, payload) {
       addonId: null,
       couponId: Number(coupon.id),
       itemCode: coupon.coupon_code,
-      itemName: "鍎儬鎶樻墸",
+      itemName: "優惠折扣",
       quantity: 1,
       months: 1,
       unitPrice: 0,
@@ -6142,7 +6142,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
       coupon = await loadTenantCouponForOrder(connection, request.admin.tenantId, { tenantCouponId, couponCode, forUpdate: true });
       if (!coupon) {
         await connection.rollback();
-        return response.status(404).json({ message: "姝ょ鎴朵笉瀛樺湪瑭插劒鎯犵⒓銆?" });
+        return response.status(404).json({ message: "此租戶不存在該優惠碼。" });
       }
       if (coupon.discount_type === "percent") discountAmount = subtotal * (Number(coupon.discount_value) / 100);
       if (coupon.discount_type === "fixed_amount") discountAmount = Math.min(subtotal, Number(coupon.discount_value));
@@ -6152,7 +6152,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
         addonId: null,
         couponId: Number(coupon.id),
         itemCode: coupon.coupon_code,
-        itemName: "鍎儬鎶樻墸",
+        itemName: "優惠折扣",
         quantity: 1,
         months: 1,
         unitPrice: 0,
@@ -6284,13 +6284,13 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
 
     await connection.commit();
     return response.status(201).json({
-      message: paymentMethod === "offline" ? "璦傚柈宸蹭繚瀛橈紝璜嬬窔涓嬩粯嬈懼緦涓婂偝浠樻鎲戣瓑鎴湒銆?" : "璦傚柈宸插緩絝嬨€?",
+      message: paymentMethod === "offline" ? "訂單已保存，請線下付款後上傳付款憑證截圖。" : "訂單已建立。",
       order: { id: orderId, orderNo, currency, payableAmount },
     });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "寤虹珛璦傚柈澶辨晽銆?" });
+    return response.status(500).json({ message: "建立訂單失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6298,7 +6298,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
 
 app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   let connection;
   try {
@@ -6321,7 +6321,7 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
       [orderId, request.admin.tenantId],
     );
     const order = rows[0];
-    if (!order) return response.status(404).json({ message: "鎵句笉鍒拌▊鍠€?" });
+    if (!order) return response.status(404).json({ message: "找不到訂單。" });
 
     const itemRows = await connection.query(
       `SELECT
@@ -6438,7 +6438,7 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json({ message: "璁€鍙栬▊鍠┏鎯呭け鏁椼€?" });
+    return response.status(500).json({ message: "讀取訂單詳情失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6446,7 +6446,7 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
 app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   const payload = request.body || {};
   const paymentMethod = sanitizeString(payload.paymentMethod, 20);
@@ -6469,11 +6469,11 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
     const existing = existingRows[0];
     if (!existing) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌▊鍠€?" });
+      return response.status(404).json({ message: "找不到訂單。" });
     }
     if (["review_approved", "review_rejected"].includes(existing.order_status)) {
       await connection.rollback();
-      return response.status(409).json({ message: "瀹℃牳閫氳繃鎴栧鏍告湭閫氳繃鐨勮鍗曚笉鍏佽淇敼銆?" });
+      return response.status(409).json({ message: "审核通过或审核未通过的订单不允许修改。" });
     }
 
     const draft = await buildBillingOrderDraft(connection, request, payload);
@@ -6612,11 +6612,11 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
     await connection.commit();
     await removePaymentProofFile(staleProofUrl);
-    return response.json({ message: "璦傚柈宸叉洿鏂幫紝鍘熶粯嬈懼嚟璇佸凡娓呯┖錛岃閲嶆柊涓婁紶浠樻鍑瘉銆?", order: { id: orderId, currency: draft.currency, payableAmount: draft.payableAmount } });
+    return response.json({ message: "訂單已更新，原付款凭证已清空，请重新上传付款凭证。", order: { id: orderId, currency: draft.currency, payableAmount: draft.payableAmount } });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "淇敼璦傚柈澶辨晽銆?" });
+    return response.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "修改訂單失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6624,7 +6624,7 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
 
 app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, response) => {
   const sourceOrderId = Number(request.params.id);
-  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(sourceOrderId) || sourceOrderId <= 0) return response.status(400).json({ message: "订单编号无效。" });
 
   const payload = request.body || {};
   const requestedPaymentMethod = sanitizeString(payload.paymentMethod, 20);
@@ -6650,7 +6650,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
     const source = sourceRows[0];
     if (!source) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒板師璁㈠崟銆?" });
+      return response.status(404).json({ message: "找不到原订单。" });
     }
 
     const itemRows = await connection.query(
@@ -6667,7 +6667,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
     );
     if (itemRows.length === 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "鍘熻鍗曟病鏈夊彲澶嶅埗鐨勬槑緇嗐€?" });
+      return response.status(409).json({ message: "原订单没有可复制的明细。" });
     }
 
     const paymentMethod = ["online", "offline"].includes(requestedPaymentMethod) ? requestedPaymentMethod : source.payment_method;
@@ -6802,7 +6802,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
 
     await connection.commit();
     return response.status(201).json({
-      message: paymentMethod === "offline" ? "閲嶆柊璐拱璁㈠崟宸蹭繚瀛樸€?" : "閲嶆柊璐拱璁㈠崟宸插緩絝嬨€?",
+      message: paymentMethod === "offline" ? "重新购买订单已保存。" : "重新购买订单已建立。",
       order: {
         id: orderId,
         orderNo,
@@ -6814,7 +6814,7 @@ app.post("/api/billing/orders/:id/repurchase", requireAdmin, async (request, res
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "閲嶆柊璐拱璁㈠崟鐢熸垚澶辮觸銆?" });
+    return response.status(500).json({ message: "重新购买订单生成失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -7123,7 +7123,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
 
 app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "订单编号无效。" });
 
   const payload = request.body || {};
   const actualAmount = Number(payload.actualAmount);
@@ -7135,11 +7135,11 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate)) return response.status(400).json({ message: "請選擇有效的付款日期。" });
 
   const match = proofImageDataUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)$/);
-  if (!match) return response.status(400).json({ message: "璇蜂笂浼犳垨綺樿創 PNG銆丣PG銆乄EBP 鏍煎紡鐨勪粯嬈懼嚟璇佹埅鍥俱€?" });
+  if (!match) return response.status(400).json({ message: "请上传或粘贴 PNG、JPG、WEBP 格式的付款凭证截图。" });
 
   const ext = match[1] === "jpeg" ? "jpg" : match[1];
   const buffer = Buffer.from(match[2], "base64");
-  if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024) return response.status(400).json({ message: "浠樻鍑瘉鍥劇墖澶у皬闇€灝忎簬 8MB銆?" });
+  if (buffer.length === 0 || buffer.length > 8 * 1024 * 1024) return response.status(400).json({ message: "付款凭证图片大小需小于 8MB。" });
 
   let connection;
   try {
@@ -7156,15 +7156,15 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
     const order = orderRows[0];
     if (!order) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌鍗曘€?" });
+      return response.status(404).json({ message: "找不到订单。" });
     }
     if (order.payment_method !== "offline") {
       await connection.rollback();
-      return response.status(409).json({ message: "鍙湁綰誇笅鏀粯璁㈠崟鍙互涓婁紶浠樻鍑瘉銆?" });
+      return response.status(409).json({ message: "只有线下支付订单可以上传付款凭证。" });
     }
     if (!["pending_payment", "payment_submitted", "pending_review"].includes(order.order_status)) {
       await connection.rollback();
-      return response.status(409).json({ message: "褰撳墠璁㈠崟鐘舵€佷笉鑳戒笂浼犱粯嬈懼嚟璇併€?" });
+      return response.status(409).json({ message: "当前订单状态不能上传付款凭证。" });
     }
 
     const proofDir = path.resolve("assets/payment-proofs");
@@ -7266,7 +7266,7 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
 
     await connection.commit();
     return response.json({
-      message: "浠樻鍑瘉宸蹭繚瀛橈紝騫跺凡鍏寵仈鍒拌璁㈠崟銆?",
+      message: "付款凭证已保存，并已关联到该订单。",
       payment: {
         proofUrl,
         actualAmount,
@@ -7277,7 +7277,7 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "浠樻鍑瘉淇濆瓨澶辮觸銆?" });
+    return response.status(500).json({ message: "付款凭证保存失败。" });
   } finally {
     if (connection) connection.release();
   }
@@ -7285,10 +7285,10 @@ app.post("/api/billing/orders/:id/payment-proof", requireAdmin, async (request, 
 
 app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璁㈠崟緙栧彿鏃犳晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "订单编号无效。" });
 
   const action = sanitizeString(request.body?.action, 20);
-  if (!["submit", "revoke"].includes(action)) return response.status(400).json({ message: "錼嶄綔綾誨瀷鏃犳晥銆?" });
+  if (!["submit", "revoke"].includes(action)) return response.status(400).json({ message: "操作类型无效。" });
 
   let connection;
   try {
@@ -7305,7 +7305,7 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
     const order = rows[0];
     if (!order) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌鍗曘€?" });
+      return response.status(404).json({ message: "找不到订单。" });
     }
 
     let nextOrderStatus = "";
@@ -7329,7 +7329,7 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
     if (action === "revoke") {
       if (order.order_status !== "pending_review") {
         await connection.rollback();
-        return response.status(409).json({ message: "鍙湁宸叉彁浜や笖鏈鏍哥殑璁㈠崟鍙互鎾ら攢鎻愪氦銆?" });
+        return response.status(409).json({ message: "只有已提交且未审核的订单可以撤销提交。" });
       }
       nextOrderStatus = "payment_submitted";
       reason = "revoke_review";
@@ -7380,18 +7380,18 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
         }
       }
     }
-    return response.json({ message: action === "submit" ? "璁㈠崟宸叉彁浜ゅ鏍搞€?" : "宸叉挙閿€鎻愪氦銆?" });
+    return response.json({ message: action === "submit" ? "订单已提交审核。" : "已撤销提交。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "璁㈠崟瀹℃牳鎻愪氦錼嶄綔澶辮觸銆?" });
+    return response.status(500).json({ message: "订单审核提交操作失败。" });
   } finally {
     if (connection) connection.release();
   }
 });
 app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const orderId = Number(request.params.id);
-  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "璦傚柈綬ㄨ櫉鐒℃晥銆?" });
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "訂單編號無效。" });
 
   let connection;
   try {
@@ -7408,20 +7408,20 @@ app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) =>
     const order = rows[0];
     if (!order) {
       await connection.rollback();
-      return response.status(404).json({ message: "鎵句笉鍒拌▊鍠€?" });
+      return response.status(404).json({ message: "找不到訂單。" });
     }
     if (order.order_status !== "pending_payment" || order.payment_status !== "unpaid") {
       await connection.rollback();
-      return response.status(409).json({ message: "鍙湁鏈敮浠樿▊鍠彲浠ュ埅闄ゃ€?" });
+      return response.status(409).json({ message: "只有未支付訂單可以刪除。" });
     }
 
     await connection.query(`DELETE FROM billing_orders WHERE id = ? AND tenant_id = ?`, [orderId, request.admin.tenantId]);
     await connection.commit();
-    return response.json({ message: "璦傚柈宸插埅闄ゃ€?" });
+    return response.json({ message: "訂單已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "鍒櫎璦傚柈澶辨晽銆?" });
+    return response.status(500).json({ message: "刪除訂單失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -7481,7 +7481,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
   const confirmPassword = String(request.body.confirmPassword || "");
 
   if (!isValidEmail(newEmail)) return response.status(400).json({ message: "請輸入有效的新登入信箱。" });
-  if (newPassword !== confirmPassword) return response.status(400).json({ message: "鍏╂杓稿靉鐨勬柊瀵嗙⒓涓嶄竴鑷淬€?" });
+  if (newPassword !== confirmPassword) return response.status(400).json({ message: "兩次輸入的新密碼不一致。" });
   const passwordError = validatePassword(newPassword);
   if (passwordError) return response.status(400).json({ message: passwordError });
 
@@ -7500,7 +7500,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     const admin = admins[0];
     if (!admin || !(await verifyPassword(oldPassword, admin.password_hash))) {
       await connection.rollback();
-      return response.status(401).json({ message: "鑸婂瘑紕間笉姝ｇ⒑銆?" });
+      return response.status(401).json({ message: "舊密碼不正確。" });
     }
 
     const existing = await connection.query(
@@ -7509,7 +7509,7 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     );
     if (existing.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊綆卞凡琚嬌鐢ㄣ€?" });
+      return response.status(409).json({ message: "此登入信箱已被使用。" });
     }
 
     const recentCodes = await connection.query(
@@ -7522,12 +7522,12 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     );
     if (recentCodes[0] && Date.now() - new Date(recentCodes[0].created_at).getTime() < 60 * 1000) {
       await connection.rollback();
-      return response.status(429).json({ message: "璜嬬瓑寰?60 縐掑緦鍐嶅偝閫佹柊鐨勯璀夌⒓銆?" });
+      return response.status(429).json({ message: "請等待60 秒後再傳送新的驗證碼。" });
     }
     const sentInTenMinutes = recentCodes.filter((code) => Date.now() - new Date(code.created_at).getTime() < 10 * 60 * 1000);
     if (sentInTenMinutes.length >= 5) {
       await connection.rollback();
-      return response.status(429).json({ message: "椹楄瓑紕煎偝閫佹鏁擱亷澶氾紝璜嬬◢寰屽啀瑭︺€?" });
+      return response.status(429).json({ message: "驗證碼傳送次數過多，請稍後再試。" });
     }
 
     const code = createNumericCode();
@@ -7543,11 +7543,11 @@ app.post("/api/admin/login-email-change/request-code", requireAdmin, async (requ
     await queueLoginEmailChangeCode(connection, { email: newEmail, code });
     await connection.commit();
 
-    return response.json({ message: "椹楄瓑紕煎凡鍌抽€佽嚦鏂扮殑鐧誨靉淇＄銆?" });
+    return response.json({ message: "驗證碼已傳送至新的登入信箱。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鍌抽€侀璀夌⒓銆?" });
+    return response.status(500).json({ message: "無法傳送驗證碼。" });
   } finally {
     if (connection) connection.release();
   }
@@ -7558,7 +7558,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
   const code = String(request.body.code || "").trim();
 
   if (!isValidEmail(newEmail) || !/^\d{6}$/.test(code)) {
-    return response.status(400).json({ message: "璜嬭幾鍏ユ柊淇＄鑸?6 浣嶆暩瀛楅璀夌⒓銆?" });
+    return response.status(400).json({ message: "請輸入新信箱與6 位數字驗證碼。" });
   }
 
   let connection;
@@ -7577,11 +7577,11 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     const change = rows[0];
     if (!change || new Date(change.expires_at).getTime() < Date.now()) {
       await connection.rollback();
-      return response.status(400).json({ message: "椹楄瓑紕肩劇鏁堟垨宸查亷鏈熴€?" });
+      return response.status(400).json({ message: "驗證碼無效或已過期。" });
     }
     if (Number(change.attempt_count) >= 5) {
       await connection.rollback();
-      return response.status(429).json({ message: "鍢楄│嬈℃暩閬庡錛岃珛閲嶆柊鍙栧緱椹楄瓑紕箋€?" });
+      return response.status(429).json({ message: "嘗試次數過多，請重新取得驗證碼。" });
     }
 
     if (change.code_hash !== hashToken(code)) {
@@ -7590,7 +7590,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
         [Number(change.id)],
       );
       await connection.commit();
-      return response.status(400).json({ message: "椹楄瓑紕間笉姝ｇ⒑銆?" });
+      return response.status(400).json({ message: "驗證碼不正確。" });
     }
 
     const existing = await connection.query(
@@ -7599,7 +7599,7 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     );
     if (existing.length > 0) {
       await connection.rollback();
-      return response.status(409).json({ message: "姝ょ櫥鍏ヤ俊綆卞凡琚嬌鐢ㄣ€?" });
+      return response.status(409).json({ message: "此登入信箱已被使用。" });
     }
 
     await connection.query(
@@ -7615,11 +7615,11 @@ app.post("/api/admin/login-email-change/confirm", requireAdmin, async (request, 
     await connection.query(`DELETE FROM admin_sessions WHERE admin_user_id = ?`, [request.admin.id]);
 
     await connection.commit();
-    return response.json({ message: "鐧誨靉淇＄鑸囧瘑紕煎凡鏇存柊錛岃珛閲嶆柊鐧誨靉銆?" });
+    return response.json({ message: "登入信箱與密碼已更新，請重新登入。" });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error(error);
-    return response.status(500).json({ message: "鐒℃硶鏇存柊鐧誨靉淇＄銆?" });
+    return response.status(500).json({ message: "無法更新登入信箱。" });
   } finally {
     if (connection) connection.release();
   }
