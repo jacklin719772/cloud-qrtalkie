@@ -6999,7 +6999,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const todayForRenew = new Date().toISOString().slice(0, 10);
     if (!sourceExpiresDate || sourceExpiresDate < todayForRenew) {
       await connection.rollback();
-      return response.status(409).json({ message: "訂單已過期，不能續訂，請使用重新購買。" });
+      return response.status(409).json({ message: "訂單已過期，不能續訂，請直接購買新套餐。" });
     }
 
     const entitlementRows = await connection.query(

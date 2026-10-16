@@ -2385,7 +2385,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
                     <div>
                       <strong style={{ color: "#e5e7eb" }}>續訂或修改訂單</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在訂單操作列可點擊「更多」選單進行：續訂、重新購買、編輯訂單、刪除訂單（未支付狀態）。也可提交審核或撤銷審核。</p>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在訂單操作列可點擊「更多」選單進行：續訂、編輯訂單、刪除訂單（未支付或待審核狀態）。也可提交審核或撤銷審核。</p>
                     </div>
                   </div>
                 </div>
@@ -2419,7 +2419,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li>套餐到期前建議提前續訂，避免服務中斷。</li>
                   <li>線下匯款需要管理員人工審核，處理時間可能較長。</li>
-                  <li>已審核的訂單不可刪除，只能續訂或重新購買。</li>
+                  <li>已審核的訂單不可刪除；未過期可續訂，已過期請直接購買新套餐。</li>
                   <li>付款記錄僅供查看，不可修改或刪除。</li>
                 </ul>
               </div>

@@ -500,7 +500,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
       return;
     }
     if (isRenewalMode && currentRenewalAccountCount > 0 && desiredRenewalAccountCount > currentRenewalAccountCount) {
-      setError('當前續訂暫不支援增加帳號數量，請減少帳號數量或使用重新購買。');
+      setError('當前續訂暫不支援增加帳號數量，請減少保留帳號數量或直接購買新套餐。');
       return;
     }
     if (canSelectRetainedAccounts && selectedRetainedSipUserIds.size > desiredRenewalAccountCount) {
