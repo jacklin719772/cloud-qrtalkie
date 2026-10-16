@@ -6056,6 +6056,84 @@ async function findOfflinePaymentAccountId(connection, tenantId) {
   return rows[0] ? Number(rows[0].id) : null;
 }
 
+// 保留清单（试用转正入口）：校验 trialIds 归属与状态，写入 billing_order_retained_accounts（pending）
+// 编辑订单时先清掉本单 pending 行再重建；已 assigned/dropped 的保留行不动
+async function syncOrderRetainedTrials(connection, { orderId, tenantId, trialIds, adminId, requiredAccountCount }) {
+  await connection.query(
+    "DELETE FROM billing_order_retained_accounts WHERE order_id = ? AND status = 'pending'",
+    [orderId],
+  );
+  const ids = Array.from(new Set((trialIds || []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)));
+  if (ids.length === 0) return [];
+  const maxCount = Number(requiredAccountCount || 0);
+  if (maxCount > 0 && ids.length > maxCount) {
+    const error = new Error(`保留的試用帳號數量（${ids.length}）超過本單帳號數量（${maxCount}）。`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const reservedTenantId = await getReservedTrialTenantId(connection);
+  if (!reservedTenantId) {
+    const error = new Error("保留租戶不存在，無法儲存試用轉正清單。");
+    error.statusCode = 500;
+    throw error;
+  }
+  const rows = await connection.query(
+    `SELECT ta.id AS trial_id, ta.sip_user_id, ta.owner_tenant_id, ta.status AS trial_status,
+            u.username, u.display_name, u.tenant_id AS sip_tenant_id, u.status AS sip_status
+     FROM trial_assignments ta
+     JOIN sip_users u ON u.id = ta.sip_user_id
+     WHERE ta.id IN (${ids.map(() => "?").join(",")})
+     FOR UPDATE`,
+    ids,
+  );
+  if (rows.length !== ids.length) {
+    const error = new Error("部分試用帳號不存在，請重新整理後重試。");
+    error.statusCode = 404;
+    throw error;
+  }
+  for (const row of rows) {
+    if (Number(row.owner_tenant_id) !== Number(tenantId)) {
+      const error = new Error(`試用帳號 ${row.username} 不屬於本租戶。`);
+      error.statusCode = 403;
+      throw error;
+    }
+    if (row.trial_status !== "active") {
+      const error = new Error(`試用帳號 ${row.username} 當前狀態不可轉正，請重新整理後重試。`);
+      error.statusCode = 409;
+      throw error;
+    }
+    if (Number(row.sip_tenant_id) !== Number(reservedTenantId) || row.sip_status !== "active") {
+      const error = new Error(`試用帳號 ${row.username} 已被回收或佔用，不能加入保留清單。`);
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+  const seenSipIds = new Set();
+  for (const row of rows) {
+    const sipUserId = Number(row.sip_user_id);
+    if (seenSipIds.has(sipUserId)) continue;
+    seenSipIds.add(sipUserId);
+    await connection.query(
+      `INSERT INTO billing_order_retained_accounts (
+         order_id, sip_user_id, source, origin_tenant_id, trial_assignment_id, trial_status_snapshot,
+         username, display_name, status, created_by_admin_user_id
+       )
+       VALUES (?, ?, 'trial', ?, ?, ?, ?, ?, 'pending', ?)`,
+      [
+        orderId,
+        sipUserId,
+        reservedTenantId,
+        Number(row.trial_id),
+        row.trial_status,
+        row.username || null,
+        row.display_name || null,
+        adminId,
+      ],
+    );
+  }
+  return rows;
+}
+
 app.post("/api/billing/orders", requireAdmin, async (request, response) => {
   const payload = request.body || {};
   const planCode = sanitizeString(payload.planCode, 80);
@@ -6067,6 +6145,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
   const paymentMethod = sanitizeString(payload.paymentMethod, 20);
   const paymentChannel = sanitizeString(payload.paymentChannel, 80);
   const billingAddress = sanitizeString(payload.billingAddress, 500);
+  const trialIds = Array.isArray(payload.trialIds) ? payload.trialIds : [];
 
   if (!planCode) return response.status(400).json({ message: "請選擇套餐。" });
   if (!["online", "offline"].includes(paymentMethod)) return response.status(400).json({ message: "請選擇支付方式。" });
@@ -6282,6 +6361,14 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
       [orderId, request.admin.tenantId, initialOrderStatus, initialPaymentStatus, "create_order", request.admin.id],
     );
 
+    await syncOrderRetainedTrials(connection, {
+      orderId,
+      tenantId: request.admin.tenantId,
+      trialIds,
+      adminId: request.admin.id,
+      requiredAccountCount: Number(plan.account_quantity || 0) * quantity,
+    });
+
     await connection.commit();
     return response.status(201).json({
       message: paymentMethod === "offline" ? "訂單已保存，請線下付款後上傳付款憑證截圖。" : "訂單已建立。",
@@ -6290,7 +6377,7 @@ app.post("/api/billing/orders", requireAdmin, async (request, response) => {
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error(error);
-    return response.status(500).json({ message: "建立訂單失敗。" });
+    return response.status(error.statusCode || 500).json({ message: error.statusCode ? error.message : "建立訂單失敗。" });
   } finally {
     if (connection) connection.release();
   }
@@ -6370,6 +6457,16 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
        ORDER BY id ASC`,
       [request.admin.tenantId, orderId],
     );
+    // 试用转正保留清单（pending）：编辑订单时回显并随 PUT 原样带回
+    const retainedTrialRows = await connection.query(
+      `SELECT r.sip_user_id, r.trial_assignment_id, r.username, r.display_name, r.status,
+              DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS trial_expires_at
+       FROM billing_order_retained_accounts r
+       LEFT JOIN trial_assignments ta ON ta.id = r.trial_assignment_id
+       WHERE r.order_id = ? AND r.source = 'trial' AND r.status = 'pending'
+       ORDER BY r.id ASC`,
+      [orderId],
+    );
 
     return response.json({
       order: {
@@ -6414,6 +6511,14 @@ app.get("/api/billing/orders/:id", requireAdmin, async (request, response) => {
           serviceExpiresAt: account.service_expires_at || "",
         })),
         retainedSipUserIds: retainedRows.map((row) => Number(row.sip_user_id)),
+        retainedTrials: retainedTrialRows.map((row) => ({
+          sipUserId: Number(row.sip_user_id),
+          trialId: row.trial_assignment_id == null ? null : Number(row.trial_assignment_id),
+          username: row.username || "",
+          displayName: row.display_name || "",
+          status: row.status || "pending",
+          trialExpiresAt: row.trial_expires_at || "",
+        })),
         coupon: order.coupon_code
           ? {
               couponCode: order.coupon_code,
@@ -6452,6 +6557,7 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
   const paymentMethod = sanitizeString(payload.paymentMethod, 20);
   const paymentChannel = sanitizeString(payload.paymentChannel, 80);
   const billingAddress = sanitizeString(payload.billingAddress, 500);
+  const trialIds = Array.isArray(payload.trialIds) ? payload.trialIds : [];
   if (!["online", "offline"].includes(paymentMethod)) return response.status(400).json({ message: "請選擇支付方式。" });
 
   let connection;
@@ -6609,6 +6715,15 @@ app.put("/api/billing/orders/:id", requireAdmin, async (request, response) => {
         request.admin.id,
       ],
     );
+
+    const draftPlanItem = draft.orderItems.find((item) => item.itemType === "plan");
+    await syncOrderRetainedTrials(connection, {
+      orderId,
+      tenantId: request.admin.tenantId,
+      trialIds,
+      adminId: request.admin.id,
+      requiredAccountCount: Number(draftPlanItem?.accountQuantity || 0),
+    });
 
     await connection.commit();
     await removePaymentProofFile(staleProofUrl);
@@ -7296,7 +7411,7 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
     await connection.beginTransaction();
 
     const rows = await connection.query(
-      `SELECT id, order_status, payment_status
+      `SELECT id, order_status, payment_status, payable_amount
        FROM billing_orders
        WHERE id = ? AND tenant_id = ?
        LIMIT 1`,
@@ -7316,8 +7431,25 @@ app.post("/api/billing/orders/:id/review-submission", requireAdmin, async (reque
         return response.status(409).json({ message: "稽核通過的訂單不允許再次提交稽核。" });
       }
       if (order.payment_status !== 'paid') {
-        await connection.rollback();
-        return response.status(409).json({ message: "訂單尚未完成支付，請先上傳付款憑證或完成支付。" });
+        const payable = Number(order.payable_amount || 0);
+        if (payable <= 0) {
+          // 金額 0 訂單：免付款憑證，提交稽核時自動視為已付
+          await connection.query(
+            `UPDATE billing_orders
+             SET payment_status = 'paid', paid_amount = 0, updated_by_admin_user_id = ?
+             WHERE id = ? AND tenant_id = ?`,
+            [request.admin.id, orderId, request.admin.tenantId],
+          );
+          await connection.query(
+            `UPDATE billing_payments
+             SET payment_status = 'paid', paid_at = COALESCE(paid_at, NOW())
+             WHERE order_id = ? AND tenant_id = ?`,
+            [orderId, request.admin.tenantId],
+          );
+        } else {
+          await connection.rollback();
+          return response.status(409).json({ message: "訂單尚未完成支付，請先上傳付款憑證或完成支付。" });
+        }
       }
       if (!["payment_submitted", "review_rejected"].includes(order.order_status)) {
         await connection.rollback();
@@ -10258,6 +10390,15 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       return response.status(409).json({ message: "訂單尚未完成支付，不能稽核通過。" });
     }
 
+    // 试用转正保留清单（pending）：审核放行判据与收尾钩子依据
+    const retainedTrialRows = await connection.query(
+      `SELECT r.id, r.sip_user_id, r.trial_assignment_id, r.status, r.username
+       FROM billing_order_retained_accounts r
+       WHERE r.order_id = ? AND r.source = 'trial'
+       FOR UPDATE`,
+      [orderId],
+    );
+
     const months = Math.max(1, Number(order.months || 1));
     const requiredAccountCount = Number(order.account_quantity || 0);
     const uniqueSipAccountIds = Array.from(new Set(sipAccountIds));
@@ -10277,6 +10418,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
     let renewalReplacementAccounts = [];
     let renewalStartDate = "";
     let renewalExpiresDate = "";
+    let trialSipUserIds = [];
+    let reservedTrialTenantId = null;
 
     const dateOnly = (value) => {
       if (!value) return "";
@@ -10335,7 +10478,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
       }
     };
-    const allocateWebAccountsForSip = async (sipUserIds, serviceStartsAt, serviceExpiresAt, reuseExisting) => {
+    const allocateWebAccountsForSip = async (sipUserIds, serviceStartsAt, serviceExpiresAt, reuseExisting, trialSourceSipUserIds = []) => {
       if (!requiresWebAccounts) return;
       const finalSipUserIds = Array.from(new Set((sipUserIds || []).map((id) => Number(id)).filter((id) => id > 0)));
       if (finalSipUserIds.length !== requiredAccountCount) {
@@ -10375,24 +10518,58 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         }
       }
 
-      const sipIdsNeedingWeb = finalSipUserIds.filter((id) => !assignedSipIdSet.has(id));
-      if (sipIdsNeedingWeb.length > 0) {
+      // 试用转正：复用挂在保留租户下的成对 Web 账号（随后随绑定管道迁到正式租户）
+      const trialSourceSet = new Set((trialSourceSipUserIds || []).map((id) => Number(id)).filter((id) => id > 0));
+      if (!reuseExisting && trialSourceSet.size > 0) {
+        const reservedWebTenantId = await getReservedTrialTenantId(connection);
+        const trialSipIds = finalSipUserIds.filter((id) => trialSourceSet.has(id) && !assignedSipIdSet.has(id));
+        if (reservedWebTenantId && trialSipIds.length > 0) {
+          const reusableRows = await connection.query(
+            `SELECT
+               e.id AS entitlement_id,
+               e.web_user_id,
+               e.sip_user_id
+             FROM tenant_web_account_entitlements e
+             JOIN web_users u ON u.id = e.web_user_id
+             WHERE e.tenant_id = ?
+               AND e.sip_user_id IN (${trialSipIds.map(() => "?").join(",")})
+               AND e.status = 'active'
+             ORDER BY e.id ASC
+             FOR UPDATE`,
+            [reservedWebTenantId, ...trialSipIds],
+          );
+          for (const row of reusableRows) {
+            const sipUserId = Number(row.sip_user_id);
+            if (assignedSipIdSet.has(sipUserId)) continue;
+            assignedSipIdSet.add(sipUserId);
+            assignments.push({
+              sipUserId,
+              webUserId: Number(row.web_user_id),
+              entitlementId: Number(row.entitlement_id),
+              reused: true,
+            });
+          }
+        }
+      }
+
+      const sipIdsStillNeedingWeb = finalSipUserIds.filter((id) => !assignedSipIdSet.has(id));
+      if (sipIdsStillNeedingWeb.length > 0) {
         const webRows = await connection.query(
           `SELECT id
            FROM web_users
            WHERE tenant_id IS NULL
              AND status = 'active'
            ORDER BY RAND()
-           LIMIT ${sipIdsNeedingWeb.length}
+           LIMIT ${sipIdsStillNeedingWeb.length}
            FOR UPDATE`,
         );
-        if (webRows.length !== sipIdsNeedingWeb.length) {
-          const error = new Error(`未分配 WebRTC 帳號不足，還需要 ${sipIdsNeedingWeb.length} 個帳號用於訂單增值服務。`);
+        if (webRows.length !== sipIdsStillNeedingWeb.length) {
+          const error = new Error(`未分配 WebRTC 帳號不足，還需要 ${sipIdsStillNeedingWeb.length} 個帳號用於訂單增值服務。`);
           error.httpStatus = 409;
           error.exposeMessage = true;
           throw error;
         }
-        sipIdsNeedingWeb.forEach((sipUserId, index) => {
+        sipIdsStillNeedingWeb.forEach((sipUserId, index) => {
           assignments.push({
             sipUserId,
             webUserId: Number(webRows[index].id),
@@ -10421,7 +10598,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       if (reusedEntitlementIds.length > 0) {
         await connection.query(
           `UPDATE tenant_web_account_entitlements
-           SET current_order_id = ?,
+           SET tenant_id = ?,
+               current_order_id = ?,
                last_renewal_order_id = ?,
                status = 'active',
                service_starts_at = ?,
@@ -10429,7 +10607,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
                renewed_at = NOW(),
                renewed_by_admin_user_id = ?
            WHERE id IN (${reusedEntitlementIds.map(() => "?").join(",")})`,
-          [orderId, isRenewalOrder ? orderId : null, serviceStartsAt, serviceExpiresAt, request.admin.id, ...reusedEntitlementIds],
+          [Number(order.tenant_id), orderId, isRenewalOrder ? orderId : null, serviceStartsAt, serviceExpiresAt, request.admin.id, ...reusedEntitlementIds],
         );
       }
 
@@ -10566,10 +10744,44 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
           return response.status(404).json({ message: "部分待分配帳號不存在，請重新整理後重試。" });
         }
 
-        const assignedAccount = selectedSipAccounts.find((account) => account.tenant_id != null);
-        if (assignedAccount) {
+        // 放行三类账号：库存（tenant_id 为空）、保留清单内状态有效的试用账号；其余拒绝
+        reservedTrialTenantId = await getReservedTrialTenantId(connection);
+        const retainedBySip = new Map(
+          retainedTrialRows
+            .filter((row) => row.status === "pending")
+            .map((row) => [Number(row.sip_user_id), row]),
+        );
+        const invalidReasons = [];
+        for (const account of selectedSipAccounts) {
+          if (account.tenant_id == null) continue; // 库存账号
+          const retained = retainedBySip.get(Number(account.id));
+          if (retained && retained.trial_assignment_id && reservedTrialTenantId) {
+            const [trial] = await connection.query(
+              `SELECT ta.status, ta.owner_tenant_id, u.tenant_id AS sip_tenant_id, u.status AS sip_status
+               FROM trial_assignments ta
+               JOIN sip_users u ON u.id = ta.sip_user_id
+               WHERE ta.id = ?
+               LIMIT 1
+               FOR UPDATE`,
+              [Number(retained.trial_assignment_id)],
+            );
+            const valid = trial
+              && trial.status === "active"
+              && Number(trial.owner_tenant_id) === Number(order.tenant_id)
+              && Number(trial.sip_tenant_id) === Number(reservedTrialTenantId)
+              && trial.sip_status === "active";
+            if (valid) {
+              trialSipUserIds.push(Number(account.id));
+              continue;
+            }
+            invalidReasons.push(`帳號 ${account.username} 的試用已被回收或狀態異常`);
+            continue;
+          }
+          invalidReasons.push(`帳號 ${account.username} 已被分配或不在保留清單中`);
+        }
+        if (invalidReasons.length > 0) {
           await connection.rollback();
-          return response.status(409).json({ message: `帳號 ${assignedAccount.username} 已被分配，請重新整理後重新選擇。` });
+          return response.status(409).json({ message: `${invalidReasons.join("；")}。請剔除後由庫存帳號補足，或返回重新選擇。` });
         }
       }
     }
@@ -10759,8 +10971,56 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
 
         if (requiresWebAccounts) {
-          await allocateWebAccountsForSip(uniqueSipAccountIds, serviceStartsAt, serviceExpiresAt, false);
+          await allocateWebAccountsForSip(uniqueSipAccountIds, serviceStartsAt, serviceExpiresAt, false, trialSipUserIds);
         }
+
+        // —— 试用转正收尾：试用记录置转正 / 保留行状态 / 名片租户迁移 / AI 期限对齐 ——
+        if (trialSipUserIds.length > 0 && reservedTrialTenantId) {
+          const convertedTrialIds = [];
+          for (const sipUserId of trialSipUserIds) {
+            const retained = retainedBySip.get(Number(sipUserId));
+            if (retained?.trial_assignment_id) convertedTrialIds.push(Number(retained.trial_assignment_id));
+          }
+          if (convertedTrialIds.length > 0) {
+            const convertResult = await connection.query(
+              `UPDATE trial_assignments
+               SET status = 'converted', converted_order_id = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id IN (${convertedTrialIds.map(() => "?").join(",")}) AND status = 'active'`,
+              [orderId, ...convertedTrialIds],
+            );
+            if (Number(convertResult.affectedRows || 0) !== convertedTrialIds.length) {
+              const error = new Error("部分試用帳號狀態已變化（可能已被回收），請重新整理後重試。");
+              error.httpStatus = 409;
+              error.exposeMessage = true;
+              throw error;
+            }
+            await connection.query(
+              `UPDATE billing_order_retained_accounts
+               SET status = 'assigned', updated_at = CURRENT_TIMESTAMP
+               WHERE order_id = ? AND sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
+              [orderId, ...trialSipUserIds],
+            );
+            await connection.query(
+              `UPDATE tenant_ecards
+               SET tenant_id = ?, updated_at = CURRENT_TIMESTAMP
+               WHERE tenant_id = ? AND sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
+              [Number(order.tenant_id), Number(reservedTrialTenantId), ...trialSipUserIds],
+            );
+            await connection.query(
+              `UPDATE ai_bot_account_entitlements
+               SET expires_at = ${serviceExpiresExpression}
+               WHERE sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
+              [months, ...trialSipUserIds],
+            );
+          }
+        }
+        // 未纳入本单的保留项 → 剔除留痕
+        await connection.query(
+          `UPDATE billing_order_retained_accounts
+           SET status = 'dropped', drop_reason = '審核分配時未納入本單', updated_at = CURRENT_TIMESTAMP
+           WHERE order_id = ? AND source = 'trial' AND status = 'pending'`,
+          [orderId],
+        );
       }
     } else {
       await connection.query(
@@ -10864,6 +11124,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
          o.id, o.order_no, o.order_type, o.renewal_source_order_id, o.renewal_base_expires_at,
          o.currency, o.subtotal_amount, o.discount_amount, o.payable_amount,
          o.order_status, o.payment_status, o.payment_method, o.payment_channel, o.billing_address,
+         o.tenant_id,
          DATE_FORMAT(o.reviewed_at, '%Y-%m-%d') AS reviewed_at,
          DATE_FORMAT(o.effective_at, '%Y-%m-%d') AS effective_at,
          DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at,
@@ -10903,6 +11164,46 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
        ORDER BY r.username ASC, r.id ASC`,
       [orderId],
     );
+    // 试用转正保留清单（泛化保留表）：审核弹窗预选用
+    const retainedGenericRows = await connection.query(
+      `SELECT
+         r.sip_user_id, r.source, r.status, r.username, r.display_name,
+         r.trial_assignment_id, r.origin_tenant_id,
+         ta.status AS trial_current_status, ta.owner_tenant_id AS trial_owner_tenant_id,
+         DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS trial_expires_at,
+         u.tenant_id AS sip_tenant_id, u.status AS sip_status
+       FROM billing_order_retained_accounts r
+       LEFT JOIN trial_assignments ta ON ta.id = r.trial_assignment_id
+       LEFT JOIN sip_users u ON u.id = r.sip_user_id
+       WHERE r.order_id = ?
+       ORDER BY r.id ASC`,
+      [orderId],
+    );
+    const reservedTrialTenantId = await getReservedTrialTenantId(connection);
+    const retainedList = retainedGenericRows.map((row) => {
+      const eligible = row.status === "pending" && (
+        row.source === "trial"
+          ? Boolean(reservedTrialTenantId)
+            && row.trial_current_status === "active"
+            && Number(row.trial_owner_tenant_id || 0) === Number(order.tenant_id)
+            && Number(row.sip_tenant_id) === Number(reservedTrialTenantId)
+            && row.sip_status === "active"
+          : row.source === "own"
+            ? Number(row.sip_tenant_id) === Number(order.tenant_id)
+            : Number(row.sip_tenant_id) === 0 || row.sip_tenant_id == null
+      );
+      return {
+        sipUserId: Number(row.sip_user_id),
+        source: row.source || "trial",
+        status: row.status || "pending",
+        username: row.username || "",
+        displayName: row.display_name || "",
+        trialAssignmentId: row.trial_assignment_id == null ? null : Number(row.trial_assignment_id),
+        trialStatus: row.trial_current_status || "",
+        trialExpiresAt: row.trial_expires_at || "",
+        eligible,
+      };
+    });
 
     // Query assigned SIP accounts
     const sipAccountRows = await connection.query(
@@ -10960,6 +11261,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
           displayName: account.display_name || "",
           sourceServiceExpiresAt: account.source_service_expires_at || "",
         })),
+        retainedList,
         sipAccounts: (sipAccountRows || []).map(a => ({
           username: a.username || '',
           sipDomain: a.sip_domain || '',

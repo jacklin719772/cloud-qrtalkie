@@ -37,6 +37,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const [isAddressSubmitting, setIsAddressSubmitting] = useState(false);
   const [renewalAccounts, setRenewalAccounts] = useState([]);
   const [selectedRetainedSipUserIds, setSelectedRetainedSipUserIds] = useState(new Set());
+  const [retainedTrials, setRetainedTrials] = useState([]);
   const planCarouselRef = useRef(null);
   const addressMessageTimerRef = useRef(null);
 
@@ -80,6 +81,23 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         setBillingAddress(savedList[0]?.address || '');
         setSelectedAddressId(savedList[0] ? String(savedList[0].id) : '');
 
+        // 試用轉正保留清單：由試用管理「正式購買」帶入的 trialIds 加載明細
+        if (!purchaseContext?.orderId && Array.isArray(purchaseContext?.trialIds) && purchaseContext.trialIds.length > 0) {
+          try {
+            const trialsRes = await apiClient.get(`/admin/trials?ids=${purchaseContext.trialIds.join(',')}&pageSize=200`);
+            if (!isMounted) return;
+            setRetainedTrials((trialsRes.trials || []).map((item) => ({
+              trialId: Number(item.id),
+              sipUserId: Number(item.sipUserId),
+              username: item.username || item.accountDisplayName || '',
+              displayName: item.accountDisplayName || '',
+              expiresAt: item.expiresAt || '',
+            })));
+          } catch (trialErr) {
+            console.error('Failed to load retained trials:', trialErr);
+          }
+        }
+
         // 設定預設值：預設為線下支付
         if (activePlans.length > 0) setSelectedPlanId(activePlans[0].id);
         const offlinePm = activePms.find(pm => pm.methodType === 'offline');
@@ -116,6 +134,15 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           const accounts = Array.isArray(order.renewalAccounts) ? order.renewalAccounts : [];
           setRenewalAccounts(accounts);
           setSelectedRetainedSipUserIds(new Set(accounts.map(account => Number(account.sipUserId)).filter(Boolean)));
+          // 編輯訂單時回顯既有保留清單（隨 PUT 原樣帶回）
+          const orderRetainedTrials = Array.isArray(order.retainedTrials) ? order.retainedTrials : [];
+          setRetainedTrials(orderRetainedTrials.map((item) => ({
+            trialId: Number(item.trialId),
+            sipUserId: Number(item.sipUserId),
+            username: item.username || '',
+            displayName: item.displayName || '',
+            expiresAt: item.trialExpiresAt || '',
+          })));
         }
 
       } catch (err) {
@@ -315,6 +342,10 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     setBillingAddress(found ? found.address : '');
   };
 
+  const handleRemoveRetainedTrial = (trialId) => {
+    setRetainedTrials((current) => current.filter((item) => Number(item.trialId) !== Number(trialId)));
+  };
+
   const openAddressDialog = () => {
     setAddressDialogOpen(true);
     setEditingAddressId(null);
@@ -453,6 +484,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         couponCode: appliedCoupon ? appliedCoupon.couponCode : undefined,
         tenantCouponId: appliedCoupon ? Number(selectedCouponAssignmentId) : undefined,
         billingAddress: billingAddress,
+        trialIds: (isRenewalMode || isRepurchaseMode) ? undefined : retainedTrials.map((item) => Number(item.trialId)).filter(Boolean),
         retainedSipUserIds: isRenewalMode ? Array.from(selectedRetainedSipUserIds) : undefined,
       };
       
@@ -737,6 +769,33 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           gap: 10px;
           margin-top: 10px;
         }
+        #purchase-plan .retained-trial-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          background: #1a2332;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          padding: 10px 12px;
+        }
+        #purchase-plan .retained-trial-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        #purchase-plan .retained-trial-text {
+          display: flex;
+          align-items: baseline;
+          gap: 8px;
+          flex-wrap: wrap;
+          color: #e5e7eb;
+          font-size: 13px;
+        }
+        #purchase-plan .retained-trial-text strong { color: #f3f4f6; font-weight: 600; }
+        #purchase-plan .retained-trial-text small { color: #9ca3af; font-size: 12px; }
+        #purchase-plan .retained-trial-remove { color: #f87171; font-size: 12px; }
+        #purchase-plan .retained-trial-hint { color: #9ca3af; font-size: 12px; }
         #purchase-plan .offline-payment-info {
           background: #1a2332 !important;
           border: 1px solid #1f2937 !important;
@@ -893,6 +952,25 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
               新增
             </button>
           </div>
+
+          {retainedTrials.length > 0 && (
+            <>
+              <label className="purchase-side-label">保留帳號（試用轉正）：</label>
+              <div className="retained-trial-list">
+                {retainedTrials.map((item) => (
+                  <div key={item.trialId} className="retained-trial-row">
+                    <span className="retained-trial-text">
+                      <strong>{item.username}</strong>
+                      {item.displayName && item.displayName !== item.username && <small>{item.displayName}</small>}
+                      <small>試用至 {item.expiresAt || '-'}</small>
+                    </span>
+                    <button className="link-btn retained-trial-remove" type="button" onClick={() => handleRemoveRetainedTrial(item.trialId)}>移除</button>
+                  </div>
+                ))}
+                <div className="retained-trial-hint">審核通過後，以上試用帳號將轉為正式帳號。</div>
+              </div>
+            </>
+          )}
 
           <label className="purchase-side-label">優惠碼：</label>
           <div className="coupon-entry">

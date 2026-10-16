@@ -215,6 +215,16 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       whereClauses.push("ta.agent_id = ?");
       params.push(Number(agentFilter));
     }
+    // 指定 ID 集合过滤（购买页按 trialIds 拉取保留清单明细）
+    const idsFilter = String(request.query?.ids || "")
+      .split(",")
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+      .slice(0, 200);
+    if (idsFilter.length > 0) {
+      whereClauses.push(`ta.id IN (${idsFilter.map(() => "?").join(",")})`);
+      params.push(...idsFilter);
+    }
     if (statusFilter === "active") {
       whereClauses.push("ta.status = 'active' AND ta.expires_at > DATE_ADD(CURDATE(), INTERVAL 7 DAY)");
     } else if (statusFilter === "expiring") {

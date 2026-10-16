@@ -74,19 +74,24 @@ export default function PlanManagement({ onNavigate }) {
 
     // Fetch account availability
     try {
-      const [sipData, webData] = await Promise.all([
+      const [sipData, webData, detailRes] = await Promise.all([
         apiClient.get('/admin/sip-accounts'),
         apiClient.get('/admin/web-accounts'),
+        apiClient.get('/admin/billing-orders/' + order.id).catch(() => null),
       ]);
       const sipAccounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
       const unassignedSip = sipAccounts.filter(a => !a.tenantName);
       const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
       const unassignedWeb = webAccounts.filter(a => !a.tenantName && a.status === 'active');
 
+      // 保留清单中状态有效的试用账号（已配 Web 配对）可计入可用数
+      const detailRetainedList = Array.isArray(detailRes?.order?.retainedList) ? detailRes.order.retainedList : [];
+      const eligibleRetainedCount = detailRetainedList.filter(item => item.eligible && item.status === 'pending').length;
+
       // Calculate SIP account needs
       let sipNeeded = 0;
       if (!isRenewal) {
-        sipNeeded = Math.max(0, requiredCount);
+        sipNeeded = Math.max(0, requiredCount - eligibleRetainedCount);
       }
 
       // Calculate Web account needs
@@ -106,7 +111,7 @@ export default function PlanManagement({ onNavigate }) {
             webNeeded = requiredCount;
           }
         } else {
-          webNeeded = requiredCount;
+          webNeeded = Math.max(0, requiredCount - eligibleRetainedCount);
         }
       }
 
@@ -153,6 +158,34 @@ export default function PlanManagement({ onNavigate }) {
         const nextStatus = (nextOrder.order_status || nextOrder.orderStatus) === 'review_rejected' ? 'review_rejected' : 'review_approved';
         setReviewOrder(prev => ({ ...prev, ...res.order }));
         setReviewData({ status: nextStatus, comments: nextOrder.review_note || nextOrder.reviewNote || '' });
+
+        // 保留清单（试用转正）：预选进分配名单，剩余名额从库存自动补足
+        const isRenewal = isRenewalOrder(order);
+        const requiredCount = Number(order.account_quantity || order.accountQuantity || 0);
+        const retainedList = Array.isArray(res.order.retainedList) ? res.order.retainedList : [];
+        const eligibleRetained = retainedList.filter((item) => item.eligible && item.status === 'pending');
+        if (!isRenewal && requiredCount > 0 && eligibleRetained.length > 0) {
+          const retainedCandidates = eligibleRetained.map((item) => ({
+            id: Number(item.sipUserId),
+            username: item.username,
+            displayName: item.displayName,
+            status: 'active',
+            creatorName: '試用轉正',
+            createdAt: item.trialExpiresAt ? `試用至 ${item.trialExpiresAt}` : '',
+            domain: '',
+            retained: true,
+          }));
+          const retainedIds = retainedCandidates.map((item) => item.id);
+          const stockFillIds = sipAccounts
+            .filter((account) => !retainedIds.includes(Number(account.id)))
+            .slice(0, Math.max(0, requiredCount - retainedIds.length))
+            .map((account) => Number(account.id));
+          setUnassignedSipAccounts(() => {
+            const existingIds = new Set(sipAccounts.map((account) => Number(account.id)));
+            return [...retainedCandidates.filter((item) => !existingIds.has(Number(item.id))), ...sipAccounts];
+          });
+          setSelectedSipAccountIds([...retainedIds, ...stockFillIds].slice(0, requiredCount));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch detailed order:', err);
@@ -201,7 +234,11 @@ export default function PlanManagement({ onNavigate }) {
         const retainedWithoutWebCount = retainedAccounts.filter(acc => !(acc.webAccountId || acc.hasWebAccount || acc.webAccountUsername)).length;
         missingWebCount = replacementCount + retainedWithoutWebCount;
       } else {
-        missingWebCount = requiredAccountCount;
+        // 试用转正保留项自带成对 Web，不占库存新增名额
+        const selectedTrialRetainedCount = selectedSipAccountIds
+          .filter((id) => unassignedSipAccounts.some((a) => Number(a.id) === Number(id) && a.retained))
+          .length;
+        missingWebCount = Math.max(0, requiredAccountCount - selectedTrialRetainedCount);
       }
 
       if (unassignedWebAccounts.length < missingWebCount) {
@@ -465,8 +502,8 @@ export default function PlanManagement({ onNavigate }) {
         username: account?.username || '',
         domain: account?.domain || '',
         displayName: account?.displayName || account?.username || '',
-        kind: '新分配',
-        reuseWeb: false
+        kind: account?.retained ? '試用轉正' : '新分配',
+        reuseWeb: Boolean(account?.retained)
       };
     });
   };
@@ -1277,7 +1314,10 @@ export default function PlanManagement({ onNavigate }) {
                                         style={{ cursor: (!selectedSipAccountIds.includes(account.id) && isSelectionFull) ? 'not-allowed' : 'pointer' }}
                                       />
                                     </td>
-                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.username}</td>
+                                    <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>
+                                      {account.username}
+                                      {account.retained && <span style={{ marginLeft: '6px', fontSize: '11px', color: '#60a5fa', border: '1px solid #2563eb', borderRadius: '4px', padding: '0 4px', whiteSpace: 'nowrap' }}>保留·試用轉正</span>}
+                                    </td>
                                     <td style={{ padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{getSipStatusBadge(account.status)}</td>
                                     <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.creatorName || '-'}</td>
                                     <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>{account.createdAt || '-'}</td>
