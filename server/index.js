@@ -11171,7 +11171,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
             );
             await connection.query(
               `UPDATE ai_bot_account_entitlements
-               SET expires_at = ${serviceExpiresExpression}
+               SET expires_at = TIMESTAMP(${serviceExpiresExpression}, '23:59:59')
                WHERE sip_user_id IN (${trialSipUserIds.map(() => "?").join(",")})`,
               [months, ...trialSipUserIds],
             );
