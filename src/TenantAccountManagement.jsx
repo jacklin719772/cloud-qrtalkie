@@ -23,20 +23,20 @@ function orderTypeColor(type) {
   return '#4ade80';
 }
 
-// 訂閱記錄行（列表與彈窗共用）：類型標籤 + 訂單號 + 起止 + 當前標記
-function renderOrderHistoryLines(orders) {
-  if (!Array.isArray(orders) || orders.length === 0) return '-';
+// 電子名片列：未建立 / 已啟用 / 已停用 / 已過期
+function getEcardBadge(ecard) {
+  const status = ecard?.status || (ecard?.configured ? 'active' : 'none');
+  const map = {
+    none: { label: '未建立', bg: '#1f2937', color: '#9ca3af' },
+    active: { label: '已啟用', bg: '#0d2818', color: '#4ade80' },
+    disabled: { label: '已停用', bg: '#3b1111', color: '#fca5a5' },
+    expired: { label: '已過期', bg: '#3b1111', color: '#fbbf24' },
+  };
+  const item = map[status] || map.none;
   return (
-    <div style={{ display: 'grid', gap: '4px', fontSize: '12px', lineHeight: 1.5 }}>
-      {orders.map((item, index) => (
-        <div key={`${item.orderNo || 'order'}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
-          <span style={{ color: orderTypeColor(item.type), border: `1px solid ${orderTypeColor(item.type)}`, borderRadius: '4px', padding: '0 4px', fontSize: '11px' }}>{orderTypeLabel(item.type)}</span>
-          <span style={{ fontFamily: 'monospace', color: '#9ca3af' }}>{item.orderNo || '-'}</span>
-          <span style={{ color: '#e5e7eb' }}>{formatDate(item.effectiveAt)} ~ {formatDate(item.expiresAt)}</span>
-          {item.current && <span style={{ color: '#fbbf24', fontSize: '11px', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px' }}>當前</span>}
-        </div>
-      ))}
-    </div>
+    <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', lineHeight: 1.4, backgroundColor: item.bg, color: item.color }}>
+      {item.label}
+    </span>
   );
 }
 
@@ -161,6 +161,7 @@ const TenantAccountManagement = forwardRef(({
   const [isSavingContactBook, setIsSavingContactBook] = useState(false);
   const [contactBookMessage, setContactBookMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
+  const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
   const dropdownAnchorRef = useRef(null);
   const dropdownMenuRef = useRef(null);
@@ -295,8 +296,8 @@ const TenantAccountManagement = forwardRef(({
       if (sortConfig.key === 'displayName') return account.displayName || '';
       if (sortConfig.key === 'orderNo') return account.orderNo || '';
       if (sortConfig.key === 'status') return account.status || '';
+      if (sortConfig.key === 'serviceStartsAt') return account.serviceStartsAt || '';
       if (sortConfig.key === 'serviceExpiresAt') return account.serviceExpiresAt || '';
-      if (sortConfig.key === 'domain') return account.domain || '';
       return '';
     };
 
@@ -742,12 +743,12 @@ const TenantAccountManagement = forwardRef(({
               <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>套餐与服务資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
-                  <span style={labelTextStyle}>訂單編號</span>
+                  <span style={labelTextStyle}>訂單</span>
                   <input value={detailAccount.orderNo || '-'} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  <span style={labelTextStyle}>訂閱記錄</span>
-                  <div style={{ ...readonlyInputStyle, height: 'auto', minHeight: '38px', display: 'grid', alignItems: 'center', overflowX: 'auto' }}>{renderOrderHistoryLines(detailAccount.orders)}</div>
+                  <span style={labelTextStyle}>開始日期</span>
+                  <input value={formatDate(detailAccount.serviceStartsAt)} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>結束日期</span>
@@ -1112,6 +1113,7 @@ const TenantAccountManagement = forwardRef(({
               <option value="all">全部</option>
               <option value="active">啟用中</option>
               <option value="disabled">已停用</option>
+              <option value="expired">已過期</option>
             </select>
           </div>
           <div className="account-stats">
@@ -1141,21 +1143,21 @@ const TenantAccountManagement = forwardRef(({
                   />
                 </th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('username')}><span>帳號</span><span>{getSortIndicator('username')}</span></button></th>
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('status')}><span>狀態</span><span>{getSortIndicator('status')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('displayName')}><span>顯示名稱</span><span>{getSortIndicator('displayName')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('webAccount')}><span>Web 帳號</span><span>{getSortIndicator('webAccount')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('contactBookName')}><span>通訊錄</span><span>{getSortIndicator('contactBookName')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>訂單編號</span><span>{getSortIndicator('orderNo')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('status')}><span>狀態</span><span>{getSortIndicator('status')}</span></button></th>
-                <th>訂閱記錄</th>
+                <th>電子名片</th>
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>起始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>結束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
-                {showDomain && <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('domain')}><span>域名</span><span>{getSortIndicator('domain')}</span></button></th>}
+                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>訂單</span><span>{getSortIndicator('orderNo')}</span></button></th>
                 <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {paginatedAccounts.length === 0 ? (
                 <tr>
-                  <td colSpan={showDomain ? 9 : 8} style={{ padding: 0, textAlign: 'center' }}>
+                  <td colSpan={11} style={{ padding: 0, textAlign: 'center' }}>
               <div className="account-empty">
                     {isLoading ? '載入中...' : '暫無帳號'}
                   </div>
@@ -1174,14 +1176,14 @@ const TenantAccountManagement = forwardRef(({
                       />
                     </td>
                     <td style={{ color: '#f3f4f6', fontWeight: 500 }}>{account.username}</td>
+                    <td style={{ padding: '12px 16px' }}>{getStatusBadge(account.status)}</td>
                     <td>{account.displayName || '-'}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.webAccount || '—'}</td>
                     <td style={{ fontSize: '12px' }}>{account.contactBookName || '—'}</td>
-                    <td>{account.orderNo || '-'}</td>
-                    <td style={{ padding: '12px 16px' }}>{getStatusBadge(account.status)}</td>
-                    <td style={{ padding: '10px 16px' }}>{renderOrderHistoryLines(account.orders)}</td>
+                    <td style={{ padding: '12px 16px' }}>{getEcardBadge(account.ecard)}</td>
+                    <td>{formatDate(account.serviceStartsAt)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
-                    {showDomain && <td>{account.domain || '-'}</td>}
+                    <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.orderNo || '-'}</td>
                     <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions tenant-account-more-menu" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleAction('details', account)}>詳情</button>
@@ -1200,6 +1202,7 @@ const TenantAccountManagement = forwardRef(({
                         {openDropdownId === account.id && createPortal(
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
+                            <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱歷史</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>編輯</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
@@ -1264,11 +1267,11 @@ const TenantAccountManagement = forwardRef(({
               <span style={{ color: '#9ca3af' }}>帳號</span><strong style={{ color: '#f3f4f6', fontWeight: 600 }}>{detailAccount.username || '-'}</strong>
               <span style={{ color: '#9ca3af' }}>顯示名稱</span><span>{detailAccount.displayName || '-'}</span>
               <span style={{ color: '#9ca3af' }}>狀態</span><span>{getStatusBadge(detailAccount.status)}</span>
-              <span style={{ color: '#9ca3af' }}>訂單編號</span><span>{detailAccount.orderNo || '-'}</span>
+              <span style={{ color: '#9ca3af' }}>訂單</span><span>{detailAccount.orderNo || '-'}</span>
               <span style={{ color: '#9ca3af' }}>域名</span><span>{detailAccount.domain || '-'}</span>
               <span style={{ color: '#9ca3af' }}>郵箱</span><span>{detailAccount.email || '-'}</span>
               <span style={{ color: '#9ca3af' }}>電話</span><span>{detailAccount.phone || '-'}</span>
-              <span style={{ color: '#9ca3af' }}>訂閱記錄</span><span>{(detailAccount.orders || []).length > 0 ? (detailAccount.orders || []).map((item) => `${orderTypeLabel(item.type)} ${item.orderNo || '-'} ${formatDate(item.effectiveAt)}~${formatDate(item.expiresAt)}${item.current ? '（當前）' : ''}`).join('；') : '-'}</span>
+              <span style={{ color: '#9ca3af' }}>開始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
               <span style={{ color: '#9ca3af' }}>結束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
             </div>
             <div style={{ borderTop: '1px solid #1f2937', marginTop: '14px', paddingTop: '14px' }}>
@@ -1498,6 +1501,58 @@ const TenantAccountManagement = forwardRef(({
               <button className="primary-btn" type="submit" disabled={isLoadingContactBooks || isSavingContactBook}>{isSavingContactBook ? '儲存中...' : '儲存'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+      {/* 訂閱歷史對話框 */}
+      {historyAccount && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setHistoryAccount(null);
+          }}
+        >
+          <div style={{ width: 'min(720px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>
+                訂閱歷史
+                <span style={{ marginLeft: '10px', fontSize: '13px', fontWeight: 400, color: '#9ca3af' }}>{historyAccount.username}{historyAccount.displayName ? `（${historyAccount.displayName}）` : ''}</span>
+              </h3>
+              <button type="button" onClick={() => setHistoryAccount(null)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            <div style={{ overflow: 'auto', flex: 1, padding: '6px 18px 18px' }}>
+              {(historyAccount.orders || []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: '#9ca3af', fontSize: '13px' }}>暫無訂閱記錄</div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '70px' }}>類型</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151' }}>訂單號</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '120px' }}>起始日期</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '120px' }}>結束日期</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '76px' }}>狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyAccount.orders.map((item, index) => (
+                      <tr key={`${item.orderNo || 'order'}-${index}`}>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #1f2937' }}>
+                          <span style={{ color: orderTypeColor(item.type), border: `1px solid ${orderTypeColor(item.type)}`, borderRadius: '4px', padding: '1px 6px', fontSize: '12px' }}>{orderTypeLabel(item.type)}</span>
+                        </td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #1f2937', fontFamily: 'monospace', color: '#d1d5db' }}>{item.orderNo || '-'}</td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #1f2937', color: '#d1d5db' }}>{formatDate(item.effectiveAt)}</td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #1f2937', color: '#d1d5db' }}>{formatDate(item.expiresAt)}</td>
+                        <td style={{ padding: '12px', borderBottom: '1px solid #1f2937' }}>
+                          {item.current ? <span style={{ color: '#fbbf24', fontSize: '12px', border: '1px solid #fbbf24', borderRadius: '4px', padding: '1px 6px' }}>當前</span> : <span style={{ color: '#6b7280' }}>-</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>,
         document.body
       )}

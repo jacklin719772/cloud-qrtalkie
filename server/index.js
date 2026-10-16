@@ -2283,6 +2283,7 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
 
   const query = sanitizeString(request.query?.q, 120);
   const orderQuery = /^ORD/i.test(query) ? query : "";
+  const todayStr = new Date().toISOString().slice(0, 10);
   let connection;
   try {
     connection = await pool.getConnection();
@@ -2295,15 +2296,19 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
          a.assigned_at,
          o.order_no,
          ent.current_order_id,
+         ent.status AS entitlement_status,
          cba.contact_book_id,
          cb.name AS contact_book_name,
-         wu.username AS web_username
+         wu.username AS web_username,
+         ec.id AS ecard_id,
+         ec.status AS ecard_status,
+         DATE_FORMAT(ec.valid_to, '%Y-%m-%d') AS ecard_valid_to
        FROM billing_order_sip_accounts a
        JOIN tenant_sip_account_entitlements ent
          ON ent.tenant_id = a.tenant_id
         AND ent.sip_user_id = a.sip_user_id
         AND ent.current_order_id = a.order_id
-        AND ent.status = 'active'
+        AND ent.status IN ('active', 'expired')
        JOIN billing_orders o ON o.id = a.order_id
        LEFT JOIN tenant_contact_book_assignments cba
          ON cba.sip_user_id = a.sip_user_id
@@ -2314,9 +2319,11 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         AND cb.tenant_id = a.tenant_id
        LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = a.sip_user_id AND we.tenant_id = a.tenant_id AND we.status = 'active'
        LEFT JOIN web_users wu ON wu.id = we.web_user_id
+       LEFT JOIN tenant_ecards ec
+         ON ec.sip_user_id = a.sip_user_id
+        AND ec.tenant_id = a.tenant_id
        WHERE a.tenant_id = ?
          ${orderQuery ? "AND o.order_no LIKE ?" : ""}
-         AND a.service_expires_at >= CURDATE()
        ORDER BY a.assigned_at DESC, a.id DESC`,
       orderQuery ? [request.admin.tenantId, `%${orderQuery}%`] : [request.admin.tenantId],
     );
@@ -2398,29 +2405,54 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
     }
 
     return response.json({
-      accounts: rows.map((row) => ({
-        id: Number(row.id),
-        sipUserId: Number(row.sip_user_id),
-        username: row.username || "",
-        domain: row.sip_domain || "",
-        displayName: row.display_name || "",
-        email: row.email || "",
-        phone: row.phone_number || "",
-        role: row.role || "user",
-        status: row.account_status || 'active',
-        serviceStartsAt: row.service_starts_at || "",
-        serviceExpiresAt: row.service_expires_at || "",
-        assignedAt: row.assigned_at ? String(row.assigned_at) : "",
-        orderNo: row.order_no || "",
-        webAccount: row.web_username || "",
-        contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
-        contactBookName: row.contact_book_name || "",
-        syncStatus: syncStatusMap.get(Number(row.sip_user_id)) || "local_only",
-        orders: (ordersBySip.get(Number(row.sip_user_id)) || []).map((item) => ({
-          ...item,
-          current: item.type !== "trial" && row.current_order_id != null && Number(row.current_order_id) === item.orderId,
-        })),
-      })),
+      accounts: rows.map((row) => {
+        const sipKey = Number(row.sip_user_id);
+        const history = ordersBySip.get(sipKey) || [];
+        const formalOrders = history.filter((item) => item.type !== "trial");
+        // 當前使用的訂單：今天落在其起止範圍內；否則取最晚已開始的訂單（全部過期時即最後一張）
+        const currentOrder = [...formalOrders].reverse().find(
+          (item) => item.effectiveAt && item.expiresAt && item.effectiveAt <= todayStr && todayStr <= item.expiresAt,
+        ) || null;
+        const displayOrder = currentOrder
+          || [...formalOrders].reverse().find((item) => item.effectiveAt && item.effectiveAt <= todayStr)
+          || formalOrders[0]
+          || null;
+        // 結束日期：所有訂單中最晚的截止（續訂延伸後的最終到期日）
+        const extendedExpiresAt = formalOrders.reduce((max, item) => (item.expiresAt > max ? item.expiresAt : max), "")
+          || (row.service_expires_at ? String(row.service_expires_at).slice(0, 10) : "");
+        const isExpired = row.entitlement_status === "expired" || (extendedExpiresAt && extendedExpiresAt < todayStr);
+        const ecardConfigured = row.ecard_id != null;
+        const ecardStatus = !ecardConfigured
+          ? "none"
+          : (row.ecard_valid_to && String(row.ecard_valid_to) < todayStr)
+            ? "expired"
+            : (row.ecard_status === "active" ? "active" : "disabled");
+
+        return {
+          id: Number(row.id),
+          sipUserId: Number(row.sip_user_id),
+          username: row.username || "",
+          domain: row.sip_domain || "",
+          displayName: row.display_name || "",
+          email: row.email || "",
+          phone: row.phone_number || "",
+          role: row.role || "user",
+          status: isExpired ? "expired" : (row.account_status || "active"),
+          serviceStartsAt: displayOrder ? displayOrder.effectiveAt : (row.service_starts_at || ""),
+          serviceExpiresAt: extendedExpiresAt,
+          assignedAt: row.assigned_at ? String(row.assigned_at) : "",
+          orderNo: displayOrder ? displayOrder.orderNo : (row.order_no || ""),
+          webAccount: row.web_username || "",
+          contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
+          contactBookName: row.contact_book_name || "",
+          syncStatus: syncStatusMap.get(sipKey) || "local_only",
+          ecard: { configured: ecardConfigured, status: ecardStatus },
+          orders: history.map((item) => ({
+            ...item,
+            current: !!currentOrder && item.type !== "trial" && item.orderId === currentOrder.orderId,
+          })),
+        };
+      }),
     });
   } catch (error) {
     console.error("Failed to fetch tenant SIP accounts:", error);
