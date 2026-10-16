@@ -1679,11 +1679,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                             {canResume && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); resumeTrial(t); }}>恢復試用</button>
                             )}
-                            {canOverview && (
-                              <button type="button" className="tm-actions-item" onClick={() => openOverview(t)}>帳號概覽</button>
-                            )}
                             {isPlatform && (
                               <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>
+                            )}
+                            {canOverview && (
+                              <button type="button" className="tm-actions-item" onClick={() => openOverview(t)}>帳號概覽</button>
                             )}
                           </div>,
                           document.body,
