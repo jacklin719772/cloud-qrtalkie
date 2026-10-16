@@ -7547,10 +7547,22 @@ app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) =>
       await connection.rollback();
       return response.status(404).json({ message: "找不到訂單。" });
     }
-    if (order.order_status !== "pending_payment" || order.payment_status !== "unpaid") {
+    if (order.order_status !== "pending_payment" && order.order_status !== "pending_review") {
+      await connection.rollback();
+      return response.status(409).json({ message: "只有未提交或待審核的訂單可以刪除。" });
+    }
+    if (order.order_status === "pending_payment" && order.payment_status !== "unpaid") {
       await connection.rollback();
       return response.status(409).json({ message: "只有未支付訂單可以刪除。" });
     }
+
+    // 已上传的付款凭证文件：提交后物理删除（记录随订单一并清除）
+    const proofRows = await connection.query(
+      `SELECT payment_proof_file_url FROM billing_payments
+       WHERE order_id = ? AND tenant_id = ? AND payment_proof_file_url IS NOT NULL AND payment_proof_file_url <> ''`,
+      [orderId, request.admin.tenantId],
+    );
+    const proofUrls = proofRows.map((row) => String(row.payment_proof_file_url || "")).filter(Boolean);
 
     await connection.query(`DELETE FROM billing_orders WHERE id = ? AND tenant_id = ?`, [orderId, request.admin.tenantId]);
     // 清理该订单的通知事件与回执（避免删除后残留「訂單待支付」等悬空通知）
@@ -7565,6 +7577,9 @@ app.delete("/api/billing/orders/:id", requireAdmin, async (request, response) =>
       [orderId],
     );
     await connection.commit();
+    for (const proofUrl of proofUrls) {
+      await removePaymentProofFile(proofUrl);
+    }
     return response.json({ message: "訂單已刪除。" });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});

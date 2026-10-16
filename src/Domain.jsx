@@ -162,7 +162,10 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
     if (action === 'renew') { onOpenPurchase?.({ mode: 'renewal', orderId: order.id }); return; }
     if (action === 'edit') { onOpenPurchase?.({ mode: 'edit', orderId: order.id }); return; }
     if (action === 'delete') {
-      if (!window.confirm(`確定要刪除訂單 ${order.orderNo} 嗎？`)) return;
+      const deleteWarning = order.paymentStatus === 'paid'
+        ? `該訂單已付款，刪除後訂單與付款記錄將一併刪除且不可恢復。\n\n確定要刪除訂單 ${order.orderNo} 嗎？`
+        : `確定要刪除訂單 ${order.orderNo} 嗎？`;
+      if (!window.confirm(deleteWarning)) return;
       try {
         await apiClient.delete(`/billing/orders/${order.id}`);
         setMessage({ type: 'success', text: '訂單已刪除。' });
@@ -191,8 +194,10 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       && ['pending_payment', 'payment_submitted', 'pending_review'].includes(order.orderStatus);
     // 訂單修改：后端禁止已通过/已驳回；待審核隐藏（编辑会重置订单，需先撤销提交）
     const canModify = !['review_approved', 'review_rejected', 'pending_review'].includes(order.orderStatus);
-    const canDelete = order.orderStatus === 'pending_payment' && order.paymentStatus === 'unpaid';
+    const canDelete = (order.orderStatus === 'pending_payment' && order.paymentStatus === 'unpaid') || order.orderStatus === 'pending_review';
     const canRenew = order.orderStatus === 'review_approved';
+    // 重新購買：仅在「已通過」订单出现（在途订单走修改/提交/撤销，避免绕过流程）
+    const canRepurchase = order.orderStatus === 'review_approved';
     // 提交審核：0 元单自动视为已付；金额>0 未付款时置灰（提示先付款）
     const canSubmitReview = isZeroAmount || isPaid;
     const showSubmit = ['pending_payment', 'payment_submitted', 'review_rejected'].includes(order.orderStatus);
@@ -209,7 +214,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       { action: 'detail', label: '檢視詳情' },
       showProof ? { action: 'upload-proof', label: '支付憑證' } : null,
       canRenew ? { action: 'renew', label: '訂單續訂' } : null,
-      isPaid ? { action: 'repurchase', label: '重新購買' } : null,
+      canRepurchase ? { action: 'repurchase', label: '重新購買' } : null,
       canModify ? { action: 'edit', label: '訂單修改' } : null,
       canDelete ? { action: 'delete', label: '訂單刪除' } : null,
       review,
