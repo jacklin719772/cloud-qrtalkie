@@ -132,6 +132,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [showDiscountDataHelp, setShowDiscountDataHelp] = useState(false);
   const [showPlansHelp, setShowPlansHelp] = useState(false);
   const [showTenantMgmtHelp, setShowTenantMgmtHelp] = useState(false);
+  const [showAgentsMgmtHelp, setShowAgentsMgmtHelp] = useState(false);
   const [showTrialMgmtHelp, setShowTrialMgmtHelp] = useState(false);
   const [showCouponMgmtHelp, setShowCouponMgmtHelp] = useState(false);
   const [showDeviceMgmtHelp, setShowDeviceMgmtHelp] = useState(false);
@@ -730,6 +731,7 @@ export default function ConsoleLayout({ onLogout }) {
           >
             <Trash2 size={14} /> 批量刪除
           </button>
+          <button type="button" onClick={() => setShowAgentsMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作指南"><HelpCircle size={18} /></button>
         </div>
       );
     }
@@ -1506,6 +1508,64 @@ export default function ConsoleLayout({ onLogout }) {
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
                 <p style={{ color: "#9ca3af", margin: 0 }}>分配列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/tenant-coupons</code><br/>分配優惠碼：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/tenant-coupons</code><br/>撤銷/啟用/刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST/DELETE /api/admin/tenant-coupons/:id</code></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAgentsMgmtHelp && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAgentsMgmtHelp(false)}>
+          <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>代理商管理 操作指南</h2>
+              <button onClick={() => setShowAgentsMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
+            </div>
+            <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#129309; 代理商管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>代理商管理維護代理商名錄（登記表），供試用管理指派與篩選。名錄記錄代理商名稱、聯絡人、聯絡方式與銀行帳號（僅登記用途，不參與任何打款流程）。本頁僅平台管理員可見。</p>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 主要功能</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>新增代理商</strong> — 點擊頁頭「新增代理商」，代理商名稱必填且不可重複；銀行帳號等資訊可選填。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 彈窗查看代理商完整資訊（銀行帳號脫敏顯示尾 4 位）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>編輯</strong> — 「更多 &gt; 編輯」進入編輯頁，銀行帳號自動回填完整值；修改後保存生效。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 「更多 &gt; 停用/啟用」切換狀態；僅「啟用中」的代理商出現在試用管理的代理商下拉中。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按名稱、聯絡人、電話、信箱搜尋；按狀態篩選（全部/啟用中/已停用）。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128229; 批量操作</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>多選</strong> — 勾選行首複選框；表頭全選作用於當前篩選結果，跨頁保留選擇。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量停用</strong> — 對勾選的代理商批量停用（已停用的自動跳過），逐條執行並彙總結果。</li>
+                  <li><strong style={{ color: "#fbbf24" }}>&#9888; 批量刪除</strong> — 永久刪除勾選的代理商，<strong style={{ color: "#e5e7eb" }}>不可恢復</strong>。已指派該代理商的試用記錄將失去代理商資訊（歸入「無代理商」），歷史訂單不受影響。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; 與試用管理的關聯</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>添加試用</strong> — 彈窗中的「代理商」下拉來源為本名錄的啟用項；選擇後該批次試用歸屬該代理商。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>試用列表篩選</strong> — 可按代理商篩選（全部/無代理商/具體代理商，含停用項）。</li>
+                </ul>
+              </div>
+              <div style={{ marginBottom: "24px" }}>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 列表欄位說明</h3>
+                <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>勾選</strong> — 多選框（配合批量停用/批量刪除）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>代理商名稱</strong> — 唯一名稱；點欄位標題可排序。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>聯絡人 / 聯絡電話 / 聯絡信箱</strong> — 登記的聯絡方式。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>銀行帳號</strong> — 脫敏顯示（尾 4 位）；完整值見詳情/編輯。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>建立時間</strong> — 名錄建立日期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中 / 已停用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — 詳情按鈕和更多選單（詳情、編輯、停用/啟用）。</li>
+                </ul>
+              </div>
+              <div>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>代理商列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/agents</code><br/>詳情/新增/編輯/刪除：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/POST/PUT/DELETE /api/admin/agents/:id</code><br/>啟用/停用：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/agents/:id/status</code></p>
               </div>
             </div>
           </div>
