@@ -11228,6 +11228,20 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
       [orderId],
     );
     const reservedTrialTenantId = await getReservedTrialTenantId(connection);
+    const paymentRows = await connection.query(
+      `SELECT
+         payment_amount,
+         DATE_FORMAT(paid_at, '%Y-%m-%d') AS paid_at,
+         payment_proof_file_url,
+         payment_proof_file_name,
+         payment_proof_uploaded_at
+       FROM billing_payments
+       WHERE order_id = ?
+       ORDER BY id DESC
+       LIMIT 1`,
+      [orderId],
+    );
+    const payment = paymentRows[0] || null;
     const retainedList = retainedGenericRows.map((row) => {
       const eligible = row.status === "pending" && (
         row.source === "trial"
@@ -11310,6 +11324,18 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
           sourceServiceExpiresAt: account.source_service_expires_at || "",
         })),
         retainedList,
+        paymentDate: payment?.paid_at || "",
+        paid_at: payment?.paid_at || "",
+        payment_proof_uploaded_at: payment?.payment_proof_uploaded_at ? String(payment.payment_proof_uploaded_at) : "",
+        payment: payment
+          ? {
+              actualAmount: Number(payment.payment_amount || 0),
+              paymentDate: payment.paid_at || "",
+              proofUrl: payment.payment_proof_file_url || "",
+              proofFileName: payment.payment_proof_file_name || "",
+              proofUploadedAt: payment.payment_proof_uploaded_at ? String(payment.payment_proof_uploaded_at) : "",
+            }
+          : null,
         sipAccounts: (sipAccountRows || []).map(a => ({
           username: a.username || '',
           sipDomain: a.sip_domain || '',
