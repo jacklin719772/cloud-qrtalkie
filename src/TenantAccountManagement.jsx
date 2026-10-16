@@ -440,12 +440,12 @@ const TenantAccountManagement = forwardRef(({
     const targets = Array.isArray(account) ? account : [account];
     const localOnlyTargets = targets.filter(isLocalOnly);
     if (localOnlyTargets.length > 0) {
-      window.alert(`所選帳號（${localOnlyTargets.map(a => a.username).join('、')}）僅在本地資料庫中存在，無法重設密碼，請聯絡平臺管理員！`);
+      window.alert(`所選帳號（${localOnlyTargets.map(a => a.username).join('、')}）僅在本地資料庫中存在，無法重置密碼，請聯絡平臺管理員！`);
       return;
     }
     const usableTargets = targets.filter(canUseAccountActions);
     if (usableTargets.length === 0) {
-      window.alert('已過期帳號不能重設密碼。');
+      window.alert('已過期帳號不能重置密碼。');
       return;
     }
     setResetPasswordAccount(usableTargets);
@@ -472,7 +472,7 @@ const TenantAccountManagement = forwardRef(({
 
     // 检查邮箱
     if (!account.email) {
-      window.alert('該帳號尚未設定郵箱，請先在編輯功能中為帳號設定郵箱後再傳送郵件。');
+      window.alert('該帳號尚未設定郵箱，請先在帳號設置中為帳號設定郵箱後再傳送郵件。');
       return;
     }
 
@@ -528,14 +528,14 @@ const TenantAccountManagement = forwardRef(({
           confirmPassword: resetPasswordForm.confirmPassword,
         })
       )));
-      setResetPasswordMessage({ type: 'success', text: '密碼已重設。' });
+      setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
       window.setTimeout(() => {
         setResetPasswordAccount(null);
         setResetPasswordForm({ password: '', confirmPassword: '' });
         setResetPasswordMessage({ type: '', text: '' });
       }, 600);
     } catch (error) {
-      setResetPasswordMessage({ type: 'error', text: error.message || '密碼重設失敗。' });
+      setResetPasswordMessage({ type: 'error', text: error.message || '密碼重置失敗。' });
     } finally {
       setIsResettingPassword(false);
     }
@@ -561,7 +561,7 @@ const TenantAccountManagement = forwardRef(({
   }
 
   function handleBatchResetPassword() {
-    const targets = getSelectedActionableAccounts('重設密碼');
+    const targets = getSelectedActionableAccounts('重置密碼');
     if (targets.length === 0) return;
     openResetPassword(targets);
   }
@@ -1209,13 +1209,13 @@ const TenantAccountManagement = forwardRef(({
                         {openDropdownId === account.id && createPortal(
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>帳號設置</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重置密碼</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱歷史</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
                             <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重設密碼郵件</button>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重置密碼郵件</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'provisioning')} onClick={() => handleAction('send_provisioning_email', account)}>發送 Provisioning 郵件</button>
                           </div>,
                           document.body
@@ -1432,7 +1432,7 @@ const TenantAccountManagement = forwardRef(({
             style={{ width: 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重設密碼</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重置密碼</h3>
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
@@ -1460,7 +1460,7 @@ const TenantAccountManagement = forwardRef(({
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
               {resetPasswordMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: resetPasswordMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetPasswordMessage.text}</p>}
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
+              <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重置'}</button>
             </div>
           </form>
         </div>,

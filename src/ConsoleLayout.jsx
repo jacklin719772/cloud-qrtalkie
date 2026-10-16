@@ -1440,7 +1440,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「訂閱帳號管理」帳號設置同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（訂閱帳號管理）；重設後設備需用新密碼重新註冊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（訂閱帳號管理）；重置後設備需用新密碼重新註冊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號概覽</strong> — 概要列出帳號資訊（帳號/顯示名/歸屬租戶/聯繫人/試用期/狀態/AI/名片連結），並自動生成可複製的開通通知文案（帳號、密碼、試用期、名片訪問與圖片連結、雲平台改密與 App 下載步驟），一鍵複製發送給使用者；兩個名片連結旁可單獨複製。</li>
@@ -1970,14 +1970,14 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 訂閱帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、查看訂閱歷史、重設密碼、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、重置密碼、查看訂閱歷史、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
               </div>
 
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#ef4444", fontSize: "14px", marginBottom: "8px" }}>&#9888;&#65039; 重要提醒</h3>
                 <div style={{ background: "#1e293b", borderRadius: "8px", padding: "16px", border: "1px solid #374151" }}>
                   <div style={{ marginBottom: "12px" }}>
-                    <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128308; 重設密碼</div>
+                    <div style={{ color: "#ef4444", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128308; 重置密碼</div>
                     <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>修改密碼後，已登入的設備將<strong style={{ color: "#ef4444" }}>立即斷線</strong>，需使用新密碼重新註冊。建議在非使用高峰期進行操作。</p>
                   </div>
                   <div style={{ marginBottom: "12px" }}>
@@ -1995,13 +1995,13 @@ export default function ConsoleLayout({ onLogout }) {
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作選單說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼，設備需用新密碼重新註冊。密碼至少需要 6 個字符。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>訂閱歷史</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 切換帳號的啟用狀態。已過期帳號無法操作。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 輸入新密碼，同步更新至 Flexisip。密碼至少需要 6 個字符。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該帳號分配通訊錄，選擇已創建的通訊錄進行綁定。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>生成二維碼</strong> — 生成 Provisioning 登錄二維碼，支援複製、下載和 Renew 更新。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>發送重設密碼郵件</strong> — 向帳號綁定郵箱發送重置密碼郵件（需先設定郵箱）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發送重置密碼郵件</strong> — 向帳號綁定郵箱發送重置密碼郵件（需先設定郵箱）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>發送 Provisioning 郵件</strong> — 向帳號綁定郵箱發送 Provisioning 配置郵件（需先設定郵箱）。</li>
                 </ul>
               </div>
@@ -2024,7 +2024,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li>建議為每個使用中的帳號設定易於識別的顯示名稱。</li>
                   <li>設定正確的電子郵箱後才能使用郵件發送功能。</li>
-                  <li>密碼重設後會同步至 Flexisip，確保雲端與本地一致。</li>
+                  <li>密碼重置後會同步至 Flexisip，確保雲端與本地一致。</li>
                   <li>local_only 帳號僅存在於本地數據庫，無法同步至 Flexisip，請聯繫平台管理員處理。</li>
                 </ul>
               </div>

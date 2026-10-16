@@ -886,7 +886,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // 重置密碼（對齊租戶端訂閱帳號管理「重設密碼」）：复用 account-settings 接口，带既有資訊 + 新密碼
+  // 重置密碼（與租戶端訂閱帳號管理「重置密碼」同源）：复用 account-settings 接口，带既有資訊 + 新密碼
   async function openResetPassword(trial) {
     setOpenActionsId(null);
     setResetPasswordTarget({ id: trial.id, username: trial.username });
@@ -931,7 +931,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         password,
         confirmPassword,
       });
-      setResetPasswordMessage({ type: 'success', text: '密碼已重設。' });
+      setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
       setTimeout(() => {
         setResetPasswordTarget(null);
         setResetPasswordForm({ password: '', confirmPassword: '' });
@@ -939,7 +939,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         setResetPasswordMessage({ type: '', text: '' });
       }, 1200);
     } catch (error) {
-      setResetPasswordMessage({ type: 'error', text: error.message || '密碼重設失敗。' });
+      setResetPasswordMessage({ type: 'error', text: error.message || '密碼重置失敗。' });
     } finally {
       setIsResettingPassword(false);
     }
@@ -2435,7 +2435,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         <div className="tm-modal">
           <div className="tm-modal-panel" style={{ width: '440px' }}>
             <div className="tm-modal-head">
-              <h3>重設密碼 — {resetPasswordTarget.username}</h3>
+              <h3>重置密碼 — {resetPasswordTarget.username}</h3>
               <button className="tm-btn" type="button" onClick={() => setResetPasswordTarget(null)} disabled={isResettingPassword}>關閉</button>
             </div>
             <form onSubmit={submitResetPassword}>
@@ -2460,14 +2460,14 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                     placeholder="再次輸入新密碼"
                   />
                 </div>
-                <span className="tm-hint">重設後該帳號在通訊核心的登入密碼立即生效（設備需用新密碼重新註冊）。</span>
+                <span className="tm-hint">重置後，該帳號的雲平台登入密碼與通訊核心（App 登錄）密碼同步生效（設備需用新密碼重新註冊）。</span>
                 {resetPasswordMessage.text && (
                   <p style={{ margin: 0, fontSize: '13px', color: resetPasswordMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetPasswordMessage.text}</p>
                 )}
               </div>
               <div className="tm-modal-foot">
                 <button className="tm-btn" type="button" disabled={isResettingPassword} onClick={() => setResetPasswordTarget(null)}>取消</button>
-                <button className="tm-btn primary" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重設'}</button>
+                <button className="tm-btn primary" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重置'}</button>
               </div>
             </form>
           </div>
