@@ -107,6 +107,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [resetPasswordCurrent, setResetPasswordCurrent] = useState(null);
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [overviewTarget, setOverviewTarget] = useState(null);
+  const [overviewPassword, setOverviewPassword] = useState('');
+  const [overviewText, setOverviewText] = useState('');
+  const [overviewCopied, setOverviewCopied] = useState(false);
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -941,6 +945,83 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
+  // 帳號概覽：概要資訊 + 自動生成可複製的開通通知文案
+  function buildOverviewMessage(target, password) {
+    if (!target) return '';
+    const lines = [
+      '您好，已為您開通 QRTalkie 試用帳號：',
+      '',
+      `▸ 帳號：${target.username}${target.webUsername ? `（Web 帳號：${target.webUsername}）` : ''}`,
+      `▸ 密碼：${password || '（請與管理員確認）'}`,
+      `▸ 試用期：${target.startedAt || '-'} ~ ${target.expiresAt || '-'}`,
+    ];
+    if (target.ecardUrl) lines.push(`▸ 電子名片：${target.ecardUrl}`);
+    lines.push(
+      '',
+      '使用步驟：',
+      '1. 前往雲平台 https://cloud.qrtalkie.org，使用上述帳號登入並修改密碼；',
+      '2. 於平台下載並安裝 App；',
+      '3. 開啟 App，使用該帳號與新密碼登入即可開始使用。',
+      '',
+      '如需協助，請隨時與我們聯繫。',
+    );
+    return lines.join('\n');
+  }
+
+  async function openOverview(trial) {
+    setOpenActionsId(null);
+    const target = {
+      id: trial.id,
+      username: trial.username || '',
+      webUsername: trial.webUsername || '',
+      displayName: trial.accountDisplayName || '',
+      tenantName: trial.ownerTenantName || '',
+      contactName: trial.contactName || '',
+      contactEmail: trial.contactEmail || '',
+      contactPhone: trial.contactPhone || '',
+      startedAt: trial.startedAt || '',
+      expiresAt: trial.expiresAt || '',
+      statusLabel: (PHASE_META[trial.phase] || {}).label || '',
+      aiEnabled: Boolean(trial.aiEnabled),
+      ecardUrl: '',
+    };
+    try {
+      const ecard = await apiClient.get(`/admin/trials/${trial.id}/ecard`);
+      if (ecard?.accessSlug) target.ecardUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+    } catch {
+      /* 無名片或讀取失敗則不顯示該行 */
+    }
+    setOverviewTarget(target);
+    setOverviewPassword('');
+    setOverviewText(buildOverviewMessage(target, ''));
+    setOverviewCopied(false);
+  }
+
+  function handleOverviewPasswordChange(value) {
+    setOverviewPassword(value);
+    setOverviewText(buildOverviewMessage(overviewTarget, value.trim()));
+  }
+
+  async function copyOverviewText() {
+    try {
+      await navigator.clipboard.writeText(overviewText);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = overviewText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setOverviewCopied(true);
+  }
+
+  useEffect(() => {
+    if (!overviewCopied) return undefined;
+    const timer = setTimeout(() => setOverviewCopied(false), 5000);
+    return () => clearTimeout(timer);
+  }, [overviewCopied]);
+
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
 
@@ -1518,6 +1599,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                   const canPause = t.phase === 'active' || t.phase === 'expiring';
                   const canResume = t.phase === 'paused' && String(t.expiresAt || '') >= todayStr();
                   const canAccountSettings = !isPlatform && String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
+                  const canOverview = String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
                   return (
                     <tr key={t.id}>
                       <td style={{ width: '48px', textAlign: 'center' }}>
@@ -1587,6 +1669,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                             )}
                             {canResume && (
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); resumeTrial(t); }}>恢復試用</button>
+                            )}
+                            {canOverview && (
+                              <button type="button" className="tm-actions-item" onClick={() => openOverview(t)}>帳號概覽</button>
                             )}
                             {isPlatform && (
                               <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>
@@ -2256,6 +2341,60 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
+
+      {overviewTarget && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '560px' }}>
+            <div className="tm-modal-head">
+              <h3>帳號概覽 — {overviewTarget.username}</h3>
+              <button className="tm-btn" type="button" onClick={() => setOverviewTarget(null)}>關閉</button>
+            </div>
+            <div className="tm-modal-body">
+              {[
+                ['帳號', `${overviewTarget.username}${overviewTarget.webUsername ? `（${overviewTarget.webUsername}）` : ''}`],
+                ['顯示名', overviewTarget.displayName],
+                ['歸屬租戶', overviewTarget.tenantName],
+                ['聯繫人', [overviewTarget.contactName, overviewTarget.contactPhone, overviewTarget.contactEmail].filter(Boolean).join(' · ')],
+                ['試用期', `${overviewTarget.startedAt} ~ ${overviewTarget.expiresAt}`],
+                ['狀態', overviewTarget.statusLabel],
+                ['AI 助手', overviewTarget.aiEnabled ? '已開通' : '—'],
+                ['電子名片', overviewTarget.ecardUrl || '—'],
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
+                  <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
+                  <span style={{ color: '#e5e7eb', fontSize: '13px', wordBreak: 'break-all' }}>{value || '—'}</span>
+                </div>
+              ))}
+              <div className="tm-field">
+                <label>登入密碼（僅寫入下方文案；如需變更帳號密碼請使用「重置密碼」）</label>
+                <input
+                  autoComplete="off"
+                  value={overviewPassword}
+                  onChange={(e) => handleOverviewPasswordChange(e.target.value)}
+                  placeholder="留空文案顯示「（請與管理員確認）」"
+                />
+              </div>
+              <div className="tm-field">
+                <label>通知文案（可編輯後複製發送）</label>
+                <textarea
+                  rows="14"
+                  value={overviewText}
+                  onChange={(e) => setOverviewText(e.target.value)}
+                  style={{ fontSize: '12px', lineHeight: '1.7', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            <div className="tm-modal-foot">
+              {overviewCopied && <span style={{ marginRight: 'auto', color: '#22c55e', fontSize: '13px' }}>已複製至剪貼簿。</span>}
+              <button className="tm-btn" type="button" onClick={() => setOverviewTarget(null)}>關閉</button>
+              <button className="tm-btn primary" type="button" onClick={copyOverviewText}>複製文案</button>
+            </div>
           </div>
         </div>
         </div>,
