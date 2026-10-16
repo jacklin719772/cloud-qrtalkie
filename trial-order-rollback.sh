@@ -80,33 +80,46 @@ SET we.tenant_id = @reservedTenantId,
     we.service_starts_at = ta.started_at,
     we.service_expires_at = ta.expires_at;
 
--- 2) 本单从库存补配的账号（非试用）：SIP 回库
+-- 2) 本单从库存补配的账号（非本单转正的试用）：SIP 回库
+-- 判据改为「不是被本单转正的试用账号」（历史已回收的试用记录不影响回库）
 UPDATE sip_users u
 JOIN billing_order_sip_accounts b ON b.sip_user_id = u.id AND b.order_id = @orderId
-LEFT JOIN trial_assignments ta ON ta.sip_user_id = u.id
 SET u.tenant_id = NULL,
     u.service_expires_at = NULL,
     u.status = 'active',
     u.reviewed_at = NULL,
     u.reviewed_by_platform_admin_id = NULL
-WHERE ta.id IS NULL AND u.tenant_id = @orderTenantId;
+WHERE u.tenant_id = @orderTenantId
+  AND NOT EXISTS (
+    SELECT 1 FROM trial_assignments ta
+    WHERE ta.sip_user_id = u.id AND ta.converted_order_id = @orderId
+  );
 
 DELETE e FROM tenant_sip_account_entitlements e
 JOIN billing_order_sip_accounts b ON b.sip_user_id = e.sip_user_id AND b.order_id = @orderId
-LEFT JOIN trial_assignments ta ON ta.sip_user_id = e.sip_user_id
-WHERE ta.id IS NULL AND e.first_order_id = @orderId;
+WHERE e.first_order_id = @orderId
+  AND NOT EXISTS (
+    SELECT 1 FROM trial_assignments ta
+    WHERE ta.sip_user_id = e.sip_user_id AND ta.converted_order_id = @orderId
+  );
 
--- 2b) 本单从库存补配的 Web：回库并清理权益行
+-- 2b) 本单从库存补配的 Web：回库并清理权益行（同样以「非本单转正」为判据）
 UPDATE web_users w
 JOIN tenant_web_account_entitlements we ON we.web_user_id = w.id
-LEFT JOIN trial_assignments ta ON ta.sip_user_id = we.sip_user_id
 SET w.tenant_id = NULL,
     w.service_expires_at = NULL
-WHERE we.current_order_id = @orderId AND ta.id IS NULL;
+WHERE we.current_order_id = @orderId
+  AND NOT EXISTS (
+    SELECT 1 FROM trial_assignments ta
+    WHERE ta.sip_user_id = we.sip_user_id AND ta.converted_order_id = @orderId
+  );
 
 DELETE we FROM tenant_web_account_entitlements we
-LEFT JOIN trial_assignments ta ON ta.sip_user_id = we.sip_user_id
-WHERE we.current_order_id = @orderId AND ta.id IS NULL;
+WHERE we.current_order_id = @orderId
+  AND NOT EXISTS (
+    SELECT 1 FROM trial_assignments ta
+    WHERE ta.sip_user_id = we.sip_user_id AND ta.converted_order_id = @orderId
+  );
 
 -- 3) 试用记录复位（必须在删除订单之前：converted_order_id 外键 ON DELETE SET NULL 会先清零导致漏复位）
 UPDATE trial_assignments
