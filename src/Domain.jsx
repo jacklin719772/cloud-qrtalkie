@@ -184,18 +184,34 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
   }
 
   function getOrderActions(order) {
-    const showProof = order.paymentMethod === 'offline' && (order.orderStatus === 'pending_payment' || ['payment_submitted','pending_review','review_approved','review_rejected'].includes(order.orderStatus) || Boolean(order.paymentDate));
-    const canModify = !['review_approved','review_rejected'].includes(order.orderStatus);
+    const isZeroAmount = Number(order.payableAmount || 0) <= 0;
+    const isPaid = order.paymentStatus === 'paid';
+    // 支付憑證：线下降、金额>0，且处于后端允许上传/替换的状态（已通过/已驳回后端会拒绝）
+    const showProof = !isZeroAmount && order.paymentMethod === 'offline'
+      && ['pending_payment', 'payment_submitted', 'pending_review'].includes(order.orderStatus);
+    // 訂單修改：后端禁止已通过/已驳回；待審核隐藏（编辑会重置订单，需先撤销提交）
+    const canModify = !['review_approved', 'review_rejected', 'pending_review'].includes(order.orderStatus);
     const canDelete = order.orderStatus === 'pending_payment' && order.paymentStatus === 'unpaid';
     const canRenew = order.orderStatus === 'review_approved';
-    const review = order.orderStatus === 'pending_review' ? { action: 'revoke-review', label: '撤銷提交' } : { action: 'submit-review', label: '重新提交', disabled: order.orderStatus === 'review_approved' };
+    // 提交審核：0 元单自动视为已付；金额>0 未付款时置灰（提示先付款）
+    const canSubmitReview = isZeroAmount || isPaid;
+    const showSubmit = ['pending_payment', 'payment_submitted', 'review_rejected'].includes(order.orderStatus);
+    const review = order.orderStatus === 'pending_review'
+      ? { action: 'revoke-review', label: '撤銷提交' }
+      : showSubmit
+        ? {
+            action: 'submit-review',
+            label: order.orderStatus === 'review_rejected' ? '重新提交' : '提交審核',
+            disabled: !canSubmitReview,
+          }
+        : null;
     return [
       { action: 'detail', label: '檢視詳情' },
       showProof ? { action: 'upload-proof', label: '支付憑證' } : null,
       canRenew ? { action: 'renew', label: '訂單續訂' } : null,
-      { action: 'repurchase', label: '重新購買' },
-      { action: 'edit', label: '訂單修改', disabled: !canModify },
-      { action: 'delete', label: '訂單刪除', disabled: !canDelete },
+      isPaid ? { action: 'repurchase', label: '重新購買' } : null,
+      canModify ? { action: 'edit', label: '訂單修改' } : null,
+      canDelete ? { action: 'delete', label: '訂單刪除' } : null,
       review,
     ].filter(Boolean);
   }
