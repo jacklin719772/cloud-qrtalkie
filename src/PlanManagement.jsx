@@ -1,9 +1,9 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { forwardRef, useState, useEffect, useImperativeHandle, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import apiClient from './apiClient';
 
-export default function PlanManagement({ onNavigate }) {
+const PlanManagement = forwardRef(function PlanManagement({ onNavigate, onModeChange }, ref) {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -38,6 +38,15 @@ export default function PlanManagement({ onNavigate }) {
   const [reviewStep, setReviewStep] = useState(1);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
   const [reviewData, setReviewData] = useState({ status: 'review_approved', comments: '' });
+
+  // 審核視圖模式上報（ConsoleLayout 據此在頁頭渲染「返回列表」）；並暴露返回方法
+  useEffect(() => {
+    onModeChange?.(reviewOrder ? 'review' : 'list');
+  }, [reviewOrder]);
+  useImperativeHandle(ref, () => ({
+    returnToList: () => setReviewOrder(null),
+    get viewMode() { return reviewOrder ? 'review' : 'list'; },
+  }));
   const [unassignedSipAccounts, setUnassignedSipAccounts] = useState([]);
   const [selectedSipAccountIds, setSelectedSipAccountIds] = useState([]);
   const [isLoadingSipAccounts, setIsLoadingSipAccounts] = useState(false);
@@ -1064,11 +1073,6 @@ export default function PlanManagement({ onNavigate }) {
         <section className="view active settings-form-page" id="plan-management-review" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
           <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
             <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
-              <div style={{ flexShrink: 0, padding: reviewStep >= 3 ? '12px 24px' : '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0, fontSize: reviewStep >= 3 ? '17px' : '18px', color: '#e5e7eb', fontWeight: '600' }}>訂單審核</h3>
-                <button className="ghost-btn" type="button" onClick={() => setReviewOrder(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: reviewStep >= 3 ? '5px 10px' : '6px 12px' }}>返回列表</button>
-              </div>
-
               <div style={{ display: 'flex', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
                 {reviewSteps.map((stepName, index) => {
                   const stepIndex = index + 1;
@@ -1597,4 +1601,6 @@ export default function PlanManagement({ onNavigate }) {
       )}
     </>
   );
-}
+});
+
+export default PlanManagement;

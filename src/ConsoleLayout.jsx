@@ -161,6 +161,8 @@ export default function ConsoleLayout({ onLogout }) {
   const accessControlRef = useRef(null);
   const paymentMethodsRef = useRef(null);
   const plansRef = useRef(null);
+  const planManagementRef = useRef(null);
+  const [planManagementMode, setPlanManagementMode] = useState('list');
   const discountDataRef = useRef(null);
   const addonServicesRef = useRef(null);
   const tenantManagementRef = useRef(null);
@@ -856,7 +858,20 @@ export default function ConsoleLayout({ onLogout }) {
       return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => { setLegalHelpTitle('隱私政策'); setLegalHelpType('privacy'); setShowLegalHelp(true); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button></div>);
     }
     if (currentView === 'plan-management') {
-      return (<div style={{ display: 'flex', gap: '8px' }}><button type="button" onClick={() => setShowPlanMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button></div>);
+      return (
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {planManagementMode === 'review' && (
+            <button
+              className="ghost-btn"
+              type="button"
+              onClick={() => planManagementRef.current?.returnToList()}
+            >
+              返回列表
+            </button>
+          )}
+          <button type="button" onClick={() => setShowPlanMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
+        </div>
+      );
     }
     return null;
   };
@@ -995,7 +1010,7 @@ export default function ConsoleLayout({ onLogout }) {
             <Plans ref={plansRef} view={currentView} onReturnToList={() => setCurrentView('plans')} />
           )}
           {currentView === 'plan-management' && (
-            <PlanManagement onNavigate={setCurrentView} />
+            <PlanManagement ref={planManagementRef} onNavigate={setCurrentView} onModeChange={setPlanManagementMode} />
           )}
           {currentView === 'sip-account-registration' && (
             <SipAccountRegistration ref={sipAccountRegistrationRef} onModeChange={setSipAccountMode} />
