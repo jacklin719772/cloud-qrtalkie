@@ -164,7 +164,6 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       return;
     }
     if (action === 'upload-proof') { paymentProofDialogRef?.current?.show(order); return; }
-    if (action === 'repurchase') { onOpenPurchase?.({ mode: 'repurchase', orderId: order.id }); return; }
     if (action === 'renew') { onOpenPurchase?.({ mode: 'renewal', orderId: order.id }); return; }
     if (action === 'edit') { onOpenPurchase?.({ mode: 'edit', orderId: order.id }); return; }
     if (action === 'delete') {
@@ -205,8 +204,6 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
     const todayForRenew = new Date().toISOString().slice(0, 10);
     const orderNotExpired = order.expiresAt ? String(order.expiresAt).slice(0, 10) >= todayForRenew : true;
     const canRenew = order.orderStatus === 'review_approved' && orderNotExpired;
-    // 重新購買：仅在「已通過」订单出现（在途订单走修改/提交/撤销，避免绕过流程）
-    const canRepurchase = order.orderStatus === 'review_approved';
     // 提交審核：0 元单自动视为已付；金额>0 未付款时置灰（提示先付款）
     const canSubmitReview = isZeroAmount || isPaid;
     const showSubmit = ['pending_payment', 'payment_submitted', 'review_rejected'].includes(order.orderStatus);
@@ -223,7 +220,6 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
       { action: 'detail', label: '檢視詳情' },
       showProof ? { action: 'upload-proof', label: '支付憑證' } : null,
       canRenew ? { action: 'renew', label: '訂單續訂' } : null,
-      canRepurchase ? { action: 'repurchase', label: '重新購買' } : null,
       canModify ? { action: 'edit', label: '訂單修改' } : null,
       canDelete ? { action: 'delete', label: '訂單刪除' } : null,
       review,
