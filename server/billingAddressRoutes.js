@@ -83,6 +83,46 @@ export function registerBillingAddressRoutes(app, { requireAdmin }) {
     }
   });
 
+  // 修改（文本更新；同租户已有相同文本时拒绝并指向已有记录）
+  app.put("/api/billing/billing-addresses/:id", requireAdmin, async (request, response) => {
+    if (!requireTenant(request, response)) return;
+    const addressId = Number(request.params.id);
+    if (!Number.isInteger(addressId) || addressId <= 0) {
+      return response.status(400).json({ message: "地址編號無效。" });
+    }
+    const address = clean(request.body?.address, 500);
+    if (!address) return response.status(400).json({ message: "請輸入帳單地址。" });
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const target = await connection.query(
+        "SELECT id FROM tenant_billing_addresses WHERE id = ? AND tenant_id = ? LIMIT 1",
+        [addressId, request.admin.tenantId],
+      );
+      if (!target[0]) return response.status(404).json({ message: "找不到該地址。" });
+      const duplicated = await connection.query(
+        "SELECT id FROM tenant_billing_addresses WHERE tenant_id = ? AND address = ? AND id <> ? LIMIT 1",
+        [request.admin.tenantId, address, addressId],
+      );
+      if (duplicated[0]) {
+        return response.status(409).json({ message: "該地址已存在，無需重複保存。", id: Number(duplicated[0].id) });
+      }
+      await connection.query(
+        "UPDATE tenant_billing_addresses SET address = ? WHERE id = ? AND tenant_id = ?",
+        [address, addressId, request.admin.tenantId],
+      );
+      return response.json({ message: "地址已更新。", id: addressId });
+    } catch (error) {
+      if (error?.code === "ER_DUP_ENTRY") {
+        return response.status(409).json({ message: "該地址已存在，無需重複保存。" });
+      }
+      console.error("Failed to update billing address:", error);
+      return response.status(500).json({ message: "更新帳單地址失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
   // 删除（仅限本租户记录）
   app.delete("/api/billing/billing-addresses/:id", requireAdmin, async (request, response) => {
     if (!requireTenant(request, response)) return;

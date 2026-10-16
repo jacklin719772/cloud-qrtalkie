@@ -28,11 +28,13 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const [paymentType, setPaymentType] = useState('offline');
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [addressFormText, setAddressFormText] = useState('');
+  const [editingAddressId, setEditingAddressId] = useState(null);
   const [addressMessage, setAddressMessage] = useState({ type: '', text: '' });
-  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [isAddressSubmitting, setIsAddressSubmitting] = useState(false);
   const [renewalAccounts, setRenewalAccounts] = useState([]);
   const [selectedRetainedSipUserIds, setSelectedRetainedSipUserIds] = useState(new Set());
   const planCarouselRef = useRef(null);
@@ -75,7 +77,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         }
         if (!isMounted) return;
         setSavedAddresses(savedList);
-        setBillingAddress(savedList[0]?.address || tenant?.billingAddress || '');
+        setBillingAddress(savedList[0]?.address || '');
         setSelectedAddressId(savedList[0] ? String(savedList[0].id) : '');
 
         // 設定預設值：預設為線下支付
@@ -284,7 +286,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     setError(null);
   };
 
-  // 帳單地址簿：保存 / 選擇 / 刪除（僅租戶端）
+  // 帳單地址簿：下拉選擇 + 彈窗管理（新增/修改/刪除，僅租戶端）
   const showAddressMessage = (type, text) => {
     setAddressMessage({ type, text });
     if (addressMessageTimerRef.current) window.clearTimeout(addressMessageTimerRef.current);
@@ -309,48 +311,82 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
 
   const handleSavedAddressSelect = (value) => {
     setSelectedAddressId(value);
-    if (!value) return;
     const found = savedAddresses.find(item => String(item.id) === value);
-    if (found) setBillingAddress(found.address);
+    setBillingAddress(found ? found.address : '');
   };
 
-  const handleRevertBillingAddress = () => {
-    setIsEditingAddress(false);
-    const selected = savedAddresses.find(item => String(item.id) === selectedAddressId);
-    setBillingAddress(selected ? selected.address : (tenant?.billingAddress || ''));
+  const openAddressDialog = () => {
+    setAddressDialogOpen(true);
+    setEditingAddressId(null);
+    setAddressFormText('');
+    setAddressMessage({ type: '', text: '' });
   };
 
-  const handleSaveBillingAddress = async () => {
-    const value = billingAddress.trim();
+  const closeAddressDialog = () => {
+    setAddressDialogOpen(false);
+    setEditingAddressId(null);
+    setAddressFormText('');
+  };
+
+  const startEditAddress = (item) => {
+    setEditingAddressId(item.id);
+    setAddressFormText(item.address);
+    setAddressMessage({ type: '', text: '' });
+  };
+
+  const cancelEditAddress = () => {
+    setEditingAddressId(null);
+    setAddressFormText('');
+  };
+
+  const submitAddressForm = async () => {
+    const value = addressFormText.trim();
     if (!value) {
-      showAddressMessage('error', '請先輸入帳單地址。');
+      showAddressMessage('error', '請輸入帳單地址。');
       return;
     }
-    if (isSavingAddress) return;
-    setIsSavingAddress(true);
+    if (isAddressSubmitting) return;
+    setIsAddressSubmitting(true);
     try {
-      const res = await apiClient.post('/billing/billing-addresses', { address: value });
-      const list = await reloadBillingAddresses();
-      const match = list.find(item => (res?.id && item.id === res.id) || item.address === value);
-      setSelectedAddressId(match ? String(match.id) : '');
-      showAddressMessage('success', res?.duplicated ? '該地址已保存過。' : '地址已保存。');
+      if (editingAddressId) {
+        await apiClient.put(`/billing/billing-addresses/${editingAddressId}`, { address: value });
+        await reloadBillingAddresses();
+        if (String(selectedAddressId) === String(editingAddressId)) setBillingAddress(value);
+        showAddressMessage('success', '地址已更新。');
+      } else {
+        const res = await apiClient.post('/billing/billing-addresses', { address: value });
+        const list = await reloadBillingAddresses();
+        const match = list.find(item => (res?.id && item.id === res.id) || item.address === value);
+        if (match) {
+          setSelectedAddressId(String(match.id));
+          setBillingAddress(match.address);
+        }
+        showAddressMessage('success', res?.duplicated ? '該地址已保存過，已為你選中。' : '地址已新增。');
+      }
+      setEditingAddressId(null);
+      setAddressFormText('');
     } catch (err) {
       showAddressMessage('error', err.message || '保存帳單地址失敗。');
     } finally {
-      setIsSavingAddress(false);
+      setIsAddressSubmitting(false);
     }
   };
 
-  const handleDeleteBillingAddress = async () => {
-    const found = savedAddresses.find(item => String(item.id) === selectedAddressId);
-    if (!found) return;
-    const preview = found.address.length > 40 ? `${found.address.slice(0, 40)}…` : found.address;
-    if (!window.confirm(`確定要刪除已保存的地址「${preview}」嗎？`)) return;
+  const deleteAddressFromDialog = async (item) => {
+    const oneLine = item.address.replace(/\s+/g, ' ');
+    const preview = oneLine.length > 40 ? `${oneLine.slice(0, 40)}…` : oneLine;
+    if (!window.confirm(`確定要刪除地址「${preview}」嗎？`)) return;
     try {
-      await apiClient.delete(`/billing/billing-addresses/${found.id}`);
-      const list = await reloadBillingAddresses();
-      const remaining = list.find(item => item.address === billingAddress.trim());
-      setSelectedAddressId(remaining ? String(remaining.id) : '');
+      await apiClient.delete(`/billing/billing-addresses/${item.id}`);
+      await reloadBillingAddresses();
+      if (String(selectedAddressId) === String(item.id)) {
+        setSelectedAddressId('');
+        setBillingAddress('');
+      }
+      if (String(editingAddressId) === String(item.id)) {
+        setEditingAddressId(null);
+        setAddressFormText('');
+      }
       showAddressMessage('success', '地址已刪除。');
     } catch (err) {
       showAddressMessage('error', err.message || '刪除帳單地址失敗。');
@@ -587,15 +623,6 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           border: 1px solid #374151 !important;
           color: #e5e7eb !important;
         }
-        #purchase-plan .billing-address-line textarea {
-          background: #1a2332 !important;
-          color: #e5e7eb !important;
-          border: 1px solid #374151 !important;
-        }
-        #purchase-plan .billing-address-line textarea:focus {
-          border-color: #3b82f6 !important;
-          outline: none !important;
-        }
         #purchase-plan .billing-address-line select {
           background: #1a2332 !important;
           color: #e5e7eb !important;
@@ -608,7 +635,6 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           border-color: #3b82f6 !important;
           outline: none !important;
         }
-        #purchase-plan .billing-address-line .link-btn:disabled { color: #4b5563; cursor: not-allowed; }
         #purchase-plan .billing-address-message {
           margin-top: 6px;
           padding: 8px 12px;
@@ -617,6 +643,100 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         }
         #purchase-plan .billing-address-message.success { background: #0d2818; color: #4ade80; }
         #purchase-plan .billing-address-message.error { background: #3b1111; color: #fca5a5; }
+        #purchase-plan .billing-address-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          background: rgba(0, 0, 0, 0.55);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        #purchase-plan .billing-address-modal {
+          width: min(560px, 92vw);
+          max-height: 86vh;
+          background: #111827;
+          border: 1px solid #1f2937;
+          border-radius: 12px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+        }
+        #purchase-plan .billing-address-modal-head {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 22px;
+          background: #1a2332;
+          border-bottom: 1px solid #1f2937;
+        }
+        #purchase-plan .billing-address-modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
+        #purchase-plan .billing-address-modal-body {
+          flex: 1;
+          min-height: 0;
+          overflow-y: auto;
+          padding: 18px 22px;
+          scrollbar-width: none;
+        }
+        #purchase-plan .billing-address-modal-body::-webkit-scrollbar { display: none; }
+        #purchase-plan .billing-address-modal-foot {
+          flex-shrink: 0;
+          display: flex;
+          justify-content: flex-end;
+          padding: 14px 22px;
+          border-top: 1px solid #1f2937;
+        }
+        #purchase-plan .billing-address-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          background: #1a2332;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          padding: 10px 12px;
+        }
+        #purchase-plan .billing-address-item + .billing-address-item { margin-top: 10px; }
+        #purchase-plan .billing-address-item.editing { border-color: #3b82f6; }
+        #purchase-plan .billing-address-item-text {
+          flex: 1;
+          min-width: 0;
+          color: #e5e7eb;
+          font-size: 13px;
+          line-height: 1.6;
+          word-break: break-word;
+          white-space: pre-wrap;
+        }
+        #purchase-plan .billing-address-item-actions { flex: 0 0 auto; display: flex; gap: 10px; }
+        #purchase-plan .billing-address-empty { color: #9ca3af; font-size: 13px; padding: 4px 0; }
+        #purchase-plan .billing-address-form {
+          margin-top: 16px;
+          border-top: 1px solid #1f2937;
+          padding-top: 14px;
+        }
+        #purchase-plan .billing-address-form h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #d1d5db; }
+        #purchase-plan .billing-address-form textarea {
+          width: 100%;
+          box-sizing: border-box;
+          min-height: 84px;
+          background: #1a2332;
+          color: #e5e7eb;
+          border: 1px solid #374151;
+          border-radius: 6px;
+          padding: 10px 12px;
+          resize: vertical;
+          font: inherit;
+          line-height: 1.5;
+        }
+        #purchase-plan .billing-address-form textarea:focus { border-color: #3b82f6; outline: none; }
+        #purchase-plan .billing-address-form-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 10px;
+        }
         #purchase-plan .offline-payment-info {
           background: #1a2332 !important;
           border: 1px solid #1f2937 !important;
@@ -750,46 +870,29 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
             </>
           )}
 
-          <div className="purchase-side-label label-with-action">
-            <span className="required-text">帳單地址：</span>
-            <span className="label-action-row">
-              {isEditingAddress && <button className="link-btn" onClick={handleRevertBillingAddress} type="button">取消</button>}
-              {isEditingAddress && <button className="link-btn" onClick={handleSaveBillingAddress} type="button" disabled={isSavingAddress}>{isSavingAddress ? '保存中…' : '保存'}</button>}
-              <button className="link-btn" onClick={() => setIsEditingAddress(!isEditingAddress)} type="button">{isEditingAddress ? '完成' : '編輯'}</button>
-            </span>
-          </div>
-          {savedAddresses.length > 0 && (
-            <div className="billing-address-line">
-              <select
-                value={selectedAddressId}
-                onChange={(e) => handleSavedAddressSelect(e.target.value)}
-                aria-label="已保存的帳單地址"
-                style={{ flex: 1, minWidth: 0 }}
-              >
-                <option value="">選擇已保存的地址（{savedAddresses.length}）…</option>
-                {savedAddresses.map(item => {
-                  const oneLine = item.address.replace(/\s+/g, ' ');
-                  return <option key={item.id} value={item.id}>{oneLine.length > 42 ? `${oneLine.slice(0, 42)}…` : oneLine}</option>;
-                })}
-              </select>
-              <button
-                className="link-btn"
-                type="button"
-                onClick={handleDeleteBillingAddress}
-                disabled={!selectedAddressId}
-                title="刪除選中的已保存地址"
-                style={{ flex: '0 0 auto', marginLeft: '4px' }}
-              >
-                刪除
-              </button>
-            </div>
-          )}
+          <label className="purchase-side-label required">帳單地址：</label>
           <div className="billing-address-line">
-            <textarea name="purchaseBillingAddress" rows="1" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} readOnly={!isEditingAddress}></textarea>
+            <select
+              value={selectedAddressId}
+              onChange={(e) => handleSavedAddressSelect(e.target.value)}
+              aria-label="帳單地址"
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <option value="">{savedAddresses.length > 0 ? '請選擇帳單地址…' : '暫無已保存地址，請點「新增」'}</option>
+              {savedAddresses.map(item => {
+                const oneLine = item.address.replace(/\s+/g, ' ');
+                return <option key={item.id} value={item.id}>{oneLine.length > 48 ? `${oneLine.slice(0, 48)}…` : oneLine}</option>;
+              })}
+            </select>
+            <button
+              className="ghost-btn"
+              type="button"
+              onClick={openAddressDialog}
+              style={{ flex: '0 0 auto', height: '44px', padding: '0 18px' }}
+            >
+              新增
+            </button>
           </div>
-          {addressMessage.text && (
-            <div className={`billing-address-message ${addressMessage.type}`}>{addressMessage.text}</div>
-          )}
 
           <label className="purchase-side-label">優惠碼：</label>
           <div className="coupon-entry">
@@ -883,6 +986,53 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         </div>
         </div>
       </form>
+
+      {addressDialogOpen && (
+        <div className="billing-address-modal-overlay" onClick={closeAddressDialog}>
+          <div className="billing-address-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="billing-address-modal-head">
+              <h3>帳單地址管理</h3>
+              <button type="button" onClick={closeAddressDialog} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '20px', lineHeight: 1, color: '#9ca3af', padding: '0 4px' }}>&times;</button>
+            </div>
+            <div className="billing-address-modal-body">
+              {savedAddresses.length === 0 ? (
+                <div className="billing-address-empty">暫無已保存地址，請在下方新增。</div>
+              ) : (
+                <div>
+                  {savedAddresses.map(item => (
+                    <div key={item.id} className={`billing-address-item ${String(editingAddressId) === String(item.id) ? 'editing' : ''}`}>
+                      <div className="billing-address-item-text">{item.address}</div>
+                      <div className="billing-address-item-actions">
+                        <button className="link-btn" type="button" onClick={() => startEditAddress(item)}>編輯</button>
+                        <button className="link-btn" type="button" onClick={() => deleteAddressFromDialog(item)} style={{ color: '#f87171' }}>刪除</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="billing-address-form">
+                <h4>{editingAddressId ? '修改地址' : '新增地址'}</h4>
+                <textarea
+                  rows={3}
+                  value={addressFormText}
+                  onChange={(e) => setAddressFormText(e.target.value)}
+                  placeholder="請輸入完整帳單地址"
+                ></textarea>
+                {addressMessage.text && (
+                  <div className={`billing-address-message ${addressMessage.type}`}>{addressMessage.text}</div>
+                )}
+                <div className="billing-address-form-actions">
+                  {editingAddressId && <button className="ghost-btn" type="button" onClick={cancelEditAddress}>取消修改</button>}
+                  <button className="primary-btn" type="button" onClick={submitAddressForm} disabled={isAddressSubmitting}>{isAddressSubmitting ? '保存中…' : editingAddressId ? '保存修改' : '新增'}</button>
+                </div>
+              </div>
+            </div>
+            <div className="billing-address-modal-foot">
+              <button className="ghost-btn" type="button" onClick={closeAddressDialog}>關閉</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
