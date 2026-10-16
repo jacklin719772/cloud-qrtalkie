@@ -200,7 +200,7 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
     // 訂單修改：后端禁止已通过/已驳回；待審核隐藏（编辑会重置订单，需先撤销提交）
     const canModify = !['review_approved', 'review_rejected', 'pending_review'].includes(order.orderStatus);
     const canDelete = (order.orderStatus === 'pending_payment' && order.paymentStatus === 'unpaid') || order.orderStatus === 'pending_review';
-    // 續訂僅限未過期訂單（到期當天仍可續）；已過期引導重新購買
+    // 續訂僅限未過期訂單（到期當天仍可續）；已過期引導直接購買新套餐
     const todayForRenew = new Date().toISOString().slice(0, 10);
     const orderNotExpired = order.expiresAt ? String(order.expiresAt).slice(0, 10) >= todayForRenew : true;
     const canRenew = order.orderStatus === 'review_approved' && orderNotExpired;
