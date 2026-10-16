@@ -112,7 +112,7 @@ import {
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
 import { parseVcardText, mergeVcardText, readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
-import { getReservedTrialTenantId, isReservedTrialTenant } from "./trialService.js";
+import { getReservedTrialTenantId, isReservedTrialTenant, activateTrialAccountInFlexisip } from "./trialService.js";
 import {
   createContactList,
   assignContactListToAccount,
@@ -10690,6 +10690,31 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
       );
     };
 
+    // 審核通過前：逐一確認待分配帳號在通訊核心（AM）為啟用態，未啟用則啟用並回讀確認。
+    // 失敗（含映射異常）即中止本次稽核（事務回滾），提示稍後重試或更換帳號。
+    const ensureFlexisipActivatedForAccounts = async (sipUserIds) => {
+      const ids = Array.from(new Set((sipUserIds || []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)));
+      for (const sipUserId of ids) {
+        try {
+          await activateTrialAccountInFlexisip(sipUserId, connection);
+        } catch (error) {
+          const accountRows = await connection.query("SELECT username FROM sip_users WHERE id = ? LIMIT 1", [sipUserId]);
+          const username = accountRows[0]?.username || String(sipUserId);
+          if (error?.code === "FLEXISIP_MAPPING_MISMATCH") {
+            const mappingError = new Error(`帳號 ${username} 在通訊核心的映射異常，無法安全開通，請更換帳號後重試。`);
+            mappingError.httpStatus = 409;
+            mappingError.exposeMessage = true;
+            throw mappingError;
+          }
+          console.error("[review] AM activate failed:", username, error?.message || error);
+          const amError = new Error(`帳號 ${username} 在通訊核心（AM）啟用失敗，已取消本次稽核，請稍後重試。`);
+          amError.httpStatus = 502;
+          amError.exposeMessage = true;
+          throw amError;
+        }
+      }
+    };
+
     if (status === "review_approved") {
       if (requiredAccountCount <= 0) {
         await connection.rollback();
@@ -10852,6 +10877,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         const releasedRenewalEntitlements = allRenewalEntitlements.filter((item) => !retainedEntitlementIdSet.has(Number(item.id)));
         const releasedSipUserIds = releasedRenewalEntitlements.map((item) => Number(item.sip_user_id));
         const releasedEntitlementIds = releasedRenewalEntitlements.map((item) => Number(item.id));
+        // 先 AM（檢查/啟用+回讀），後本地寫入；失敗即回滾
+        await ensureFlexisipActivatedForAccounts(allRenewalSipUserIds);
         await connection.query(
           `UPDATE billing_orders
            SET order_status = 'review_approved',
@@ -10965,6 +10992,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         const serviceStartsAt = todayDate();
         const serviceExpiresAt = addMonthsMinusOneDay(serviceStartsAt, months);
         const serviceExpiresExpression = `DATE_SUB(DATE_ADD(CURDATE(), INTERVAL ? MONTH), INTERVAL 1 DAY)`;
+        // 先 AM（檢查/啟用+回讀），後本地寫入；失敗即回滾
+        await ensureFlexisipActivatedForAccounts(uniqueSipAccountIds);
         await connection.query(
           `UPDATE billing_orders
            SET order_status = 'review_approved',
