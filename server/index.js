@@ -2286,66 +2286,101 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    const rows = orderQuery
-      ? await connection.query(
-        `SELECT
-           a.id, a.sip_user_id, a.username, a.sip_domain, a.display_name,
-           a.email, a.phone_number, a.role, a.account_status,
-           DATE_FORMAT(a.service_starts_at, '%Y-%m-%d') AS service_starts_at,
-           DATE_FORMAT(a.service_expires_at, '%Y-%m-%d') AS service_expires_at,
-           a.assigned_at,
-           o.order_no,
-           cba.contact_book_id,
-           tcb.name AS contact_book_name,
-           wu.username AS web_username
-         FROM billing_order_sip_accounts a
-         JOIN billing_orders o ON o.id = a.order_id
-         LEFT JOIN tenant_tenant_contact_book_assignments cba
-           ON cba.sip_user_id = a.sip_user_id
-          AND cba.tenant_id = a.tenant_id
-          AND cba.status = 'active'
-         LEFT JOIN tenant_tenant_contact_books tcb
-           ON tcb.id = cba.contact_book_id
-          AND cb.tenant_id = a.tenant_id
-         LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = a.sip_user_id AND we.tenant_id = a.tenant_id AND we.status = 'active'
-         LEFT JOIN web_users wu ON wu.id = we.web_user_id
-         WHERE a.tenant_id = ?
-           AND o.order_no LIKE ?
-         ORDER BY a.assigned_at DESC, a.id DESC`,
-        [request.admin.tenantId, `%${orderQuery}%`],
-      )
-      : await connection.query(
-        `SELECT
-           a.id, a.sip_user_id, a.username, a.sip_domain, a.display_name,
-           a.email, a.phone_number, a.role, a.account_status,
-           DATE_FORMAT(a.service_starts_at, '%Y-%m-%d') AS service_starts_at,
-           DATE_FORMAT(a.service_expires_at, '%Y-%m-%d') AS service_expires_at,
-           a.assigned_at,
-           o.order_no,
-           cba.contact_book_id,
-           cb.name AS contact_book_name,
-           wu.username AS web_username
-         FROM billing_order_sip_accounts a
-         JOIN tenant_sip_account_entitlements ent
-           ON ent.tenant_id = a.tenant_id
-          AND ent.sip_user_id = a.sip_user_id
-          AND ent.current_order_id = a.order_id
-          AND ent.status = 'active'
-         JOIN billing_orders o ON o.id = a.order_id
-         LEFT JOIN tenant_contact_book_assignments cba
-           ON cba.sip_user_id = a.sip_user_id
-          AND cba.tenant_id = a.tenant_id
-          AND cba.status = 'active'
-         LEFT JOIN tenant_contact_books cb
-           ON cb.id = cba.contact_book_id
-          AND cb.tenant_id = a.tenant_id
-         LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = a.sip_user_id AND we.tenant_id = a.tenant_id AND we.status = 'active'
-         LEFT JOIN web_users wu ON wu.id = we.web_user_id
-         WHERE a.tenant_id = ?
-           AND a.service_expires_at >= CURDATE()
-         ORDER BY a.assigned_at DESC, a.id DESC`,
-        [request.admin.tenantId],
-      );
+    const rows = await connection.query(
+      `SELECT
+         a.id, a.sip_user_id, a.username, a.sip_domain, a.display_name,
+         a.email, a.phone_number, a.role, a.account_status,
+         DATE_FORMAT(a.service_starts_at, '%Y-%m-%d') AS service_starts_at,
+         DATE_FORMAT(a.service_expires_at, '%Y-%m-%d') AS service_expires_at,
+         a.assigned_at,
+         o.order_no,
+         ent.current_order_id,
+         cba.contact_book_id,
+         cb.name AS contact_book_name,
+         wu.username AS web_username
+       FROM billing_order_sip_accounts a
+       JOIN tenant_sip_account_entitlements ent
+         ON ent.tenant_id = a.tenant_id
+        AND ent.sip_user_id = a.sip_user_id
+        AND ent.current_order_id = a.order_id
+        AND ent.status = 'active'
+       JOIN billing_orders o ON o.id = a.order_id
+       LEFT JOIN tenant_contact_book_assignments cba
+         ON cba.sip_user_id = a.sip_user_id
+        AND cba.tenant_id = a.tenant_id
+        AND cba.status = 'active'
+       LEFT JOIN tenant_contact_books cb
+         ON cb.id = cba.contact_book_id
+        AND cb.tenant_id = a.tenant_id
+       LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = a.sip_user_id AND we.tenant_id = a.tenant_id AND we.status = 'active'
+       LEFT JOIN web_users wu ON wu.id = we.web_user_id
+       WHERE a.tenant_id = ?
+         ${orderQuery ? "AND o.order_no LIKE ?" : ""}
+         AND a.service_expires_at >= CURDATE()
+       ORDER BY a.assigned_at DESC, a.id DESC`,
+      orderQuery ? [request.admin.tenantId, `%${orderQuery}%`] : [request.admin.tenantId],
+    );
+
+    // 每個帳號的訂閱歷史（按訂單時間順序）：正式/續訂訂單快照 + 試用批次記錄
+    const ordersBySip = new Map();
+    if (rows.length > 0) {
+      const historySipIds = [...new Set(rows.map((r) => Number(r.sip_user_id)).filter(Boolean))];
+      if (historySipIds.length > 0) {
+        const placeholders = historySipIds.map(() => "?").join(",");
+        const orderHistoryRows = await connection.query(
+          `SELECT b.sip_user_id, b.order_id,
+                  o.order_no, o.order_type,
+                  DATE_FORMAT(o.effective_at, '%Y-%m-%d') AS effective_at,
+                  DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at
+           FROM billing_order_sip_accounts b
+           JOIN billing_orders o ON o.id = b.order_id
+           WHERE b.tenant_id = ?
+             AND b.sip_user_id IN (${placeholders})
+             AND o.order_status = 'review_approved'
+           ORDER BY o.effective_at ASC, o.id ASC`,
+          [request.admin.tenantId, ...historySipIds],
+        );
+        for (const row of orderHistoryRows) {
+          const sipKey = Number(row.sip_user_id);
+          if (!ordersBySip.has(sipKey)) ordersBySip.set(sipKey, []);
+          ordersBySip.get(sipKey).push({
+            type: row.order_type || "new_purchase",
+            orderId: Number(row.order_id),
+            orderNo: row.order_no || "",
+            effectiveAt: row.effective_at || "",
+            expiresAt: row.expires_at || "",
+            current: false,
+          });
+        }
+        const trialHistoryRows = await connection.query(
+          `SELECT ta.sip_user_id,
+                  DATE_FORMAT(ta.started_at, '%Y-%m-%d') AS started_at,
+                  DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_at,
+                  o.order_no AS batch_order_no
+           FROM trial_assignments ta
+           LEFT JOIN billing_orders o ON o.id = ta.batch_order_id
+           WHERE ta.owner_tenant_id = ?
+             AND ta.sip_user_id IN (${placeholders})
+           ORDER BY ta.started_at ASC, ta.id ASC`,
+          [request.admin.tenantId, ...historySipIds],
+        );
+        for (const row of trialHistoryRows) {
+          const sipKey = Number(row.sip_user_id);
+          if (!ordersBySip.has(sipKey)) ordersBySip.set(sipKey, []);
+          ordersBySip.get(sipKey).push({
+            type: "trial",
+            orderId: null,
+            orderNo: row.batch_order_no || "",
+            effectiveAt: row.started_at || "",
+            expiresAt: row.expires_at || "",
+            current: false,
+          });
+        }
+        for (const list of ordersBySip.values()) {
+          list.sort((a, b) => String(a.effectiveAt).localeCompare(String(b.effectiveAt)));
+        }
+      }
+    }
 
     // Fetch sync_status from sip_users for all accounts
     const syncStatusMap = new Map();
@@ -2381,6 +2416,10 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
         contactBookName: row.contact_book_name || "",
         syncStatus: syncStatusMap.get(Number(row.sip_user_id)) || "local_only",
+        orders: (ordersBySip.get(Number(row.sip_user_id)) || []).map((item) => ({
+          ...item,
+          current: item.type !== "trial" && row.current_order_id != null && Number(row.current_order_id) === item.orderId,
+        })),
       })),
     });
   } catch (error) {
@@ -10775,18 +10814,21 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
 
       const reusedEntitlementIds = assignments.filter((item) => item.reused && item.entitlementId).map((item) => item.entitlementId);
       if (reusedEntitlementIds.length > 0) {
+        // 續訂複用：起始日保持不變（僅改到期）；試用轉正複用：起始=轉正生效日
         await connection.query(
           `UPDATE tenant_web_account_entitlements
            SET tenant_id = ?,
                current_order_id = ?,
                last_renewal_order_id = ?,
                status = 'active',
-               service_starts_at = ?,
+               ${isRenewalOrder ? "" : "service_starts_at = ?,"}
                service_expires_at = ?,
                renewed_at = NOW(),
                renewed_by_admin_user_id = ?
            WHERE id IN (${reusedEntitlementIds.map(() => "?").join(",")})`,
-          [Number(order.tenant_id), orderId, isRenewalOrder ? orderId : null, serviceStartsAt, serviceExpiresAt, request.admin.id, ...reusedEntitlementIds],
+          isRenewalOrder
+            ? [Number(order.tenant_id), orderId, orderId, serviceExpiresAt, request.admin.id, ...reusedEntitlementIds]
+            : [Number(order.tenant_id), orderId, null, serviceStartsAt, serviceExpiresAt, request.admin.id, ...reusedEntitlementIds],
         );
       }
 
@@ -11083,12 +11125,11 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
              SET current_order_id = ?,
                  last_renewal_order_id = ?,
                  status = 'active',
-                 service_starts_at = ?,
                  service_expires_at = ?,
                  renewed_at = NOW(),
                  renewed_by_admin_user_id = ?
              WHERE id IN (${renewalEntitlementIds.map(() => "?").join(",")})`,
-            [orderId, orderId, renewalStartDate, renewalExpiresDate, request.admin.id, ...renewalEntitlementIds],
+            [orderId, orderId, renewalExpiresDate, request.admin.id, ...renewalEntitlementIds],
           );
         }
 

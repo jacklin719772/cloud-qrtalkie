@@ -10,6 +10,36 @@ function formatDate(value) {
   return String(value).slice(0, 10);
 }
 
+// 訂閱歷史：訂單類型標籤與顏色
+function orderTypeLabel(type) {
+  if (type === 'trial') return '試用';
+  if (type === 'renewal') return '續訂';
+  return '正式';
+}
+
+function orderTypeColor(type) {
+  if (type === 'trial') return '#fbbf24';
+  if (type === 'renewal') return '#60a5fa';
+  return '#4ade80';
+}
+
+// 訂閱記錄行（列表與彈窗共用）：類型標籤 + 訂單號 + 起止 + 當前標記
+function renderOrderHistoryLines(orders) {
+  if (!Array.isArray(orders) || orders.length === 0) return '-';
+  return (
+    <div style={{ display: 'grid', gap: '4px', fontSize: '12px', lineHeight: 1.5 }}>
+      {orders.map((item, index) => (
+        <div key={`${item.orderNo || 'order'}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+          <span style={{ color: orderTypeColor(item.type), border: `1px solid ${orderTypeColor(item.type)}`, borderRadius: '4px', padding: '0 4px', fontSize: '11px' }}>{orderTypeLabel(item.type)}</span>
+          <span style={{ fontFamily: 'monospace', color: '#9ca3af' }}>{item.orderNo || '-'}</span>
+          <span style={{ color: '#e5e7eb' }}>{formatDate(item.effectiveAt)} ~ {formatDate(item.expiresAt)}</span>
+          {item.current && <span style={{ color: '#fbbf24', fontSize: '11px', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px' }}>當前</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function formatChineseDateTime(value) {
   if (!value) return '-';
   const date = new Date(value);
@@ -265,7 +295,6 @@ const TenantAccountManagement = forwardRef(({
       if (sortConfig.key === 'displayName') return account.displayName || '';
       if (sortConfig.key === 'orderNo') return account.orderNo || '';
       if (sortConfig.key === 'status') return account.status || '';
-      if (sortConfig.key === 'serviceStartsAt') return account.serviceStartsAt || '';
       if (sortConfig.key === 'serviceExpiresAt') return account.serviceExpiresAt || '';
       if (sortConfig.key === 'domain') return account.domain || '';
       return '';
@@ -717,8 +746,8 @@ const TenantAccountManagement = forwardRef(({
                   <input value={detailAccount.orderNo || '-'} readOnly style={readonlyInputStyle} />
                 </label>
                 <label style={labelStyle}>
-                  <span style={labelTextStyle}>開始日期</span>
-                  <input value={formatDate(detailAccount.serviceStartsAt)} readOnly style={readonlyInputStyle} />
+                  <span style={labelTextStyle}>訂閱記錄</span>
+                  <div style={{ ...readonlyInputStyle, height: 'auto', minHeight: '38px', display: 'grid', alignItems: 'center', overflowX: 'auto' }}>{renderOrderHistoryLines(detailAccount.orders)}</div>
                 </label>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>結束日期</span>
@@ -1117,7 +1146,7 @@ const TenantAccountManagement = forwardRef(({
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('contactBookName')}><span>通訊錄</span><span>{getSortIndicator('contactBookName')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>訂單編號</span><span>{getSortIndicator('orderNo')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('status')}><span>狀態</span><span>{getSortIndicator('status')}</span></button></th>
-                <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>開始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
+                <th>訂閱記錄</th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>結束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
                 {showDomain && <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('domain')}><span>域名</span><span>{getSortIndicator('domain')}</span></button></th>}
                 <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center' }}>操作</th>
@@ -1150,7 +1179,7 @@ const TenantAccountManagement = forwardRef(({
                     <td style={{ fontSize: '12px' }}>{account.contactBookName || '—'}</td>
                     <td>{account.orderNo || '-'}</td>
                     <td style={{ padding: '12px 16px' }}>{getStatusBadge(account.status)}</td>
-                    <td>{formatDate(account.serviceStartsAt)}</td>
+                    <td style={{ padding: '10px 16px' }}>{renderOrderHistoryLines(account.orders)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
                     {showDomain && <td>{account.domain || '-'}</td>}
                     <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center', padding: '0 12px' }}>
@@ -1239,7 +1268,7 @@ const TenantAccountManagement = forwardRef(({
               <span style={{ color: '#9ca3af' }}>域名</span><span>{detailAccount.domain || '-'}</span>
               <span style={{ color: '#9ca3af' }}>郵箱</span><span>{detailAccount.email || '-'}</span>
               <span style={{ color: '#9ca3af' }}>電話</span><span>{detailAccount.phone || '-'}</span>
-              <span style={{ color: '#9ca3af' }}>開始日期</span><span>{formatDate(detailAccount.serviceStartsAt)}</span>
+              <span style={{ color: '#9ca3af' }}>訂閱記錄</span><span>{(detailAccount.orders || []).length > 0 ? (detailAccount.orders || []).map((item) => `${orderTypeLabel(item.type)} ${item.orderNo || '-'} ${formatDate(item.effectiveAt)}~${formatDate(item.expiresAt)}${item.current ? '（當前）' : ''}`).join('；') : '-'}</span>
               <span style={{ color: '#9ca3af' }}>結束日期</span><span>{formatDate(detailAccount.serviceExpiresAt)}</span>
             </div>
             <div style={{ borderTop: '1px solid #1f2937', marginTop: '14px', paddingTop: '14px' }}>
