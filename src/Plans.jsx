@@ -670,7 +670,7 @@ const Plans = forwardRef((props, ref) => {
         #plans .billing-table tbody td strong,
         #plans .billing-table tbody td small,
         #plans .billing-table tbody td span { color: inherit; }
-        #plans .billing-table-wrap { background: #111827; }
+        #plans .billing-table-wrap { background: #111827; border-color: #374151; }
         #plans .billing-table td:last-child,
         #console #plans .billing-table td:last-child { background: #111827; box-shadow: -8px 0 14px rgba(0,0,0,0.3); }
         #plans .billing-table th:last-child,
@@ -723,12 +723,14 @@ const Plans = forwardRef((props, ref) => {
         #plans .form-message { color: #d1d5db; }
         #plans .form-message.error { background: #3b1111; color: #ef4444; }
         #plans .form-message.success { background: #0d2818; color: #22c55e; }
-        #plans .billing-table-wrap,
         #plans .form-grid,
         #plans .modal-body { scrollbar-width: none; }
-        #plans .billing-table-wrap::-webkit-scrollbar,
         #plans .form-grid::-webkit-scrollbar,
         #plans .modal-body::-webkit-scrollbar { display: none; }
+        #plans .billing-table-wrap { scrollbar-color: #4b5563 #1a2332; }
+        #plans .billing-table-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
+        #plans .billing-table-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
+        #plans .billing-table-wrap::-webkit-scrollbar-track { background: #1a2332; }
       `}</style>
       <section className="view active settings-form-page" id="plans" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <div className="tenant-settings-form" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#111827', borderColor: '#1f2937' }}>
@@ -971,7 +973,7 @@ const Plans = forwardRef((props, ref) => {
             </div>
 
             {/* 表格 */}
-            <div className="table-wrap billing-table-wrap" style={{ flex: 1, overflowY: 'auto' }}>
+            <div className="table-wrap billing-table-wrap" style={{ flex: 1, overflow: 'auto' }}>
               <table className="billing-table">
                 <thead style={{ position: 'sticky', top: 0, zIndex: 5 }}>
                   <tr>

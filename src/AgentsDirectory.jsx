@@ -724,6 +724,8 @@ export default forwardRef(function AgentsDirectory(props, ref) {
         #agents-directory .agent-table .status-inactive { background: #1f2937; color: #9ca3af; }
         #agents-directory .agent-table-footer { background: #111827; border-top-color: #1f2937; }
         #agents-directory .agent-page-current { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+        #agents-directory .agent-page-btn { background: #1a2332; border-color: #374151; color: #e5e7eb; }
+        #agents-directory .agent-page-btn:disabled { background: #111827; color: #4b5563; border-color: #374151; }
         #agents-directory .agent-page-input { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #agents-directory .agent-page-size { background: #1a2332; border-color: #374151; color: #e5e7eb; }
         #agents-directory .agent-table-wrapper { scrollbar-width: none; }
