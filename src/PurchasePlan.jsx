@@ -29,9 +29,14 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const [selectedPaymentMethodCode, setSelectedPaymentMethodCode] = useState('');
   const [billingAddress, setBillingAddress] = useState('');
   const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [addressMessage, setAddressMessage] = useState({ type: '', text: '' });
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [renewalAccounts, setRenewalAccounts] = useState([]);
   const [selectedRetainedSipUserIds, setSelectedRetainedSipUserIds] = useState(new Set());
   const planCarouselRef = useRef(null);
+  const addressMessageTimerRef = useRef(null);
 
   // 2. 資料獲取 (Data Fetching)
   useEffect(() => {
@@ -59,7 +64,19 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         setPaymentMethods(activePms);
         setOfflinePaymentInfo(offlineInfoRes.account || null);
         setAvailableCoupons(couponsRes.coupons || []);
-        setBillingAddress(tenant?.billingAddress || '');
+
+        // 帳單地址簿：載入失敗不阻塞頁面，僅回退租戶檔案地址
+        let savedList = [];
+        try {
+          const addrRes = await apiClient.get('/billing/billing-addresses');
+          savedList = addrRes.addresses || [];
+        } catch (addrErr) {
+          console.error('Failed to load billing addresses:', addrErr);
+        }
+        if (!isMounted) return;
+        setSavedAddresses(savedList);
+        setBillingAddress(savedList[0]?.address || tenant?.billingAddress || '');
+        setSelectedAddressId(savedList[0] ? String(savedList[0].id) : '');
 
         // 設定預設值：預設為線下支付
         if (activePlans.length > 0) setSelectedPlanId(activePlans[0].id);
@@ -87,7 +104,10 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           setSelectedAddonIds(new Set(activeAddons.filter(addon => orderAddonCodes.has(addon.addonCode)).map(addon => addon.id)));
           setPaymentType(order.paymentMethod || 'offline');
           setSelectedPaymentMethodCode(order.paymentMethod === 'online' ? order.paymentChannel || onlinePms[0]?.methodCode || '' : '');
-          setBillingAddress(order.billingAddress || tenant?.billingAddress || '');
+          const orderAddress = order.billingAddress || tenant?.billingAddress || '';
+          setBillingAddress(orderAddress);
+          const matchedAddress = savedList.find((item) => item.address === orderAddress);
+          setSelectedAddressId(matchedAddress ? String(matchedAddress.id) : '');
           setAppliedCoupon(null);
           setCouponCode('');
           setSelectedCouponAssignmentId('');
@@ -262,6 +282,79 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     setAppliedCoupon(coupon);
     setCouponCode(coupon?.couponCode || '');
     setError(null);
+  };
+
+  // 帳單地址簿：保存 / 選擇 / 刪除（僅租戶端）
+  const showAddressMessage = (type, text) => {
+    setAddressMessage({ type, text });
+    if (addressMessageTimerRef.current) window.clearTimeout(addressMessageTimerRef.current);
+    if (text) {
+      addressMessageTimerRef.current = window.setTimeout(() => {
+        setAddressMessage({ type: '', text: '' });
+        addressMessageTimerRef.current = null;
+      }, 5000);
+    }
+  };
+
+  useEffect(() => () => {
+    if (addressMessageTimerRef.current) window.clearTimeout(addressMessageTimerRef.current);
+  }, []);
+
+  const reloadBillingAddresses = async () => {
+    const res = await apiClient.get('/billing/billing-addresses');
+    const list = res.addresses || [];
+    setSavedAddresses(list);
+    return list;
+  };
+
+  const handleSavedAddressSelect = (value) => {
+    setSelectedAddressId(value);
+    if (!value) return;
+    const found = savedAddresses.find(item => String(item.id) === value);
+    if (found) setBillingAddress(found.address);
+  };
+
+  const handleRevertBillingAddress = () => {
+    setIsEditingAddress(false);
+    const selected = savedAddresses.find(item => String(item.id) === selectedAddressId);
+    setBillingAddress(selected ? selected.address : (tenant?.billingAddress || ''));
+  };
+
+  const handleSaveBillingAddress = async () => {
+    const value = billingAddress.trim();
+    if (!value) {
+      showAddressMessage('error', '請先輸入帳單地址。');
+      return;
+    }
+    if (isSavingAddress) return;
+    setIsSavingAddress(true);
+    try {
+      const res = await apiClient.post('/billing/billing-addresses', { address: value });
+      const list = await reloadBillingAddresses();
+      const match = list.find(item => (res?.id && item.id === res.id) || item.address === value);
+      setSelectedAddressId(match ? String(match.id) : '');
+      showAddressMessage('success', res?.duplicated ? '該地址已保存過。' : '地址已保存。');
+    } catch (err) {
+      showAddressMessage('error', err.message || '保存帳單地址失敗。');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleDeleteBillingAddress = async () => {
+    const found = savedAddresses.find(item => String(item.id) === selectedAddressId);
+    if (!found) return;
+    const preview = found.address.length > 40 ? `${found.address.slice(0, 40)}…` : found.address;
+    if (!window.confirm(`確定要刪除已保存的地址「${preview}」嗎？`)) return;
+    try {
+      await apiClient.delete(`/billing/billing-addresses/${found.id}`);
+      const list = await reloadBillingAddresses();
+      const remaining = list.find(item => item.address === billingAddress.trim());
+      setSelectedAddressId(remaining ? String(remaining.id) : '');
+      showAddressMessage('success', '地址已刪除。');
+    } catch (err) {
+      showAddressMessage('error', err.message || '刪除帳單地址失敗。');
+    }
   };
 
   const toggleRetainedAccount = (sipUserId) => {
@@ -503,6 +596,27 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           border-color: #3b82f6 !important;
           outline: none !important;
         }
+        #purchase-plan .billing-address-line select {
+          background: #1a2332 !important;
+          color: #e5e7eb !important;
+          border: 1px solid #374151 !important;
+          border-radius: 6px;
+          padding: 10px 12px;
+          height: 44px;
+        }
+        #purchase-plan .billing-address-line select:focus {
+          border-color: #3b82f6 !important;
+          outline: none !important;
+        }
+        #purchase-plan .billing-address-line .link-btn:disabled { color: #4b5563; cursor: not-allowed; }
+        #purchase-plan .billing-address-message {
+          margin-top: 6px;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 12px;
+        }
+        #purchase-plan .billing-address-message.success { background: #0d2818; color: #4ade80; }
+        #purchase-plan .billing-address-message.error { background: #3b1111; color: #fca5a5; }
         #purchase-plan .offline-payment-info {
           background: #1a2332 !important;
           border: 1px solid #1f2937 !important;
@@ -639,13 +753,43 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           <div className="purchase-side-label label-with-action">
             <span className="required-text">帳單地址：</span>
             <span className="label-action-row">
-              {isEditingAddress && <button className="link-btn" onClick={() => { setIsEditingAddress(false); setBillingAddress(tenant?.billingAddress || ''); }} type="button">取消</button>}
+              {isEditingAddress && <button className="link-btn" onClick={handleRevertBillingAddress} type="button">取消</button>}
+              {isEditingAddress && <button className="link-btn" onClick={handleSaveBillingAddress} type="button" disabled={isSavingAddress}>{isSavingAddress ? '保存中…' : '保存'}</button>}
               <button className="link-btn" onClick={() => setIsEditingAddress(!isEditingAddress)} type="button">{isEditingAddress ? '完成' : '編輯'}</button>
             </span>
           </div>
+          {savedAddresses.length > 0 && (
+            <div className="billing-address-line">
+              <select
+                value={selectedAddressId}
+                onChange={(e) => handleSavedAddressSelect(e.target.value)}
+                aria-label="已保存的帳單地址"
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                <option value="">選擇已保存的地址（{savedAddresses.length}）…</option>
+                {savedAddresses.map(item => {
+                  const oneLine = item.address.replace(/\s+/g, ' ');
+                  return <option key={item.id} value={item.id}>{oneLine.length > 42 ? `${oneLine.slice(0, 42)}…` : oneLine}</option>;
+                })}
+              </select>
+              <button
+                className="link-btn"
+                type="button"
+                onClick={handleDeleteBillingAddress}
+                disabled={!selectedAddressId}
+                title="刪除選中的已保存地址"
+                style={{ flex: '0 0 auto', marginLeft: '4px' }}
+              >
+                刪除
+              </button>
+            </div>
+          )}
           <div className="billing-address-line">
             <textarea name="purchaseBillingAddress" rows="1" value={billingAddress} onChange={e => setBillingAddress(e.target.value)} readOnly={!isEditingAddress}></textarea>
           </div>
+          {addressMessage.text && (
+            <div className={`billing-address-message ${addressMessage.type}`}>{addressMessage.text}</div>
+          )}
 
           <label className="purchase-side-label">優惠碼：</label>
           <div className="coupon-entry">

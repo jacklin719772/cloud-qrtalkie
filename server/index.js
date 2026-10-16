@@ -127,6 +127,7 @@ import {
 import { registerPushGatewayRoutes } from "./pushGatewayService.js";
 import { registerTrialManagementRoutes } from "./trialManagementRoutes.js";
 import { registerAgentRoutes } from "./agentRoutes.js";
+import { registerBillingAddressRoutes } from "./billingAddressRoutes.js";
 import { registerCustomerAssistantRoutes } from "./customerAssistant/routes.js";
 import { attachCustomerAssistantWebSocketServer } from "./customerAssistant/realtimeHub.js";
 import { registerGoogleMeetRoutes } from "./googleMeet/routes.js";
@@ -214,6 +215,8 @@ registerPushGatewayRoutes(app, { requireAdmin });
 registerTrialManagementRoutes(app, { requireAdmin });
 // 代理商名錄（2026-10-15 方案）——独立模块，仅平台管理员
 registerAgentRoutes(app, { requireAdmin });
+// 租户账单地址簿（2026-10-16 方案）——独立模块，仅租户管理员，对既有路由只增不改
+registerBillingAddressRoutes(app, { requireAdmin });
 // Customer Assistant（ECard 访客聊天）——独立模块，与 AI 助手平级；对既有路由只增不改
 registerCustomerAssistantRoutes(app, { requireSipUser });
 // Google Meet（发起会议）——独立模块，对既有路由只增不改
