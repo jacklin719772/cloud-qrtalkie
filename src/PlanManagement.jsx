@@ -172,7 +172,7 @@ export default function PlanManagement({ onNavigate }) {
             status: 'active',
             creatorName: '試用轉正',
             createdAt: item.trialExpiresAt ? `試用至 ${item.trialExpiresAt}` : '',
-            domain: '',
+            domain: item.sipDomain || '',
             retained: true,
           }));
           const retainedIds = retainedCandidates.map((item) => item.id);
@@ -915,6 +915,11 @@ export default function PlanManagement({ onNavigate }) {
         .plan-dropdown-menu .dropdown-item { color: #d1d5db; }
         .plan-dropdown-menu .dropdown-item:hover { background: #374151; color: #f3f4f6; }
         .plan-dropdown-menu .dropdown-item.dropdown-item-danger:hover { background: #3b1111; }
+        /* 審核第三步：SIP 帳號分配表滾動條（深色、雙向可見） */
+        #plan-management-review .pr-sip-table-wrap { scrollbar-color: #4b5563 #1a2332; }
+        #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar { height: 10px; width: 10px; }
+        #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 5px; }
+        #plan-management-review .pr-sip-table-wrap::-webkit-scrollbar-track { background: #1a2332; }
       `}</style>
       {!reviewOrder ? (
       <section className="view active" id="plan-management" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#111827' }}>
@@ -1265,7 +1270,7 @@ export default function PlanManagement({ onNavigate }) {
                             <strong style={{ color: '#e5e7eb', fontSize: '14px', fontWeight: 600 }}>{getAccountEffectiveRange(reviewOrder)}</strong>
                           </div>
                         </div>
-                        <div className="table-wrap" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                        <div className="table-wrap pr-sip-table-wrap" style={{ flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', margin: 0, overflowY: 'auto', overflowX: 'auto', backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead style={{ position: 'sticky', top: 0, zIndex: 2, backgroundColor: '#1a2332' }}>
                               <tr>
@@ -1274,7 +1279,12 @@ export default function PlanManagement({ onNavigate }) {
                                     type="checkbox"
                                     checked={requiredCount > 0 && selectedCount === requiredCount}
                                     onChange={(e) => {
-                                      setSelectedSipAccountIds(e.target.checked ? unassignedSipAccounts.slice(0, requiredCount).map(account => account.id) : []);
+                                      if (e.target.checked) {
+                                        setSelectedSipAccountIds(unassignedSipAccounts.slice(0, requiredCount).map(account => account.id));
+                                      } else {
+                                        // 保留帐号（用戶指定）不可取消，僅取消库存選擇
+                                        setSelectedSipAccountIds(unassignedSipAccounts.filter(account => account.retained).map(account => account.id));
+                                      }
                                     }}
                                     disabled={requiredCount <= 0 || unassignedSipAccounts.length === 0}
                                     style={{ cursor: 'pointer' }}
@@ -1310,8 +1320,9 @@ export default function PlanManagement({ onNavigate }) {
                                             setSelectedSipAccountIds(prev => prev.filter(id => id !== account.id));
                                           }
                                         }}
-                                        disabled={!selectedSipAccountIds.includes(account.id) && isSelectionFull}
-                                        style={{ cursor: (!selectedSipAccountIds.includes(account.id) && isSelectionFull) ? 'not-allowed' : 'pointer' }}
+                                        disabled={account.retained || (!selectedSipAccountIds.includes(account.id) && isSelectionFull)}
+                                        title={account.retained ? '用戶指定的保留帳號，不可取消' : undefined}
+                                        style={{ cursor: account.retained || (!selectedSipAccountIds.includes(account.id) && isSelectionFull) ? 'not-allowed' : 'pointer' }}
                                       />
                                     </td>
                                     <td style={{ fontSize: '12px', color: '#e5e7eb', padding: '6px 10px', borderBottom: '1px solid #1f2937' }}>

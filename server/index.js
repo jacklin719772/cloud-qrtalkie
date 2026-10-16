@@ -10815,6 +10815,30 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
           await connection.rollback();
           return response.status(409).json({ message: `${invalidReasons.join("；")}。請剔除後由庫存帳號補足，或返回重新選擇。` });
         }
+        // 用戶指定的保留帳號（狀態仍有效）必須包含在本單分配中，不允許審核時剔除
+        const missingRetained = [];
+        for (const row of retainedTrialRows.filter((item) => item.status === "pending")) {
+          const retainedSipUserId = Number(row.sip_user_id);
+          if (uniqueSipAccountIds.includes(retainedSipUserId)) continue;
+          const [trial] = await connection.query(
+            `SELECT ta.status, ta.owner_tenant_id, u.tenant_id AS sip_tenant_id, u.status AS sip_status
+             FROM trial_assignments ta
+             JOIN sip_users u ON u.id = ta.sip_user_id
+             WHERE ta.id = ?
+             LIMIT 1`,
+            [Number(row.trial_assignment_id)],
+          );
+          const stillValid = trial
+            && trial.status === "active"
+            && Number(trial.owner_tenant_id) === Number(order.tenant_id)
+            && Number(trial.sip_tenant_id) === Number(reservedTrialTenantId)
+            && trial.sip_status === "active";
+          if (stillValid) missingRetained.push(row.username || String(retainedSipUserId));
+        }
+        if (missingRetained.length > 0) {
+          await connection.rollback();
+          return response.status(409).json({ message: `保留的試用帳號（${missingRetained.join("、")}）必須包含在本單分配中，請重新選擇。` });
+        }
       }
     }
 
@@ -11219,7 +11243,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
          r.trial_assignment_id, r.origin_tenant_id,
          ta.status AS trial_current_status, ta.owner_tenant_id AS trial_owner_tenant_id,
          DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS trial_expires_at,
-         u.tenant_id AS sip_tenant_id, u.status AS sip_status
+         u.tenant_id AS sip_tenant_id, u.status AS sip_status, u.sip_domain
        FROM billing_order_retained_accounts r
        LEFT JOIN trial_assignments ta ON ta.id = r.trial_assignment_id
        LEFT JOIN sip_users u ON u.id = r.sip_user_id
@@ -11260,6 +11284,7 @@ app.get("/api/admin/billing-orders/:id", requireAdmin, async (request, response)
         status: row.status || "pending",
         username: row.username || "",
         displayName: row.display_name || "",
+        sipDomain: row.sip_domain || "",
         trialAssignmentId: row.trial_assignment_id == null ? null : Number(row.trial_assignment_id),
         trialStatus: row.trial_current_status || "",
         trialExpiresAt: row.trial_expires_at || "",
