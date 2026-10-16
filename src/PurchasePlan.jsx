@@ -156,6 +156,16 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     return () => { isMounted = false; };
   }, [tenant, purchaseContext?.mode, purchaseContext?.orderId]);
 
+  // 購買數量默認值隨「保留試用帳號」數量變化：quantity = ceil(試用數 / 每份套餐帳號數)
+  // 編輯訂單沿用原單數量；用戶手動調整後不再自動覆蓋（僅在帳號數/套餐變化時重算）
+  useEffect(() => {
+    if (purchaseContext?.orderId) return;
+    if (isRenewalMode || isRepurchaseMode) return;
+    if (retainedTrials.length === 0) return;
+    const accountsPerPlan = Math.max(1, Number(selectedPlan?.accountQuantity || 0));
+    setQuantity(Math.max(1, Math.ceil(retainedTrials.length / accountsPerPlan)));
+  }, [retainedTrials.length, selectedPlanId]);
+
   // 3. 價格與帳單試算 (Real-time Calculation)
   const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId), [plans, selectedPlanId]);
   const selectedPlanCurrency = selectedPlan?.priceTiers?.[0]?.currency || 'USD';
