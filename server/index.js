@@ -6958,6 +6958,17 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+  const addDaysStr = (value, days) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+  const addMonthsMinusOneDayStr = (value, monthCount) => {
+    const date = new Date(`${value}T00:00:00Z`);
+    date.setUTCMonth(date.getUTCMonth() + monthCount);
+    date.setUTCDate(date.getUTCDate() - 1);
+    return date.toISOString().slice(0, 10);
+  };
 
   let connection;
   try {
@@ -7037,6 +7048,10 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const initialPaymentRecordStatus = isOnlinePaid ? 'paid' : "pending";
     const orderNo = makeBusinessNo("ORD");
     const renewalBaseExpiresAt = formatSqlDate(source.expires_at);
+    // 續訂期間建單即確定（起算=原到期+1、到期=起算+時長-1）：未審核時列表/詳情即可展示；
+    // 審核通過時按同一口徑刷新一次
+    const provisionalStartDate = renewalBaseExpiresAt ? addDaysStr(renewalBaseExpiresAt, 1) : null;
+    const provisionalExpiresDate = provisionalStartDate ? addMonthsMinusOneDayStr(provisionalStartDate, requestedMonths) : null;
     console.log("[renew-debug] source.expires_at =", source.expires_at, "renewalBaseExpiresAt =", renewalBaseExpiresAt);
     const sourcePlanItem = itemRows.find((item) => item.item_type === "plan");
     if (!sourcePlanItem) {
@@ -7191,9 +7206,10 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
          tenant_id, order_no, order_type, renewal_source_order_id, renewal_base_expires_at,
          currency, subtotal_amount, discount_amount, payable_amount,
          paid_amount, order_status, payment_status, payment_method, payment_channel, billing_address,
+         effective_at, expires_at,
          coupon_id, coupon_code, coupon_discount_type, coupon_discount_value, created_by_admin_user_id
        )
-       VALUES (?, ?, 'renewal', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, 'renewal', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         request.admin.tenantId,
         orderNo,
@@ -7209,6 +7225,8 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         paymentMethod,
         paymentChannel || null,
         billingAddress,
+        provisionalStartDate,
+        provisionalExpiresDate,
         source.coupon_id ? Number(source.coupon_id) : null,
         source.coupon_code || null,
         source.coupon_discount_type || null,

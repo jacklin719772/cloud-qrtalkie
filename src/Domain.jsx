@@ -31,6 +31,12 @@ function formatChineseDate(value) {
   } catch { return String(value).slice(0, 10); }
 }
 
+// 起止日期展示：未審核且尚未確定（新購單）時顯示「待審核確定」；續訂單建單即有值
+function pendingAwareDate(value, order) {
+  if (value) return formatChineseDate(value);
+  return ['pending_payment', 'payment_submitted', 'pending_review'].includes(order.orderStatus) ? '待審核確定' : '-';
+}
+
 function termLabel(months) {
   if (Number(months) === 12) return '一年';
   if (Number(months) === 6) return '半年';
@@ -315,13 +321,14 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
                 <th>金額</th>
                 <th>支付方式</th>
                 <th>付款日期</th>
+                <th>起始日期</th>
                 <th>到期日期</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
               {pageOrders.length === 0 ? (
-                <tr><td colSpan="12" className="domain-empty">{isLoading ? '載入中...' : '暫無套餐記錄'}</td></tr>
+                <tr><td colSpan="13" className="domain-empty">{isLoading ? '載入中...' : '暫無套餐記錄'}</td></tr>
               ) : pageOrders.map(order => {
                 const plan = selectedPlanItem(order);
                 const addons = selectedAddonItems(order);
@@ -339,7 +346,8 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
                     <td style={{ fontWeight: 500 }}>{formatMoney(order.totalAmount || order.payableAmount || 0, plan?.currency || order.currency || 'USD')}</td>
                     <td>{paymentMethodLabel(order)}</td>
                     <td style={{ color: '#64748b' }}>{formatChineseDate(order.paymentDate)}</td>
-                    <td>{formatChineseDate(order.expiresAt)}</td>
+                    <td style={{ color: order.effectiveAt ? undefined : '#9ca3af' }}>{pendingAwareDate(order.effectiveAt, order)}</td>
+                    <td style={{ color: order.expiresAt ? undefined : '#9ca3af' }}>{pendingAwareDate(order.expiresAt, order)}</td>
                     <td style={{ textAlign: 'center' }}>
                       <button className="ghost-btn" style={{ color: '#2563eb', marginRight: 4 }} onClick={() => onOpenDetail?.(order.id)}>詳情</button>
                       <button className="ghost-btn" ref={openMenuId === order.id ? menuAnchorRef : null} onClick={(e) => { e.stopPropagation(); if (openMenuId === order.id) { setOpenMenuId(null); return; } setOpenMenuId(order.id); }}>⋯</button>

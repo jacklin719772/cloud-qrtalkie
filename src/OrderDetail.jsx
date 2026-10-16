@@ -16,6 +16,12 @@ function formatChineseDate(value) {
   } catch { return String(value).slice(0, 10); }
 }
 
+// 起止日期展示：未審核且尚未確定（新購單）時顯示「待審核確定」；續訂單建單即有值
+function pendingAwareDate(value, order) {
+  if (value) return formatChineseDate(value);
+  return ['pending_payment', 'payment_submitted', 'pending_review'].includes(order.orderStatus) ? '待審核確定' : '-';
+}
+
 function formatMoney(amount, currency = 'USD') {
   return `${currency} ${Number(amount || 0).toFixed(2)}`;
 }
@@ -286,8 +292,11 @@ export default function OrderDetail({ orderId, onBack }) {
             <label className="purchase-side-label">付款日期：</label>
             <div className="od-readonly-text">{formatChineseDate(order.payment?.paymentDate || order.paymentDate)}</div>
 
+            <label className="purchase-side-label">起始日期：</label>
+            <div className="od-readonly-text">{pendingAwareDate(order.effectiveAt, order)}</div>
+
             <label className="purchase-side-label">到期日期：</label>
-            <div className="od-readonly-text">{formatChineseDate(order.expiresAt)}</div>
+            <div className="od-readonly-text">{pendingAwareDate(order.expiresAt, order)}</div>
           </div>
         </div>
       </form>
