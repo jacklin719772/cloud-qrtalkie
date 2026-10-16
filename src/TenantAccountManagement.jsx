@@ -148,6 +148,7 @@ const TenantAccountManagement = forwardRef(({
   const [editAvatar, setEditAvatar] = useState({ preview: '', dataUrl: '', removed: false });
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isEditLoading, setIsEditLoading] = useState(false);
   const [resetPasswordAccount, setResetPasswordAccount] = useState(null);
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
@@ -355,13 +356,15 @@ const TenantAccountManagement = forwardRef(({
     });
     setEditAvatar({ preview: '', dataUrl: '', removed: false });
     setEditMessage({ type: '', text: '' });
-    // 賬號資料卡（頭像/工作單位/職務）：與 App 聯繫人編輯頁同一存儲，異步回填
+    // 賬號資料卡（頭像/公司/職位）：與 App 聯繫人編輯頁同一存儲，載入完成前顯示載入中
+    setIsEditLoading(true);
     apiClient.get(`${apiBasePath}/${account.id}/account-profile`)
       .then((profile) => {
         setEditForm((form) => ({ ...form, company: profile?.company || '', jobTitle: profile?.jobTitle || '' }));
-        setEditAvatar((current) => (current.dataUrl ? current : { preview: profile?.avatarUrl || '', dataUrl: '', removed: false }));
+        setEditAvatar({ preview: profile?.avatarUrl || '', dataUrl: '', removed: false });
       })
-      .catch(() => { /* 無資料卡時留空 */ });
+      .catch(() => { /* 無資料卡時留空 */ })
+      .finally(() => setIsEditLoading(false));
   }
 
   function closeEditAccount() {
@@ -387,37 +390,45 @@ const TenantAccountManagement = forwardRef(({
   async function submitEditAccount(event) {
     event.preventDefault();
     if (!editAccount) return;
-    if ((editForm.password || editForm.confirmPassword) && editForm.password !== editForm.confirmPassword) {
-      setEditMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
+    const email = editForm.email.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEditMessage({ type: 'error', text: '請輸入有效的電子郵箱。' });
       return;
     }
-    if (editForm.password && editForm.password.length < 6) {
-      setEditMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
-      return;
+    if (editForm.password || editForm.confirmPassword) {
+      if (editForm.password.length < 6) {
+        setEditMessage({ type: 'error', text: '密碼至少需要 6 個字元。' });
+        return;
+      }
+      if (editForm.password !== editForm.confirmPassword) {
+        setEditMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
+        return;
+      }
     }
 
     setIsSavingEdit(true);
     setEditMessage({ type: '', text: '' });
     try {
-      const payload = { ...editForm };
+      const payload = {
+        displayName: editForm.displayName.trim(),
+        email,
+        phone: editForm.phone.trim(),
+        company: editForm.company.trim(),
+        jobTitle: editForm.jobTitle.trim(),
+        password: editForm.password,
+        confirmPassword: editForm.confirmPassword,
+      };
       if (editAvatar.dataUrl) payload.avatarDataUrl = editAvatar.dataUrl;
       if (editAvatar.removed) payload.removeAvatar = true;
-      const result = await apiClient.put(`${apiBasePath}/${editAccount.id}`, payload);
-      const updatedAccount = {
-        ...editAccount,
-        displayName: result.account?.displayName ?? editForm.displayName,
-        email: result.account?.email ?? editForm.email,
-        phone: result.account?.phone ?? editForm.phone,
-      };
-      setAccounts((items) => items.map((item) => (item.id === editAccount.id ? { ...item, ...updatedAccount } : item)));
-      setDetailAccount((current) => (current?.id === editAccount.id ? { ...current, ...updatedAccount } : current));
-      setEditMessage({ type: 'success', text: result.message || '帳號已更新。' });
+      await apiClient.put(`${apiBasePath}/${editAccount.id}`, payload);
+      setEditMessage({ type: 'success', text: '帳號資訊已更新。' });
+      loadAccounts();
       window.setTimeout(() => {
         setEditAccount(null);
         setEditForm({ displayName: '', email: '', phone: '', company: '', jobTitle: '', password: '', confirmPassword: '' });
         setEditAvatar({ preview: '', dataUrl: '', removed: false });
         setEditMessage({ type: '', text: '' });
-      }, 600);
+      }, 1200);
     } catch (error) {
       setEditMessage({ type: 'error', text: error.message || '帳號更新失敗。' });
     } finally {
@@ -1197,9 +1208,9 @@ const TenantAccountManagement = forwardRef(({
                         </button>
                         {openDropdownId === account.id && createPortal(
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
+                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>帳號設置</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱歷史</button>
-                            <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>編輯</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重設密碼</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
@@ -1328,67 +1339,74 @@ const TenantAccountManagement = forwardRef(({
             style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯帳號</h3>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {editAccount.username}</h3>
               <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>頭像</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {editAvatar.preview ? (
-                    <img src={editAvatar.preview} alt="" style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
-                  ) : (
-                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '11px' }}>無</div>
-                  )}
-                  <label style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px' }}>
-                    選擇圖片
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditAvatarPick} />
+            {isEditLoading ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
+                    {editAvatar.preview ? (
+                      <img src={editAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
+                        {editAvatar.preview ? '修改圖像' : '添加圖像'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditAvatarPick} />
+                      </label>
+                      {editAvatar.preview && (
+                        <button
+                          type="button"
+                          onClick={() => setEditAvatar({ preview: '', dataUrl: '', removed: true })}
+                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          刪除圖像
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                    <input autoComplete="off" value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
                   </label>
-                  {editAvatar.preview && (
-                    <button
-                      type="button"
-                      onClick={() => setEditAvatar({ preview: '', dataUrl: '', removed: true })}
-                      style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #7f1d1d', background: 'transparent', color: '#fca5a5', fontSize: '13px', cursor: 'pointer' }}
-                    >
-                      移除
-                    </button>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
+                    <input autoComplete="off" value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} placeholder="國際格式，如 +886912345678" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
+                    <input type="email" autoComplete="off" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
+                    <input autoComplete="off" value={editForm.company} onChange={(event) => setEditForm((form) => ({ ...form, company: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
+                    <input autoComplete="off" value={editForm.jobTitle} onChange={(event) => setEditForm((form) => ({ ...form, jobTitle: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
+                    <input type="password" autoComplete="new-password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
+                    <input type="password" autoComplete="new-password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  {editMessage.text && (
+                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>
                   )}
                 </div>
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
-                <input autoComplete="off" value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
-                <input type="email" autoComplete="off" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>移动電話</span>
-                <input autoComplete="off" value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} placeholder="國際格式，如 +886912345678" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>工作單位</span>
-                <input autoComplete="off" value={editForm.company} onChange={(event) => setEditForm((form) => ({ ...form, company: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職務</span>
-                <input autoComplete="off" value={editForm.jobTitle} onChange={(event) => setEditForm((form) => ({ ...form, jobTitle: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
-                <input type="password" autoComplete="new-password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
-                <input type="password" autoComplete="new-password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-              </label>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-              {editMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>}
-              <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                  <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+                  <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
+                </div>
+              </>
+            )}
           </form>
         </div>,
         document.body

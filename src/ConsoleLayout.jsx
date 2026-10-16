@@ -50,7 +50,7 @@ const viewTitles = {
   users: '租戶概覽',
   registrations: '我的帳號',
   domain: '我的套餐',
-  'tenant-account-management': '正式帳號管理',
+  'tenant-account-management': '訂閱帳號管理',
   'contact-books': '通訊錄管理',
   'sip-account-registration': 'SIP帳號管理',
   'sip-account-allocation': 'Web帳號管理',
@@ -1438,9 +1438,9 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 列表（⋮ 更多操作）</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「正式帳號管理」編輯同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「訂閱帳號管理」帳號設置同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（正式帳號管理）；重設後設備需用新密碼重新註冊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（訂閱帳號管理）；重設後設備需用新密碼重新註冊。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號概覽</strong> — 概要列出帳號資訊（帳號/顯示名/歸屬租戶/聯繫人/試用期/狀態/AI/名片連結），並自動生成可複製的開通通知文案（帳號、密碼、試用期、名片訪問與圖片連結、雲平台改密與 App 下載步驟），一鍵複製發送給使用者；兩個名片連結旁可單獨複製。</li>
@@ -1964,13 +1964,13 @@ export default function ConsoleLayout({ onLogout }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 2147483647, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end" }} onClick={() => setShowAccountMgmtHelp(false)}>
           <div style={{ width: "min(440px, 90vw)", height: "100%", background: "#111827", borderLeft: "1px solid #1f2937", overflow: "auto", padding: "28px 24px", scrollbarWidth: "none" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>正式帳號管理 操作說明</h2>
+              <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 600, color: "#f3f4f6" }}>訂閱帳號管理 操作說明</h2>
               <button onClick={() => setShowAccountMgmtHelp(false)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: "20px" }}>&#10005;</button>
             </div>
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 正式帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>正式帳號管理用於管理已分配至當前租戶的 SIP 帳號。管理員可在此查看帳號資訊、編輯顯示名稱與郵箱、重設密碼、啟用/停用帳號，以及進行通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 訂閱帳號管理的功能</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、查看訂閱歷史、重設密碼、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
               </div>
 
               <div style={{ marginBottom: "24px" }}>
@@ -1994,8 +1994,9 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作選單說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>編輯</strong> — 修改帳號的顯示名稱、電子郵箱、電話號碼和密碼。修改後同步至 Flexisip。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂閱歷史</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 切換帳號的啟用狀態。已過期帳號無法操作。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 輸入新密碼，同步更新至 Flexisip。密碼至少需要 6 個字符。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該帳號分配通訊錄，選擇已創建的通訊錄進行綁定。</li>
@@ -2008,13 +2009,13 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — SIP 用戶名，純數字，不可修改。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 來電顯示名稱，可透過編輯功能修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號</strong> — 顯示名稱（上）與 SIP 帳號（下），SIP 帳號純數字不可修改。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中/未啟用/已停用/已過期/待啟用。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>Web 帳號</strong> — 關聯的 WebRTC 分機號。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄</strong> — 已分配的通讯录名称。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>訂單編號</strong> — 該帳號所屬的訂單編號。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 啟用中/未啟用/已停用/已過期/待啟用。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>開始日期/結束日期</strong> — 服務有效期範圍。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>電子名片</strong> — 未建立/已啟用/已停用/已過期。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>起始日期/結束日期</strong> — 使用中訂單的起止日期；結束日期為續訂延伸後的最終到期日。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂單</strong> — 當前使用的訂單（今天落在其起止範圍內的訂單；已全部過期時顯示最後一張）。</li>
                 </ul>
               </div>
 

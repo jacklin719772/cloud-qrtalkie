@@ -32,7 +32,7 @@ const navItems = [
   { id: 'dashboard', label: '平台概覽', icon: Gauge },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
-  { id: 'tenant-account-management', label: '正式帳號管理', icon: Users },
+  { id: 'tenant-account-management', label: '訂閱帳號管理', icon: Users },
   { id: 'trial-management', label: '試用帳號管理', icon: Rocket },
   { id: 'contact-books', label: '通訊錄管理', icon: Book },
   { id: 'ecard-styles-management', label: '電子名片管理', icon: IdCard },
