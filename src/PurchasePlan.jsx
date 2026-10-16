@@ -38,6 +38,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const [renewalAccounts, setRenewalAccounts] = useState([]);
   const [selectedRetainedSipUserIds, setSelectedRetainedSipUserIds] = useState(new Set());
   const [retainedTrials, setRetainedTrials] = useState([]);
+  const [renewalPlanFallback, setRenewalPlanFallback] = useState('');
   const planCarouselRef = useRef(null);
   const addressMessageTimerRef = useRef(null);
 
@@ -134,6 +135,24 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
           const accounts = Array.isArray(order.renewalAccounts) ? order.renewalAccounts : [];
           setRenewalAccounts(accounts);
           setSelectedRetainedSipUserIds(new Set(accounts.map(account => Number(account.sipUserId)).filter(Boolean)));
+          // 續訂：套餐默認=原套餐（須啟用中且帳號數相符）；否則回退第一個合格套餐並提示
+          if (purchaseContext.mode === 'renewal') {
+            const orderQuantity = Math.max(1, Number(order.quantity || 1));
+            const perPlanCount = Math.max(1, Math.round(accounts.length / orderQuantity));
+            const eligiblePlans = activePlans.filter((plan) => Number(plan.accountQuantity || 0) === perPlanCount);
+            const originalPlan = eligiblePlans.find((plan) => plan.planCode === order.planCode);
+            if (originalPlan) {
+              setSelectedPlanId(originalPlan.id);
+              setRenewalPlanFallback('');
+            } else {
+              setSelectedPlanId(eligiblePlans[0]?.id ?? null);
+              setRenewalPlanFallback(
+                eligiblePlans.length > 0
+                  ? `原套餐已停用或帳號數不符，請選擇下方新套餐續訂（每份需 ${perPlanCount} 個帳號）。`
+                  : '目前沒有與現有帳號數相符的可用套餐，請聯繫平台管理員。',
+              );
+            }
+          }
           // 編輯訂單時回顯既有保留清單（隨 PUT 原樣帶回）
           const orderRetainedTrials = Array.isArray(order.retainedTrials) ? order.retainedTrials : [];
           setRetainedTrials(orderRetainedTrials.map((item) => ({
@@ -173,6 +192,13 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
   const currentRenewalAccountCount = renewalAccounts.length;
   const isRenewalDowngrade = isRenewalMode && currentRenewalAccountCount > 0 && desiredRenewalAccountCount > 0 && desiredRenewalAccountCount < currentRenewalAccountCount;
   const canSelectRetainedAccounts = isRenewalMode && currentRenewalAccountCount > 0 && desiredRenewalAccountCount > 0 && desiredRenewalAccountCount <= currentRenewalAccountCount;
+  // 續訂：數量鎖定=原單數量；套餐僅可選「每份帳號數 = 現有帳號數 ÷ 原單數量」的啟用套餐
+  const renewalPerPlanAccountQuantity = Math.max(1, Math.round(currentRenewalAccountCount / Math.max(1, Number(quantity || 1))));
+  const eligibleRenewalPlans = useMemo(() => {
+    if (!isRenewalMode) return plans;
+    return plans.filter((plan) => Number(plan.accountQuantity || 0) === renewalPerPlanAccountQuantity);
+  }, [isRenewalMode, plans, renewalPerPlanAccountQuantity]);
+  const plansToShow = isRenewalMode ? eligibleRenewalPlans : plans;
   const getPlanAddonCodes = (plan) => new Set(
     String(plan?.addonServices || '')
       .split(',')
@@ -432,31 +458,6 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
     } catch (err) {
       showAddressMessage('error', err.message || '刪除帳單地址失敗。');
     }
-  };
-
-  const toggleRetainedAccount = (sipUserId) => {
-    const numericId = Number(sipUserId);
-    if (!canSelectRetainedAccounts) return;
-    setSelectedRetainedSipUserIds(prev => {
-      const next = new Set(prev);
-      if (next.has(numericId)) {
-        next.delete(numericId);
-        return next;
-      }
-      if (next.size >= desiredRenewalAccountCount) return next;
-      next.add(numericId);
-      return next;
-    });
-  };
-
-  const selectAllRetainedAccounts = () => {
-    const accountIds = renewalAccounts.map(account => Number(account.sipUserId)).filter(Boolean);
-    setSelectedRetainedSipUserIds(new Set(accountIds.slice(0, desiredRenewalAccountCount || accountIds.length)));
-  };
-
-  const clearRetainedAccounts = () => {
-    if (!canSelectRetainedAccounts) return;
-    setSelectedRetainedSipUserIds(new Set());
   };
 
   const handleCheckout = async (e) => {
@@ -831,7 +832,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
         <div className="purchase-card">
           <div className="purchase-form-body">
           <div className="purchase-side-label">{isRenewalMode ? '續訂套餐：' : '選擇套餐：'}</div>
-          {isReadonlyPlan ? (
+          {isRepurchaseMode ? (
             <div className="renewal-plan-readonly" title={selectedPlan?.name || ''}>
               {selectedPlan?.name || '原訂單套餐'}
             </div>
@@ -839,7 +840,7 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
             <div className="purchase-plan-carousel">
               <button className="plan-nav-btn" onClick={() => scrollPlanCarousel(-1)} type="button" aria-label="上一個套餐">‹</button>
               <div className="purchase-plan-options" ref={planCarouselRef}>
-                {plans.map(plan => {
+                {plansToShow.map(plan => {
                   const priceTier = plan.priceTiers?.[0] || { currency: 'USD', unitPrice: 0 };
                   return (
                     <label key={plan.id} className={`plan-choice ${selectedPlanId === plan.id ? 'selected' : ''}`}>
@@ -856,9 +857,12 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
               <button className="plan-nav-btn" onClick={() => scrollPlanCarousel(1)} type="button" aria-label="下一個套餐">›</button>
             </div>
           )}
+          {isRenewalMode && renewalPlanFallback && (
+            <div style={{ gridColumn: 2, color: '#fbbf24', fontSize: '12px', lineHeight: 1.6 }}>{renewalPlanFallback}</div>
+          )}
 
           <label className="purchase-side-label">購買數量：</label>
-          {isRepurchaseMode ? (
+          {(isRepurchaseMode || isRenewalMode) ? (
             <div className="renewal-plan-readonly">{quantity} 份 (每份 {selectedPlan?.accountQuantity || 0} 帳號)</div>
           ) : (
             <div className="number-stepper">
@@ -887,29 +891,15 @@ export default function PurchasePlan({ tenant, paymentProofDialogRef, purchaseCo
               <div className="renewal-account-panel">
                 <div className="renewal-account-toolbar">
                   <div className="renewal-account-summary">
-                    當前已有 {currentRenewalAccountCount} 個帳號，本次續訂 {desiredRenewalAccountCount || 0} 個帳號，已選擇 {selectedRetainedSipUserIds.size} 個。
-                    {canSelectRetainedAccounts
-                      ? ` 最多保留 ${desiredRenewalAccountCount} 個，未保留部分將在審核時重新分配。`
-                      : ' 當前續訂暫不支援增加帳號數量。'}
-                  </div>
-                  <div className="renewal-account-actions" aria-label="保留帳號選擇操作">
-                    <button type="button" className="link-btn" onClick={selectAllRetainedAccounts} disabled={!canSelectRetainedAccounts}>全選</button>
-                    <button type="button" className="link-btn" onClick={clearRetainedAccounts} disabled={!canSelectRetainedAccounts}>清空</button>
+                    當前共有 {currentRenewalAccountCount} 個帳號，續訂後全部原樣保留（號碼不變），僅延長使用期限。
                   </div>
                 </div>
                 <div className="renewal-account-listbox" role="group" aria-label="原訂單已分配賬號">
                   {renewalAccounts.map(account => {
                     const sipUserId = Number(account.sipUserId);
-                    const checked = selectedRetainedSipUserIds.has(sipUserId);
-                    const disabled = !canSelectRetainedAccounts;
                     return (
-                      <label key={sipUserId} className={`renewal-account-option ${checked ? 'selected' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={() => toggleRetainedAccount(sipUserId)}
-                        />
+                      <label key={sipUserId} className="renewal-account-option selected">
+                        <input type="checkbox" checked disabled readOnly />
                         <span className="renewal-account-text">
                           <strong>{account.username}{account.sipDomain ? ` | ${account.sipDomain}` : ''}</strong>
                           {account.displayName && account.displayName !== account.username && <small>{account.displayName}</small>}

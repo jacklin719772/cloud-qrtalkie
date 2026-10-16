@@ -6943,11 +6943,8 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
   const requestedPaymentMethod = sanitizeString(payload.paymentMethod, 20);
   const requestedPaymentChannel = sanitizeString(payload.paymentChannel, 80);
   const requestedBillingAddress = sanitizeString(payload.billingAddress, 500);
-  const requestedQuantity = Math.max(1, Number(payload.quantity || 1));
+  // 續訂鎖定：數量固定=原單數量、帳號全部原樣保留；僅「時長」與「套餐」可調整
   const requestedMonths = Math.max(1, Number(payload.months || 1));
-  const requestedRetainedSipUserIds = Array.isArray(payload.retainedSipUserIds)
-    ? Array.from(new Set(payload.retainedSipUserIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)))
-    : [];
   const formatSqlDate = (value) => {
     if (!value) return null;
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
@@ -6981,7 +6978,14 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     }
     if (source.order_status !== "review_approved") {
       await connection.rollback();
-      return response.status(409).json({ message: "只有已生效或已過期的訂單可以進行訂單續訂。" });
+      return response.status(409).json({ message: "只有已生效的訂單可以進行訂單續訂。" });
+    }
+    // 未過期才可續訂（到期當天視為未過期）；已過期引導重新購買
+    const sourceExpiresDate = formatSqlDate(source.expires_at);
+    const todayForRenew = new Date().toISOString().slice(0, 10);
+    if (!sourceExpiresDate || sourceExpiresDate < todayForRenew) {
+      await connection.rollback();
+      return response.status(409).json({ message: "訂單已過期，不能續訂，請使用重新購買。" });
     }
 
     const entitlementRows = await connection.query(
@@ -7039,41 +7043,116 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
     const sourceQuantity = Math.max(1, Number(sourcePlanItem.quantity || 1));
     const sourceAccountCount = Number(sourcePlanItem.account_quantity || entitlementRows.length || 0);
     const accountsPerQuantity = Math.max(1, Math.round(sourceAccountCount / sourceQuantity));
-    const requestedAccountCount = accountsPerQuantity * requestedQuantity;
+    // 數量鎖定：應分配帳號數=單份帳號數 × 原單數量
+    const requestedAccountCount = accountsPerQuantity * sourceQuantity;
     if (requestedAccountCount > entitlementRows.length) {
       await connection.rollback();
-      return response.status(409).json({ message: "當前續訂暫不支援增加帳號數量，請使用重新購買或等待增量續訂功能。" });
+      return response.status(409).json({ message: "原訂單帳號權益不完整，暫不能續訂，請聯絡平臺管理員處理。" });
     }
-    if (requestedRetainedSipUserIds.length > requestedAccountCount) {
-      await connection.rollback();
-      return response.status(400).json({ message: `本次續訂最多保留 ${requestedAccountCount} 個帳號，請調整保留帳號選擇。` });
+    // 號碼鎖定：全部原帳號原樣保留（不接受前端名單調整；無釋放、無補位）
+    const retainedEntitlements = entitlementRows;
+
+    // 換套餐（可選）：不限時機，但須為啟用中且帳號數與現有帳號數一致
+    const requestedPlanCode = sanitizeString(payload.planCode, 80);
+    const planChanged = Boolean(requestedPlanCode) && requestedPlanCode !== String(sourcePlanItem.item_code || "");
+    let renewalPlan = null;
+    if (planChanged) {
+      const planLookupRows = await connection.query(
+        `SELECT p.id, p.plan_code, p.name, p.account_quantity, t.currency, t.unit_price
+         FROM billing_plans p
+         JOIN billing_account_price_tiers t ON t.plan_id = p.id
+         WHERE p.plan_code = ?
+           AND p.status = 'active'
+           AND t.status = 'active'
+         LIMIT 1`,
+        [requestedPlanCode],
+      );
+      renewalPlan = planLookupRows[0] || null;
+      if (!renewalPlan) {
+        await connection.rollback();
+        return response.status(404).json({ message: "所選套餐不存在或已停用。" });
+      }
+      const newPlanAccountCount = Number(renewalPlan.account_quantity || 0) * sourceQuantity;
+      if (newPlanAccountCount !== requestedAccountCount) {
+        await connection.rollback();
+        return response.status(400).json({ message: `所選套餐的帳號數量（${newPlanAccountCount}）與現有帳號數（${requestedAccountCount}）不符，不能續訂。` });
+      }
     }
-    const retainedEntitlements = entitlementRows.filter((item) => requestedRetainedSipUserIds.includes(Number(item.sip_user_id)));
-    if (retainedEntitlements.length !== requestedRetainedSipUserIds.length) {
-      await connection.rollback();
-      return response.status(400).json({ message: "保留帳號中包含不屬於原訂單的帳號，請重新整理後重試。" });
-    }
+    // 不換套餐＝沿用原單快照價；換套餐＝新套餐當前價
+    const renewalCurrency = renewalPlan
+      ? (renewalPlan.currency || source.currency || "USD")
+      : (source.currency || "USD");
 
     const renewalItems = [];
     let subtotal = 0;
-    itemRows.forEach((item) => {
-      if (item.item_type === "discount") return;
-      const quantity = requestedQuantity;
-      const itemMonths = item.item_type === "plan"
-        ? requestedMonths
-        : item.sync_with_plan_term == null || Boolean(item.sync_with_plan_term)
-          ? requestedMonths
-          : Math.max(1, Number(item.months || 1));
-      const lineAmount = Number(item.unit_price || 0) * quantity * itemMonths;
-      subtotal += lineAmount;
+    if (renewalPlan) {
+      // 換套餐：套餐行按新套餐當前價；增值服務沿用原單勾選項、按現價（依新套餐價格行）
+      const planUnitPrice = Number(renewalPlan.unit_price || 0);
+      const planLineAmount = planUnitPrice * sourceQuantity * requestedMonths;
+      subtotal += planLineAmount;
       renewalItems.push({
-        ...item,
-        quantity,
-        months: itemMonths,
-        account_quantity: item.item_type === "plan" ? requestedAccountCount : item.account_quantity,
-        lineAmount,
+        item_type: "plan",
+        plan_id: Number(renewalPlan.id),
+        addon_id: null,
+        coupon_id: null,
+        item_code: renewalPlan.plan_code,
+        item_name: `${renewalPlan.name} 套餐`,
+        description: null,
+        account_quantity: Number(renewalPlan.account_quantity || 0) * sourceQuantity,
+        quantity: sourceQuantity,
+        months: requestedMonths,
+        currency: renewalCurrency,
+        unit_price: planUnitPrice,
+        discount_amount: 0,
+        lineAmount: planLineAmount,
+        sort_order: 10,
       });
-    });
+      const sourceAddonCodes = itemRows.filter((item) => item.item_type === "addon").map((item) => item.item_code).filter(Boolean);
+      if (sourceAddonCodes.length > 0) {
+        const addonOrderRows = await loadAddonOrderRows(connection, Number(renewalPlan.id), sourceAddonCodes, renewalCurrency);
+        addonOrderRows.forEach((addon, index) => {
+          const lineMonths = addon.syncWithPlanTerm ? requestedMonths : 1;
+          const lineAmount = Number(addon.unitPrice) * sourceQuantity * lineMonths;
+          subtotal += lineAmount;
+          renewalItems.push({
+            item_type: "addon",
+            plan_id: Number(renewalPlan.id),
+            addon_id: Number(addon.id),
+            coupon_id: null,
+            item_code: addon.addonCode,
+            item_name: addon.name,
+            description: null,
+            account_quantity: null,
+            quantity: sourceQuantity,
+            months: lineMonths,
+            currency: addon.currency || renewalCurrency,
+            unit_price: Number(addon.unitPrice),
+            discount_amount: 0,
+            lineAmount,
+            sort_order: 20 + index,
+          });
+        });
+      }
+    } else {
+      itemRows.forEach((item) => {
+        if (item.item_type === "discount") return;
+        const quantity = sourceQuantity;
+        const itemMonths = item.item_type === "plan"
+          ? requestedMonths
+          : item.sync_with_plan_term == null || Boolean(item.sync_with_plan_term)
+            ? requestedMonths
+            : Math.max(1, Number(item.months || 1));
+        const lineAmount = Number(item.unit_price || 0) * quantity * itemMonths;
+        subtotal += lineAmount;
+        renewalItems.push({
+          ...item,
+          quantity,
+          months: itemMonths,
+          account_quantity: item.item_type === "plan" ? requestedAccountCount : item.account_quantity,
+          lineAmount,
+        });
+      });
+    }
     let discountAmount = 0;
     if (source.coupon_discount_type === "percent") {
       discountAmount = subtotal * (Number(source.coupon_discount_value || 0) / 100);
@@ -7092,7 +7171,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         account_quantity: null,
         quantity: 1,
         months: 1,
-        currency: source.currency || "USD",
+        currency: renewalCurrency,
         unit_price: 0,
         discount_amount: discountAmount,
         lineAmount: -discountAmount,
@@ -7113,7 +7192,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         orderNo,
         sourceOrderId,
         formatSqlDate(renewalBaseExpiresAt),
-        source.currency || "USD",
+        renewalCurrency,
         subtotal,
         discountAmount,
         payableAmount,
@@ -7198,7 +7277,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         paymentMethod,
         paymentChannel || null,
         offlineAccountId,
-        source.currency || "USD",
+        renewalCurrency,
         payableAmount,
         initialPaymentRecordStatus,
         isOnlinePaid ? new Date() : null,
@@ -7223,7 +7302,7 @@ app.post("/api/billing/orders/:id/renew", requireAdmin, async (request, response
         sourceOrderId,
         orderType: "renewal",
         renewalBaseExpiresAt,
-        currency: source.currency || "USD",
+        currency: renewalCurrency,
         payableAmount,
       },
     });
@@ -10822,7 +10901,8 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
           ...renewalEntitlements.map((item) => dateOnly(item.service_expires_at)),
         ].filter(Boolean).sort();
         const baseExpiresAt = baseCandidates[baseCandidates.length - 1] || "";
-        renewalStartDate = baseExpiresAt && baseExpiresAt >= today ? addDays(baseExpiresAt, 1) : today;
+        // 續訂連續性：起算=原到期日+1（過期不在此攔截，起算仍按原到期日銜接）
+        renewalStartDate = baseExpiresAt ? addDays(baseExpiresAt, 1) : todayDate();
         renewalExpiresDate = addMonthsMinusOneDay(renewalStartDate, months);
       } else {
         if (uniqueSipAccountIds.length !== requiredAccountCount) {

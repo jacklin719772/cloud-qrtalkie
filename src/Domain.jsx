@@ -195,7 +195,10 @@ const Domain = forwardRef(({ onOpenPurchase, paymentProofDialogRef, reloadToken,
     // 訂單修改：后端禁止已通过/已驳回；待審核隐藏（编辑会重置订单，需先撤销提交）
     const canModify = !['review_approved', 'review_rejected', 'pending_review'].includes(order.orderStatus);
     const canDelete = (order.orderStatus === 'pending_payment' && order.paymentStatus === 'unpaid') || order.orderStatus === 'pending_review';
-    const canRenew = order.orderStatus === 'review_approved';
+    // 續訂僅限未過期訂單（到期當天仍可續）；已過期引導重新購買
+    const todayForRenew = new Date().toISOString().slice(0, 10);
+    const orderNotExpired = order.expiresAt ? String(order.expiresAt).slice(0, 10) >= todayForRenew : true;
+    const canRenew = order.orderStatus === 'review_approved' && orderNotExpired;
     // 重新購買：仅在「已通過」订单出现（在途订单走修改/提交/撤销，避免绕过流程）
     const canRepurchase = order.orderStatus === 'review_approved';
     // 提交審核：0 元单自动视为已付；金额>0 未付款时置灰（提示先付款）
