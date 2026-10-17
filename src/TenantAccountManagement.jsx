@@ -156,6 +156,10 @@ const TenantAccountManagement = forwardRef(({
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetNotifyEnabled, setResetNotifyEnabled] = useState(false);
+  const [resetNotifyDrafts, setResetNotifyDrafts] = useState({});
+  const [resetNotifyCopyHints, setResetNotifyCopyHints] = useState({});
+  const resetNotifyLinksRef = useRef({});
   const [sendingEmailKey, setSendingEmailKey] = useState('');
   const [contactBookAccount, setContactBookAccount] = useState(null);
   const [contactBookTargets, setContactBookTargets] = useState([]);
@@ -457,6 +461,10 @@ const TenantAccountManagement = forwardRef(({
     setResetPasswordAccount(usableTargets);
     setResetPasswordForm({ password: '', confirmPassword: '' });
     setResetPasswordMessage({ type: '', text: '' });
+    setResetNotifyEnabled(false);
+    setResetNotifyDrafts({});
+    setResetNotifyCopyHints({});
+    resetNotifyLinksRef.current = {};
   }
 
   function closeResetPassword() {
@@ -464,6 +472,104 @@ const TenantAccountManagement = forwardRef(({
     setResetPasswordAccount(null);
     setResetPasswordForm({ password: '', confirmPassword: '' });
     setResetPasswordMessage({ type: '', text: '' });
+    setResetNotifyEnabled(false);
+    setResetNotifyDrafts({});
+    setResetNotifyCopyHints({});
+    resetNotifyLinksRef.current = {};
+  }
+
+  function getResetTargets() {
+    const targets = Array.isArray(resetPasswordAccount) ? resetPasswordAccount : [resetPasswordAccount];
+    return targets.filter(Boolean);
+  }
+
+  function handleResetPasswordChange(field, value) {
+    setResetPasswordForm((form) => ({ ...form, [field]: value }));
+    if (field !== 'password' || !resetNotifyEnabled) return;
+    const targets = getResetTargets();
+    setResetNotifyDrafts((drafts) => {
+      const next = { ...drafts };
+      for (const account of targets) {
+        next[account.id] = {
+          ...(next[account.id] || { email: account.email || '' }),
+          message: buildNotifyMessage(account, value.trim(), resetNotifyLinksRef.current[account.id] || {}),
+        };
+      }
+      return next;
+    });
+  }
+
+  function handleResetNotifyToggle(checked) {
+    setResetNotifyEnabled(checked);
+    if (!checked) return;
+    const targets = getResetTargets();
+    const initialDrafts = {};
+    for (const account of targets) {
+      initialDrafts[account.id] = {
+        email: account.email || '',
+        message: buildNotifyMessage(account, resetPasswordForm.password.trim(), resetNotifyLinksRef.current[account.id] || {}),
+      };
+    }
+    setResetNotifyDrafts(initialDrafts);
+    setResetNotifyCopyHints({});
+    (async () => {
+      const results = await Promise.allSettled(targets.map((account) => (
+        apiClient.get(`/tenant/ecard-accounts/${account.sipUserId}/ecard`)
+      )));
+      const linksById = {};
+      results.forEach((result, index) => {
+        const account = targets[index];
+        const links = { ecardAccessUrl: '', ecardImageUrl: '' };
+        if (result.status === 'fulfilled') {
+          const ecard = result.value;
+          if (ecard?.accessSlug) links.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+          const rawImage = ecard?.thumbnailUrl || '';
+          if (rawImage) {
+            links.ecardImageUrl = rawImage.startsWith('http')
+              ? rawImage
+              : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+          }
+        }
+        linksById[account.id] = links;
+      });
+      resetNotifyLinksRef.current = linksById;
+      setResetNotifyDrafts((drafts) => {
+        const next = { ...drafts };
+        for (const account of targets) {
+          next[account.id] = {
+            ...(next[account.id] || { email: account.email || '' }),
+            message: buildNotifyMessage(account, resetPasswordForm.password.trim(), linksById[account.id] || {}),
+          };
+        }
+        return next;
+      });
+    })();
+  }
+
+  function updateResetNotifyDraft(accountId, patch) {
+    setResetNotifyDrafts((drafts) => ({
+      ...drafts,
+      [accountId]: { ...(drafts[accountId] || { email: '', message: '' }), ...patch },
+    }));
+  }
+
+  async function copyResetNotifyDraft(accountId) {
+    const message = resetNotifyDrafts[accountId]?.message || '';
+    if (!message) return;
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = message;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setResetNotifyCopyHints((hints) => ({ ...hints, [accountId]: '已複製' }));
+    window.setTimeout(() => {
+      setResetNotifyCopyHints((hints) => ({ ...hints, [accountId]: '' }));
+    }, 5000);
   }
 
   function getEmailActionKey(account, action) {
@@ -521,6 +627,20 @@ const TenantAccountManagement = forwardRef(({
       setResetPasswordMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
+    if (resetNotifyEnabled) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      for (const account of targets) {
+        const draft = resetNotifyDrafts[account.id] || {};
+        if (!emailPattern.test(String(draft.email || '').trim())) {
+          setResetPasswordMessage({ type: 'error', text: `請為帳號 ${account.username} 輸入有效的收件人郵箱。` });
+          return;
+        }
+        if (!String(draft.message || '').trim()) {
+          setResetPasswordMessage({ type: 'error', text: `帳號 ${account.username} 的通知文案不能為空。` });
+          return;
+        }
+      }
+    }
 
     setIsResettingPassword(true);
     setResetPasswordMessage({ type: '', text: '' });
@@ -534,12 +654,47 @@ const TenantAccountManagement = forwardRef(({
           confirmPassword: resetPasswordForm.confirmPassword,
         })
       )));
-      setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
-      window.setTimeout(() => {
-        setResetPasswordAccount(null);
-        setResetPasswordForm({ password: '', confirmPassword: '' });
-        setResetPasswordMessage({ type: '', text: '' });
-      }, 600);
+
+      if (!resetNotifyEnabled) {
+        setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
+        window.setTimeout(() => {
+          setResetPasswordAccount(null);
+          setResetPasswordForm({ password: '', confirmPassword: '' });
+          setResetPasswordMessage({ type: '', text: '' });
+          setResetNotifyDrafts({});
+          setResetNotifyCopyHints({});
+          resetNotifyLinksRef.current = {};
+        }, 600);
+        return;
+      }
+
+      // 重置成功後逐封發送通知郵件
+      const failures = [];
+      for (const account of targets) {
+        const draft = resetNotifyDrafts[account.id] || {};
+        try {
+          await apiClient.post(`${apiBasePath}/${account.id}/send-notification-email`, {
+            email: String(draft.email || '').trim(),
+            body: draft.message,
+          });
+        } catch (error) {
+          failures.push(`${account.username}（${error.message || '發送失敗'}）`);
+        }
+      }
+      if (failures.length === 0) {
+        setResetPasswordMessage({ type: 'success', text: '密碼已重置，通知郵件已發送。' });
+        window.setTimeout(() => {
+          setResetPasswordAccount(null);
+          setResetPasswordForm({ password: '', confirmPassword: '' });
+          setResetPasswordMessage({ type: '', text: '' });
+          setResetNotifyEnabled(false);
+          setResetNotifyDrafts({});
+          setResetNotifyCopyHints({});
+          resetNotifyLinksRef.current = {};
+        }, 1200);
+      } else {
+        setResetPasswordMessage({ type: 'error', text: `密碼已重置；以下通知郵件發送失敗：${failures.join('、')}` });
+      }
     } catch (error) {
       setResetPasswordMessage({ type: 'error', text: error.message || '密碼重置失敗。' });
     } finally {
@@ -1869,20 +2024,21 @@ const TenantAccountManagement = forwardRef(({
         >
           <form
             onSubmit={submitResetPassword}
-            style={{ width: 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+            style={{ width: resetNotifyEnabled ? 'min(720px, calc(100% - 32px))' : 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重置密碼</h3>
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
+            <div style={{ display: 'grid', gap: '14px', padding: '18px', overflowY: 'auto' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
                 <input
                   type="password"
                   value={resetPasswordForm.password}
-                  onChange={(event) => setResetPasswordForm((form) => ({ ...form, password: event.target.value }))}
+                  onChange={(event) => handleResetPasswordChange('password', event.target.value)}
                   autoComplete="new-password"
+                  disabled={isResettingPassword}
                   style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                 />
               </label>
@@ -1891,13 +2047,63 @@ const TenantAccountManagement = forwardRef(({
                 <input
                   type="password"
                   value={resetPasswordForm.confirmPassword}
-                  onChange={(event) => setResetPasswordForm((form) => ({ ...form, confirmPassword: event.target.value }))}
+                  onChange={(event) => handleResetPasswordChange('confirmPassword', event.target.value)}
                   autoComplete="new-password"
+                  disabled={isResettingPassword}
                   style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
                 />
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#d1d5db', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={resetNotifyEnabled}
+                  onChange={(event) => handleResetNotifyToggle(event.target.checked)}
+                  disabled={isResettingPassword}
+                  style={{ cursor: 'pointer' }}
+                />
+                重置成功後發送通知郵件
+              </label>
+              {resetNotifyEnabled && getResetTargets().map((account) => {
+                const draft = resetNotifyDrafts[account.id] || { email: '', message: '' };
+                return (
+                  <div key={account.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', backgroundColor: '#0f172a' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#e5e7eb', fontWeight: 600 }}>
+                        {account.displayName && account.displayName !== account.username ? `${account.displayName}（${account.username}）` : account.username}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>Web 帳號：{account.webAccount || '—'}</span>
+                    </div>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>收件人郵箱</span>
+                      <input
+                        type="email"
+                        autoComplete="off"
+                        value={draft.email}
+                        onChange={(event) => updateResetNotifyDraft(account.id, { email: event.target.value })}
+                        disabled={isResettingPassword}
+                        placeholder="請輸入收件人郵箱"
+                        style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>通知文案（可編輯，密碼取上方設定值）</span>
+                      <textarea
+                        rows={8}
+                        value={draft.message}
+                        onChange={(event) => updateResetNotifyDraft(account.id, { message: event.target.value })}
+                        disabled={isResettingPassword}
+                        style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '12px', lineHeight: 1.7, fontFamily: 'inherit', resize: 'vertical' }}
+                      />
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {resetNotifyCopyHints[account.id] && <span style={{ fontSize: '12px', color: '#4ade80' }}>{resetNotifyCopyHints[account.id]}</span>}
+                      <button type="button" onClick={() => copyResetNotifyDraft(account.id)} disabled={isResettingPassword} style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: '#d1d5db', fontSize: '12px', cursor: 'pointer' }}>複製文案</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', flexShrink: 0 }}>
               {resetPasswordMessage.text && <p style={{ margin: 0, marginRight: 'auto', fontSize: '14px', color: resetPasswordMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{resetPasswordMessage.text}</p>}
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重置'}</button>
