@@ -861,7 +861,7 @@ const TenantAccountManagement = forwardRef(({
                         <button
                           className="ghost-btn"
                           type="button"
-                          onClick={isEcard ? handleItemClick : () => { setContactBookAccount(detailAccount); setContactBookTargets([detailAccount]); }}
+                          onClick={isEcard ? () => onOpenAccountEcard?.(detailAccount) : () => { setContactBookAccount(detailAccount); setContactBookTargets([detailAccount]); }}
                           style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
                         >去配置</button>
                       </div>
