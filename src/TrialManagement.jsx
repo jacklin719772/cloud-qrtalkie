@@ -1966,7 +1966,11 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
           align-items: center;
         }
         #trial-management-modal .tm-modal-head h3 { margin: 0; font-size: 16px; font-weight: 600; color: #f3f4f6; }
-        #trial-management-modal .tm-modal-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        #trial-management-modal .tm-modal-body { padding: 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; min-height: 0; }
+        /* form 包裹的弹窗：讓面板高度受限，正文滾動、底部按鈕固定可見 */
+        #trial-management-modal .tm-modal-panel > form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        #trial-management-modal .tm-modal-head,
+        #trial-management-modal .tm-modal-foot { flex-shrink: 0; }
         #trial-management-modal .tm-modal-foot {
           padding: 14px 24px;
           border-top: 1px solid #1f2937;
