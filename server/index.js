@@ -3036,9 +3036,10 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
     await connection.beginTransaction();
 
     let contactBookName = "";
+    let flexisipContactListId = null;
     if (contactBookId != null) {
       const [book] = await connection.query(
-        `SELECT id, name
+        `SELECT id, name, flexisip_contact_list_id
          FROM tenant_contact_books
          WHERE id = ?
            AND tenant_id = ?
@@ -3051,14 +3052,20 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
         return response.status(404).json({ message: "找不到指定的通訊錄。" });
       }
       contactBookName = book.name || "";
+      flexisipContactListId = book.flexisip_contact_list_id == null ? null : Number(book.flexisip_contact_list_id);
+      if (flexisipContactListId == null) {
+        await connection.rollback();
+        return response.status(502).json({ message: "所選通訊錄尚未同步至通訊平台，請在通訊錄管理中修復後重試。", code: "CONTACT_BOOK_NOT_SYNCED" });
+      }
     }
 
     const placeholders = assignedAccountIds.map(() => "?").join(",");
     const rows = await connection.query(
-      `SELECT id, sip_user_id, account_status, service_expires_at
-       FROM billing_order_sip_accounts
-       WHERE id IN (${placeholders})
-         AND tenant_id = ?
+      `SELECT b.id, b.sip_user_id, b.account_status, b.service_expires_at, u.flexisip_account_id
+       FROM billing_order_sip_accounts b
+       LEFT JOIN sip_users u ON u.id = b.sip_user_id
+       WHERE b.id IN (${placeholders})
+         AND b.tenant_id = ?
        FOR UPDATE`,
       [...assignedAccountIds, request.admin.tenantId],
     );
@@ -3079,6 +3086,19 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
     }
 
     const sipUserIds = rows.map((account) => Number(account.sip_user_id));
+
+    // 舊的生效分配（含其通訊平台聯繫簿 ID），用於同步 AM 取消分配
+    const oldAssignmentRows = await connection.query(
+      `SELECT a.sip_user_id, cb.flexisip_contact_list_id
+       FROM tenant_contact_book_assignments a
+       JOIN tenant_contact_books cb ON cb.id = a.contact_book_id
+       WHERE a.tenant_id = ?
+         AND a.sip_user_id IN (${sipUserIds.map(() => "?").join(",")})
+         AND a.status = 'active'
+         AND cb.flexisip_contact_list_id IS NOT NULL`,
+      [request.admin.tenantId, ...sipUserIds],
+    );
+
     await connection.query(
       `UPDATE tenant_contact_book_assignments
        SET status = 'revoked',
@@ -3114,6 +3134,36 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
        WHERE id IN (${sipUserIds.map(() => "?").join(",")})`,
       [contactBookId, ...sipUserIds],
     );
+
+    // ── 同步通訊平台（AM）：逐賬號取消舊聯繫簿分配、分配新聯繫簿 ──
+    const oldListsBySip = new Map();
+    for (const oldRow of oldAssignmentRows) {
+      const key = Number(oldRow.sip_user_id);
+      if (!oldListsBySip.has(key)) oldListsBySip.set(key, new Set());
+      oldListsBySip.get(key).add(Number(oldRow.flexisip_contact_list_id));
+    }
+    try {
+      for (const account of rows) {
+        const accountFlexisipId = account.flexisip_account_id == null ? null : Number(account.flexisip_account_id);
+        if (!accountFlexisipId) continue;
+        const oldListIds = oldListsBySip.get(Number(account.sip_user_id)) || new Set();
+        for (const oldListId of oldListIds) {
+          if (contactBookId != null && oldListId === flexisipContactListId) continue;
+          try {
+            await unassignContactListFromAccount(accountFlexisipId, oldListId);
+          } catch (unassignErr) {
+            if (unassignErr?.status !== 404) throw unassignErr;
+          }
+        }
+        if (contactBookId != null) {
+          await assignContactListToAccount(accountFlexisipId, flexisipContactListId);
+        }
+      }
+    } catch (syncErr) {
+      await connection.rollback();
+      console.error("Contact book AM sync failed:", syncErr?.message || syncErr);
+      return response.status(502).json({ message: "通訊錄同步至通訊平台失敗，請稍後重試。", code: "FLEXISIP_CONTACT_BOOK_SYNC_FAILED" });
+    }
 
     await connection.commit();
     return response.json({
@@ -3152,10 +3202,11 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
     await connection.beginTransaction();
 
     const rows = await connection.query(
-      `SELECT id, sip_user_id, account_status, service_expires_at
-       FROM billing_order_sip_accounts
-       WHERE id = ?
-         AND tenant_id = ?
+      `SELECT b.id, b.sip_user_id, b.account_status, b.service_expires_at, u.flexisip_account_id
+       FROM billing_order_sip_accounts b
+       LEFT JOIN sip_users u ON u.id = b.sip_user_id
+       WHERE b.id = ?
+         AND b.tenant_id = ?
        LIMIT 1
        FOR UPDATE`,
       [assignedAccountId, request.admin.tenantId],
@@ -3175,9 +3226,10 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
     }
 
     let contactBookName = "";
+    let flexisipContactListId = null;
     if (contactBookId != null) {
       const [book] = await connection.query(
-        `SELECT id, name
+        `SELECT id, name, flexisip_contact_list_id
          FROM tenant_contact_books
          WHERE id = ?
            AND tenant_id = ?
@@ -3190,7 +3242,24 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
         return response.status(404).json({ message: "找不到指定的通訊錄。" });
       }
       contactBookName = book.name || "";
+      flexisipContactListId = book.flexisip_contact_list_id == null ? null : Number(book.flexisip_contact_list_id);
+      if (flexisipContactListId == null) {
+        await connection.rollback();
+        return response.status(502).json({ message: "所選通訊錄尚未同步至通訊平台，請在通訊錄管理中修復後重試。", code: "CONTACT_BOOK_NOT_SYNCED" });
+      }
     }
+
+    // 舊的生效分配（含其通訊平台聯繫簿 ID），用於同步 AM 取消分配
+    const oldAssignmentRows = await connection.query(
+      `SELECT a.sip_user_id, cb.flexisip_contact_list_id
+       FROM tenant_contact_book_assignments a
+       JOIN tenant_contact_books cb ON cb.id = a.contact_book_id
+       WHERE a.tenant_id = ?
+         AND a.sip_user_id = ?
+         AND a.status = 'active'
+         AND cb.flexisip_contact_list_id IS NOT NULL`,
+      [request.admin.tenantId, Number(assignedAccount.sip_user_id)],
+    );
 
     await connection.query(
       `UPDATE tenant_contact_book_assignments
@@ -3224,6 +3293,29 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
        WHERE id = ?`,
       [contactBookId, Number(assignedAccount.sip_user_id)],
     );
+
+    // ── 同步通訊平台（AM）：取消舊聯繫簿分配、分配新聯繫簿 ──
+    const accountFlexisipId = assignedAccount.flexisip_account_id == null ? null : Number(assignedAccount.flexisip_account_id);
+    if (accountFlexisipId) {
+      try {
+        for (const oldRow of oldAssignmentRows) {
+          const oldListId = Number(oldRow.flexisip_contact_list_id);
+          if (contactBookId != null && oldListId === flexisipContactListId) continue;
+          try {
+            await unassignContactListFromAccount(accountFlexisipId, oldListId);
+          } catch (unassignErr) {
+            if (unassignErr?.status !== 404) throw unassignErr;
+          }
+        }
+        if (contactBookId != null) {
+          await assignContactListToAccount(accountFlexisipId, flexisipContactListId);
+        }
+      } catch (syncErr) {
+        await connection.rollback();
+        console.error("Contact book AM sync failed:", syncErr?.message || syncErr);
+        return response.status(502).json({ message: "通訊錄同步至通訊平台失敗，請稍後重試。", code: "FLEXISIP_CONTACT_BOOK_SYNC_FAILED" });
+      }
+    }
 
     await connection.commit();
     return response.json({
