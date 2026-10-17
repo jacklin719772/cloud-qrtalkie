@@ -3546,12 +3546,19 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     connection = await pool.getConnection();
 
     // ── Step 3: 将 accountIds 中的帳號添加为通讯录成员 ──
+    // 歸屬判據：sip_users.tenant_id 或權益記錄任一成立（兼容 tenant_id 滯後/為空的歷史帳號）
     const memberResults = { added: [], failed: [] };
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
       const memberRows = await connection.query(
-        `SELECT id, flexisip_account_id, username FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ?`,
-        [...accountIds, request.admin.tenantId],
+        `SELECT u.id, u.flexisip_account_id, u.username
+         FROM sip_users u
+         WHERE u.id IN (${placeholders})
+           AND (u.tenant_id = ? OR EXISTS (
+             SELECT 1 FROM tenant_sip_account_entitlements e
+             WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ))`,
+        [...accountIds, request.admin.tenantId, request.admin.tenantId],
       );
       for (const row of memberRows) {
         if (!row.flexisip_account_id) continue;
@@ -3570,8 +3577,15 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     if (assignedAccountIds.length > 0) {
       const placeholders = assignedAccountIds.map(() => '?').join(',');
       const sipRows = await connection.query(
-        `SELECT id, flexisip_account_id, username FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ? AND status = 'active'`,
-        [...assignedAccountIds, request.admin.tenantId],
+        `SELECT u.id, u.flexisip_account_id, u.username
+         FROM sip_users u
+         WHERE u.id IN (${placeholders})
+           AND u.status = 'active'
+           AND (u.tenant_id = ? OR EXISTS (
+             SELECT 1 FROM tenant_sip_account_entitlements e
+             WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ))`,
+        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId],
       );
       for (const row of sipRows) {
         if (row.flexisip_account_id) {
@@ -3613,8 +3627,15 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
       const validAccounts = await connection.query(
-        `SELECT id FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ? AND status IN ('active', 'pending')`,
-        [...accountIds, request.admin.tenantId]
+        `SELECT u.id
+         FROM sip_users u
+         WHERE u.id IN (${placeholders})
+           AND u.status IN ('active', 'pending')
+           AND (u.tenant_id = ? OR EXISTS (
+             SELECT 1 FROM tenant_sip_account_entitlements e
+             WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ))`,
+        [...accountIds, request.admin.tenantId, request.admin.tenantId]
       );
 
       const validAccountIds = validAccounts.map(a => Number(a.id));
@@ -3630,8 +3651,15 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     if (assignedAccountIds.length > 0) {
       const placeholders = assignedAccountIds.map(() => '?').join(',');
       const validAssignedAccounts = await connection.query(
-        `SELECT id FROM sip_users WHERE id IN (${placeholders}) AND tenant_id = ? AND status = 'active'`,
-        [...assignedAccountIds, request.admin.tenantId]
+        `SELECT u.id
+         FROM sip_users u
+         WHERE u.id IN (${placeholders})
+           AND u.status = 'active'
+           AND (u.tenant_id = ? OR EXISTS (
+             SELECT 1 FROM tenant_sip_account_entitlements e
+             WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ))`,
+        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId]
       );
 
       for (const account of validAssignedAccounts) {
