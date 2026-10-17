@@ -62,6 +62,16 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [batchAddResults, setBatchAddResults] = useState(null);
   const [batchAddMessage, setBatchAddMessage] = useState({ type: '', text: '' });
 
+  // 賬號回收
+  const [reclaimDialogOpen, setReclaimDialogOpen] = useState(false);
+  const [reclaimCandidates, setReclaimCandidates] = useState([]);
+  const [reclaimSelectedIds, setReclaimSelectedIds] = useState([]);
+  const [isReclaimLoading, setIsReclaimLoading] = useState(false);
+  const [isReclaiming, setIsReclaiming] = useState(false);
+  const [reclaimMessage, setReclaimMessage] = useState({ type: '', text: '' });
+  const [reclaimResults, setReclaimResults] = useState(null);
+  const [reclaimReplacementSummary, setReclaimReplacementSummary] = useState(null);
+
   // 删除确认弹窗
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { account, isBatch }
   // 列表拉取失败标记（区分「暂无数据」与「拉取失败」）
@@ -116,6 +126,99 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setBatchAddForm({ start: getNextNumericUsername(), count: '100' });
     setBatchAddMessage({ type: '', text: '' });
     setBatchAddOpen(true);
+  }
+
+  async function openReclaimDialog() {
+    setReclaimDialogOpen(true);
+    setReclaimCandidates([]);
+    setReclaimSelectedIds([]);
+    setReclaimResults(null);
+    setReclaimReplacementSummary(null);
+    setReclaimMessage({ type: '', text: '' });
+    setIsReclaimLoading(true);
+    try {
+      const data = await apiClient.get('/admin/sip-accounts/reclaim-candidates');
+      setReclaimCandidates(Array.isArray(data?.accounts) ? data.accounts : []);
+    } catch (err) {
+      setReclaimMessage({ type: 'error', text: err.message || '讀取可回收帳號失敗。' });
+    } finally {
+      setIsReclaimLoading(false);
+    }
+  }
+
+  function toggleReclaimCandidate(accountId) {
+    const id = Number(accountId);
+    setReclaimSelectedIds((prev) => (
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    ));
+  }
+
+  function toggleReclaimAll() {
+    setReclaimSelectedIds((prev) => {
+      const allSelected = reclaimCandidates.length > 0
+        && reclaimCandidates.every((item) => prev.includes(Number(item.accountId)));
+      return allSelected ? [] : reclaimCandidates.map((item) => Number(item.accountId));
+    });
+  }
+
+  async function handleReclaimSubmit() {
+    if (reclaimSelectedIds.length === 0) {
+      setReclaimMessage({ type: 'error', text: '請先選擇要回收的帳號。' });
+      return;
+    }
+    if (!window.confirm(`確定要回收選中的 ${reclaimSelectedIds.length} 個帳號嗎？回收後舊帳號將隱藏且不可恢復。`)) return;
+
+    setIsReclaiming(true);
+    setReclaimMessage({ type: '', text: '' });
+    setReclaimResults(null);
+    setReclaimReplacementSummary(null);
+    try {
+      const data = await apiClient.post('/admin/sip-accounts/reclaim', { accountIds: reclaimSelectedIds });
+      const results = Array.isArray(data?.results) ? data.results : [];
+      setReclaimResults(results);
+      const successCount = results.filter((item) => item.success).length;
+      const failedCount = results.length - successCount;
+      setReclaimMessage({
+        type: failedCount > 0 ? 'warning' : 'success',
+        text: `回收完成：成功 ${successCount} 個${failedCount > 0 ? `，失敗 ${failedCount} 個` : ''}。`,
+      });
+      await loadAccounts();
+
+      if (successCount > 0 && data?.nextStartAccount) {
+        let start = Number(data.nextStartAccount);
+        let remaining = successCount;
+        let created = 0;
+        let batchFailed = 0;
+        while (remaining > 0) {
+          const count = Math.min(remaining, 200);
+          try {
+            const batch = await apiClient.post('/admin/sip-accounts/batch', {
+              startAccount: String(start),
+              count,
+              domain: defaultSipDomain,
+              password: '12345678',
+              role: 'user',
+            });
+            created += Number(batch?.summary?.created || 0);
+            batchFailed += Number(batch?.summary?.failed || 0);
+          } catch {
+            batchFailed += count;
+          }
+          start += count;
+          remaining -= count;
+        }
+        setReclaimReplacementSummary({ created, failed: batchFailed, start: Number(data.nextStartAccount) });
+        await loadAccounts();
+      }
+
+      const successIds = new Set(results.filter((item) => item.success).map((item) => Number(item.accountId)));
+      setReclaimCandidates((prev) => prev.filter((item) => !successIds.has(Number(item.accountId))));
+      setReclaimSelectedIds((prev) => prev.filter((id) => !successIds.has(Number(id))));
+    } catch (err) {
+      setReclaimMessage({ type: 'error', text: err.message || '賬號回收失敗。' });
+    } finally {
+      setIsReclaiming(false);
+    }
   }
 
   const fetchRemoteAccounts = async () => {
@@ -206,6 +309,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     startServerImport,
     startAdd: () => { setViewMode('add'); setFormData(emptyAccountForm); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); },
     startBatchAdd: openBatchAddModal,
+    openReclaimDialog,
     handleBatchUnassign,
     handleBatchDelete
   }));
@@ -2268,6 +2372,98 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
               <button className="primary-btn" type="submit" disabled={isBatchAdding}>{isBatchAdding ? '增加中...' : '確認增加'}</button>
             </div>
           </form>
+        </div>,
+        document.body
+      )}
+
+      {/* 賬號回收彈窗 */}
+      {reclaimDialogOpen && createPortal(
+        <div className="dialog-backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100002 }}>
+          <div style={{ backgroundColor: '#111827', borderRadius: '8px', width: '920px', maxWidth: '96vw', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#e5e7eb' }}>賬號回收</h3>
+              <p style={{ margin: '8px 0 0', fontSize: '12px', lineHeight: 1.6, color: '#9ca3af' }}>
+                僅列出已到期且無其他生效權益的帳號。回收後舊帳號隱藏、權益撤銷、Web 帳號回庫，並自動補回等量 SIP 庫存；舊帳號不可恢復。
+              </p>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 24px', scrollbarWidth: 'thin', scrollbarColor: '#4b5563 #1b2432' }}>
+              {isReclaimLoading ? (
+                <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px' }}>載入中...</p>
+              ) : reclaimCandidates.length === 0 ? (
+                <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px' }}>暫無可回收帳號。</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#0f172a' }}>
+                      <th style={{ width: '40px', padding: '10px 8px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={reclaimCandidates.every((item) => reclaimSelectedIds.includes(Number(item.accountId)))}
+                          onChange={toggleReclaimAll}
+                          style={{ accentColor: '#3b82f6', cursor: 'pointer' }}
+                        />
+                      </th>
+                      {['帳號', '顯示名', '訂閱日期', '到期日期', '租戶'].map((label) => (
+                        <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', textAlign: 'left', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reclaimCandidates.map((item) => {
+                      const id = Number(item.accountId);
+                      const checked = reclaimSelectedIds.includes(id);
+                      return (
+                        <tr key={id} style={{ borderBottom: '1px solid #1f2937' }}>
+                          <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleReclaimCandidate(id)} style={{ accentColor: '#3b82f6', cursor: 'pointer' }} />
+                          </td>
+                          <td style={{ padding: '10px 12px', color: '#e5e7eb', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{item.username}</td>
+                          <td style={{ padding: '10px 12px', color: '#d1d5db', whiteSpace: 'nowrap' }}>{item.displayName || '—'}</td>
+                          <td style={{ padding: '10px 12px', color: '#d1d5db', whiteSpace: 'nowrap' }}>{item.serviceStartsAt || '—'}</td>
+                          <td style={{ padding: '10px 12px', color: '#d1d5db', whiteSpace: 'nowrap' }}>{item.serviceExpiresAt || '—'}</td>
+                          <td style={{ padding: '10px 12px', color: '#d1d5db', whiteSpace: 'nowrap' }}>{item.tenantName || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {reclaimMessage.text && (
+                <p style={{ margin: '14px 0 0', fontSize: '13px', lineHeight: 1.6, color: reclaimMessage.type === 'error' ? '#ef4444' : reclaimMessage.type === 'warning' ? '#f59e0b' : '#10b981' }}>
+                  {reclaimMessage.text}
+                </p>
+              )}
+
+              {reclaimResults && reclaimResults.length > 0 && (
+                <div style={{ marginTop: '12px', backgroundColor: '#0f172a', border: '1px solid #1f2937', borderRadius: '6px', maxHeight: '190px', overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#4b5563 #1b2432' }}>
+                  {reclaimResults.map((item, index) => (
+                    <div key={`${item.accountId}-${index}`} style={{ padding: '8px 12px', borderBottom: index < reclaimResults.length - 1 ? '1px solid #1f2937' : 'none' }}>
+                      <span style={{ color: '#e5e7eb', fontSize: '13px', fontFamily: 'monospace' }}>{item.username || `#${item.accountId}`}</span>
+                      <span style={{ marginLeft: '8px', fontSize: '12px', color: item.success ? '#10b981' : '#ef4444' }}>
+                        {item.success ? '回收成功' : (item.error || '回收失敗')}
+                      </span>
+                      {item.success && item.warnings?.length > 0 && (
+                        <div style={{ marginTop: '4px', fontSize: '12px', color: '#f59e0b', lineHeight: 1.5 }}>{item.warnings.join('；')}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {reclaimReplacementSummary && (
+                <p style={{ margin: '12px 0 0', fontSize: '13px', lineHeight: 1.6, color: reclaimReplacementSummary.failed > 0 ? '#f59e0b' : '#10b981' }}>
+                  已補建 SIP 帳號：成功 {reclaimReplacementSummary.created} 個{reclaimReplacementSummary.failed > 0 ? `，失敗 ${reclaimReplacementSummary.failed} 個` : ''}（起始號 {reclaimReplacementSummary.start}）。
+                </p>
+              )}
+            </div>
+            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" disabled={isReclaiming} onClick={() => setReclaimDialogOpen(false)} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#1f2937', color: '#d1d5db', border: '1px solid #374151', fontSize: '13px', cursor: isReclaiming ? 'not-allowed' : 'pointer', opacity: isReclaiming ? 0.6 : 1 }}>關閉</button>
+              <button type="button" className="primary-btn" disabled={isReclaiming || isReclaimLoading || reclaimSelectedIds.length === 0} onClick={handleReclaimSubmit}>
+                {isReclaiming ? '回收中...' : `確認回收（${reclaimSelectedIds.length}）`}
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

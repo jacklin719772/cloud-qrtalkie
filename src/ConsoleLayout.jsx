@@ -418,7 +418,7 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleBatchDelete()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}>
               <Trash2 size={14} /> 批量刪除
             </button>
-            <button className="primary-btn" type="button" style={{ ...sipActionBase, background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(245, 158, 11, 0.22)' }}>
+            <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.openReclaimDialog()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(245, 158, 11, 0.22)' }}>
               <Recycle size={14} /> 賬號回收
             </button>
             <button type="button" onClick={() => setShowSipMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>

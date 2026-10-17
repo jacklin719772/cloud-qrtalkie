@@ -22,7 +22,7 @@ process.on("uncaughtException", (error) => {
 });
 import express from "express";
 import QRCode from "qrcode";
-import { mkdir, unlink, writeFile, readFile, stat, chmod, chown } from "node:fs/promises";
+import { mkdir, unlink, writeFile, readFile, stat, chmod, chown, rm } from "node:fs/promises";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
@@ -8332,6 +8332,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
       LEFT JOIN tenant_sip_account_entitlements ent ON u.id = ent.sip_user_id AND u.tenant_id = ent.tenant_id AND ent.status = 'active'
+      WHERE u.recycled_at IS NULL
       ORDER BY u.created_at DESC
     `);
     
@@ -8904,6 +8905,341 @@ app.post("/api/admin/sip-accounts/batch", requireAdmin, async (request, response
     summary: { total: count, created, failed, checked, consistent, inconsistent },
     results,
   }));
+});
+
+// ── 賬號回收（平台）──
+// 舊帳號軟刪除：AM/本地停用 + recycled_at 隱藏；權益 revoked；Web 解綁回庫；
+// 清理坐席/通訊錄/門禁房間綁定/AI/訪客聊天/雲端聯繫人備份；不刪 sip_users 與 AM 賬號。
+
+app.get("/api/admin/sip-accounts/reclaim-candidates", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號回收。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT su.id AS account_id, su.username, su.display_name,
+              e.id AS entitlement_id, e.tenant_id, t.name AS tenant_name,
+              DATE_FORMAT(e.service_starts_at, '%Y-%m-%d') AS service_starts_at,
+              DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS service_expires_at
+       FROM sip_users su
+       JOIN (
+         SELECT e.sip_user_id, MAX(e.id) AS ent_id
+         FROM tenant_sip_account_entitlements e
+         JOIN tenants t2 ON t2.id = e.tenant_id AND t2.is_system = 0
+         WHERE e.service_expires_at IS NOT NULL AND e.service_expires_at < CURDATE()
+           AND e.status IN ('active', 'expired')
+         GROUP BY e.sip_user_id
+       ) pick ON pick.sip_user_id = su.id
+       JOIN tenant_sip_account_entitlements e ON e.id = pick.ent_id
+       JOIN tenants t ON t.id = e.tenant_id AND t.is_system = 0
+       WHERE su.recycled_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM tenant_sip_account_entitlements e2
+           WHERE e2.sip_user_id = su.id
+             AND e2.status = 'active'
+             AND e2.id <> e.id
+             AND (e2.service_expires_at IS NULL OR e2.service_expires_at >= CURDATE())
+         )
+       ORDER BY e.service_expires_at ASC, su.id ASC`,
+    );
+    return response.json({
+      accounts: rows.map((row) => ({
+        accountId: Number(row.account_id),
+        username: row.username || '',
+        displayName: row.display_name || '',
+        tenantId: Number(row.tenant_id),
+        tenantName: row.tenant_name || '',
+        serviceStartsAt: row.service_starts_at || '',
+        serviceExpiresAt: row.service_expires_at || '',
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to load reclaim candidates:", error?.message || error);
+    return response.status(500).json({ message: "無法讀取可回收帳號列表。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+async function reclaimOneSipAccount(accountId) {
+  const warnings = [];
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [target] = await connection.query(
+      `SELECT su.id, su.username, su.sip_domain, su.flexisip_account_id, su.recycled_at,
+              e.id AS entitlement_id, e.tenant_id
+       FROM sip_users su
+       JOIN (
+         SELECT e.sip_user_id, MAX(e.id) AS ent_id
+         FROM tenant_sip_account_entitlements e
+         JOIN tenants t2 ON t2.id = e.tenant_id AND t2.is_system = 0
+         WHERE e.service_expires_at IS NOT NULL AND e.service_expires_at < CURDATE()
+           AND e.status IN ('active', 'expired')
+         GROUP BY e.sip_user_id
+       ) pick ON pick.sip_user_id = su.id
+       JOIN tenant_sip_account_entitlements e ON e.id = pick.ent_id
+       WHERE su.id = ? AND su.recycled_at IS NULL
+       LIMIT 1`,
+      [accountId],
+    );
+    if (!target) {
+      return { accountId, success: false, error: "帳號不存在、未到期或已回收。" };
+    }
+    const [activeEntitlement] = await connection.query(
+      `SELECT id FROM tenant_sip_account_entitlements
+       WHERE sip_user_id = ? AND status = 'active' AND id <> ?
+         AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
+       LIMIT 1`,
+      [target.id, target.entitlement_id],
+    );
+    if (activeEntitlement) {
+      return { accountId, username: target.username, success: false, error: "該帳號仍有生效權益，不能回收。" };
+    }
+    connection.release();
+    connection = null;
+
+    // 先停用 AM（帶用戶名映射保護）
+    try {
+      const amConnection = await pool.getConnection();
+      try {
+        await setFlexisipActivated(target.id, false, amConnection);
+      } finally {
+        amConnection.release();
+      }
+    } catch (error) {
+      if (error?.code === "FLEXISIP_MAPPING_MISMATCH") {
+        warnings.push("AM 映射異常，已跳過 AM 停用。");
+      } else {
+        return {
+          accountId,
+          username: target.username,
+          success: false,
+          error: `AM 停用失敗：${error?.message || error}`,
+        };
+      }
+    }
+
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const fileCleanupDirs = [];
+    const amContactBookRows = [];
+    try {
+      const [locked] = await connection.query(
+        "SELECT id, username, sip_domain, flexisip_account_id, recycled_at FROM sip_users WHERE id = ? FOR UPDATE",
+        [target.id],
+      );
+      if (!locked || locked.recycled_at) {
+        throw Object.assign(new Error("該帳號已被回收。"), { httpStatus: 409 });
+      }
+      const [entitlement] = await connection.query(
+        "SELECT id, status FROM tenant_sip_account_entitlements WHERE id = ? FOR UPDATE",
+        [target.entitlement_id],
+      );
+      if (!entitlement || !["active", "expired"].includes(entitlement.status)) {
+        throw Object.assign(new Error("權益狀態已變化，請重新整理後重試。"), { httpStatus: 409 });
+      }
+      const [activeNow] = await connection.query(
+        `SELECT id FROM tenant_sip_account_entitlements
+         WHERE sip_user_id = ? AND status = 'active' AND id <> ?
+           AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
+         LIMIT 1`,
+        [target.id, target.entitlement_id],
+      );
+      if (activeNow) {
+        throw Object.assign(new Error("該帳號已有新的生效權益，已跳過回收。"), { httpStatus: 409 });
+      }
+
+      const webRows = await connection.query(
+        "SELECT web_user_id FROM tenant_web_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
+        [target.id, target.tenant_id],
+      );
+      const ecardRows = await connection.query(
+        "SELECT id FROM tenant_ecards WHERE sip_user_id = ?",
+        [target.id],
+      );
+      const kbRows = await connection.query(
+        "SELECT id FROM ai_knowledge_bases WHERE sip_user_id = ?",
+        [target.id],
+      );
+      const cbRows = await connection.query(
+        `SELECT e.contact_book_id, cb.flexisip_contact_list_id
+         FROM tenant_contact_book_entries e
+         JOIN tenant_contact_books cb ON cb.id = e.contact_book_id
+         WHERE e.sip_user_id = ?`,
+        [target.id],
+      );
+      amContactBookRows.push(...cbRows);
+      const webUserIds = webRows.map((row) => Number(row.web_user_id)).filter((id) => id > 0);
+      const ecardIds = ecardRows.map((row) => Number(row.id)).filter((id) => id > 0);
+
+      await connection.query(
+        "UPDATE sip_users SET status = 'disabled', recycled_at = NOW(), contact_book_id = NULL WHERE id = ?",
+        [target.id],
+      );
+      await connection.query(
+        "UPDATE tenant_sip_account_entitlements SET status = 'revoked', current_order_id = NULL, updated_at = NOW() WHERE id = ?",
+        [target.entitlement_id],
+      );
+
+      await connection.query(
+        "DELETE FROM tenant_web_account_entitlements WHERE sip_user_id = ? AND tenant_id = ?",
+        [target.id, target.tenant_id],
+      );
+      if (webUserIds.length > 0) {
+        await connection.query(
+          `UPDATE web_users SET tenant_id = NULL, status = 'active', service_expires_at = NULL
+           WHERE id IN (${webUserIds.map(() => "?").join(",")})`,
+          webUserIds,
+        );
+      }
+
+      await connection.query(
+        "DELETE FROM call_center_category_agents WHERE sip_account_id = ? AND tenant_id = ?",
+        [target.id, target.tenant_id],
+      );
+      await connection.query("DELETE FROM tenant_contact_book_assignments WHERE sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM tenant_contact_book_entries WHERE sip_user_id = ?", [target.id]);
+
+      await connection.query("UPDATE access_rooms SET sip_user_id = NULL WHERE sip_user_id = ?", [target.id]);
+      await connection.query(
+        "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ?",
+        [target.id],
+      );
+
+      await connection.query("DELETE FROM admin_sessions WHERE user_type = 'sip' AND sip_user_id = ?", [target.id]);
+      await connection.query(
+        `DELETE FROM push_devices
+         WHERE sip_user_id = ?
+            OR (sip_username = ? AND (sip_domain = ? OR sip_domain = '' OR sip_domain IS NULL))`,
+        [target.id, target.username, target.sip_domain || "sip.qrtalkie.org"],
+      );
+
+      await connection.query("DELETE FROM ai_bot_sessions WHERE owner_sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM ai_api_keys WHERE sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM ai_prompts WHERE sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM ai_message_reasoning WHERE sip_user_id = ?", [target.id]);
+      await connection.query("DELETE FROM ai_knowledge_bases WHERE sip_user_id = ?", [target.id]);
+
+      if (ecardIds.length > 0) {
+        const placeholders = ecardIds.map(() => "?").join(",");
+        await connection.query(`DELETE FROM ca_archives WHERE ecard_id IN (${placeholders})`, ecardIds);
+        await connection.query(`DELETE FROM ca_ecard_settings WHERE ecard_id IN (${placeholders})`, ecardIds);
+        await connection.query(`DELETE FROM ca_visitors WHERE ecard_id IN (${placeholders})`, ecardIds);
+      }
+      await connection.query("DELETE FROM ca_conversations WHERE sip_user_id = ?", [target.id]);
+
+      await connection.query(
+        "DELETE FROM account_contacts_backup WHERE username = ? AND sip_domain = ?",
+        [target.username, target.sip_domain || "sip.qrtalkie.org"],
+      );
+
+      await connection.commit();
+
+      fileCleanupDirs.push(path.join(projectRoot, "assets", "ai-attachments", String(target.id)));
+      for (const kb of kbRows) {
+        fileCleanupDirs.push(path.join(projectRoot, "assets", "ai-kb-docs", String(kb.id)));
+      }
+      for (const ecardId of ecardIds) {
+        fileCleanupDirs.push(path.join(projectRoot, "assets", "ca-attachments", String(ecardId)));
+        fileCleanupDirs.push(path.join(projectRoot, "assets", "ca-archives", String(ecardId)));
+      }
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      throw error;
+    } finally {
+      if (connection) {
+        connection.release();
+        connection = null;
+      }
+    }
+
+    // 提交後的磁盤清理：失敗只記警告，不回滾
+    for (const dir of fileCleanupDirs) {
+      try {
+        await rm(dir, { recursive: true, force: true });
+      } catch (error) {
+        warnings.push(`清理目錄失敗：${dir}`);
+      }
+    }
+
+    // AM 通訊錄成員移除（映射校驗通過才做）
+    if (target.flexisip_account_id && amContactBookRows.length > 0) {
+      try {
+        const remote = await flexisipGetAccount(target.flexisip_account_id);
+        if (String(remote?.username || "").toLowerCase() === String(target.username || "").toLowerCase()) {
+          for (const row of amContactBookRows) {
+            if (!row.flexisip_contact_list_id) continue;
+            try {
+              await removeContactFromContactList(row.flexisip_contact_list_id, target.flexisip_account_id);
+            } catch (error) {
+              warnings.push(`AM 通訊錄成員移除失敗（通訊錄 ${row.contact_book_id}）。`);
+            }
+          }
+        } else {
+          warnings.push("AM 映射異常，已跳過通訊錄成員移除。");
+        }
+      } catch (error) {
+        warnings.push("AM 通訊錄清理失敗。");
+      }
+    }
+
+    return { accountId, username: target.username, success: true, warnings };
+  } catch (error) {
+    return {
+      accountId,
+      success: false,
+      error: error?.message || String(error),
+    };
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
+app.post("/api/admin/sip-accounts/reclaim", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== 'platform') {
+    return response.status(403).json({ message: "只有平臺管理員可以進行帳號回收。" });
+  }
+  const rawIds = Array.isArray(request.body?.accountIds) ? request.body.accountIds : [];
+  const accountIds = Array.from(new Set(
+    rawIds.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0),
+  ));
+  if (accountIds.length === 0) {
+    return response.status(400).json({ message: "請選擇要回收的帳號。" });
+  }
+  if (accountIds.length > 200) {
+    return response.status(400).json({ message: "單次最多回收 200 個帳號。" });
+  }
+
+  const results = [];
+  for (const accountId of accountIds) {
+    results.push(await reclaimOneSipAccount(accountId));
+  }
+
+  let nextStartAccount = "";
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [maxRow] = await connection.query(
+      "SELECT MAX(CAST(username AS UNSIGNED)) AS max_no FROM sip_users WHERE username REGEXP '^[0-9]+$'",
+    );
+    if (maxRow && maxRow.max_no != null) {
+      nextStartAccount = String(Number(maxRow.max_no) + 1);
+    }
+  } catch (error) {
+    console.error("Failed to compute next SIP start account:", error?.message || error);
+  } finally {
+    if (connection) connection.release();
+  }
+
+  return response.json({
+    results,
+    reclaimedCount: results.filter((item) => item.success).length,
+    nextStartAccount,
+  });
 });
 
 // PUT /api/admin/sip-accounts/:id/status - 啟用/停用 SIP 帳號（同步 Flexisip）
@@ -22498,6 +22834,24 @@ app.delete("/api/admin/releases/:id", requireAdmin, async (request, response) =>
 });
 
 deviceMqttService.start();
+
+async function ensureSipUsersRecycledAtColumn() {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    try {
+      await connection.query("ALTER TABLE sip_users ADD COLUMN recycled_at DATETIME NULL");
+      console.log("[schema] sip_users.recycled_at added");
+    } catch (error) {
+      if (error?.errno !== 1060 && error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  } catch (error) {
+    console.error("[schema] ensure sip_users.recycled_at failed:", error?.message || error);
+  } finally {
+    if (connection) connection.release();
+  }
+}
+await ensureSipUsersRecycledAtColumn();
 
 const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
