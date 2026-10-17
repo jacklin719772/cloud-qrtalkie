@@ -406,7 +406,10 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           {(acc.displayName || acc.username || 'U').charAt(0).toUpperCase()}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {acc.displayName || acc.username || '-'}
+            {acc.isTrial && <span style={{ color: '#fbbf24', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>試用</span>}
+          </span>
           <span style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
       </div>
@@ -436,7 +439,10 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           {(acc.displayName || acc.username || 'U').charAt(0).toUpperCase()}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.displayName || acc.username || '-'}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {acc.displayName || acc.username || '-'}
+            {acc.isTrial && <span style={{ color: '#fbbf24', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>試用</span>}
+          </span>
           <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
       </label>

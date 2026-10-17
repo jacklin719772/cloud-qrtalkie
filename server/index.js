@@ -3956,20 +3956,40 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
   let connection;
   try {
     connection = await pool.getConnection();
+    // 可選賬號 = 本租戶目前可用的全部 SIP 賬號：
+    //  - 直接歸屬本租戶（含歷史 NULL tenant_id 但權益屬於本租戶的賬號）；
+    //  - 本租戶名下的有效試用賬號（試用賬號掛在保留試用租戶，歸屬以 trial_assignments 為準）。
     const rows = await connection.query(
       `SELECT
-         id,
-         username,
-         sip_domain AS domain,
-         display_name AS displayName,
-         email,
-         phone_number AS phone,
-         status
-       FROM sip_users
-       WHERE tenant_id = ?
-         AND status IN ('active', 'pending')
-       ORDER BY username ASC`,
-      [request.admin.tenantId]
+         u.id,
+         u.username,
+         u.sip_domain AS domain,
+         u.display_name AS displayName,
+         u.email,
+         u.phone_number AS phone,
+         u.status,
+         EXISTS (
+           SELECT 1 FROM trial_assignments ta
+           WHERE ta.sip_user_id = u.id
+             AND ta.owner_tenant_id = ?
+             AND ta.status = 'active'
+             AND ta.expires_at >= CURDATE()
+         ) AS is_trial
+       FROM sip_users u
+       WHERE u.status IN ('active', 'pending')
+         AND (
+           u.tenant_id = ?
+           OR EXISTS (
+             SELECT 1 FROM tenant_sip_account_entitlements e
+             WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status = 'active' AND e.service_expires_at >= CURDATE()
+           )
+           OR EXISTS (
+             SELECT 1 FROM trial_assignments ta
+             WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status = 'active' AND ta.expires_at >= CURDATE()
+           )
+         )
+       ORDER BY u.username ASC`,
+      [request.admin.tenantId, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId]
     );
 
     return response.json({
@@ -3981,6 +4001,7 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
         email: row.email || "",
         phone: row.phone || "",
         status: row.status || "",
+        isTrial: Number(row.is_trial || 0) === 1,
       })),
     });
   } catch (error) {
@@ -4223,10 +4244,24 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
       if (ids.length === 0) return [];
       const placeholders = ids.map(() => "?").join(",");
       const statusPlaceholders = statuses.map(() => "?").join(",");
+      // 歸屬判據：直接歸屬本租戶 / 權益屬於本租戶 / 本租戶名下有效試用（試用賬號掛在保留租用租戶下）
       const rows = await connection.query(
-        `SELECT id, flexisip_account_id FROM sip_users
-         WHERE id IN (${placeholders}) AND tenant_id = ? AND status IN (${statusPlaceholders})`,
-        [...ids, request.admin.tenantId, ...statuses]
+        `SELECT u.id, u.flexisip_account_id
+         FROM sip_users u
+         WHERE u.id IN (${placeholders})
+           AND u.status IN (${statusPlaceholders})
+           AND (
+             u.tenant_id = ?
+             OR EXISTS (
+               SELECT 1 FROM tenant_sip_account_entitlements e
+               WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status = 'active'
+             )
+             OR EXISTS (
+               SELECT 1 FROM trial_assignments ta
+               WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
+             )
+           )`,
+        [...ids, ...statuses, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId]
       );
       return rows;
     };
