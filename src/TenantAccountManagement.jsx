@@ -166,6 +166,9 @@ const TenantAccountManagement = forwardRef(({
   const [ecardViewData, setEcardViewData] = useState(null);
   const [isLoadingEcardView, setIsLoadingEcardView] = useState(false);
   const [ecardCopyMessage, setEcardCopyMessage] = useState({ type: '', text: '' });
+  const [notifyPassword, setNotifyPassword] = useState('');
+  const [notifyText, setNotifyText] = useState('');
+  const [notifyCopyHint, setNotifyCopyHint] = useState('');
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
@@ -641,6 +644,79 @@ const TenantAccountManagement = forwardRef(({
     setEcardCopyMessage({ type: '', text: '' });
   }
 
+  // 通知文案（與試用端「帳號概覽」同模板與複製方式）
+  const notifyLinksRef = useRef({ ecardAccessUrl: '', ecardImageUrl: '' });
+
+  function buildNotifyMessage(account, password, links) {
+    if (!account) return '';
+    const lines = [
+      '您好，已為您開通 QRTalkie 帳號：',
+      '',
+      `▸ 帳號：${account.username || '-'}${account.webAccount ? `（Web 帳號：${account.webAccount}）` : ''}`,
+      `▸ 密碼：${password || '（請與管理員確認）'}`,
+      `▸ 訂閱期：${account.serviceStartsAt || '-'} ~ ${account.serviceExpiresAt || '-'}`,
+    ];
+    if (links?.ecardAccessUrl) lines.push(`▸ 電子名片（訪問）：${links.ecardAccessUrl}`);
+    if (links?.ecardImageUrl) lines.push(`▸ 名片圖片：${links.ecardImageUrl}`);
+    lines.push(
+      '',
+      '使用步驟：',
+      '1. 前往雲平台 https://cloud.qrtalkie.org，使用上述帳號登入並修改密碼；',
+      '2. 於平台下載並安裝 App；',
+      '3. 開啟 App，使用該帳號與新密碼登入即可開始使用。',
+      '',
+      '如需協助，請隨時與我們聯繫。',
+    );
+    return lines.join('\n');
+  }
+
+  useEffect(() => {
+    if (!detailAccount) return undefined;
+    let cancelled = false;
+    (async () => {
+      const links = { ecardAccessUrl: '', ecardImageUrl: '' };
+      try {
+        const ecard = await apiClient.get(`/tenant/ecard-accounts/${detailAccount.sipUserId}/ecard`);
+        if (ecard?.accessSlug) links.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+        const rawImage = ecard?.thumbnailUrl || '';
+        if (rawImage) {
+          links.ecardImageUrl = rawImage.startsWith('http')
+            ? rawImage
+            : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+        }
+      } catch {
+        /* 無名片則不顯示名片行 */
+      }
+      if (cancelled) return;
+      notifyLinksRef.current = links;
+      setNotifyPassword('');
+      setNotifyText(buildNotifyMessage(detailAccount, '', links));
+      setNotifyCopyHint('');
+    })();
+    return () => { cancelled = true; };
+  }, [detailAccount?.id]);
+
+  function handleNotifyPasswordChange(value) {
+    setNotifyPassword(value);
+    setNotifyText(buildNotifyMessage(detailAccount, value.trim(), notifyLinksRef.current));
+  }
+
+  async function copyNotifyText() {
+    if (!notifyText) return;
+    try {
+      await navigator.clipboard.writeText(notifyText);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = notifyText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setNotifyCopyHint('已複製至剪貼簿。');
+    window.setTimeout(() => setNotifyCopyHint(''), 5000);
+  }
+
   function showEcardCopyMessage(message) {
     setEcardCopyMessage(message);
     window.setTimeout(() => {
@@ -1001,6 +1077,33 @@ const TenantAccountManagement = forwardRef(({
                     ) : (
                       <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={handleItemClick}>去配置</button>
                     )}</div>);})}</div>
+
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '12px', marginTop: '24px' }}>通知文案</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>登入密碼（僅寫入下方文案；如需變更帳號密碼請使用「重置密碼」）</span>
+                  <input
+                    autoComplete="off"
+                    value={notifyPassword}
+                    onChange={(event) => handleNotifyPasswordChange(event.target.value)}
+                    placeholder="留空文案顯示「（請與管理員確認）」"
+                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>通知文案（可編輯後複製發送）</span>
+                  <textarea
+                    rows={12}
+                    value={notifyText}
+                    onChange={(event) => setNotifyText(event.target.value)}
+                    style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '12px', lineHeight: 1.7, fontFamily: 'inherit', resize: 'vertical' }}
+                  />
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {notifyCopyHint && <span style={{ color: '#4ade80', fontSize: '13px' }}>{notifyCopyHint}</span>}
+                  <button className="primary-btn" type="button" onClick={copyNotifyText} style={{ marginLeft: 'auto' }}>複製文案</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
