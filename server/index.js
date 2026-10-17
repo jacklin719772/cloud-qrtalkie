@@ -8327,7 +8327,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         e.protocol,
         u.tenant_id,
         t.name AS tenant_name,
-        COALESCE(ent.service_expires_at, ent_latest.service_expires_at) AS service_expires_at,
+        ent.service_expires_at,
         ent_latest.status AS latest_entitlement_status,
         ent_latest.service_expires_at AS latest_service_expires_at,
         EXISTS(
@@ -8385,7 +8385,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         creatorName: r.creator_name || '-',
         tenantId: r.tenant_id == null ? null : Number(r.tenant_id),
         tenantName: r.tenant_name || '',
-        expiresAt: r.service_expires_at || null
+        expiresAt: lifecycle === 'expired' ? latestExpiry : (r.service_expires_at || null)
       };
     });
 
