@@ -7,7 +7,6 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [assignmentFilter, setAssignmentFilter] = useState('all');
-  const [assignedBookIds, setAssignedBookIds] = useState(new Set());
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   
@@ -49,24 +48,6 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   useEffect(() => {
     fetchContactBooks();
     fetchCurrentUser();
-    
-    const fetchAssignmentStatus = async () => {
-      try {
-        const data = await apiClient.get('/tenant/sip-accounts');
-        if (Array.isArray(data.accounts)) {
-          const ids = new Set();
-          data.accounts.forEach(acc => {
-            if (acc.contactBookId) {
-              ids.add(acc.contactBookId);
-            }
-          });
-          setAssignedBookIds(ids);
-        }
-      } catch (err) {
-        console.error('Failed to fetch account assignment status:', err);
-      }
-    };
-    fetchAssignmentStatus();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -194,13 +175,14 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
 
       if (assignmentFilter === 'all') return true;
 
-      const isAssigned = assignedBookIds.has(book.id);
+      // 以列表行自帶的生效分配數為準（與「已分配」列一致，含分配給試用賬號的情況）
+      const isAssigned = Number(book.assignedCount) > 0;
       if (assignmentFilter === 'assigned') return isAssigned;
       if (assignmentFilter === 'unassigned') return !isAssigned;
       
       return true;
     });
-  }, [contactBooks, searchKeyword, assignmentFilter, assignedBookIds]);
+  }, [contactBooks, searchKeyword, assignmentFilter]);
 
   const handleSort = (field) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
