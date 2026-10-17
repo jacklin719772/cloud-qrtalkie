@@ -4218,12 +4218,12 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
 
     // 查询旧数据用于 diff
     const oldEntryRows = await connection.query(
-      `SELECT e.sip_user_id, su.flexisip_account_id FROM tenant_contact_book_entries e
+      `SELECT e.sip_user_id, su.id AS su_row_id, su.flexisip_account_id FROM tenant_contact_book_entries e
        LEFT JOIN sip_users su ON su.id = e.sip_user_id
        WHERE e.contact_book_id = ?`, [contactBookId]
     );
     const oldAssignedRows = await connection.query(
-      `SELECT a.sip_user_id, su.flexisip_account_id FROM tenant_contact_book_assignments a
+      `SELECT a.sip_user_id, su.id AS su_row_id, su.flexisip_account_id FROM tenant_contact_book_assignments a
        LEFT JOIN sip_users su ON su.id = a.sip_user_id
        WHERE a.contact_book_id = ? AND a.tenant_id = ? AND a.status = 'active'`,
       [contactBookId, request.admin.tenantId]
@@ -4269,8 +4269,18 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
     const validEntryRows = await loadValidAccountIds(accountIds, ['active', "pending"]);
     const validAssignedRows = await loadValidAccountIds(assignedAccountIds, ['active']);
 
+    // 保留既有成員/已分配：賬號當前已不可用（過期/試用已結束）但仍在提交名單中時不靜默刪除
+    const validEntryIdSet = new Set(validEntryRows.map((row) => Number(row.id)));
+    const validAssignedIdSet = new Set(validAssignedRows.map((row) => Number(row.id)));
+    const retainedEntryRows = oldEntryRows
+      .filter((row) => row.su_row_id != null && newEntryIdSet.has(Number(row.sip_user_id)) && !validEntryIdSet.has(Number(row.sip_user_id)))
+      .map((row) => ({ id: Number(row.sip_user_id), flexisip_account_id: row.flexisip_account_id }));
+    const retainedAssignedRows = oldAssignedRows
+      .filter((row) => row.su_row_id != null && newAssignedIdSet.has(Number(row.sip_user_id)) && !validAssignedIdSet.has(Number(row.sip_user_id)))
+      .map((row) => ({ id: Number(row.sip_user_id), flexisip_account_id: row.flexisip_account_id }));
+
     await connection.query(`DELETE FROM tenant_contact_book_entries WHERE contact_book_id = ?`, [contactBookId]);
-    for (const row of validEntryRows) {
+    for (const row of [...validEntryRows, ...retainedEntryRows]) {
       await connection.query(`INSERT INTO tenant_contact_book_entries (contact_book_id, sip_user_id) VALUES (?, ?)`, [contactBookId, row.id]);
     }
 
@@ -4279,7 +4289,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
        WHERE contact_book_id = ? AND tenant_id = ? AND status = 'active'`,
       [contactBookId, request.admin.tenantId]
     );
-    for (const row of validAssignedRows) {
+    for (const row of [...validAssignedRows, ...retainedAssignedRows]) {
       await connection.query(
         `INSERT INTO tenant_contact_book_assignments (
            tenant_id, contact_book_id, sip_user_id, assigned_by_admin_id, status, assigned_at, revoked_at

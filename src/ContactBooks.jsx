@@ -27,6 +27,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editBookForm, setEditBookForm] = useState({ id: '', name: '', description: '', accountIds: [], assignedAccountIds: [] });
+  const [editBookPool, setEditBookPool] = useState({ includedAccounts: [], assignedAccounts: [] });
+  const [assignPreservedAssignedIds, setAssignPreservedAssignedIds] = useState([]);
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
   const [assignBook, setAssignBook] = useState(null);
   const [assignAccounts, setAssignAccounts] = useState([]); // [{ sipUserId, username, displayName, selected: bool }]
@@ -146,8 +148,15 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       const data = await apiClient.get('/contact-books/available-accounts');
       const all = (data.accounts || []).filter(a => a.status === 'active' || a.status === 'pending');
       const detail = await apiClient.get(`/contact-books/${book.id}`);
-      const assignedIds = new Set((detail.contactBook?.accountIds || []).map(Number));
-      setAssignAccounts(all.map(a => ({ ...a, _sel: assignedIds.has(a.sipUserId) })));
+      const includedIds = new Set((detail.contactBook?.accountIds || []).map(Number));
+      const includedAccounts = Array.isArray(detail.contactBook?.includedAccounts) ? detail.contactBook.includedAccounts : [];
+      // 已屬於該通訊錄、但當前不在可選範圍（已過期/試用已結束）的賬號也列出，避免看起來「被過濾」
+      const known = new Set(all.map(a => Number(a.sipUserId)));
+      const extras = includedAccounts
+        .filter(a => !known.has(Number(a.sipUserId)))
+        .map(a => ({ ...a, sipUserId: Number(a.sipUserId), unavailable: true }));
+      setAssignAccounts([...all, ...extras].map(a => ({ ...a, _sel: includedIds.has(Number(a.sipUserId)) })));
+      setAssignPreservedAssignedIds((detail.contactBook?.assignedAccountIds || []).map(Number));
     } catch (e) { console.error(e); }
     setAssignLoading(false);
   };
@@ -156,7 +165,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
     if (!assignBook) return;
     const selIds = assignAccounts.filter(a => a._sel).map(a => a.sipUserId);
     try {
-      await apiClient.put(`/contact-books/${assignBook.id}`, { name: assignBook.name, description: assignBook.description || '', accountIds: selIds });
+      // 攜帶原有「已分配」名單，避免只改成員時把已分配（帳號可見列表）清空
+      await apiClient.put(`/contact-books/${assignBook.id}`, { name: assignBook.name, description: assignBook.description || '', accountIds: selIds, assignedAccountIds: assignPreservedAssignedIds });
       setAssignDrawerOpen(false);
       fetchContactBooks();
     } catch (e) { window.alert(e.message || '儲存失敗'); }
@@ -241,6 +251,10 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           description: contactBook.description || '',
           accountIds: contactBook.accountIds || [],
           assignedAccountIds: contactBook.assignedAccountIds || []
+        });
+        setEditBookPool({
+          includedAccounts: Array.isArray(contactBook.includedAccounts) ? contactBook.includedAccounts : [],
+          assignedAccounts: Array.isArray(contactBook.assignedAccounts) ? contactBook.assignedAccounts : [],
         });
       } catch (err) {
         console.error('Failed to fetch contact book details:', err);
@@ -409,11 +423,21 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {acc.displayName || acc.username || '-'}
             {acc.isTrial && <span style={{ color: '#fbbf24', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>試用</span>}
+            {acc.unavailable && <span style={{ color: '#fca5a5', border: '1px solid #7f1d1d', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>不可用</span>}
           </span>
           <span style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
       </div>
     ));
+  };
+
+  // 把該通訊錄已包含/已分配、但當前不在可選範圍的賬號合併進列表（標記「不可用」）
+  const mergeAccountsWithPool = (base, pool) => {
+    const known = new Set((base || []).map((acc) => Number(acc.sipUserId)));
+    const extras = (pool || [])
+      .filter((acc) => !known.has(Number(acc.sipUserId)))
+      .map((acc) => ({ ...acc, sipUserId: Number(acc.sipUserId), unavailable: true }));
+    return [...(base || []), ...extras];
   };
 
   const renderEditableAccountList = (accounts, selectedIds, onToggle, emptyText) => {
@@ -442,6 +466,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {acc.displayName || acc.username || '-'}
             {acc.isTrial && <span style={{ color: '#fbbf24', border: '1px solid #fbbf24', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>試用</span>}
+            {acc.unavailable && <span style={{ color: '#fca5a5', border: '1px solid #7f1d1d', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400, flex: '0 0 auto' }}>不可用</span>}
           </span>
           <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.username || '-'} | {acc.domain || '-'}</span>
         </div>
@@ -918,7 +943,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                       {isLoadingDetail ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
-                        tenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
+                        mergeAccountsWithPool(tenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'), editBookPool.includedAccounts),
                         editBookForm.accountIds,
                         (id) => toggleEditAccount('accountIds', id),
                         '暫無可選擇帳號'
@@ -933,7 +958,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                       {isLoadingDetail ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
-                        tenantAccounts.filter(acc => acc.status === 'active'),
+                        mergeAccountsWithPool(tenantAccounts.filter(acc => acc.status === 'active'), editBookPool.assignedAccounts),
                         editBookForm.assignedAccountIds,
                         (id) => toggleEditAccount('assignedAccountIds', id),
                         '暫無啟用帳號可分配'
@@ -991,7 +1016,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                   <label key={a.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', borderRadius: '10px', cursor: 'pointer', background: a._sel ? '#0d2818' : '#1a2332', border: `1px solid ${a._sel ? '#065f46' : '#1f2937'}`, marginBottom: '6px' }}>
                     <input type="checkbox" checked={a._sel} onChange={() => setAssignAccounts(prev => prev.map(x => x.sipUserId === a.sipUserId ? { ...x, _sel: !x._sel } : x))} style={{ accentColor: '#3b82f6' }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>{a.username}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>{a.username}{a.unavailable && <span style={{ color: '#fca5a5', border: '1px solid #7f1d1d', borderRadius: '4px', padding: '0 4px', fontSize: '11px', fontWeight: 400 }}>不可用</span>}</div>
                       <div style={{ fontSize: '11px', color: '#9ca3af' }}>{a.displayName || a.email || '—'}</div>
                     </div>
                   </label>
