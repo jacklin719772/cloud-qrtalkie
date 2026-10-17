@@ -115,6 +115,25 @@ function getStatusBadge(status) {
   );
 }
 
+// AM 狀態檢查結果徽章
+function getAmStateBadge(state) {
+  const map = {
+    enabled: { label: '啟用中', bg: '#0d2818', color: '#4ade80' },
+    disabled: { label: 'AM 已停用', bg: '#3b1111', color: '#fca5a5' },
+    not_synced: { label: '未同步 AM', bg: '#1f2937', color: '#9ca3af' },
+    mapping_mismatch: { label: '映射異常', bg: '#3b1111', color: '#fbbf24' },
+    not_found: { label: 'AM 帳號不存在', bg: '#3b1111', color: '#fbbf24' },
+    error: { label: '查詢失敗', bg: '#3b1111', color: '#fca5a5' },
+    pending: { label: '檢查中', bg: '#1e3a5f', color: '#93c5fd' },
+  };
+  const item = map[state] || { label: state || '未知', bg: '#1f2937', color: '#9ca3af' };
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '12px', lineHeight: 1.4, backgroundColor: item.bg, color: item.color }}>
+      {item.label}
+    </span>
+  );
+}
+
 function getStatusLabel(status) {
   const map = {
     active: '啟用中',
@@ -176,10 +195,15 @@ const TenantAccountManagement = forwardRef(({
   const [notifyMailOpen, setNotifyMailOpen] = useState(false);
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
+  const [amCheckOpen, setAmCheckOpen] = useState(false);
+  const [isCheckingAm, setIsCheckingAm] = useState(false);
+  const [amCheckData, setAmCheckData] = useState(null);
+  const [amCheckError, setAmCheckError] = useState('');
   const [configStatus, setConfigStatus] = useState({});
   const dropdownAnchorRef = useRef(null);
   const dropdownMenuRef = useRef(null);
   const handleBatchResetPasswordRef = useRef(null);
+  const openAmStatusCheckRef = useRef(null);
 
   const accountStats = useMemo(() => ({
     total: accounts.length,
@@ -727,8 +751,33 @@ const TenantAccountManagement = forwardRef(({
 
   handleBatchResetPasswordRef.current = handleBatchResetPassword;
 
+  async function openAmStatusCheck() {
+    setAmCheckOpen(true);
+    setAmCheckData(null);
+    setAmCheckError('');
+    setIsCheckingAm(true);
+    try {
+      const data = await apiClient.get('/tenant/sip-accounts/am-status-check');
+      setAmCheckData(data);
+    } catch (error) {
+      setAmCheckError(error.message || '帳號狀態檢查失敗，請稍後重試。');
+    } finally {
+      setIsCheckingAm(false);
+    }
+  }
+
+  function closeAmStatusCheck() {
+    if (isCheckingAm) return;
+    setAmCheckOpen(false);
+    setAmCheckData(null);
+    setAmCheckError('');
+  }
+
+  openAmStatusCheckRef.current = openAmStatusCheck;
+
   useImperativeHandle(ref, () => ({
     handleBatchResetPassword: (...args) => handleBatchResetPasswordRef.current(...args),
+    openAmStatusCheck: () => openAmStatusCheckRef.current?.(),
   }), []);
 
   useEffect(() => {
@@ -1936,6 +1985,65 @@ const TenantAccountManagement = forwardRef(({
                   </tbody>
                 </table>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* 帳號狀態檢查（AM）對話框 */}
+      {amCheckOpen && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeAmStatusCheck();
+          }}
+        >
+          <div id="tenant-am-check-modal" style={{ width: 'min(720px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <style>{`
+              #tenant-am-check-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
+              #tenant-am-check-modal ::-webkit-scrollbar-track { background: #111827; }
+              #tenant-am-check-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+              #tenant-am-check-modal ::-webkit-scrollbar-corner { background: #111827; }
+            `}</style>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號狀態檢查（AM）</h3>
+              <button type="button" onClick={closeAmStatusCheck} disabled={isCheckingAm} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            <div style={{ overflow: 'auto', flex: 1, padding: '18px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
+              {isCheckingAm ? (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>正在逐個檢查生效中帳號的 AM 狀態...</div>
+              ) : amCheckError ? (
+                <div style={{ padding: '32px 0', textAlign: 'center', color: '#fca5a5', fontSize: '13px' }}>{amCheckError}</div>
+              ) : amCheckData ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13px', color: '#d1d5db', flexWrap: 'wrap' }}>
+                    <span>共 <strong style={{ color: '#f3f4f6' }}>{amCheckData.summary?.total || 0}</strong> 個生效中帳號</span>
+                    <span style={{ color: '#4ade80' }}>啟用 {amCheckData.summary?.enabled || 0}</span>
+                    <span style={{ color: amCheckData.summary?.abnormal > 0 ? '#fca5a5' : '#9ca3af' }}>異常 {amCheckData.summary?.abnormal || 0}</span>
+                    {amCheckData.checkedAt && <span style={{ color: '#64748b', marginLeft: 'auto' }}>檢查於 {new Date(amCheckData.checkedAt).toLocaleTimeString('zh-CN', { hour12: false })}</span>}
+                  </div>
+                  <div style={{ border: '1px solid #1f2937', borderRadius: '6px', overflow: 'hidden' }}>
+                    {(amCheckData.accounts || []).length === 0 ? (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>暫無生效中的帳號</div>
+                    ) : (amCheckData.accounts || []).map((item) => (
+                      <div key={item.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: '13px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.displayName || item.username || '-'}</span>
+                          <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {item.username}
+                            {item.amUsername && item.amUsername !== item.username ? `（AM：${item.amUsername}）` : ''}
+                          </span>
+                        </div>
+                        {getAmStateBadge(item.state)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
+              <button type="button" onClick={closeAmStatusCheck} disabled={isCheckingAm} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
+              <button className="primary-btn" type="button" onClick={openAmStatusCheck} disabled={isCheckingAm}>{isCheckingAm ? '檢查中...' : '重新檢查'}</button>
             </div>
           </div>
         </div>,

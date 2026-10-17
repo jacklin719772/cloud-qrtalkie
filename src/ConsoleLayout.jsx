@@ -845,6 +845,13 @@ export default function ConsoleLayout({ onLogout }) {
           <button className="primary-btn" type="button" onClick={() => tenantAccountManagementRef.current?.handleBatchResetPassword()} style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
             重置密碼
           </button>
+          <button
+            type="button"
+            onClick={() => tenantAccountManagementRef.current?.openAmStatusCheck()}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', padding: '0 18px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', color: '#9ca3af', fontSize: '12px', fontWeight: 500, whiteSpace: 'nowrap', cursor: 'pointer' }}
+          >
+            狀態檢查
+          </button>
           <button type="button" onClick={() => setShowAccountMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
         </div>
       );
@@ -2036,6 +2043,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>訂閱記錄</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼；可勾選「重置成功後發送通知郵件」（逐賬號核對/修改收件郵箱與文案，先重置成功再發信，失敗逐條列出）。頁頭「重置密碼」按鈕為批量入口，先做合規檢查：本地孤兒賬號阻斷並列名、已過期賬號自動剔除並提示。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>狀態檢查（頁頭按鈕）</strong> — 逐個檢查生效中賬號在通訊核心（AM）是否處於啟用態；彈窗列出每個賬號的結果（啟用中/AM 已停用/未同步/映射異常/不存在/查詢失敗）與匯總，可「重新檢查」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片</strong> — 進入電子名片生成頁並鎖定該賬號；未生成過的名片資訊默認取「帳號設置」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該賬號分配/切換/清除通訊錄，或現場新建通訊錄；保存時同步通訊核心（AM）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號停用/帳號啟用</strong> — 切換帳號啟用狀態，同時停用/啟用通訊核心（AM）帳號。已過期帳號無法操作。</li>

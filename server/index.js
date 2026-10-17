@@ -2830,6 +2830,87 @@ app.put("/api/tenant/sip-accounts/:id/status", requireAdmin, async (request, res
   }
 });
 
+// GET /api/tenant/sip-accounts/am-status-check - 逐個檢查生效中賬號在 AM 的啟用狀態
+app.get("/api/tenant/sip-accounts/am-status-check", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ message: "只有租戶管理員可以檢查帳號狀態。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT a.sip_user_id, a.username, a.display_name, u.flexisip_account_id, u.sync_status
+       FROM billing_order_sip_accounts a
+       JOIN tenant_sip_account_entitlements ent
+         ON ent.tenant_id = a.tenant_id
+        AND ent.sip_user_id = a.sip_user_id
+        AND ent.current_order_id = a.order_id
+        AND ent.status = 'active'
+       JOIN sip_users u ON u.id = a.sip_user_id
+       WHERE a.tenant_id = ?
+         AND a.account_status = 'active'
+         AND a.service_expires_at >= CURDATE()
+       ORDER BY a.username ASC`,
+      [request.admin.tenantId],
+    );
+
+    const accounts = rows.map((row) => ({
+      sipUserId: Number(row.sip_user_id),
+      username: row.username || '',
+      displayName: row.display_name || '',
+      syncStatus: row.sync_status || '',
+      flexisipAccountId: row.flexisip_account_id == null ? null : Number(row.flexisip_account_id),
+      state: 'pending',
+      amUsername: '',
+    }));
+
+    const checkOne = async (account) => {
+      if (!account.flexisipAccountId) {
+        account.state = 'not_synced';
+        return;
+      }
+      try {
+        const remote = await flexisipGetAccount(String(account.flexisipAccountId));
+        account.amUsername = remote?.username || '';
+        if (String(remote?.username || '').toLowerCase() !== String(account.username).toLowerCase()) {
+          account.state = 'mapping_mismatch';
+          return;
+        }
+        account.state = (remote?.activated === true || remote?.activated === 1) ? 'enabled' : 'disabled';
+      } catch (error) {
+        account.state = (error instanceof FlexisipAccountManagerError && error.status === 404) ? 'not_found' : 'error';
+        console.error('[am-status-check] failed:', account.username, error?.message || error);
+      }
+    };
+
+    // 併發 5 逐個檢查，避免對 AM 造成過大壓力
+    let cursor = 0;
+    const workers = Array.from({ length: Math.min(5, accounts.length) }, async () => {
+      while (cursor < accounts.length) {
+        const index = cursor;
+        cursor += 1;
+        await checkOne(accounts[index]);
+      }
+    });
+    await Promise.all(workers);
+
+    return response.json({
+      checkedAt: new Date().toISOString(),
+      accounts,
+      summary: {
+        total: accounts.length,
+        enabled: accounts.filter((item) => item.state === 'enabled').length,
+        abnormal: accounts.filter((item) => item.state !== 'enabled').length,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to check tenant SIP accounts AM status:", error);
+    return response.status(500).json({ message: "帳號狀態檢查失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 async function loadTenantSipAccountForFlexisipEmail(connection, tenantId, accountId) {
   const [billingAccount] = await connection.query(
     `SELECT
