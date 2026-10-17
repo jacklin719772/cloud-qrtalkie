@@ -411,8 +411,16 @@ const TenantAccountManagement = forwardRef(({
       };
       if (editAvatar.dataUrl) payload.avatarDataUrl = editAvatar.dataUrl;
       if (editAvatar.removed) payload.removeAvatar = true;
-      await apiClient.put(`${apiBasePath}/${editAccount.id}`, payload);
+      const result = await apiClient.put(`${apiBasePath}/${editAccount.id}`, payload);
       setEditMessage({ type: 'success', text: '帳號資訊已更新。' });
+      setDetailAccount((current) => (current && current.id === editAccount.id
+        ? {
+          ...current,
+          displayName: result?.account?.displayName ?? editForm.displayName.trim(),
+          email: result?.account?.email ?? email,
+          phone: result?.account?.phone ?? editForm.phone.trim(),
+        }
+        : current));
       loadAccounts();
       window.setTimeout(() => {
         setEditAccount(null);
@@ -727,6 +735,112 @@ const TenantAccountManagement = forwardRef(({
     }
   }
 
+  const editAccountDialog = editAccount && createPortal(
+        <div
+          id="tenant-account-edit-modal"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2147483646,
+            backgroundColor: 'rgba(15, 23, 42, 0.36)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEditAccount();
+          }}
+        >
+          <style>{`
+            /* 覆蓋瀏覽器自動填充的白底（電話/密碼被記憶填充時） */
+            #tenant-account-edit-modal input:-webkit-autofill,
+            #tenant-account-edit-modal input:-webkit-autofill:hover,
+            #tenant-account-edit-modal input:-webkit-autofill:focus {
+              -webkit-box-shadow: 0 0 0 1000px #1a2332 inset;
+              -webkit-text-fill-color: #e5e7eb;
+              caret-color: #e5e7eb;
+              transition: background-color 5000s ease-in-out 0s;
+            }
+          `}</style>
+          <form
+            onSubmit={submitEditAccount}
+            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {editAccount.username}</h3>
+              <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            {isEditLoading ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
+                    {editAvatar.preview ? (
+                      <img src={editAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
+                        {editAvatar.preview ? '修改圖像' : '添加圖像'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditAvatarPick} />
+                      </label>
+                      {editAvatar.preview && (
+                        <button
+                          type="button"
+                          onClick={() => setEditAvatar({ preview: '', dataUrl: '', removed: true })}
+                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          刪除圖像
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                    <input autoComplete="off" value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
+                    <input autoComplete="off" value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} placeholder="國際格式，如 +886912345678" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
+                    <input type="email" autoComplete="off" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
+                    <input autoComplete="off" value={editForm.company} onChange={(event) => setEditForm((form) => ({ ...form, company: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
+                    <input autoComplete="off" value={editForm.jobTitle} onChange={(event) => setEditForm((form) => ({ ...form, jobTitle: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
+                    <input type="password" autoComplete="new-password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
+                    <input type="password" autoComplete="new-password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                  </label>
+                  {editMessage.text && (
+                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                  <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+                  <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>,
+        document.body
+  );
+
   if (detailAccount) {
     const readonlyInputStyle = {
       padding: '10px',
@@ -751,7 +865,16 @@ const TenantAccountManagement = forwardRef(({
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>基础帳號資訊</h4>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', margin: 0 }}>基础帳號資訊</h4>
+                <button
+                  className="ghost-btn"
+                  type="button"
+                  disabled={!canUseAccountActions(detailAccount)}
+                  onClick={() => openEditAccount(detailAccount)}
+                  style={{ fontSize: '12px', padding: '4px 10px', background: canUseAccountActions(detailAccount) ? '#374151' : '#1f2937', color: canUseAccountActions(detailAccount) ? '#d1d5db' : '#6b7280', border: `1px solid ${canUseAccountActions(detailAccount) ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: canUseAccountActions(detailAccount) ? 'pointer' : 'not-allowed' }}
+                >去設置</button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>用户名</span>
@@ -880,6 +1003,8 @@ const TenantAccountManagement = forwardRef(({
         onClose={closeContactBookConfig}
         onSave={saveAccountContactBook}
       />
+
+      {editAccountDialog}
 
       {contactBookViewOpen && createPortal(
         <div
@@ -1518,111 +1643,7 @@ const TenantAccountManagement = forwardRef(({
       </div>,
         document.body
       )}
-      {editAccount && createPortal(
-        <div
-          id="tenant-account-edit-modal"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2147483646,
-            backgroundColor: 'rgba(15, 23, 42, 0.36)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeEditAccount();
-          }}
-        >
-          <style>{`
-            /* 覆蓋瀏覽器自動填充的白底（電話/密碼被記憶填充時） */
-            #tenant-account-edit-modal input:-webkit-autofill,
-            #tenant-account-edit-modal input:-webkit-autofill:hover,
-            #tenant-account-edit-modal input:-webkit-autofill:focus {
-              -webkit-box-shadow: 0 0 0 1000px #1a2332 inset;
-              -webkit-text-fill-color: #e5e7eb;
-              caret-color: #e5e7eb;
-              transition: background-color 5000s ease-in-out 0s;
-            }
-          `}</style>
-          <form
-            onSubmit={submitEditAccount}
-            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {editAccount.username}</h3>
-              <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-            </div>
-            {isEditLoading ? (
-              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
-                    {editAvatar.preview ? (
-                      <img src={editAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
-                    ) : (
-                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
-                        {editAvatar.preview ? '修改圖像' : '添加圖像'}
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleEditAvatarPick} />
-                      </label>
-                      {editAvatar.preview && (
-                        <button
-                          type="button"
-                          onClick={() => setEditAvatar({ preview: '', dataUrl: '', removed: true })}
-                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
-                        >
-                          刪除圖像
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
-                    <input autoComplete="off" value={editForm.displayName} onChange={(event) => setEditForm((form) => ({ ...form, displayName: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
-                    <input autoComplete="off" value={editForm.phone} onChange={(event) => setEditForm((form) => ({ ...form, phone: event.target.value }))} placeholder="國際格式，如 +886912345678" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
-                    <input type="email" autoComplete="off" value={editForm.email} onChange={(event) => setEditForm((form) => ({ ...form, email: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
-                    <input autoComplete="off" value={editForm.company} onChange={(event) => setEditForm((form) => ({ ...form, company: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
-                    <input autoComplete="off" value={editForm.jobTitle} onChange={(event) => setEditForm((form) => ({ ...form, jobTitle: event.target.value }))} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
-                    <input type="password" autoComplete="new-password" value={editForm.password} onChange={(event) => setEditForm((form) => ({ ...form, password: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
-                    <input type="password" autoComplete="new-password" value={editForm.confirmPassword} onChange={(event) => setEditForm((form) => ({ ...form, confirmPassword: event.target.value }))} placeholder="不修改請留空" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
-                  </label>
-                  {editMessage.text && (
-                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: editMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{editMessage.text}</p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-                  <button type="button" onClick={closeEditAccount} disabled={isSavingEdit} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-                  <button className="primary-btn" type="submit" disabled={isSavingEdit}>{isSavingEdit ? '儲存中...' : '儲存修改'}</button>
-                </div>
-              </>
-            )}
-          </form>
-        </div>,
-        document.body
-      )}
+      {editAccountDialog}
       {resetPasswordAccount && createPortal(
         <div
           style={{
