@@ -439,7 +439,7 @@ app.get("/access/visitor", async (request, response) => {
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
          LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
          LEFT JOIN web_users wu ON wu.id = ent.web_user_id
-         WHERE r.building_id IN (?) AND r.tenant_id = ? ORDER BY r.room_number`,
+         WHERE r.building_id IN (?) AND r.tenant_id = ? AND (r.sip_user_id IS NULL OR s.status = 'active') ORDER BY r.room_number`,
         [bIds, community.tenant_id]
       );
     }
@@ -539,7 +539,7 @@ app.get("/access/:slug", async (request, response) => {
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
          LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
          LEFT JOIN web_users wu ON wu.id = ent.web_user_id
-         WHERE r.building_id IN (?) AND r.tenant_id = ? ORDER BY r.room_number`,
+         WHERE r.building_id IN (?) AND r.tenant_id = ? AND (r.sip_user_id IS NULL OR s.status = 'active') ORDER BY r.room_number`,
         [bIds, community.tenant_id]
       );
     }
@@ -547,10 +547,10 @@ app.get("/access/:slug", async (request, response) => {
     // Filter by authorized rooms if entrance-specific
     if (authorizedRoomIds) {
       rooms = rooms.filter(r => authorizedRoomIds.has(Number(r.id)));
-      // Only keep buildings that have authorized rooms
-      const bldWithRooms = new Set(rooms.map(r => Number(r.building_id)));
-      buildings.splice(0, buildings.length, ...buildings.filter(b => bldWithRooms.has(Number(b.id))));
     }
+    // Only keep buildings that have visible (active-account) rooms
+    const bldWithRooms = new Set(rooms.map(r => Number(r.building_id)));
+    buildings.splice(0, buildings.length, ...buildings.filter(b => bldWithRooms.has(Number(b.id))));
 
     const [tenant] = await connection.query('SELECT name FROM tenants WHERE id = ?', [community.tenant_id]);
     const tenantName = tenant?.name || '';
