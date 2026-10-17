@@ -1842,7 +1842,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>新增通訊錄</strong> — 創建新通訊錄，設定名稱和描述，選擇包含的帳號和允許使用的帳號。創建後自動同步至 Flexisip。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯通訊錄</strong> — 修改通訊錄名稱、描述，調整包含的帳號和已分配的帳號。變更會自動同步至 Flexisip。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>刪除通訊錄</strong> — 刪除通訊錄及其所有關聯數據（包含帳號和分配關係），同時從 Flexisip 移除。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>分配</strong> — 打開側邊抽屜，批量選擇帳號分配給通訊錄使用。可搜尋、篩選、全選。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>分配</strong> — 打開側邊抽屜，勾選「允許使用該通訊錄的帳號」（即帳號端可見的聯絡人列表），不影響通訊錄內包含的帳號；已分配但當前不可用的賬號會列出並標記「不可用」。可搜尋、篩選、全選。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>數據校驗</strong> — 檢查本地通訊錄與 Flexisip 雲端的數據一致性，顯示差異報告。</li>
                 </ul>
               </div>

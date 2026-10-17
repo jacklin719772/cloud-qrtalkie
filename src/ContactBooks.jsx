@@ -28,7 +28,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editBookForm, setEditBookForm] = useState({ id: '', name: '', description: '', accountIds: [], assignedAccountIds: [] });
   const [editBookPool, setEditBookPool] = useState({ includedAccounts: [], assignedAccounts: [] });
-  const [assignPreservedAssignedIds, setAssignPreservedAssignedIds] = useState([]);
+  const [assignPreservedMemberIds, setAssignPreservedMemberIds] = useState([]);
   const [assignDrawerOpen, setAssignDrawerOpen] = useState(false);
   const [assignBook, setAssignBook] = useState(null);
   const [assignAccounts, setAssignAccounts] = useState([]); // [{ sipUserId, username, displayName, selected: bool }]
@@ -137,6 +137,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
   const [sortField, setSortField] = useState('createdAt');
   const [sortDir, setSortDir] = useState('desc');
 
+  // 分配抽屜：管理「允許使用該通訊錄的帳號」（assignments），成員名單原樣保留
   const openAssignDrawer = async (book) => {
     setOpenDropdownId(null);
     setAssignBook(book);
@@ -148,15 +149,15 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
       const data = await apiClient.get('/contact-books/available-accounts');
       const all = (data.accounts || []).filter(a => a.status === 'active' || a.status === 'pending');
       const detail = await apiClient.get(`/contact-books/${book.id}`);
-      const includedIds = new Set((detail.contactBook?.accountIds || []).map(Number));
-      const includedAccounts = Array.isArray(detail.contactBook?.includedAccounts) ? detail.contactBook.includedAccounts : [];
-      // 已屬於該通訊錄、但當前不在可選範圍（已過期/試用已結束）的賬號也列出，避免看起來「被過濾」
+      const assignedIds = new Set((detail.contactBook?.assignedAccountIds || []).map(Number));
+      const assignedAccounts = Array.isArray(detail.contactBook?.assignedAccounts) ? detail.contactBook.assignedAccounts : [];
+      // 已分配給該冊、但當前不在可選範圍（已過期/試用已結束）的賬號也列出，避免看起來「被過濾」
       const known = new Set(all.map(a => Number(a.sipUserId)));
-      const extras = includedAccounts
+      const extras = assignedAccounts
         .filter(a => !known.has(Number(a.sipUserId)))
         .map(a => ({ ...a, sipUserId: Number(a.sipUserId), unavailable: true }));
-      setAssignAccounts([...all, ...extras].map(a => ({ ...a, _sel: includedIds.has(Number(a.sipUserId)) })));
-      setAssignPreservedAssignedIds((detail.contactBook?.assignedAccountIds || []).map(Number));
+      setAssignAccounts([...all, ...extras].map(a => ({ ...a, _sel: assignedIds.has(Number(a.sipUserId)) })));
+      setAssignPreservedMemberIds((detail.contactBook?.accountIds || []).map(Number));
     } catch (e) { console.error(e); }
     setAssignLoading(false);
   };
@@ -165,8 +166,8 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
     if (!assignBook) return;
     const selIds = assignAccounts.filter(a => a._sel).map(a => a.sipUserId);
     try {
-      // 攜帶原有「已分配」名單，避免只改成員時把已分配（帳號可見列表）清空
-      await apiClient.put(`/contact-books/${assignBook.id}`, { name: assignBook.name, description: assignBook.description || '', accountIds: selIds, assignedAccountIds: assignPreservedAssignedIds });
+      // 只更新「允許使用該通訊錄的帳號」；包含的帳號（成員）原樣保留
+      await apiClient.put(`/contact-books/${assignBook.id}`, { name: assignBook.name, description: assignBook.description || '', accountIds: assignPreservedMemberIds, assignedAccountIds: selIds });
       setAssignDrawerOpen(false);
       fetchContactBooks();
     } catch (e) { window.alert(e.message || '儲存失敗'); }
@@ -988,15 +989,18 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 2147483645, background: 'rgba(15,23,42,0.36)' }} onClick={() => setAssignDrawerOpen(false)} />
           <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(520px, 90vw)', background: '#111827', zIndex: 2147483646, boxShadow: '-8px 0 32px rgba(15,23,42,0.5)', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>分配帳號 — {assignBook.name}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px 12px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>分配帳號 — {assignBook.name}</h3>
+                <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#64748b' }}>勾選「允許使用該通訊錄的帳號」；通訊錄內包含的帳號不受影響（可在編輯中調整）。</p>
+              </div>
               <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }} onClick={() => setAssignDrawerOpen(false)}>✕</button>
             </div>
             <div style={{ padding: '12px 24px 0', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="contact-book-stat-pill">可選 <strong>{assignAccounts.filter(a => !a._sel).length}</strong></span>
-                  <span className="contact-book-stat-pill">已選 <strong style={{ color: '#16a34a' }}>{assignAccounts.filter(a => a._sel).length}</strong></span>
+                  <span className="contact-book-stat-pill">可分配 <strong>{assignAccounts.filter(a => !a._sel).length}</strong></span>
+                  <span className="contact-book-stat-pill">已分配 <strong style={{ color: '#16a34a' }}>{assignAccounts.filter(a => a._sel).length}</strong></span>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   {['all','assigned','unassigned'].map(f => (
