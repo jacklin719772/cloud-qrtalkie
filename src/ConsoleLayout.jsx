@@ -2020,12 +2020,12 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作選單說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>訂閱記錄</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼，設備需用新密碼重新註冊。密碼至少需要 6 個字符。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片</strong> — 進入電子名片生成頁並鎖定該賬號；未生成過的名片資訊默認取「帳號設置」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該賬號分配/切換/清除通訊錄，或現場新建通訊錄；保存時同步通訊核心（AM）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號停用/帳號啟用</strong> — 切換帳號啟用狀態，同時停用/啟用通訊核心（AM）帳號。已過期帳號無法操作。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>生成二維碼</strong> — 生成 Provisioning 登錄二維碼，支援複製、下載和 Renew 更新。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>發送重置密碼郵件</strong> — 向帳號綁定郵箱發送重置密碼郵件（需先設定郵箱）。</li>

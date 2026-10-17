@@ -1086,7 +1086,7 @@ const TenantAccountManagement = forwardRef(({
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceStartsAt')}><span>起始日期</span><span>{getSortIndicator('serviceStartsAt')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('serviceExpiresAt')}><span>結束日期</span><span>{getSortIndicator('serviceExpiresAt')}</span></button></th>
                 <th><button className="tenant-account-sort-button" type="button" onClick={() => handleSort('orderNo')}><span>訂單</span><span>{getSortIndicator('orderNo')}</span></button></th>
-                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center' }}>操作</th>
+                <th style={{ position: 'sticky', right: 0, backgroundColor: '#1a2332', zIndex: 3, borderLeft: '1px solid #374151', width: '170px', textAlign: 'center' }}>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -1127,9 +1127,9 @@ const TenantAccountManagement = forwardRef(({
                     <td>{formatDate(account.serviceStartsAt)}</td>
                     <td>{formatDate(account.serviceExpiresAt)}</td>
                     <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{account.orderNo || '-'}</td>
-                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '140px', textAlign: 'center', padding: '0 12px' }}>
+                    <td style={{ position: 'sticky', right: 0, backgroundColor: '#111827', zIndex: 1, borderLeft: '1px solid #374151', width: '170px', textAlign: 'center', padding: '0 12px' }}>
                       <div className="row-actions tenant-account-more-menu" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleAction('details', account)}>詳情</button>
+                        <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '6px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={() => handleAction('details', account)}>帳號詳情</button>
                         <button
                           className="ghost-btn"
                           type="button"
@@ -1144,12 +1144,12 @@ const TenantAccountManagement = forwardRef(({
                         </button>
                         {openDropdownId === account.id && createPortal(
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left, zIndex: 2147483647 }}>
+                            <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>帳號詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱記錄</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('edit', account)}>帳號設置</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('reset_password', account)}>重置密碼</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => { setOpenDropdownId(null); onOpenAccountEcard?.(account); }}>電子名片</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
-                            <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '帳號停用' : '帳號啟用'}</button>
                             <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重置密碼郵件</button>
