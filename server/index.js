@@ -13046,7 +13046,8 @@ async function loadEcardPublicViewData(connection, slug) {
   const validFrom = safeEcardDateOnly(ecardRow.valid_from);
   const validTo = safeEcardDateOnly(ecardRow.valid_to);
   const expired = Boolean((validFrom && today < validFrom) || (validTo && today > validTo));
-  const enabled = String(ecardRow.ecard_status || "").toLowerCase() === "active" && !expired;
+  const sipAvailable = String(ecardRow.sip_status || "").toLowerCase() === "active";
+  const enabled = String(ecardRow.ecard_status || "").toLowerCase() === "active" && !expired && sipAvailable;
 
   const bindingRows = await connection.query(
     `SELECT
@@ -13133,6 +13134,7 @@ async function loadEcardPublicViewData(connection, slug) {
       publicStatus: {
         enabled,
         expired,
+        sipAvailable,
         validFrom: validFrom || "",
         validTo: validTo || "",
       },
@@ -20104,7 +20106,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
 
         // Insert into sip_users
         // Set a default initial password for local SaaS login
-        const initialPassword = process.env.SIP_IMPORT_DEFAULT_PASSWORD || '123456';
+        const initialPassword = process.env.SIP_IMPORT_DEFAULT_PASSWORD || '12345678';
         const hashedPassword = await hashPassword(initialPassword);
         const insertResult = await connection.query(
           `INSERT INTO sip_users (username, sip_domain, password_hash, display_name, email, phone_number, role, status,

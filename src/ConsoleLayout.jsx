@@ -1727,7 +1727,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。新增後不可修改。（必填，純數字）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，預設為 sip.qrtalkie.org。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名</strong> — 來電顯示的名稱，預設與用戶名相同。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增預設密碼為 12345678；導入服務器賬號預設密碼為 123456，可透過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增與導入服務器賬號預設密碼均為 12345678，導入路徑可透過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>手機號碼</strong> — 聯絡電話，需符合國際格式（如 +886912345678），格式不符將不發送至服務端。</li>

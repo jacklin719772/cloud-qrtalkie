@@ -971,10 +971,18 @@ export default function ECardVisitorPage({ slug }) {
             <AlertTriangle size={34} />
           </div>
           <div style={errorTitleStyle}>
-            {publicStatus.expired ? '此電子名片已過期' : '此電子名片目前未啟用'}
+            {publicStatus.expired
+              ? '此電子名片已過期'
+              : publicStatus.sipAvailable === false
+                ? '此電子名片目前不可用'
+                : '此電子名片目前未啟用'}
           </div>
           <div style={errorMessageStyle}>
-            {publicStatus.expired ? '請聯絡管理員重新啟用或更新有效期。' : '請聯絡管理員確認名片狀態。'}
+            {publicStatus.expired
+              ? '請聯絡管理員重新啟用或更新有效期。'
+              : publicStatus.sipAvailable === false
+                ? '該電子名片綁定的帳號已停用，請聯絡管理員。'
+                : '請聯絡管理員確認名片狀態。'}
           </div>
         </div>
       </div>
