@@ -954,13 +954,16 @@ const TenantAccountManagement = forwardRef(({
                   { label: '客服坐席', key: 'agent', msg: '尚未配置為客服坐席', doneMsg: '已配置為客服坐席' },
                   { label: '門禁入口', key: 'entrance', msg: '尚未配置為門禁入口', doneMsg: '已配置為門禁入口' },
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
+                  { label: '配置文件', key: 'provisioning', msg: '登錄二維碼與 Provisioning 連結', doneMsg: '' },
                 ].map(item => {
                   const isContactBook = item.key === 'contactBook';
                   const isEcard = item.key === 'ecard';
+                  const isProvisioning = item.key === 'provisioning';
                   const done = isContactBook ? Boolean(detailAccount.contactBookId) : (configStatus[item.key] || false);
                   const statusText = isContactBook
                     ? (done ? `已分配：${detailAccount.contactBookName || detailAccount.contactBookId}` : item.msg)
-                    : (done ? item.doneMsg : item.msg);
+                    : isProvisioning ? item.msg
+                      : (done ? item.doneMsg : item.msg);
                   const handleItemClick = () => {
                     onNavigate && onNavigate(navMap[item.key]);
                   };
@@ -968,7 +971,14 @@ const TenantAccountManagement = forwardRef(({
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{statusText}</span>
                     </div>
-                    {isContactBook || isEcard ? (
+                    {isProvisioning ? (
+                      <button
+                        className="ghost-btn"
+                        type="button"
+                        onClick={() => setQrDialogAccount(detailAccount)}
+                        style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
+                      >詳情</button>
+                    ) : isContactBook || isEcard ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <button
                           className="ghost-btn"
@@ -1005,6 +1015,12 @@ const TenantAccountManagement = forwardRef(({
       />
 
       {editAccountDialog}
+
+      <LoginQrDialog
+        isOpen={!!qrDialogAccount}
+        onClose={() => setQrDialogAccount(null)}
+        account={qrDialogAccount}
+      />
 
       {contactBookViewOpen && createPortal(
         <div
