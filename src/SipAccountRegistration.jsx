@@ -128,7 +128,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setBatchAddOpen(true);
   }
 
-  async function openReclaimDialog() {
+  async function openReclaimDialog(prefillAccountId = null) {
     setReclaimDialogOpen(true);
     setReclaimCandidates([]);
     setReclaimSelectedIds([]);
@@ -138,7 +138,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setIsReclaimLoading(true);
     try {
       const data = await apiClient.get('/admin/sip-accounts/reclaim-candidates');
-      setReclaimCandidates(Array.isArray(data?.accounts) ? data.accounts : []);
+      const candidates = Array.isArray(data?.accounts) ? data.accounts : [];
+      setReclaimCandidates(candidates);
+      const prefillId = Number(prefillAccountId);
+      if (Number.isInteger(prefillId) && prefillId > 0 && candidates.some((item) => Number(item.accountId) === prefillId)) {
+        setReclaimSelectedIds([prefillId]);
+      }
     } catch (err) {
       setReclaimMessage({ type: 'error', text: err.message || '讀取可回收帳號失敗。' });
     } finally {
@@ -325,8 +330,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   async function loadAccounts() {
     setIsLoading(true);
     try {
-      // 獲取真实的 SIP 帳號列表
-      const data = await apiClient.get('/admin/sip-accounts');
+      // 獲取真实的 SIP 帳號列表（回收站視圖包含已回收帳號）
+      const data = await apiClient.get(statusFilter === 'recycled' ? '/admin/sip-accounts?view=recycled' : '/admin/sip-accounts');
       console.log('【前端 DEBUG】介面返回的資料:', data);
       setAccounts(Array.isArray(data.accounts) ? data.accounts : []);
       setListError(false);
@@ -338,6 +343,17 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       setIsLoading(false);
     }
   }
+
+  const recycleViewRef = useRef(false);
+  useEffect(() => {
+    const isRecycleView = statusFilter === 'recycled';
+    if (recycleViewRef.current !== isRecycleView) {
+      recycleViewRef.current = isRecycleView;
+      setCurrentPage(1);
+      setSelectedIds([]);
+      loadAccounts();
+    }
+  }, [statusFilter]);
 
   // 統計數據
   const stats = useMemo(() => {
@@ -378,7 +394,15 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         if (statusFilter === 'assigned') {
           matchesStatus = !!acc.tenantName;
         } else if (statusFilter === 'disabled') {
-          matchesStatus = acc.status === 'disabled' || acc.status === 'inactive';
+          matchesStatus = acc.lifecycle === 'disabled' || acc.status === 'disabled' || acc.status === 'inactive';
+        } else if (statusFilter === 'recycled') {
+          matchesStatus = acc.lifecycle === 'recycled' || Boolean(acc.recycledAt);
+        } else if (statusFilter === 'expired') {
+          matchesStatus = acc.lifecycle === 'expired';
+        } else if (statusFilter === 'inventory') {
+          matchesStatus = acc.lifecycle === 'inventory';
+        } else if (statusFilter === 'active') {
+          matchesStatus = acc.lifecycle === 'active';
         } else {
           matchesStatus = acc.status === statusFilter;
         }
@@ -483,14 +507,24 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     };
   }, [openDropdownId]);
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (accountOrStatus) => {
+    const account = typeof accountOrStatus === 'object' && accountOrStatus ? accountOrStatus : null;
+    const status = account ? account.status : accountOrStatus;
+    const lifecycle = account?.lifecycle;
     const statusMap = {
       active: { label: '啟用中', bg: '#dcfce7', color: '#15803d' },
       disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
       inactive: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
       pending: { label: '待稽核', bg: '#e0f2fe', color: '#0369a1' },
     };
-    const item = statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
+    const lifecycleMap = {
+      active: { label: '使用中', bg: '#dcfce7', color: '#15803d' },
+      inventory: { label: '庫存', bg: '#0c4a6e', color: '#7dd3fc' },
+      disabled: { label: '已停用', bg: '#fee2e2', color: '#dc2626' },
+      expired: { label: '已過期待回收', bg: '#451a03', color: '#fbbf24' },
+      recycled: { label: '已回收', bg: '#374151', color: '#d1d5db' },
+    };
+    const item = (lifecycle && lifecycleMap[lifecycle]) || statusMap[status] || { label: status || '未知', bg: '#f1f5f9', color: '#9ca3af' };
     return <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', fontSize: '10px', backgroundColor: item.bg, color: item.color, whiteSpace: 'nowrap' }}>{item.label}</span>;
   };
 
@@ -568,6 +602,11 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
 
     const selectedAccounts = accounts.filter(acc => selectedIds.includes(acc.id));
+    const ineligibleAccounts = selectedAccounts.filter(acc => acc.lifecycle !== 'inventory');
+    if (ineligibleAccounts.length > 0) {
+      alert('只有未分配的庫存帳號可以直接刪除；已分配、已停用、已過期或已回收的帳號請使用對應流程。');
+      return;
+    }
     const assignedAccounts = selectedAccounts.filter(acc => acc.tenantName);
 
     if (assignedAccounts.length > 0) {
@@ -666,29 +705,42 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
 
     const selectedAccounts = accounts.filter(acc => selectedIds.includes(acc.id));
-    const assignedAccounts = selectedAccounts.filter(acc => acc.tenantName);
-    const unassignedAccounts = selectedAccounts.filter(acc => !acc.tenantName);
+    const withoutEntitlement = selectedAccounts.filter(acc => !acc.hasActiveEntitlement);
+    if (withoutEntitlement.length > 0) {
+      alert(`選中的帳號中有 ${withoutEntitlement.length} 個沒有生效權益，無需取消分配；已過期帳號請使用「賬號回收」。`);
+      return;
+    }
+    const assignedAccounts = selectedAccounts.filter(acc => acc.hasActiveEntitlement);
 
     if (assignedAccounts.length === 0) {
-      alert('選中的帳號均未分配給任何租戶，無需取消分配。');
+      alert('選中的帳號均沒有可撤銷的生效權益，無需取消分配。');
       return;
     }
 
-    let confirmMsg = `確定要取消選中的 ${assignedAccounts.length} 個帳號的租戶分配嗎？`;
-    if (unassignedAccounts.length > 0) {
-      confirmMsg = `選中的帳號中包含 ${unassignedAccounts.length} 個未分配的帳號。是否跳過它們，僅對已分配的 ${assignedAccounts.length} 個帳號執行取消分配？`;
-    }
+    const confirmMsg = `確定要完整取消選中的 ${assignedAccounts.length} 個帳號的租戶分配嗎？將撤銷權益、解綁 Web/通訊錄/門禁等配置，帳號回到庫存。`;
 
     if (window.confirm(confirmMsg)) {
       setIsLoading(true);
       try {
-        await Promise.all(assignedAccounts.map(account => apiClient.post(`/admin/sip-accounts/${account.id}/unassign`)));
+        const results = await Promise.allSettled(
+          assignedAccounts.map((account) => apiClient.post(`/admin/sip-accounts/${account.id}/unassign`)),
+        );
+        const failed = results.filter((item) => item.status === 'rejected');
+        const warnings = results
+          .filter((item) => item.status === 'fulfilled')
+          .flatMap((item) => item.value?.result?.warnings || []);
         setSelectedIds([]);
-        loadAccounts();
+        await loadAccounts();
+        if (warnings.length > 0) alert(warnings.join('\n'));
+        if (failed.length > 0) {
+          alert(`取消分配完成：成功 ${assignedAccounts.length - failed.length} 個，失敗 ${failed.length} 個。`);
+        }
       } catch (err) {
         console.error('Failed to batch unassign sip accounts:', err);
         alert(err.message || '部分或全部帳號取消分配失敗');
         loadAccounts();
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -860,14 +912,16 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     }
 
     if (action === 'unassign') {
-      if (!account.tenantName) {
-        alert('該帳號尚未分配給任何租戶。');
+      if (!account.hasActiveEntitlement) {
+        alert('該帳號沒有可撤銷的生效權益。');
         return;
       }
-      if (window.confirm(`確定要取消帳號「${account.username}」的租戶分配嗎？`)) {
+      if (window.confirm(`確定要完整取消帳號「${account.username}」的租戶分配嗎？將撤銷權益、解綁 Web/通訊錄/門禁等配置，帳號回到庫存。`)) {
         setIsLoading(true);
         try {
-          await apiClient.post(`/admin/sip-accounts/${account.id}/unassign`);
+          const res = await apiClient.post(`/admin/sip-accounts/${account.id}/unassign`);
+          const warnings = res?.result?.warnings || [];
+          if (warnings.length > 0) alert(warnings.join('\n'));
           loadAccounts();
         } catch (err) {
           console.error('Failed to unassign sip account:', err);
@@ -2080,9 +2134,12 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <option value="all">全部狀態</option>
-                <option value="active">啟用中</option>
+                <option value="active">使用中</option>
+                <option value="inventory">庫存</option>
                 <option value="disabled">已停用</option>
+                <option value="expired">已過期待回收</option>
                 <option value="assigned">已分配</option>
+                <option value="recycled">回收站</option>
               </select>
               <select
                 className="sip-status-select"
@@ -2116,6 +2173,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       type="checkbox"
                       checked={paginatedAccounts.length > 0 && paginatedAccounts.every(acc => selectedIds.includes(acc.id))}
                       onChange={(e) => {
+                        if (statusFilter === 'recycled') return;
                         if (e.target.checked) {
                           const newIds = new Set(selectedIds);
                           paginatedAccounts.forEach(acc => newIds.add(acc.id));
@@ -2126,7 +2184,8 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           setSelectedIds(Array.from(newIds));
                         }
                       }}
-                      style={{ cursor: 'pointer' }}
+                      disabled={statusFilter === 'recycled'}
+                      style={{ cursor: statusFilter === 'recycled' ? 'not-allowed' : 'pointer' }}
                     />
                   </th>
                   {[
@@ -2160,7 +2219,10 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(acc.id)}
+                          disabled={acc.lifecycle === 'recycled'}
+                          style={{ cursor: acc.lifecycle === 'recycled' ? 'not-allowed' : 'pointer' }}
                           onChange={(e) => {
+                            if (acc.lifecycle === 'recycled') return;
                             if (e.target.checked) {
                               setSelectedIds(prev => [...prev, acc.id]);
                             } else {
@@ -2171,7 +2233,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                       </td>
                       <td style={{ color: '#e5e7eb', fontWeight: 500 }}>{acc.username}</td>
                       <td>
-                        {getStatusBadge(acc.status)}
+                        {getStatusBadge(acc)}
                         {acc.syncStatus === 'pending_delete' && (
                           <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '999px', padding: '3px 10px', marginLeft: '6px', fontSize: '10px', backgroundColor: '#3b1f0f', color: '#fbbf24', whiteSpace: 'nowrap' }} title="刪除未完成（遠端或本地），可從「更多」選「重試刪除」">刪除待重試</span>
                         )}
@@ -2191,17 +2253,30 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                           {openDropdownId === acc.id && createPortal(
                             <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left }}>
                               <button type="button" className="dropdown-item" onClick={() => handleAction('details', acc)}>詳情</button>
-                              <button type="button" className="dropdown-item" onClick={() => handleAction('edit', acc)}>編輯</button>
-                              <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', acc)}>{acc.status === 'active' ? '停用' : '啟用'}</button>
-                              <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', acc)}>刪除</button>
+                              {['active', 'inventory', 'disabled'].includes(acc.lifecycle) && (
+                                <button type="button" className="dropdown-item" onClick={() => handleAction('edit', acc)}>編輯</button>
+                              )}
+                              {['active', 'inventory', 'disabled'].includes(acc.lifecycle) && (
+                                <button type="button" className="dropdown-item" onClick={() => handleAction('toggle_status', acc)}>{acc.status === 'active' ? '停用' : '啟用'}</button>
+                              )}
+                              {acc.lifecycle === 'inventory' && (
+                                <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', acc)}>刪除</button>
+                              )}
                               {acc.syncStatus === 'pending_delete' && (
                                 <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setDeleteConfirm({ account: acc, isBatch: false }); }}>重試刪除</button>
                               )}
-                              <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', acc)}>重設密碼</button>
+                              {['active', 'inventory', 'disabled'].includes(acc.lifecycle) && (
+                                <button type="button" className="dropdown-item" onClick={() => handleAction('reset_password', acc)}>重設密碼</button>
+                              )}
                               <button type="button" className="dropdown-item" onClick={() => handleAction('verify', acc)}>帳號校驗</button>
-                              <button type="button" className="dropdown-item" onClick={() => handleAction('ai_entitlement', acc)}>AI授權</button>
-                              {acc.tenantName && (
+                              {['active', 'disabled'].includes(acc.lifecycle) && (
+                                <button type="button" className="dropdown-item" onClick={() => handleAction('ai_entitlement', acc)}>AI授權</button>
+                              )}
+                              {['active', 'disabled'].includes(acc.lifecycle) && acc.hasActiveEntitlement && (
                                 <button type="button" className="dropdown-item" onClick={() => handleAction('unassign', acc)}>取消分配</button>
+                              )}
+                              {acc.lifecycle === 'expired' && (
+                                <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); openReclaimDialog(acc.id); }}>賬號回收</button>
                               )}
                             </div>, document.body
                           )}

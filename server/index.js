@@ -8316,6 +8316,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         u.status,
         u.sync_status AS syncStatus,
         u.created_at,
+        u.recycled_at,
         c.display_name AS creator_name,
         e.external_username,
         e.external_domain AS externalDomain,
@@ -8326,39 +8327,67 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         e.protocol,
         u.tenant_id,
         t.name AS tenant_name,
-        ent.service_expires_at
+        COALESCE(ent.service_expires_at, ent_latest.service_expires_at) AS service_expires_at,
+        ent_latest.status AS latest_entitlement_status,
+        ent_latest.service_expires_at AS latest_service_expires_at,
+        EXISTS(
+          SELECT 1 FROM tenant_sip_account_entitlements e3
+          WHERE e3.sip_user_id = u.id
+            AND e3.status = 'active'
+            AND (e3.service_expires_at IS NULL OR e3.service_expires_at >= CURDATE())
+        ) AS has_active_entitlement
       FROM sip_users u
       LEFT JOIN sip_external_accounts e ON u.id = e.sip_user_id
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
       LEFT JOIN tenant_sip_account_entitlements ent ON u.id = ent.sip_user_id AND u.tenant_id = ent.tenant_id AND ent.status = 'active'
-      WHERE u.recycled_at IS NULL
+      LEFT JOIN tenant_sip_account_entitlements ent_latest ON ent_latest.id = (
+        SELECT MAX(e2.id) FROM tenant_sip_account_entitlements e2 WHERE e2.sip_user_id = u.id
+      )
+      WHERE ${request.query?.view === 'recycled' ? 'u.recycled_at IS NOT NULL' : 'u.recycled_at IS NULL'}
       ORDER BY u.created_at DESC
     `);
-    
-    const accounts = rows.map(r => ({
-      id: Number(r.id),
-      username: r.username,
-      domain: r.domain || '',
-      displayName: r.displayName || '',
-      role: r.role,
-      phone: r.phone,
-      email: r.email,
-      status: r.status,
-      syncStatus: r.syncStatus || '',
-      externalUsername: r.external_username || '',
-      externalDomain: r.externalDomain,
-      externalPassword: r.external_password || '',
-      externalRealm: r.realm || '',
-      externalRegistrar: r.registrar || '',
-      externalOutboundProxy: r.outbound_proxy || '',
-      externalProtocol: r.protocol || '',
-      createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') : '',
-      creatorName: r.creator_name || '-',
-      tenantId: r.tenant_id == null ? null : Number(r.tenant_id),
-      tenantName: r.tenant_name || '',
-      expiresAt: r.service_expires_at || null
-    }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const accounts = rows.map(r => {
+      const latestExpiry = r.latest_service_expires_at ? String(r.latest_service_expires_at).slice(0, 10) : null;
+      const hasActiveEntitlement = Number(r.has_active_entitlement) === 1;
+      let lifecycle;
+      if (r.recycled_at) lifecycle = 'recycled';
+      else if (r.status === 'pending' || r.status === 'rejected') lifecycle = r.status;
+      else if (hasActiveEntitlement) lifecycle = r.status === 'active' ? 'active' : 'disabled';
+      else if (latestExpiry && latestExpiry < today) lifecycle = 'expired';
+      else if (r.status === 'active') lifecycle = 'inventory';
+      else lifecycle = 'disabled';
+      return {
+        id: Number(r.id),
+        username: r.username,
+        domain: r.domain || '',
+        displayName: r.displayName || '',
+        role: r.role,
+        phone: r.phone,
+        email: r.email,
+        status: r.status,
+        lifecycle,
+        hasActiveEntitlement,
+        latestEntitlementStatus: r.latest_entitlement_status || null,
+        latestServiceExpiresAt: latestExpiry,
+        recycledAt: r.recycled_at || null,
+        syncStatus: r.syncStatus || '',
+        externalUsername: r.external_username || '',
+        externalDomain: r.externalDomain,
+        externalPassword: r.external_password || '',
+        externalRealm: r.realm || '',
+        externalRegistrar: r.registrar || '',
+        externalOutboundProxy: r.outbound_proxy || '',
+        externalProtocol: r.protocol || '',
+        createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-') : '',
+        creatorName: r.creator_name || '-',
+        tenantId: r.tenant_id == null ? null : Number(r.tenant_id),
+        tenantName: r.tenant_name || '',
+        expiresAt: r.service_expires_at || null
+      };
+    });
 
     console.log('【後端 DEBUG】GET /api/admin/sip-accounts 從資料庫查詢到的條數:', accounts.length);
     return response.json({ accounts });
@@ -8963,40 +8992,61 @@ app.get("/api/admin/sip-accounts/reclaim-candidates", requireAdmin, async (reque
   }
 });
 
-async function reclaimOneSipAccount(accountId) {
+async function releaseSipAccount(accountId, mode = "reclaim") {
   const warnings = [];
   let connection;
   try {
     connection = await pool.getConnection();
-    const [target] = await connection.query(
-      `SELECT su.id, su.username, su.sip_domain, su.flexisip_account_id, su.recycled_at,
-              e.id AS entitlement_id, e.tenant_id
-       FROM sip_users su
-       JOIN (
-         SELECT e.sip_user_id, MAX(e.id) AS ent_id
-         FROM tenant_sip_account_entitlements e
-         JOIN tenants t2 ON t2.id = e.tenant_id AND t2.is_system = 0
-         WHERE e.service_expires_at IS NOT NULL AND e.service_expires_at < CURDATE()
-           AND e.status IN ('active', 'expired')
-         GROUP BY e.sip_user_id
-       ) pick ON pick.sip_user_id = su.id
-       JOIN tenant_sip_account_entitlements e ON e.id = pick.ent_id
-       WHERE su.id = ? AND su.recycled_at IS NULL
-       LIMIT 1`,
-      [accountId],
-    );
-    if (!target) {
-      return { accountId, success: false, error: "帳號不存在、未到期或已回收。" };
-    }
-    const [activeEntitlement] = await connection.query(
-      `SELECT id FROM tenant_sip_account_entitlements
-       WHERE sip_user_id = ? AND status = 'active' AND id <> ?
-         AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
-       LIMIT 1`,
-      [target.id, target.entitlement_id],
-    );
-    if (activeEntitlement) {
-      return { accountId, username: target.username, success: false, error: "該帳號仍有生效權益，不能回收。" };
+    let target;
+    if (mode === "unassign") {
+      [target] = await connection.query(
+        `SELECT su.id, su.username, su.sip_domain, su.flexisip_account_id, su.recycled_at,
+                e.id AS entitlement_id, e.tenant_id
+         FROM sip_users su
+         JOIN tenant_sip_account_entitlements e
+           ON e.sip_user_id = su.id
+          AND e.status = 'active'
+          AND (e.service_expires_at IS NULL OR e.service_expires_at >= CURDATE())
+         JOIN tenants t ON t.id = e.tenant_id AND t.is_system = 0
+         WHERE su.id = ? AND su.recycled_at IS NULL
+         ORDER BY e.id DESC
+         LIMIT 1`,
+        [accountId],
+      );
+      if (!target) {
+        return { accountId, mode, success: false, error: "帳號不存在、無生效權益或已回收。" };
+      }
+    } else {
+      [target] = await connection.query(
+        `SELECT su.id, su.username, su.sip_domain, su.flexisip_account_id, su.recycled_at,
+                e.id AS entitlement_id, e.tenant_id
+         FROM sip_users su
+         JOIN (
+           SELECT e.sip_user_id, MAX(e.id) AS ent_id
+           FROM tenant_sip_account_entitlements e
+           JOIN tenants t2 ON t2.id = e.tenant_id AND t2.is_system = 0
+           WHERE e.service_expires_at IS NOT NULL AND e.service_expires_at < CURDATE()
+             AND e.status IN ('active', 'expired')
+           GROUP BY e.sip_user_id
+         ) pick ON pick.sip_user_id = su.id
+         JOIN tenant_sip_account_entitlements e ON e.id = pick.ent_id
+         WHERE su.id = ? AND su.recycled_at IS NULL
+         LIMIT 1`,
+        [accountId],
+      );
+      if (!target) {
+        return { accountId, mode, success: false, error: "帳號不存在、未到期或已回收。" };
+      }
+      const [activeEntitlement] = await connection.query(
+        `SELECT id FROM tenant_sip_account_entitlements
+         WHERE sip_user_id = ? AND status = 'active' AND id <> ?
+           AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
+         LIMIT 1`,
+        [target.id, target.entitlement_id],
+      );
+      if (activeEntitlement) {
+        return { accountId, mode, username: target.username, success: false, error: "該帳號仍有生效權益，不能回收。" };
+      }
     }
     connection.release();
     connection = null;
@@ -9041,15 +9091,17 @@ async function reclaimOneSipAccount(accountId) {
       if (!entitlement || !["active", "expired"].includes(entitlement.status)) {
         throw Object.assign(new Error("權益狀態已變化，請重新整理後重試。"), { httpStatus: 409 });
       }
-      const [activeNow] = await connection.query(
-        `SELECT id FROM tenant_sip_account_entitlements
-         WHERE sip_user_id = ? AND status = 'active' AND id <> ?
-           AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
-         LIMIT 1`,
-        [target.id, target.entitlement_id],
-      );
-      if (activeNow) {
-        throw Object.assign(new Error("該帳號已有新的生效權益，已跳過回收。"), { httpStatus: 409 });
+      if (mode === "reclaim") {
+        const [activeNow] = await connection.query(
+          `SELECT id FROM tenant_sip_account_entitlements
+           WHERE sip_user_id = ? AND status = 'active' AND id <> ?
+             AND (service_expires_at IS NULL OR service_expires_at >= CURDATE())
+           LIMIT 1`,
+          [target.id, target.entitlement_id],
+        );
+        if (activeNow) {
+          throw Object.assign(new Error("該帳號已有新的生效權益，已跳過回收。"), { httpStatus: 409 });
+        }
       }
 
       const webRows = await connection.query(
@@ -9075,10 +9127,17 @@ async function reclaimOneSipAccount(accountId) {
       const webUserIds = webRows.map((row) => Number(row.web_user_id)).filter((id) => id > 0);
       const ecardIds = ecardRows.map((row) => Number(row.id)).filter((id) => id > 0);
 
-      await connection.query(
-        "UPDATE sip_users SET status = 'disabled', recycled_at = NOW(), contact_book_id = NULL WHERE id = ?",
-        [target.id],
-      );
+      if (mode === "unassign") {
+        await connection.query(
+          "UPDATE sip_users SET tenant_id = NULL, status = 'active', contact_book_id = NULL WHERE id = ?",
+          [target.id],
+        );
+      } else {
+        await connection.query(
+          "UPDATE sip_users SET status = 'disabled', recycled_at = NOW(), contact_book_id = NULL WHERE id = ?",
+          [target.id],
+        );
+      }
       await connection.query(
         "UPDATE tenant_sip_account_entitlements SET status = 'revoked', current_order_id = NULL, updated_at = NOW() WHERE id = ?",
         [target.entitlement_id],
@@ -9187,10 +9246,11 @@ async function reclaimOneSipAccount(accountId) {
       }
     }
 
-    return { accountId, username: target.username, success: true, warnings };
+    return { accountId, username: target.username, mode, success: true, warnings };
   } catch (error) {
     return {
       accountId,
+      mode,
       success: false,
       error: error?.message || String(error),
     };
@@ -9216,7 +9276,7 @@ app.post("/api/admin/sip-accounts/reclaim", requireAdmin, async (request, respon
 
   const results = [];
   for (const accountId of accountIds) {
-    results.push(await reclaimOneSipAccount(accountId));
+    results.push(await releaseSipAccount(accountId, "reclaim"));
   }
 
   let nextStartAccount = "";
@@ -9242,6 +9302,32 @@ app.post("/api/admin/sip-accounts/reclaim", requireAdmin, async (request, respon
   });
 });
 
+async function getSipAccountLifecycle(connection, accountId) {
+  const [row] = await connection.query(
+    `SELECT su.id, su.username, su.status, su.recycled_at, su.tenant_id,
+            EXISTS(
+              SELECT 1 FROM tenant_sip_account_entitlements e
+              WHERE e.sip_user_id = su.id AND e.status = 'active'
+                AND (e.service_expires_at IS NULL OR e.service_expires_at >= CURDATE())
+            ) AS has_active_entitlement,
+            (SELECT e2.service_expires_at FROM tenant_sip_account_entitlements e2
+             WHERE e2.sip_user_id = su.id ORDER BY e2.id DESC LIMIT 1) AS latest_expires_at
+     FROM sip_users su WHERE su.id = ? LIMIT 1`,
+    [accountId],
+  );
+  if (!row) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const latestExpiry = row.latest_expires_at ? String(row.latest_expires_at).slice(0, 10) : null;
+  let lifecycle;
+  if (row.recycled_at) lifecycle = "recycled";
+  else if (row.status === "pending" || row.status === "rejected") lifecycle = row.status;
+  else if (Number(row.has_active_entitlement) === 1) lifecycle = row.status === "active" ? "active" : "disabled";
+  else if (latestExpiry && latestExpiry < today) lifecycle = "expired";
+  else if (row.status === "active") lifecycle = "inventory";
+  else lifecycle = "disabled";
+  return { ...row, lifecycle, latestExpiry };
+}
+
 // PUT /api/admin/sip-accounts/:id/status - 啟用/停用 SIP 帳號（同步 Flexisip）
 app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
@@ -9262,13 +9348,24 @@ app.put("/api/admin/sip-accounts/:id/status", requireAdmin, async (request, resp
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(
-      `SELECT id, username, sip_domain, status, flexisip_account_id, sip_uri, sync_status
+      `SELECT id, username, sip_domain, status, flexisip_account_id, sip_uri, sync_status, recycled_at
        FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
     );
     const account = rows[0];
     if (!account) {
       connection.release();
       return response.status(404).json({ message: "帳號不存在。" });
+    }
+    if (account.recycled_at) {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已回收，不能變更狀態。" });
+    }
+    if (newStatus === 'active') {
+      const lifecycleInfo = await getSipAccountLifecycle(connection, accountId);
+      if (lifecycleInfo?.lifecycle === 'expired') {
+        connection.release();
+        return response.status(409).json({ message: "該帳號已過期，不能啟用；請走續訂或賬號回收。" });
+      }
     }
 
     const isActivating = newStatus === 'active';
@@ -9400,6 +9497,15 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
     if (!account) {
       connection.release();
       return response.status(404).json({ message: "帳號不存在。" });
+    }
+    const lifecycleInfo = await getSipAccountLifecycle(connection, accountId);
+    if (lifecycleInfo?.lifecycle === "recycled") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已回收，不能編輯。" });
+    }
+    if (lifecycleInfo?.lifecycle === "expired") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已過期，不能編輯；請走續訂或賬號回收。" });
     }
     if (account.tenant_id != null) {
       connection.release();
@@ -9627,7 +9733,7 @@ app.get("/api/admin/sip-accounts/:id/account-profile", requireAdmin, async (requ
   }
 });
 
-// POST /api/admin/sip-accounts/:id/unassign - 取消分配
+// POST /api/admin/sip-accounts/:id/unassign - 完整取消分配（撤銷權益、解綁配置、回到庫存）
 app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以進行帳號操作。" });
@@ -9638,22 +9744,11 @@ app.post("/api/admin/sip-accounts/:id/unassign", requireAdmin, async (request, r
     return response.status(400).json({ message: "無效的帳號 ID。" });
   }
 
-  let connection;
-  try {
-    connection = await pool.getConnection();
-    
-    const rows = await connection.query(`SELECT id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
-    if (rows.length === 0) {
-      return response.status(404).json({ message: "帳號不存在。" });
-    }
-    await connection.query(`UPDATE sip_users SET tenant_id = NULL WHERE id = ?`, [accountId]);
-    return response.json({ message: "帳號已成功取消分配。" });
-  } catch (error) {
-    console.error("Failed to unassign SIP account:", error);
-    return response.status(500).json({ message: "取消分配失敗。" });
-  } finally {
-    if (connection) connection.release();
+  const result = await releaseSipAccount(accountId, "unassign");
+  if (!result.success) {
+    return response.status(409).json({ message: result.error || "取消分配失敗。", result });
   }
+  return response.json({ message: "帳號已完整取消分配並回到庫存。", result });
 });
 
 // GET /api/admin/sip-accounts/:id/verify - 校验本地与 Flexisip 帳號数据一致性
@@ -9911,6 +10006,15 @@ app.put("/api/admin/sip-accounts/:id/reset-password", requireAdmin, async (reque
       return response.status(404).json({ message: "帳號不存在。" });
     }
     const account = rows[0];
+    const lifecycleInfo = await getSipAccountLifecycle(connection, accountId);
+    if (lifecycleInfo?.lifecycle === "recycled") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已回收，不能重置密碼。" });
+    }
+    if (lifecycleInfo?.lifecycle === "expired") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已過期，不能重置密碼；請走續訂或賬號回收。" });
+    }
     connection.release();
 
     // ── local_only 历史帳號：只更新本地 ──
@@ -10038,10 +10142,19 @@ app.put("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (reque
   try {
     connection = await pool.getConnection();
     // 先確認 sip_user 存在
-    const [sipUser] = await connection.query(`SELECT id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
-    if (sipUser.length === 0) {
+    const sipRows = await connection.query(`SELECT id FROM sip_users WHERE id = ? LIMIT 1`, [accountId]);
+    if (sipRows.length === 0) {
       connection.release();
       return response.status(404).json({ message: "帳號不存在。" });
+    }
+    const lifecycleInfo = await getSipAccountLifecycle(connection, accountId);
+    if (lifecycleInfo?.lifecycle === "recycled") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已回收，不能設定 AI 授權。" });
+    }
+    if (!["active", "disabled"].includes(lifecycleInfo?.lifecycle)) {
+      connection.release();
+      return response.status(409).json({ message: "只有使用中的帳號可以設定 AI 授權。" });
     }
     await connection.query(
       `INSERT INTO ai_bot_account_entitlements (sip_user_id, enabled, daily_limit, monthly_limit, expires_at, notes, granted_by_admin_id)
@@ -10084,6 +10197,11 @@ app.delete("/api/admin/sip-accounts/:id/ai-entitlement", requireAdmin, async (re
   let connection;
   try {
     connection = await pool.getConnection();
+    const lifecycleInfo = await getSipAccountLifecycle(connection, accountId);
+    if (lifecycleInfo?.lifecycle === "recycled") {
+      connection.release();
+      return response.status(409).json({ message: "該帳號已回收，不能操作 AI 授權。" });
+    }
     await connection.query(
       `DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ?`,
       [accountId],
@@ -10116,12 +10234,25 @@ app.delete("/api/admin/sip-accounts/:id", requireAdmin, async (request, response
       `SELECT id, tenant_id, username, sip_domain, flexisip_account_id, sip_uri, sync_status
        FROM sip_users WHERE id = ? LIMIT 1`, [accountId],
     );
+    const lifecycleInfo = rows.length > 0 ? await getSipAccountLifecycle(connection, accountId) : null;
     connection.release();
 
     if (rows.length === 0) {
       return response.status(404).json({ message: "帳號不存在。" });
     }
     const account = bigIntSafe(rows[0]);
+
+    if (lifecycleInfo?.lifecycle === "recycled") {
+      return response.status(409).json({ message: "該帳號已回收，不能刪除。" });
+    }
+    if (account.sync_status !== "pending_delete") {
+      if (lifecycleInfo?.lifecycle === "expired") {
+        return response.status(409).json({ message: "該帳號已過期，請使用賬號回收。" });
+      }
+      if (lifecycleInfo?.lifecycle !== "inventory") {
+        return response.status(409).json({ message: "只有未分配的庫存帳號可以直接刪除。" });
+      }
+    }
 
     // 原有业务校验：已分配租户不能刪除
     if (account.tenant_id != null) {
