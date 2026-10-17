@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, ShoppingCart, RefreshCw, HelpCircle } from 'lucide-react';
+import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, Recycle, ShoppingCart, RefreshCw, HelpCircle } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Analytics from './Analytics';
 import Topbar from './Topbar';
@@ -406,9 +406,6 @@ export default function ConsoleLayout({ onLogout }) {
             <button className="ghost-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleExportCsv()} style={{ ...sipActionBase, background: '#fff', color: '#1e3a8a', border: '1px solid #dbeafe', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)' }}>
               <Download size={14} /> 導出 CSV
             </button>
-            <button className="ghost-btn" type="button" onClick={() => { setSipBatchImportType('csv'); setShowSipBatchImportDialog(true); }} style={{ ...sipActionBase, background: '#fff', color: '#1e3a8a', border: '1px solid #dbeafe', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)' }}>
-              <Upload size={14} /> 批量導入
-            </button>
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.startAdd()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
               <Plus size={14} /> 新增帳號
             </button>
@@ -416,10 +413,13 @@ export default function ConsoleLayout({ onLogout }) {
               <UserPlus size={14} /> 批量新增
             </button>
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleBatchUnassign()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}>
-              <UserMinus size={14} /> 批量取消分配
+              <UserMinus size={14} /> 取消分配
             </button>
             <button className="primary-btn" type="button" onClick={() => sipAccountRegistrationRef.current?.handleBatchDelete()} style={{ ...sipActionBase, background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(79, 70, 229, 0.22)' }}>
               <Trash2 size={14} /> 批量刪除
+            </button>
+            <button className="primary-btn" type="button" style={{ ...sipActionBase, background: 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)', color: '#fff', border: '0', boxShadow: '0 6px 14px rgba(245, 158, 11, 0.22)' }}>
+              <Recycle size={14} /> 賬號回收
             </button>
             <button type="button" onClick={() => setShowSipMgmtHelp(true)} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '44px', width: '44px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', cursor: 'pointer', color: '#9ca3af' }} title="操作說明"><HelpCircle size={18} /></button>
           </div>
@@ -1698,13 +1698,12 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>新增帳號</strong> — 手動新增單個 SIP 帳號，設定用戶名、密碼、角色等。若用戶名曾被刪除保留，系統會彈窗詢問是否釋放後重新創建。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量新增</strong> — 一次性批次建立多個 SIP 帳號，自動遞增用戶名。如有「已刪除保留」的帳號，可點擊「釋放並重試」一次性釋放後重新創建。全部成功時彈窗自動關閉。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量導入</strong> — 點擊後彈窗選擇導入方式：<strong style={{ color: "#fbbf24" }}>導入 CSV</strong> 從 CSV 檔案批量導入 SIP 帳號；<strong style={{ color: "#fbbf24" }}>導入服務器賬號</strong> 從 Flexisip 服務器同步現有帳號到本地數據庫，可全選或勾選部分帳號導入，導入後預設密碼為 123456（可通過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>導出 CSV</strong> — 將帳號列表匯出為 CSV 檔案。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>編輯帳號</strong> — 修改帳號的顯示名、郵箱、電話等設定。用戶名和域名不可修改。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>查看詳情</strong> — 查看帳號的完整資訊與服務端同步狀態。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重設密碼</strong> — 快速重設帳號的密碼，同步更新至服務端。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號校驗</strong> — 校驗本地數據與服務端數據是否一致，發現不一致時可手動同步。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量取消分配</strong> — 批次取消帳號與租戶的綁定。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>取消分配</strong> — 批次取消帳號與租戶的綁定。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量刪除</strong> — 批次刪除帳號，彈窗提供兩種模式選擇。（見下方刪除說明）</li>
                 </ul>
               </div>
