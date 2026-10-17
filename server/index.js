@@ -8340,7 +8340,13 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
       LEFT JOIN sip_external_accounts e ON u.id = e.sip_user_id
       LEFT JOIN admin_users c ON u.created_by_admin_user_id = c.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
-      LEFT JOIN tenant_sip_account_entitlements ent ON u.id = ent.sip_user_id AND u.tenant_id = ent.tenant_id AND ent.status = 'active'
+      LEFT JOIN tenant_sip_account_entitlements ent ON ent.id = (
+        SELECT e4.id FROM tenant_sip_account_entitlements e4
+        WHERE e4.sip_user_id = u.id
+          AND e4.status = 'active'
+          AND (e4.service_expires_at IS NULL OR e4.service_expires_at >= CURDATE())
+        ORDER BY e4.id DESC LIMIT 1
+      )
       LEFT JOIN tenant_sip_account_entitlements ent_latest ON ent_latest.id = (
         SELECT MAX(e2.id) FROM tenant_sip_account_entitlements e2 WHERE e2.sip_user_id = u.id
       )
@@ -8349,8 +8355,13 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
     `);
 
     const today = new Date().toISOString().slice(0, 10);
+    const toDateOnly = (value) => {
+      if (!value) return null;
+      if (value instanceof Date) return value.toISOString().slice(0, 10);
+      return String(value).slice(0, 10);
+    };
     const accounts = rows.map(r => {
-      const latestExpiry = r.latest_service_expires_at ? String(r.latest_service_expires_at).slice(0, 10) : null;
+      const latestExpiry = toDateOnly(r.latest_service_expires_at);
       const hasActiveEntitlement = Number(r.has_active_entitlement) === 1;
       let lifecycle;
       if (r.recycled_at) lifecycle = 'recycled';
@@ -8385,7 +8396,7 @@ app.get("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
         creatorName: r.creator_name || '-',
         tenantId: r.tenant_id == null ? null : Number(r.tenant_id),
         tenantName: r.tenant_name || '',
-        expiresAt: lifecycle === 'expired' ? latestExpiry : (r.service_expires_at || null)
+        expiresAt: lifecycle === 'expired' ? latestExpiry : toDateOnly(r.service_expires_at)
       };
     });
 
@@ -9317,7 +9328,11 @@ async function getSipAccountLifecycle(connection, accountId) {
   );
   if (!row) return null;
   const today = new Date().toISOString().slice(0, 10);
-  const latestExpiry = row.latest_expires_at ? String(row.latest_expires_at).slice(0, 10) : null;
+  const latestExpiry = row.latest_expires_at
+    ? (row.latest_expires_at instanceof Date
+      ? row.latest_expires_at.toISOString().slice(0, 10)
+      : String(row.latest_expires_at).slice(0, 10))
+    : null;
   let lifecycle;
   if (row.recycled_at) lifecycle = "recycled";
   else if (row.status === "pending" || row.status === "rejected") lifecycle = row.status;
