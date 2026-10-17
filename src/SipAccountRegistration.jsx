@@ -2395,7 +2395,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#0f172a' }}>
-                      <th style={{ width: '40px', padding: '10px 8px', borderBottom: '1px solid #1f2937', textAlign: 'center' }}>
+                      <th style={{ width: '40px', padding: '10px 8px', borderBottom: '1px solid #1f2937', textAlign: 'center', backgroundColor: '#0f172a' }}>
                         <input
                           type="checkbox"
                           checked={reclaimCandidates.every((item) => reclaimSelectedIds.includes(Number(item.accountId)))}
@@ -2404,7 +2404,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                         />
                       </th>
                       {['帳號', '顯示名', '訂閱日期', '到期日期', '租戶'].map((label) => (
-                        <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', textAlign: 'left', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</th>
+                        <th key={label} style={{ padding: '10px 12px', borderBottom: '1px solid #1f2937', textAlign: 'left', color: '#9ca3af', fontWeight: 600, whiteSpace: 'nowrap', backgroundColor: '#0f172a' }}>{label}</th>
                       ))}
                     </tr>
                   </thead>
