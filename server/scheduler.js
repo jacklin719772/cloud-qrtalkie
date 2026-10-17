@@ -136,6 +136,12 @@ async function scanExpiredSipAccounts(connection) {
     // 試用帳號（系統租戶）：狀態照常置 expired，停止/回收走試用通道
     if (Number(row.tenant_is_system) === 1) continue;
 
+    // 到期即停用電子名片（終態：前端不再提供啟用入口）
+    await connection.query(
+      "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ? AND status = 'active'",
+      [row.sip_user_id]
+    );
+
     // 到期自動停用：AM + 本地狀態
     await deactivateExpiredAccount(connection, row);
 
@@ -192,6 +198,10 @@ async function scanExpiredSipAccounts(connection) {
        )`
   );
   for (const row of retryRows) {
+    await connection.query(
+      "UPDATE tenant_ecards SET status = 'disabled', updated_at = NOW() WHERE sip_user_id = ? AND status = 'active'",
+      [row.sip_user_id]
+    );
     await deactivateExpiredAccount(connection, row);
   }
 }

@@ -1000,6 +1000,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       alert('該帳號尚未配置名片，無法啟用/停用。');
       return;
     }
+    if (!item.enabled && checkExpirationStatus(item.validTo) === 'expired') {
+      alert('該電子名片已到期，無法重新啟用。');
+      return;
+    }
     const nextStatus = item.enabled ? 'disabled' : 'active';
     const actionText = item.enabled ? '停用' : '啟用';
     if (!window.confirm(`確定要${actionText}該帳號的電子名片嗎？`)) return;
@@ -1038,15 +1042,27 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       return true;
     });
 
+    const expiredSkipped = status === 'active'
+      ? actualTargets.filter(acc => checkExpirationStatus(acc.validTo) === 'expired')
+      : [];
+    const finalTargets = actualTargets.filter(acc => !expiredSkipped.includes(acc));
+
     if (actualTargets.length === 0) {
       window.alert(`選中的帳號均已處於${actionLabel}狀態。`);
       return;
     }
+    if (finalTargets.length === 0) {
+      window.alert(`選中的電子名片均已到期，無法${actionLabel}。`);
+      return;
+    }
+    if (expiredSkipped.length > 0) {
+      window.alert(`有 ${expiredSkipped.length} 個電子名片已到期，已自動跳過。`);
+    }
 
-    if (!window.confirm(`確定要${actionLabel}選中的 ${actualTargets.length} 個電子名片嗎？`)) return;
+    if (!window.confirm(`確定要${actionLabel}選中的 ${finalTargets.length} 個電子名片嗎？`)) return;
     try {
       // 改為串行請求，防止 MySQL 并发更新时产生死锁（Deadlock）
-      for (const acc of actualTargets) {
+      for (const acc of finalTargets) {
         await apiClient.put(`/tenant/ecard-accounts/${acc.id}/ecard/status`, { status });
       }
       setSelectedIds([]);
@@ -2424,7 +2440,9 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                             {item.configured ? '編輯' : '創建'}
                           </button>
                           <button type="button" className="dropdown-item" disabled={!item.configured || !(item.ecardImageUrl || item.ecardThumbnailUrl || item.thumbnailDataUrl)} onClick={(e) => handleDownloadEcardImage(item, e)}>下載</button>
-                          <button type="button" className="dropdown-item" onClick={() => handleToggleStatus(item)}>{item.enabled ? '停用' : '啟用'}</button>
+                          {!(!item.enabled && checkExpirationStatus(item.validTo) === 'expired') && (
+                            <button type="button" className="dropdown-item" onClick={() => handleToggleStatus(item)}>{item.enabled ? '停用' : '啟用'}</button>
+                          )}
                         </div>, 
                         document.body
                       )}
