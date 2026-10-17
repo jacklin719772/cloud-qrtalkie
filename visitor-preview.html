@@ -608,6 +608,41 @@
       ]
     };
 
+    // 坐席可用性：以綁定 SIP 帳號的名片狀態為準（名片停用/無名片/已過期 → 不展示）
+    var availability = {};
+    function agentAvailable(a) {
+      return !a || !a.sip || availability[a.sip] !== false;
+    }
+    function visibleAgents(cat) {
+      return ((cat && cat.agents) || []).filter(agentAvailable);
+    }
+    function loadAgentAvailability(cb) {
+      var sips = [];
+      (data.categories || []).forEach(function(c) {
+        (c.agents || []).forEach(function(a) {
+          if (a.sip && sips.indexOf(a.sip) < 0) sips.push(a.sip);
+        });
+      });
+      if (sips.length === 0) { cb(); return; }
+      var pending = sips.length;
+      function done() { pending -= 1; if (pending === 0) cb(); }
+      sips.forEach(function(sip) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/api/external-api/ecard-status?sipAccount=' + encodeURIComponent(sip));
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            try {
+              var r = JSON.parse(xhr.responseText);
+              if (r && r.success) availability[sip] = r.available === true;
+            } catch (e) { /* 查詢失敗時保留展示，避免整頁空白 */ }
+          }
+          done();
+        };
+        xhr.onerror = done;
+        xhr.send();
+      });
+    }
+
     function esc(s) { if (!s) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
     function render() {
@@ -638,6 +673,10 @@
     });
 
     function renderMain() {
+      loadAgentAvailability(renderMainContent);
+    }
+
+    function renderMainContent() {
       document.getElementById('app').style.display = '';
       var heroBanner = document.getElementById('heroBanner');
       heroBanner.style.backgroundImage = "url('" + (data.coverDataUrl || '') + "')";
@@ -658,7 +697,7 @@
       // Mobile categories
       var mcl = document.getElementById('mobileCatList');
       mcl.innerHTML = (data.categories || []).map(function(c) {
-        return '<div class="mobile-cat-item" onclick="selectMobileCat(this, ' + c.id + ', \'' + esc(c.name) + '\')"><div><div class="mobile-cat-name">' + esc(c.name) + '</div><div class="mobile-cat-count">' + (c.agents || []).length + ' 位坐席</div></div><span style="color:#94a3b8;">▶</span></div>';
+        return '<div class="mobile-cat-item" onclick="selectMobileCat(this, ' + c.id + ', \'' + esc(c.name) + '\')"><div><div class="mobile-cat-name">' + esc(c.name) + '</div><div class="mobile-cat-count">' + visibleAgents(c).length + ' 位坐席</div></div><span style="color:#94a3b8;">▶</span></div>';
       }).join('');
 
       // Hide mobile step 2 initially
@@ -673,7 +712,10 @@
       if (btn) btn.classList.add('active');
       var cat = (data.categories || []).find(function(c) { return c.id === catId; });
       document.getElementById('currentCategoryTitle').textContent = cat ? cat.name : '';
-      document.getElementById('agentsContainer').innerHTML = (cat?.agents || []).map(function(a, idx) {
+      var catAgents = visibleAgents(cat);
+      document.getElementById('agentsContainer').innerHTML = catAgents.length === 0
+        ? '<div style="grid-column:1/-1;padding:32px;text-align:center;color:#94a3b8;font-size:13px;">暫無可用坐席</div>'
+        : catAgents.map(function(a, idx) {
         var agentId = 'agent-card-' + idx;
         return '<div class="agent-card" id="' + agentId + '"><div class="agent-header"><div class="agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="agent-info"><h3>' + esc(a.name) + '</h3><p>' + esc(a.title || '') + '</p></div></div>' +
           (a.sip ? '<div class="agent-sip-status"><span class="agent-sip-dot loading" id="' + agentId + '-dot"></span><span id="' + agentId + '-txt" style="color:var(--text-muted);">...</span><button class="agent-sip-refresh" onclick="refreshAgentStatus(\'' + esc(a.sip) + '\',\'' + agentId + '\')" title="刷新狀態">↻</button></div>' : '') +
@@ -697,8 +739,11 @@
 
     function selectMobileCat(el, catId, catName) {
       document.getElementById('mobileAgentTitle').textContent = catName;
-      var agents = (data.categories || []).find(function(c) { return c.id === catId; })?.agents || [];
-      document.getElementById('mobileAgentsArea').innerHTML = agents.map(function(a) {
+      var cat = (data.categories || []).find(function(c) { return c.id === catId; });
+      var agents = visibleAgents(cat);
+      document.getElementById('mobileAgentsArea').innerHTML = agents.length === 0
+        ? '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:13px;">暫無可用坐席</div>'
+        : agents.map(function(a) {
         return '<div class="mobile-agent-card"><div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div></div><button class="mobile-agent-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞</button></div>';
       }).join('');
       document.getElementById('mobileStepCats').style.display = 'none';
@@ -746,7 +791,7 @@
 
     function loadAllAgentStatuses() {
       (data.categories || []).forEach(function(cat, catIdx) {
-        (cat.agents || []).forEach(function(a, aIdx) {
+        visibleAgents(cat).forEach(function(a, aIdx) {
           if (a.sip) {
             var cardId = 'agent-card-' + aIdx;
             fetchAgentStatus(a.sip, cardId);
@@ -762,11 +807,11 @@
       // Populate agent dropdown
       var agentSelect = document.querySelector('#messageForm select[name="agentId"]');
       agentSelect.innerHTML = '<option value="">不指定（選填）</option>';
-      var allAgents = (data.allAgents || []);
+      var allAgents = (data.allAgents || []).filter(function(a) { return agentAvailable(a); });
       if (allAgents.length === 0) {
         // Fallback: flatten from categories
         (data.categories || []).forEach(function(cat) {
-          (cat.agents || []).forEach(function(a) {
+          visibleAgents(cat).forEach(function(a) {
             allAgents.push({ id: a.id, name: a.name, title: a.title || '', sip: a.sip || '', categoryId: cat.id, categoryName: cat.name });
           });
         });

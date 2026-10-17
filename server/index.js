@@ -21993,6 +21993,46 @@ app.get("/api/external-api/sip-account-status", async (request, response) => {
 
 // ==================== 独立外部接口：ECard（按 SIP 账号认证，不影响现有租户/管理 API） ====================
 
+// GET /api/external-api/ecard-status?sipAccount=xxx
+// 返回指定 SIP 帳號是否配置名片及名片狀態（呼叫中心坐席可用性判斷）
+app.get("/api/external-api/ecard-status", async (request, response) => {
+  const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
+  if (!sipAccount) {
+    return response.status(400).json({ success: false, message: "缺少 sipAccount" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [su] = await connection.query("SELECT id FROM sip_users WHERE username = ? LIMIT 1", [sipAccount]);
+    if (!su) {
+      return response.json({ success: true, hasEcard: false, ecardStatus: null, available: false, reason: "sip_not_found" });
+    }
+    const [ecard] = await connection.query(
+      "SELECT status, valid_from, valid_to FROM tenant_ecards WHERE sip_user_id = ? LIMIT 1",
+      [su.id]
+    );
+    if (!ecard) {
+      return response.json({ success: true, hasEcard: false, ecardStatus: null, available: false });
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const validFrom = ecard.valid_from ? String(ecard.valid_from).slice(0, 10) : null;
+    const validTo = ecard.valid_to ? String(ecard.valid_to).slice(0, 10) : null;
+    const dateValid = (!validFrom || today >= validFrom) && (!validTo || today <= validTo);
+    const ecardStatus = ecard.status ? String(ecard.status) : null;
+    return response.json({
+      success: true,
+      hasEcard: true,
+      ecardStatus,
+      available: ecardStatus === "active" && dateValid,
+    });
+  } catch (error) {
+    console.error("[external-api/ecard-status] error:", error?.message || error);
+    return response.status(500).json({ success: false, message: "伺服器錯誤" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // GET /api/external-api/ecard — 查询 SIP 账号当前的 ecard 数据
 app.get("/api/external-api/ecard", async (request, response) => {
   const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);

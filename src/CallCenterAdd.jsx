@@ -37,6 +37,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
 
   // C. 坐席設定 - 分類和坐席狀態
   const [categories, setCategories] = useState([]);
+  const [agentAvailability, setAgentAvailability] = useState({});
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -77,6 +78,15 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
 
   const activeCategory = categories.find(cat => cat.id === activeCategoryId);
 
+  const loadAgentAvailability = (categoriesData) => {
+    const sips = [...new Set((categoriesData || []).flatMap(cat => (cat.agents || []).map(a => String(a.sip || '').trim()).filter(Boolean)))];
+    if (sips.length === 0) return;
+    Promise.all(sips.map(sip => apiClient.get('/external-api/ecard-status', { params: { sipAccount: sip } })
+      .then(res => [sip, res?.available === true])
+      .catch(() => [sip, true])))
+      .then(pairs => setAgentAvailability(prev => ({ ...prev, ...Object.fromEntries(pairs) })));
+  };
+
   useEffect(() => {
     if (context?.mode === 'edit' && context?.id && !dataLoaded) {
       setIsInitializing(true);
@@ -98,6 +108,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
             setOptionalCompany((data.optionalFields || []).includes('company'));
             setOptionalContent((data.optionalFields || []).includes('content'));
             setCategories(data.categories || []);
+            loadAgentAvailability(data.categories || []);
             if (data.categories?.length > 0) setActiveCategoryId(data.categories[0].id);
           }
         })
@@ -1105,8 +1116,10 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                     該分類下暫無坐席，請點擊右上方按鈕新增。
                   </div>
                 ) : (
-                  activeCategory?.agents.map(agent => (
-                    <div className="cc-agent-card" key={agent.id}>
+                  activeCategory?.agents.map(agent => {
+                    const unavailable = agentAvailability[String(agent.sip || '').trim()] === false;
+                    return (
+                    <div className="cc-agent-card" key={agent.id} style={unavailable ? { opacity: 0.55 } : undefined}>
                       <div className="cc-agent-card-top">
                         <div className="cc-agent-avatar" style={{ fontSize: '18px', fontWeight: 'bold', overflow: 'hidden' }}>
                           {agent.avatarDataUrl ? (
@@ -1118,6 +1131,9 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                         <div className="cc-agent-info">
                           <div className="cc-agent-name-row">
                             <span className="cc-agent-name">{agent.name}</span>
+                            {unavailable && (
+                              <span style={{ marginLeft: 6, fontSize: 11, color: '#fca5a5', border: '1px solid #7f1d1d', backgroundColor: 'rgba(127,29,29,0.25)', borderRadius: 4, padding: '0 5px', whiteSpace: 'nowrap' }}>名片不可用</span>
+                            )}
                           </div>
                           <span className="cc-agent-title">{agent.title}</span>
                         </div>
@@ -1132,7 +1148,8 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                         <button type="button" className="cc-btn cc-btn-danger-outline" onClick={() => handleRemoveAgent(agent.id)}>移除</button>
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
             </div>
