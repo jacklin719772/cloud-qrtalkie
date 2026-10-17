@@ -3546,7 +3546,8 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     connection = await pool.getConnection();
 
     // ── Step 3: 将 accountIds 中的帳號添加为通讯录成员 ──
-    // 歸屬判據：sip_users.tenant_id 或權益記錄任一成立（兼容 tenant_id 滯後/為空的歷史帳號）
+    // 歸屬判據：sip_users.tenant_id / 權益表 / 該租戶名下的有效試用 任一成立
+    // （試用賬號掛在保留試用租戶下，歸屬以 trial_assignments.owner_tenant_id 為準）
     const memberResults = { added: [], failed: [] };
     if (accountIds.length > 0) {
       const placeholders = accountIds.map(() => '?').join(',');
@@ -3557,8 +3558,11 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
            AND (u.tenant_id = ? OR EXISTS (
              SELECT 1 FROM tenant_sip_account_entitlements e
              WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ) OR EXISTS (
+             SELECT 1 FROM trial_assignments ta
+             WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
            ))`,
-        [...accountIds, request.admin.tenantId, request.admin.tenantId],
+        [...accountIds, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId],
       );
       for (const row of memberRows) {
         if (!row.flexisip_account_id) continue;
@@ -3584,8 +3588,11 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
            AND (u.tenant_id = ? OR EXISTS (
              SELECT 1 FROM tenant_sip_account_entitlements e
              WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ) OR EXISTS (
+             SELECT 1 FROM trial_assignments ta
+             WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
            ))`,
-        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId],
+        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId],
       );
       for (const row of sipRows) {
         if (row.flexisip_account_id) {
@@ -3634,8 +3641,11 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
            AND (u.tenant_id = ? OR EXISTS (
              SELECT 1 FROM tenant_sip_account_entitlements e
              WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ) OR EXISTS (
+             SELECT 1 FROM trial_assignments ta
+             WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
            ))`,
-        [...accountIds, request.admin.tenantId, request.admin.tenantId]
+        [...accountIds, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId]
       );
 
       const validAccountIds = validAccounts.map(a => Number(a.id));
@@ -3658,8 +3668,11 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
            AND (u.tenant_id = ? OR EXISTS (
              SELECT 1 FROM tenant_sip_account_entitlements e
              WHERE e.sip_user_id = u.id AND e.tenant_id = ? AND e.status IN ('active', 'expired')
+           ) OR EXISTS (
+             SELECT 1 FROM trial_assignments ta
+             WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
            ))`,
-        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId]
+        [...assignedAccountIds, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId]
       );
 
       for (const account of validAssignedAccounts) {
