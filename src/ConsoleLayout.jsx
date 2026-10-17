@@ -2027,9 +2027,6 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片</strong> — 進入電子名片生成頁並鎖定該賬號；未生成過的名片資訊默認取「帳號設置」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該賬號分配/切換/清除通訊錄，或現場新建通訊錄；保存時同步通訊核心（AM）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號停用/帳號啟用</strong> — 切換帳號啟用狀態，同時停用/啟用通訊核心（AM）帳號。已過期帳號無法操作。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>生成二維碼</strong> — 生成 Provisioning 登錄二維碼，支援複製、下載和 Renew 更新。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>發送重置密碼郵件</strong> — 向帳號綁定郵箱發送重置密碼郵件（需先設定郵箱）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>發送 Provisioning 郵件</strong> — 向帳號綁定郵箱發送 Provisioning 配置郵件（需先設定郵箱）。</li>
                 </ul>
               </div>
 
