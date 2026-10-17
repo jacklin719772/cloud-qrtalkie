@@ -1459,7 +1459,7 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#127873; 試用帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>試用帳號管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放，掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。平台管理員側重發放與回收；租戶管理員側重帳號維護、名片與批量操作（含正式購買入口）。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>試用帳號管理用於向潛在客戶發放試用帳號。帳號以 SIP + Web 成對發放，掛靠指定租戶，可一併生成電子名片對外展示。到期前可暫停/恢復，到期後自動回收至庫存。平台管理員側重發放與回收；租戶管理員側重帳號維護（帳號詳情/設置、重置密碼與通知郵件）與批量操作（批量停用/啟用/重置密碼、正式購買入口）。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 頁頭按鈕</h3>
@@ -1475,7 +1475,7 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 列表（⋮ 更多操作）</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 打開整頁帳號詳情（對齊「訂閱帳號管理」詳情頁）：基礎資訊（含去設置）、試用資訊、聯繫資訊、配置情況（通訊錄/電子名片/配置文件）、通知文案（可複製、可發送電子郵件）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 打開整頁帳號詳情（對齊「訂閱帳號管理」詳情頁）：基礎資訊（右上「去設置」直達帳號設置）、試用資訊、聯繫資訊、配置情況（通訊錄/電子名片/配置文件，各帶「詳情」與「去配置」）、通知文案（可複製、可發送電子郵件）。平台端與租戶端均可用；「去設置」與通訊錄配置僅租戶端，平台端可查看名片詳情/二維碼並發送通知郵件。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「訂閱帳號管理」帳號設置同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置（租戶管理員）</strong> — 為該試用分配/切換/清除通訊錄，或現場新建；保存時同步通訊核心（AM）。</li>
@@ -1509,12 +1509,12 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>試用期</strong> — 開始日期 ~ 結束日期。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — 見上方「狀態與生命週期」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>AI 助手</strong> — 以權益表即時狀態為準（已開通 / —）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — ⋮ 更多操作（按角色顯示：帳號設置/電子名片/重置密碼/暫停試用·恢復試用/帳號概覽/AI助手/立即回庫）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>操作</strong> — ⋮ 更多操作（按角色顯示：帳號詳情/帳號設置/電子名片/通訊錄配置/重置密碼/暫停試用·恢復試用/AI助手/立即回庫）。</li>
                 </ul>
               </div>
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128279; API 端點</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>試用列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials</code><br/>添加試用：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials</code><br/>庫存選號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials/stock-accounts</code><br/>暫停/回庫：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/end</code><br/>恢復：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/resume</code><br/>帳號設置：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/admin/trials/:id/account-settings</code><br/>名片讀取/保存：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/POST /api/admin/trials/:id/ecard</code></p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>試用列表：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials</code><br/>添加試用：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials</code><br/>庫存選號：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials/stock-accounts</code><br/>暫停/回庫：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/end</code><br/>恢復：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/resume</code><br/>帳號設置：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/PUT /api/admin/trials/:id/account-settings</code><br/>名片讀取/保存：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET/POST /api/admin/trials/:id/ecard</code><br/>通訊錄配置：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>PUT /api/admin/trials/:id/contact-book</code><br/>Provisioning 連結：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>GET /api/admin/trials/:id/provisioning-url</code><br/>通知郵件：<code style={{ color: "#fbbf24", background: "#1f2937", padding: "2px 6px", borderRadius: "4px" }}>POST /api/admin/trials/:id/send-notification-email</code></p>
               </div>
             </div>
           </div>
@@ -2008,7 +2008,7 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 訂閱帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、重置密碼、查看訂閱記錄、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此打開帳號詳情（配置情況/通知文案/二維碼）、帳號設置、重置密碼（含批量與通知郵件）、查看訂閱記錄、啟用/停用帳號、通訊錄配置等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
               </div>
 
               <div style={{ marginBottom: "24px" }}>
@@ -2024,7 +2024,7 @@ export default function ConsoleLayout({ onLogout }) {
                   </div>
                   <div>
                     <div style={{ color: "#60a5fa", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>&#128172; 郵箱設定</div>
-                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>發送郵件前請確保帳號已設定正確的電子郵箱。未設定郵箱的帳號將無法接收重置密碼郵件和 Provisioning 郵件。</p>
+                    <p style={{ color: "#9ca3af", margin: 0, fontSize: "12px" }}>發送通知郵件前請確保賬號已設定正確的電子郵箱；發送時可在彈窗中臨時修改收件人（默認為賬號登記郵箱）。</p>
                   </div>
                 </div>
               </div>
@@ -2032,10 +2032,10 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 操作選單說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 打開整頁帳號詳情：基礎帳號資訊（右上「去設置」直達帳號設置）、套餐與服務資訊、聯繫資訊、配置情況（通訊錄/電子名片/客服坐席/門禁入口/房間分配/配置文件，前兩行與配置文件帶「詳情」，通訊錄與電子名片另有「去配置」）、通知文案（可複製、可發送電子郵件）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>訂閱記錄</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼，設備需用新密碼重新註冊。密碼至少需要 6 個字符。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼；可勾選「重置成功後發送通知郵件」（逐賬號核對/修改收件郵箱與文案，先重置成功再發信，失敗逐條列出）。頁頭「重置密碼」按鈕為批量入口，先做合規檢查：本地孤兒賬號阻斷並列名、已過期賬號自動剔除並提示。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片</strong> — 進入電子名片生成頁並鎖定該賬號；未生成過的名片資訊默認取「帳號設置」。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該賬號分配/切換/清除通訊錄，或現場新建通訊錄；保存時同步通訊核心（AM）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號停用/帳號啟用</strong> — 切換帳號啟用狀態，同時停用/啟用通訊核心（AM）帳號。已過期帳號無法操作。</li>
@@ -2059,7 +2059,8 @@ export default function ConsoleLayout({ onLogout }) {
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128161; 使用建議</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li>建議為每個使用中的帳號設定易於識別的顯示名稱。</li>
-                  <li>設定正確的電子郵箱後才能使用郵件發送功能。</li>
+                  <li>設定正確的電子郵箱後才能在詳情頁「通知文案」一鍵發送開通通知郵件（收件人可在彈窗中臨時修改）。</li>
+                  <li>重置密碼成功後可勾選發送通知郵件，把新密碼與使用步驟一併告知用戶。</li>
                   <li>密碼重置後會同步至 Flexisip，確保雲端與本地一致。</li>
                   <li>local_only 帳號僅存在於本地數據庫，無法同步至 Flexisip，請聯繫平台管理員處理。</li>
                 </ul>
