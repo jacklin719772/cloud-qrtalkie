@@ -574,14 +574,25 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
           text-align: left;
           color: #9ca3af;
           font-weight: 600;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
+          white-space: nowrap;
         }
         #contact-books-management .contact-book-table td {
           height: 64px;
           padding: 0 22px;
           color: #d1d5db;
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #1f2937;
         }
+        /* 操作列固定在最右側，不隨水平滾動 */
+        #contact-books-management .contact-book-table th:last-child,
+        #contact-books-management .contact-book-table td:last-child {
+          position: sticky;
+          right: 0;
+          border-left: 1px solid #374151;
+        }
+        #contact-books-management .contact-book-table th:last-child { background: #1a2332; z-index: 3; }
+        #contact-books-management .contact-book-table td:last-child { background: #111827; z-index: 2; }
+        #contact-books-management .contact-book-table tbody tr:hover td:last-child { background: #1e293b; }
         #contact-books-management .contact-book-table-footer {
           min-height: 74px;
           padding: 0 30px;
@@ -648,8 +659,12 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
         #contact-books-management .contact-book-search input::placeholder { color: #6b7280; }
         #contact-books-management .contact-book-search input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
         #contact-books-management .contact-book-status-select { background: #1a2332; color: #e5e7eb; }
-        #contact-books-management .contact-book-table-wrapper { scrollbar-width: none; }
-        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar { display: none; }
+        #contact-books-management .contact-book-table-wrapper { scrollbar-width: thin; scrollbar-color: #374151 #111827; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar-track { background: #111827; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        #contact-books-management .contact-book-table-wrapper::-webkit-scrollbar-corner { background: #111827; }
         #contact-books-management .contact-book-page-btn:hover:not(:disabled) { background: #374151; color: #f3f4f6; }
         #contact-books-management .contact-book-table tbody tr { background: #111827; }
         #contact-books-management .contact-book-table tbody tr:hover { background: #1e293b; }
