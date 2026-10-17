@@ -4191,7 +4191,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
 
     // 查找本地通讯录，取得 flexisip_contact_list_id
     const [book] = await connection.query(
-      `SELECT id, flexisip_contact_list_id FROM tenant_contact_books WHERE id = ? AND tenant_id = ? FOR UPDATE`,
+      `SELECT id, name, description, flexisip_contact_list_id FROM tenant_contact_books WHERE id = ? AND tenant_id = ? FOR UPDATE`,
       [contactBookId, request.admin.tenantId]
     );
     if (!book) {
@@ -4199,11 +4199,13 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
       return response.status(404).json({ message: "找不到指定的通訊錄。" });
     }
 
-    // ── Flexisip sync: 更新通讯录名称和描述 ──
+    // ── Flexisip sync: 更新通讯录名称和描述（僅在名稱/描述實際變化時；AM 要求描述非空，空時用名稱兜底）──
     const flexisipContactListId = book.flexisip_contact_list_id;
-    if (flexisipContactListId) {
+    const nameChanged = name !== (book.name || '');
+    const descriptionChanged = (description || '') !== (book.description || '');
+    if (flexisipContactListId && (nameChanged || descriptionChanged)) {
       try {
-        await updateContactList(flexisipContactListId, { title: name, description: description || '' });
+        await updateContactList(flexisipContactListId, { title: name, description: description || name });
       } catch (flexisipErr) {
         connection.release();
         if (flexisipErr instanceof FlexisipContactBookError) {
