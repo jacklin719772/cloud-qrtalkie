@@ -658,15 +658,13 @@ const TenantAccountManagement = forwardRef(({
       const response = await fetch(imageUrl, { credentials: 'same-origin' });
       if (!response.ok) throw new Error('IMAGE_FETCH_FAILED');
       const blob = await response.blob();
-      let pngBlob = blob;
-      if (blob.type !== 'image/png') {
-        const bitmap = await createImageBitmap(blob);
-        const canvas = document.createElement('canvas');
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
-        canvas.getContext('2d').drawImage(bitmap, 0, 0);
-        pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-      }
+      // 統一經畫布轉為真正的 PNG 再寫入剪貼板（下載接口對 jpg 縮圖也聲明為 PNG）
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
       showEcardCopyMessage({ type: 'success', text: '名片圖片已複製。' });
     } catch {
