@@ -713,7 +713,7 @@ const TenantAccountManagement = forwardRef(({
                 </label>
               </div>
 
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>套餐与服务資訊</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>套餐与服务資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
                 <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
                   <span style={labelTextStyle}>訂單</span>
@@ -737,7 +737,7 @@ const TenantAccountManagement = forwardRef(({
                 </label>
               </div>
 
-              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#1e293b', marginBottom: '16px', marginTop: 0 }}>聯繫資訊</h4>
+              <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>聯繫資訊</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <label style={labelStyle}>
                   <span style={labelTextStyle}>手機号</span>
@@ -768,22 +768,20 @@ const TenantAccountManagement = forwardRef(({
                     ? (done ? `已分配：${detailAccount.contactBookName || detailAccount.contactBookId}` : item.msg)
                     : (done ? item.doneMsg : item.msg);
                   const handleItemClick = () => {
-                    if (isContactBook) {
-                      if (done) {
-                        openContactBookView(detailAccount.contactBookId);
-                      } else {
-                        setContactBookAccount(detailAccount);
-                        setContactBookTargets([detailAccount]);
-                      }
-                      return;
-                    }
                     onNavigate && onNavigate(navMap[item.key]);
                   };
                   return (<div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{statusText}</span>
                     </div>
-                    <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={handleItemClick}>{isContactBook && done ? '詳情' : '去配置'}</button></div>);})}</div>
+                    {isContactBook ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button className="ghost-btn" type="button" disabled={!done} onClick={() => { if (done) openContactBookView(detailAccount.contactBookId); }} style={{ fontSize: '12px', padding: '4px 10px', background: done ? '#374151' : '#1f2937', color: done ? '#d1d5db' : '#6b7280', border: `1px solid ${done ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: done ? 'pointer' : 'not-allowed' }}>詳情</button>
+                        <button className="ghost-btn" type="button" onClick={() => { setContactBookAccount(detailAccount); setContactBookTargets([detailAccount]); }} style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>去配置</button>
+                      </div>
+                    ) : (
+                      <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={handleItemClick}>去配置</button>
+                    )}</div>);})}</div>
             </div>
           </div>
         </div>
