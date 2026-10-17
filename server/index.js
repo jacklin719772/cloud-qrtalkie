@@ -30,7 +30,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { pool, limePool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
-import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail } from "./email.js";
+import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail, sendTrialNotificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
 import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombstoneClient.js";
 
@@ -2958,6 +2958,58 @@ app.post("/api/tenant/sip-accounts/:id/send-provisioning-email", requireAdmin, a
     action: "provisioning",
     sendEmail: flexisipSendProvisioningEmail,
   });
+});
+
+// POST /api/tenant/sip-accounts/:id/send-notification-email - 發送開通通知文案（SMTP，郵箱可改）
+app.post("/api/tenant/sip-accounts/:id/send-notification-email", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ success: false, message: "只有租戶管理員可以操作。" });
+  }
+  const accountId = Number(request.params.id);
+  if (!Number.isInteger(accountId) || accountId <= 0) {
+    return response.status(400).json({ success: false, message: "帳號編號無效。" });
+  }
+  const email = sanitizeString(request.body?.email, 255).trim();
+  const body = typeof request.body?.body === 'string' ? request.body.body : '';
+  if (!email || !isValidEmail(email)) {
+    return response.status(400).json({ success: false, message: "請輸入有效的電子郵件地址。" });
+  }
+  if (!body.trim()) {
+    return response.status(400).json({ success: false, message: "郵件內容不能為空。" });
+  }
+  if (body.length > 8000) {
+    return response.status(400).json({ success: false, message: "郵件內容過長。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [account] = await connection.query(
+      `SELECT b.id, u.username
+       FROM billing_order_sip_accounts b
+       JOIN sip_users u ON u.id = b.sip_user_id
+       WHERE b.id = ?
+         AND b.tenant_id = ?
+       LIMIT 1`,
+      [accountId, request.admin.tenantId],
+    );
+    if (!account) {
+      return response.status(404).json({ success: false, message: "找不到帳號。" });
+    }
+
+    const subject = `QRTalkie 帳號開通通知（${account.username || accountId}）`;
+    const delivery = await sendTrialNotificationEmail(connection, { to: email, subject, body });
+    if (!delivery.sent) {
+      console.error(`[notification-email] tenant=${request.admin.tenantId} accountId=${accountId} to=${email} failed: ${delivery.reason || 'unknown'}`);
+      return response.status(502).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
+    }
+    return response.json({ success: true, message: "郵件已發送。" });
+  } catch (error) {
+    console.error("Failed to send notification email:", error);
+    return response.status(500).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
 });
 
 // GET /api/tenant/sip-accounts/:id/provisioning-url - 取得 provisioning 下载链接

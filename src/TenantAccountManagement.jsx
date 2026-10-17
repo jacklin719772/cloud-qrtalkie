@@ -169,6 +169,10 @@ const TenantAccountManagement = forwardRef(({
   const [notifyPassword, setNotifyPassword] = useState('');
   const [notifyText, setNotifyText] = useState('');
   const [notifyCopyHint, setNotifyCopyHint] = useState('');
+  const [notifyMailOpen, setNotifyMailOpen] = useState(false);
+  const [notifyMailForm, setNotifyMailForm] = useState({ email: '' });
+  const [notifyMailSending, setNotifyMailSending] = useState(false);
+  const [notifyMailMessage, setNotifyMailMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
@@ -717,6 +721,53 @@ const TenantAccountManagement = forwardRef(({
     window.setTimeout(() => setNotifyCopyHint(''), 5000);
   }
 
+  function openNotifyMail() {
+    setNotifyMailForm({ email: detailAccount?.email || '' });
+    setNotifyMailMessage({ type: '', text: '' });
+    setNotifyMailOpen(true);
+  }
+
+  function closeNotifyMail() {
+    if (notifyMailSending) return;
+    setNotifyMailOpen(false);
+    setNotifyMailMessage({ type: '', text: '' });
+  }
+
+  async function submitNotifyMail(event) {
+    event.preventDefault();
+    if (!detailAccount) return;
+    const email = notifyMailForm.email.trim();
+    if (!email) {
+      setNotifyMailMessage({ type: 'error', text: '請輸入收件人郵箱。' });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNotifyMailMessage({ type: 'error', text: '請輸入有效的電子郵件地址。' });
+      return;
+    }
+    if (!notifyText.trim()) {
+      setNotifyMailMessage({ type: 'error', text: '郵件內容不能為空。' });
+      return;
+    }
+    setNotifyMailSending(true);
+    setNotifyMailMessage({ type: '', text: '' });
+    try {
+      await apiClient.post(`${apiBasePath}/${detailAccount.id}/send-notification-email`, {
+        email,
+        body: notifyText,
+      });
+      setNotifyMailMessage({ type: 'success', text: '郵件已發送。' });
+      window.setTimeout(() => {
+        setNotifyMailOpen(false);
+        setNotifyMailMessage({ type: '', text: '' });
+      }, 1200);
+    } catch (error) {
+      setNotifyMailMessage({ type: 'error', text: error.message || '郵件發送失敗，請稍後重試。' });
+    } finally {
+      setNotifyMailSending(false);
+    }
+  }
+
   function showEcardCopyMessage(message) {
     setEcardCopyMessage(message);
     window.setTimeout(() => {
@@ -1101,7 +1152,8 @@ const TenantAccountManagement = forwardRef(({
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {notifyCopyHint && <span style={{ color: '#4ade80', fontSize: '13px' }}>{notifyCopyHint}</span>}
-                  <button className="primary-btn" type="button" onClick={copyNotifyText} style={{ marginLeft: 'auto' }}>複製文案</button>
+                  <button type="button" onClick={openNotifyMail} style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: '#d1d5db', fontSize: '13px', cursor: 'pointer' }}>發送電子郵件</button>
+                  <button className="primary-btn" type="button" onClick={copyNotifyText}>複製文案</button>
                 </div>
               </div>
             </div>
@@ -1124,6 +1176,45 @@ const TenantAccountManagement = forwardRef(({
         onClose={() => setQrDialogAccount(null)}
         account={qrDialogAccount}
       />
+
+      {notifyMailOpen && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeNotifyMail();
+          }}
+        >
+          <form onSubmit={submitNotifyMail} style={{ width: 'min(520px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>發送電子郵件</h3>
+              <button type="button" onClick={closeNotifyMail} disabled={notifyMailSending} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>收件人郵箱</span>
+                <input
+                  type="email"
+                  autoComplete="off"
+                  autoFocus
+                  value={notifyMailForm.email}
+                  onChange={(event) => setNotifyMailForm({ email: event.target.value })}
+                  placeholder="請輸入收件人郵箱"
+                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                />
+              </label>
+              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>郵件內容為上方「通知文案」的當前內容（含手動編輯）。</p>
+              {notifyMailMessage.text && (
+                <p style={{ margin: 0, fontSize: '14px', color: notifyMailMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{notifyMailMessage.text}</p>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={closeNotifyMail} disabled={notifyMailSending} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button className="primary-btn" type="submit" disabled={notifyMailSending}>{notifyMailSending ? '發送中...' : '發送'}</button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
 
       {contactBookViewOpen && createPortal(
         <div
