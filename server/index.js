@@ -112,7 +112,7 @@ import {
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
 import { parseVcardText, mergeVcardText, readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
-import { getReservedTrialTenantId, isReservedTrialTenant, activateTrialAccountInFlexisip } from "./trialService.js";
+import { getReservedTrialTenantId, isReservedTrialTenant, activateTrialAccountInFlexisip, setFlexisipActivated } from "./trialService.js";
 import {
   createContactList,
   assignContactListToAccount,
@@ -2787,12 +2787,29 @@ app.put("/api/tenant/sip-accounts/:id/status", requireAdmin, async (request, res
       return response.status(409).json({ message: "已過期帳號不能啟用或停用。" });
     }
 
+    // ── 通訊核心（AM）同步：先停用/啟用並回讀確認（與試用暫停/恢復同一判據）──
+    try {
+      await setFlexisipActivated(Number(assignedAccount.sip_user_id), status === 'active', connection);
+    } catch (flexisipError) {
+      if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+        console.warn("[tenant-account-status] AM mapping mismatch, skip AM sync:", assignedAccount.sip_user_id, flexisipError.message);
+      } else {
+        await connection.rollback();
+        console.error("Flexisip account state change failed:", flexisipError?.message || flexisipError);
+        return response.status(502).json({
+          message: status === 'active' ? "啟用通訊核心帳號失敗，請稍後重試。" : "停用通訊核心帳號失敗，請稍後重試。",
+          code: "FLEXISIP_ACCOUNT_STATE_FAILED",
+        });
+      }
+    }
+
+    // 同步 sip_users（歸屬已由按 tenant_id 鎖定的 billing 行校驗，不再重複過濾 tenant_id，
+    // 避免 sip_users.tenant_id 為空/滯後的帳號被靜默跳過）
     await connection.query(
       `UPDATE sip_users
        SET status = ?
-       WHERE id = ?
-         AND tenant_id = ?`,
-      [status, Number(assignedAccount.sip_user_id), request.admin.tenantId],
+       WHERE id = ?`,
+      [status, Number(assignedAccount.sip_user_id)],
     );
     await connection.query(
       `UPDATE billing_order_sip_accounts

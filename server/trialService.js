@@ -27,7 +27,7 @@ export async function isReservedTrialTenant(tenantId) {
 // 切換帳號在 Flexisip AM 的啟用狀態：先調用、後回讀確認（不信調用結果）；
 // 帳號無 flexisip_account_id 時跳過（skipped）。失敗拋錯（FLEXISIP_STATE_CONFIRM_FAILED），
 // 由呼叫方回滾本地並提示。
-async function setFlexisipActivated(sipUserId, activated, connection = null) {
+export async function setFlexisipActivated(sipUserId, activated, connection = null) {
   const runner = connection || pool;
   const [account] = await runner.query(
     "SELECT username, flexisip_account_id FROM sip_users WHERE id = ? LIMIT 1",
