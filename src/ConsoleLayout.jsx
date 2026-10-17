@@ -121,6 +121,7 @@ export default function ConsoleLayout({ onLogout }) {
   const [webAccountMode, setWebAccountMode] = useState('list');
   const [deviceManagementMode, setDeviceManagementMode] = useState('list');
   const [ecardGenerationMode, setEcardGenerationMode] = useState('list');
+  const [trialManagementMode, setTrialManagementMode] = useState('list');
   const [trialEcardContext, setTrialEcardContext] = useState(null);
   const [accountEcardContext, setAccountEcardContext] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -563,7 +564,7 @@ export default function ConsoleLayout({ onLogout }) {
       }
       return null;
     }
-    if (currentView === 'trial-management') {
+    if (currentView === 'trial-management' && trialManagementMode === 'list') {
       const actionBaseStyle = {
         display: 'inline-flex',
         alignItems: 'center',
@@ -605,6 +606,14 @@ export default function ConsoleLayout({ onLogout }) {
                 style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
               >
                 批量啟用
+              </button>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.batchResetPassword()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                重置密碼
               </button>
               <button
                 className="primary-btn"
@@ -1001,6 +1010,7 @@ export default function ConsoleLayout({ onLogout }) {
               ref={trialManagementRef}
               isPlatform={identity?.admin?.accountType === 'platform'}
               tenantName={identity?.tenant?.companyName || ''}
+              onModeChange={setTrialManagementMode}
               onFormalPurchase={(trialIds) => {
                 // 正式購買：攜帶所選試用帳號進入購買流程（下一步接入保留清單）
                 setPurchaseContext({ mode: 'create', orderId: null, trialIds });
@@ -1457,6 +1467,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>添加試用（平台管理員）</strong> — 選擇歸屬租戶（可現場新建租戶）與試用週期（預設 1 個月）；先填「新增試用帳號數量」，再從庫存勾選 SIP 帳號（顯示配對的 Web 帳號），可指定代理商（名錄中啟用項）與增值服務（預設全選）。保存成功後續接「Ecard 設置」為該批帳號生成電子名片。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量停用（租戶管理員）</strong> — 對勾選的試用批量暫停（同「暫停試用」，逐條執行並彙總結果）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量啟用（租戶管理員）</strong> — 對勾選的已暫停試用批量恢復（同「恢復試用」，已到期的會失敗計數）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 對勾選的試用批量重置密碼：先做合規性檢查（本地孤兒類賬號阻斷、已過期自動剔除並提示）；可勾選「重置成功後發送通知郵件」，逐個賬號核對/修改收件郵箱與文案後先重置、成功再發信。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>正式購買（租戶管理員）</strong> — 勾選要購買的試用帳號後點擊，攜帶所選帳號進入「購買套餐」頁面（後續以保留清單方式納入訂單轉正）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>操作指南</strong> — 頁面右上角「?」打開本說明。</li>
                 </ul>
@@ -1464,12 +1475,13 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 列表（⋮ 更多操作）</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號詳情</strong> — 打開整頁帳號詳情（對齊「訂閱帳號管理」詳情頁）：基礎資訊（含去設置）、試用資訊、聯繫資訊、配置情況（通訊錄/電子名片/配置文件）、通知文案（可複製、可發送電子郵件）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置（租戶管理員）</strong> — 設定顯示名/手機號/電子郵箱/公司/職位/頭像/密碼；與「訂閱帳號管理」帳號設置同源，用戶登錄 App 後自動使用（空欄位取帳號資料）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>電子名片（租戶管理員）</strong> — 進入電子名片管理的完整生成頁，為該帳號設定樣式/背景/頭像/資訊並「儲存並產生圖片」；未設定過時資訊自動取「帳號設置」默認值。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼，同步生效於通訊核心（App 登錄）與雲平台登錄（訂閱帳號管理）；重置後設備需用新密碼重新註冊。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置（租戶管理員）</strong> — 為該試用分配/切換/清除通訊錄，或現場新建；保存時同步通訊核心（AM）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 設定新密碼並同步通訊核心與雲平台登錄；可勾選「重置成功後發送通知郵件」，核對/修改收件郵箱與文案後先重置、成功再發信。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>暫停試用</strong> — 通訊核心停用該帳號（設備無法註冊/通話），名片與 AI 一併停用；試用期不變，到期前可隨時恢復（暫停後該項變為「恢復試用」）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>恢復試用</strong> — 暫停後顯示，重新啟用通訊核心帳號、名片與 AI（要求未到期）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>帳號概覽</strong> — 概要列出帳號資訊（帳號/顯示名/歸屬租戶/聯繫人/試用期/狀態/AI/名片連結），並自動生成可複製的開通通知文案（帳號、密碼、試用期、名片訪問與圖片連結、雲平台改密與 App 下載步驟），一鍵複製發送給使用者；兩個名片連結旁可單獨複製。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>AI助手（平台管理員）</strong> — 設定該帳號的 AI 使用授權：啟用/停用、每日限額、每月限額、過期時間；亦可「取消授權」徹底移除。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>立即回庫（平台管理員）</strong> — 立即釋放 SIP 與配對 Web 帳號回庫存（恢復初始狀態），停用 AM 帳號、刪除 AI 授權、停用名片、清除推送與登入會話；不可撤銷。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>搜尋與篩選</strong> — 支援按狀態、歸屬租戶、代理商（全部/無代理商/具體）篩選；按聯繫人/公司/郵箱/帳號搜尋。租戶端默認篩選「試用中」。</li>

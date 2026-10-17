@@ -2,6 +2,11 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
 import ContactBookConfigDialog from './ContactBookConfigDialog';
+import ContactBookViewDialog from './ContactBookViewDialog';
+import EcardViewDialog from './EcardViewDialog';
+import NotifyMailDialog from './NotifyMailDialog';
+import LoginQrDialog from './LoginQrDialog';
+import { buildAccountNotifyMessage } from './accountNotifyMessage';
 import { Copy, MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 
 // 試用帳號管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
@@ -44,7 +49,7 @@ function emptyNewTenant() {
   return { companyName: '', password: '' };
 }
 
-const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpenTrialEcard, onFormalPurchase }, ref) => {
+const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpenTrialEcard, onFormalPurchase, onModeChange }, ref) => {
   const [trials, setTrials] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -103,16 +108,28 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [accountSettingsMessage, setAccountSettingsMessage] = useState({ type: '', text: '' });
   const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
   const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
-  const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
+  const [resetTargets, setResetTargets] = useState(null);
   const [contactBookTarget, setContactBookTarget] = useState(null);
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
-  const [resetPasswordCurrent, setResetPasswordCurrent] = useState(null);
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [overviewTarget, setOverviewTarget] = useState(null);
-  const [overviewPassword, setOverviewPassword] = useState('');
-  const [overviewText, setOverviewText] = useState('');
-  const [overviewCopyHint, setOverviewCopyHint] = useState('');
+  const [resetNotifyEnabled, setResetNotifyEnabled] = useState(false);
+  const [resetNotifyDrafts, setResetNotifyDrafts] = useState({});
+  const [resetNotifyCopyHints, setResetNotifyCopyHints] = useState({});
+  const [resetSkippedExpired, setResetSkippedExpired] = useState([]);
+  const resetNotifyLinksRef = useRef({});
+  const [detailTarget, setDetailTarget] = useState(null);
+  const [detailSettings, setDetailSettings] = useState(null);
+  const [detailEcard, setDetailEcard] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailNotifyPassword, setDetailNotifyPassword] = useState('');
+  const [detailNotifyText, setDetailNotifyText] = useState('');
+  const [detailNotifyCopyHint, setDetailNotifyCopyHint] = useState('');
+  const [detailNotifyMailOpen, setDetailNotifyMailOpen] = useState(false);
+  const [detailContactBookViewId, setDetailContactBookViewId] = useState(null);
+  const [detailEcardViewOpen, setDetailEcardViewOpen] = useState(false);
+  const [detailQrOpen, setDetailQrOpen] = useState(false);
+  const detailNotifyLinksRef = useRef({});
   const [actionsPosition, setActionsPosition] = useState({ top: 0, left: 0 });
   const actionsAnchorRef = useRef(null);
   const actionsMenuRef = useRef(null);
@@ -538,6 +555,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     reload: () => loadTrials(),
     batchPauseSelected: () => batchTrialAction('end'),
     batchResumeSelected: () => batchTrialAction('resume'),
+    batchResetPassword: () => handleBatchResetPassword(),
     startFormalPurchase,
   }));
 
@@ -888,24 +906,172 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // 重置密碼（與租戶端訂閱帳號管理「重置密碼」同源）：复用 account-settings 接口，带既有資訊 + 新密碼
-  async function openResetPassword(trial) {
+  // 重置密碼（對齊租戶端訂閱帳號管理）：支持批量 + 重置成功後發送通知郵件
+  const TRIAL_RESETTABLE_PHASES = ['active', 'expiring', 'paused'];
+
+  function buildTrialNotifyMessage(trial, password, links) {
+    if (!trial) return '';
+    return buildAccountNotifyMessage({
+      username: trial.username,
+      webAccount: trial.webUsername,
+      password,
+      isTrial: true,
+      periodLabel: '試用期',
+      periodStart: trial.startedAt,
+      periodEnd: trial.expiresAt,
+      ecardAccessUrl: links?.ecardAccessUrl,
+      ecardImageUrl: links?.ecardImageUrl,
+    });
+  }
+
+  function openResetPassword(trialOrTrials, { skippedExpired = [] } = {}) {
     setOpenActionsId(null);
-    setResetPasswordTarget({ id: trial.id, username: trial.username });
-    setResetPasswordForm({ password: '', confirmPassword: '' });
-    setResetPasswordCurrent(null);
-    setResetPasswordMessage({ type: '', text: '' });
-    try {
-      const data = await apiClient.get(`/admin/trials/${trial.id}/account-settings`);
-      const a = data?.account || {};
-      setResetPasswordCurrent({ displayName: a.displayName || '', email: a.email || '', phone: a.phone || '' });
-    } catch {
-      setResetPasswordCurrent(null);
+    const targets = Array.isArray(trialOrTrials) ? trialOrTrials : [trialOrTrials];
+    const usable = targets.filter((trial) => TRIAL_RESETTABLE_PHASES.includes(trial.phase) && String(trial.expiresAt || '') >= todayStr());
+    if (usable.length === 0) {
+      window.alert('已過期或已結束的試用不能重置密碼。');
+      return;
     }
+    setResetTargets(usable);
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+    setResetPasswordMessage({ type: '', text: '' });
+    setResetNotifyEnabled(false);
+    setResetNotifyDrafts({});
+    setResetNotifyCopyHints({});
+    setResetSkippedExpired(skippedExpired.map((item) => item.username));
+    resetNotifyLinksRef.current = {};
+  }
+
+  function closeResetPassword() {
+    if (isResettingPassword) return;
+    setResetTargets(null);
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+    setResetPasswordMessage({ type: '', text: '' });
+    setResetNotifyEnabled(false);
+    setResetNotifyDrafts({});
+    setResetNotifyCopyHints({});
+    setResetSkippedExpired([]);
+    resetNotifyLinksRef.current = {};
+  }
+
+  function handleBatchResetPassword() {
+    if (selectedTrialIds.length === 0) {
+      setMessage({ type: 'error', text: '請先勾選試用帳號。' });
+      return;
+    }
+    const selected = trials.filter((trial) => selectedTrialIds.includes(trial.id));
+    const invalid = selected.filter((trial) => !TRIAL_RESETTABLE_PHASES.includes(trial.phase));
+    if (invalid.length > 0) {
+      window.alert(`以下試用已結束或已回收，無法重置密碼：\n${invalid.map((trial) => trial.username).join('、')}\n請取消勾選後重新選擇。`);
+      return;
+    }
+    const expired = selected.filter((trial) => String(trial.expiresAt || '') < todayStr());
+    const usable = selected.filter((trial) => String(trial.expiresAt || '') >= todayStr());
+    if (usable.length === 0) {
+      window.alert('所選試用均已過期，無法重置密碼。');
+      return;
+    }
+    openResetPassword(usable, { skippedExpired: expired });
+  }
+
+  function getResetTargets() {
+    return Array.isArray(resetTargets) ? resetTargets : [];
+  }
+
+  function handleResetPasswordChange(field, value) {
+    setResetPasswordForm((form) => ({ ...form, [field]: value }));
+    if (field !== 'password' || !resetNotifyEnabled) return;
+    const targets = getResetTargets();
+    setResetNotifyDrafts((drafts) => {
+      const next = { ...drafts };
+      for (const trial of targets) {
+        next[trial.id] = {
+          ...(next[trial.id] || { email: '' }),
+          message: buildTrialNotifyMessage(trial, value.trim(), resetNotifyLinksRef.current[trial.id] || {}),
+        };
+      }
+      return next;
+    });
+  }
+
+  function handleResetNotifyToggle(checked) {
+    setResetNotifyEnabled(checked);
+    if (!checked) return;
+    const targets = getResetTargets();
+    const initialDrafts = {};
+    for (const trial of targets) {
+      initialDrafts[trial.id] = {
+        email: '',
+        message: buildTrialNotifyMessage(trial, resetPasswordForm.password.trim(), {}),
+      };
+    }
+    setResetNotifyDrafts(initialDrafts);
+    setResetNotifyCopyHints({});
+    (async () => {
+      const [settingsResults, ecardResults] = await Promise.all([
+        Promise.allSettled(targets.map((trial) => apiClient.get(`/admin/trials/${trial.id}/account-settings`))),
+        Promise.allSettled(targets.map((trial) => apiClient.get(`/admin/trials/${trial.id}/ecard`))),
+      ]);
+      const linksById = {};
+      const emailById = {};
+      targets.forEach((trial, index) => {
+        const settings = settingsResults[index].status === 'fulfilled' ? (settingsResults[index].value?.account || null) : null;
+        emailById[trial.id] = settings?.email || '';
+        const ecard = ecardResults[index].status === 'fulfilled' ? ecardResults[index].value : null;
+        const links = { ecardAccessUrl: '', ecardImageUrl: '' };
+        if (ecard?.accessSlug) links.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+        const rawImage = ecard?.thumbnailUrl || '';
+        if (rawImage) {
+          links.ecardImageUrl = rawImage.startsWith('http')
+            ? rawImage
+            : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+        }
+        linksById[trial.id] = links;
+      });
+      resetNotifyLinksRef.current = linksById;
+      setResetNotifyDrafts((drafts) => {
+        const next = { ...drafts };
+        for (const trial of targets) {
+          next[trial.id] = {
+            email: drafts[trial.id]?.email || emailById[trial.id] || '',
+            message: buildTrialNotifyMessage(trial, resetPasswordForm.password.trim(), linksById[trial.id] || {}),
+          };
+        }
+        return next;
+      });
+    })();
+  }
+
+  function updateResetNotifyDraft(trialId, patch) {
+    setResetNotifyDrafts((drafts) => ({
+      ...drafts,
+      [trialId]: { ...(drafts[trialId] || { email: '', message: '' }), ...patch },
+    }));
+  }
+
+  async function copyResetNotifyDraft(trialId) {
+    const message = resetNotifyDrafts[trialId]?.message || '';
+    if (!message) return;
+    try {
+      await navigator.clipboard.writeText(message);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = message;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setResetNotifyCopyHints((hints) => ({ ...hints, [trialId]: '已複製' }));
+    window.setTimeout(() => {
+      setResetNotifyCopyHints((hints) => ({ ...hints, [trialId]: '' }));
+    }, 5000);
   }
 
   async function submitResetPassword(e) {
     e.preventDefault();
+    const targets = getResetTargets();
+    if (targets.length === 0) return;
     const { password, confirmPassword } = resetPasswordForm;
     if (!password) {
       setResetPasswordMessage({ type: 'error', text: '請輸入新密碼。' });
@@ -919,27 +1085,79 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
       setResetPasswordMessage({ type: 'error', text: '兩次輸入的密碼不一致。' });
       return;
     }
-    if (!resetPasswordCurrent) {
-      setResetPasswordMessage({ type: 'error', text: '帳號資訊讀取失敗，請關閉後重試。' });
-      return;
+    if (resetNotifyEnabled) {
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      for (const trial of targets) {
+        const draft = resetNotifyDrafts[trial.id] || {};
+        if (!emailPattern.test(String(draft.email || '').trim())) {
+          setResetPasswordMessage({ type: 'error', text: `請為試用 ${trial.username} 輸入有效的收件人郵箱。` });
+          return;
+        }
+        if (!String(draft.message || '').trim()) {
+          setResetPasswordMessage({ type: 'error', text: `試用 ${trial.username} 的通知文案不能為空。` });
+          return;
+        }
+      }
     }
     setIsResettingPassword(true);
     setResetPasswordMessage({ type: '', text: '' });
     try {
-      await apiClient.put(`/admin/trials/${resetPasswordTarget.id}/account-settings`, {
-        displayName: resetPasswordCurrent.displayName,
-        email: resetPasswordCurrent.email,
-        phone: resetPasswordCurrent.phone,
-        password,
-        confirmPassword,
-      });
-      setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
-      setTimeout(() => {
-        setResetPasswordTarget(null);
-        setResetPasswordForm({ password: '', confirmPassword: '' });
-        setResetPasswordCurrent(null);
-        setResetPasswordMessage({ type: '', text: '' });
-      }, 1200);
+      // 先讀取現有帳號資訊，避免重置時覆蓋顯示名/郵箱/電話
+      const settingsByTrial = {};
+      await Promise.all(targets.map(async (trial) => {
+        const data = await apiClient.get(`/admin/trials/${trial.id}/account-settings`);
+        settingsByTrial[trial.id] = data?.account || {};
+      }));
+      await Promise.all(targets.map((trial) => {
+        const current = settingsByTrial[trial.id] || {};
+        return apiClient.put(`/admin/trials/${trial.id}/account-settings`, {
+          displayName: current.displayName || '',
+          email: current.email || '',
+          phone: current.phone || '',
+          password,
+          confirmPassword,
+        });
+      }));
+
+      if (!resetNotifyEnabled) {
+        setResetPasswordMessage({ type: 'success', text: '密碼已重置。' });
+        window.setTimeout(() => {
+          setResetTargets(null);
+          setResetPasswordForm({ password: '', confirmPassword: '' });
+          setResetPasswordMessage({ type: '', text: '' });
+          setResetSkippedExpired([]);
+        }, 1200);
+        return;
+      }
+
+      // 重置成功後逐封發送通知郵件
+      const failures = [];
+      for (const trial of targets) {
+        const draft = resetNotifyDrafts[trial.id] || {};
+        try {
+          await apiClient.post(`/admin/trials/${trial.id}/send-notification-email`, {
+            email: String(draft.email || '').trim(),
+            body: draft.message,
+          });
+        } catch (error) {
+          failures.push(`${trial.username}（${error.message || '發送失敗'}）`);
+        }
+      }
+      if (failures.length === 0) {
+        setResetPasswordMessage({ type: 'success', text: '密碼已重置，通知郵件已發送。' });
+        window.setTimeout(() => {
+          setResetTargets(null);
+          setResetPasswordForm({ password: '', confirmPassword: '' });
+          setResetPasswordMessage({ type: '', text: '' });
+          setResetNotifyEnabled(false);
+          setResetNotifyDrafts({});
+          setResetNotifyCopyHints({});
+          setResetSkippedExpired([]);
+          resetNotifyLinksRef.current = {};
+        }, 1200);
+      } else {
+        setResetPasswordMessage({ type: 'error', text: `密碼已重置；以下通知郵件發送失敗：${failures.join('、')}` });
+      }
     } catch (error) {
       setResetPasswordMessage({ type: 'error', text: error.message || '密碼重置失敗。' });
     } finally {
@@ -947,91 +1165,490 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     }
   }
 
-  // 帳號概覽：概要資訊 + 自動生成可複製的開通通知文案
-  function buildOverviewMessage(target, password) {
-    if (!target) return '';
-    const lines = [
-      '您好，已為您開通 QRTalkie 試用帳號：',
-      '',
-      `▸ 帳號：${target.username}${target.webUsername ? `（Web 帳號：${target.webUsername}）` : ''}`,
-      `▸ 密碼：${password || '（請與管理員確認）'}`,
-      `▸ 試用期：${target.startedAt || '-'} ~ ${target.expiresAt || '-'}`,
-    ];
-    if (target.ecardAccessUrl) lines.push(`▸ 電子名片（訪問）：${target.ecardAccessUrl}`);
-    if (target.ecardImageUrl) lines.push(`▸ 名片圖片：${target.ecardImageUrl}`);
-    lines.push(
-      '',
-      '使用步驟：',
-      '1. 前往雲平台 https://cloud.qrtalkie.org，使用上述帳號登入並修改密碼；',
-      '2. 於平台下載並安裝 App；',
-      '3. 開啟 App，使用該帳號與新密碼登入即可開始使用。',
-      '',
-      '如需協助，請隨時與我們聯繫。',
-    );
-    return lines.join('\n');
-  }
-
-  async function openOverview(trial) {
+  // 帳號詳情（對齊租戶端訂閱帳號管理詳情頁）
+  async function openDetail(trial) {
     setOpenActionsId(null);
-    const target = {
-      id: trial.id,
-      username: trial.username || '',
-      webUsername: trial.webUsername || '',
-      displayName: trial.accountDisplayName || '',
-      tenantName: trial.ownerTenantName || '',
-      contactName: trial.contactName || '',
-      contactEmail: trial.contactEmail || '',
-      contactPhone: trial.contactPhone || '',
-      startedAt: trial.startedAt || '',
-      expiresAt: trial.expiresAt || '',
-      statusLabel: (PHASE_META[trial.phase] || {}).label || '',
-      aiEnabled: Boolean(trial.aiEnabled),
-      ecardAccessUrl: '',
-      ecardImageUrl: '',
-    };
-    try {
-      const ecard = await apiClient.get(`/admin/trials/${trial.id}/ecard`);
-      if (ecard?.accessSlug) target.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
-      const rawImage = ecard?.thumbnailUrl || '';
-      if (rawImage) {
-        target.ecardImageUrl = rawImage.startsWith('http')
-          ? rawImage
-          : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
-      }
-    } catch {
-      /* 無名片或讀取失敗則不顯示名片行 */
+    setDetailTarget(trial);
+    setDetailLoading(true);
+    setDetailSettings(null);
+    setDetailEcard(null);
+    setDetailNotifyPassword('');
+    setDetailNotifyText('');
+    setDetailNotifyCopyHint('');
+    setDetailNotifyMailOpen(false);
+    const [settingsRes, ecardRes] = await Promise.allSettled([
+      apiClient.get(`/admin/trials/${trial.id}/account-settings`),
+      apiClient.get(`/admin/trials/${trial.id}/ecard`),
+    ]);
+    const settings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.account || null) : null;
+    const ecard = ecardRes.status === 'fulfilled' ? ecardRes.value : null;
+    const links = { ecardAccessUrl: '', ecardImageUrl: '' };
+    if (ecard?.accessSlug) links.ecardAccessUrl = `https://ecard.qrtalkie.org/u/${ecard.accessSlug}`;
+    const rawImage = ecard?.thumbnailUrl || '';
+    if (rawImage) {
+      links.ecardImageUrl = rawImage.startsWith('http')
+        ? rawImage
+        : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
     }
-    setOverviewTarget(target);
-    setOverviewPassword('');
-    setOverviewText(buildOverviewMessage(target, ''));
-    setOverviewCopyHint('');
+    detailNotifyLinksRef.current = links;
+    setDetailSettings(settings);
+    setDetailEcard(ecard);
+    setDetailNotifyText(buildTrialNotifyMessage(trial, '', links));
+    setDetailLoading(false);
   }
 
-  function handleOverviewPasswordChange(value) {
-    setOverviewPassword(value);
-    setOverviewText(buildOverviewMessage(overviewTarget, value.trim()));
+  function closeDetail() {
+    setDetailTarget(null);
+    setDetailSettings(null);
+    setDetailEcard(null);
+    setDetailNotifyPassword('');
+    setDetailNotifyText('');
+    setDetailNotifyCopyHint('');
+    setDetailNotifyMailOpen(false);
   }
 
-  async function copyToClipboard(text, hint) {
-    if (!text) return;
+  function handleDetailNotifyPasswordChange(value) {
+    setDetailNotifyPassword(value);
+    setDetailNotifyText(buildTrialNotifyMessage(detailTarget, value.trim(), detailNotifyLinksRef.current));
+  }
+
+  async function copyDetailNotifyText() {
+    if (!detailNotifyText) return;
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(detailNotifyText);
     } catch {
       const textarea = document.createElement('textarea');
-      textarea.value = text;
+      textarea.value = detailNotifyText;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
     }
-    setOverviewCopyHint(hint);
+    setDetailNotifyCopyHint('已複製至剪貼簿。');
+    window.setTimeout(() => setDetailNotifyCopyHint(''), 5000);
+  }
+
+  async function saveTrialAccountContactBook(contactBookId) {
+    const target = contactBookTarget;
+    if (!target) return;
+    const result = await apiClient.put(`/admin/trials/${target.id}/contact-book`, { contactBookId });
+    const updated = {
+      contactBookId: result?.account?.contactBookId ?? null,
+      contactBookName: result?.account?.contactBookName || '',
+    };
+    setContactBookTarget((current) => (current && current.id === target.id ? { ...current, ...updated } : current));
+    setDetailTarget((current) => (current && current.id === target.id ? { ...current, ...updated } : current));
+    loadTrials();
   }
 
   useEffect(() => {
-    if (!overviewCopyHint) return undefined;
-    const timer = setTimeout(() => setOverviewCopyHint(''), 5000);
-    return () => clearTimeout(timer);
-  }, [overviewCopyHint]);
+    onModeChange?.(detailTarget ? 'detail' : 'list');
+  }, [detailTarget, onModeChange]);
+
+  const accountSettingsDialog = accountSettingsTarget && createPortal(
+        <div id="trial-management-modal">
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2147483646,
+            backgroundColor: 'rgba(15, 23, 42, 0.36)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !accountSettingsSaving) setAccountSettingsTarget(null);
+          }}
+        >
+          <form
+            onSubmit={submitAccountSettings}
+            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {accountSettingsTarget.username}</h3>
+              <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            {accountSettingsLoading ? (
+              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
+                    {accountSettingsAvatar.preview ? (
+                      <img src={accountSettingsAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
+                    ) : (
+                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
+                        {accountSettingsAvatar.preview ? '修改圖像' : '添加圖像'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAccountSettingsAvatarPick} />
+                      </label>
+                      {accountSettingsAvatar.preview && (
+                        <button
+                          type="button"
+                          onClick={() => setAccountSettingsAvatar({ preview: '', dataUrl: '', removed: true })}
+                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
+                        >
+                          刪除圖像
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.displayName}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, displayName: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.phone}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
+                      placeholder="國際格式，如 +886912345678"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      type="email"
+                      value={accountSettingsForm.email}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, email: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.company}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, company: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="off"
+                      value={accountSettingsForm.jobTitle}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, jobTitle: event.target.value }))}
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="new-password"
+                      type="password"
+                      value={accountSettingsForm.password}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, password: event.target.value }))}
+                      placeholder="不修改請留空"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
+                    <input
+                      className="acct-settings-input"
+                      autoComplete="new-password"
+                      type="password"
+                      value={accountSettingsForm.confirmPassword}
+                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, confirmPassword: event.target.value }))}
+                      placeholder="不修改請留空"
+                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                    />
+                  </label>
+                  {accountSettingsMessage.text && (
+                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: accountSettingsMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{accountSettingsMessage.text}</p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                  <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+                  <button className="primary-btn" type="submit" disabled={accountSettingsSaving}>{accountSettingsSaving ? '儲存中...' : '儲存修改'}</button>
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+        </div>,
+        document.body
+  );
+
+  if (detailTarget) {
+    const readonlyInputStyle = {
+      padding: '10px',
+      borderRadius: '6px',
+      border: '1px solid #1f2937',
+      outline: 'none',
+      backgroundColor: '#1a2332',
+      color: '#9ca3af',
+    };
+    const labelStyle = { display: 'flex', flexDirection: 'column', gap: '8px' };
+    const labelTextStyle = { fontSize: '14px', fontWeight: 500, color: '#9ca3af' };
+    const canEdit = !isPlatform && TRIAL_RESETTABLE_PHASES.includes(detailTarget.phase) && String(detailTarget.expiresAt || '') >= todayStr();
+    const ecardConfigured = Boolean(detailEcard && (detailEcard.status || detailEcard.accessSlug || detailEcard.thumbnailUrl));
+    const contactBookConfigured = Boolean(detailTarget.contactBookId);
+    const configRows = [
+      {
+        key: 'contactBook',
+        label: '通訊錄',
+        done: contactBookConfigured,
+        text: contactBookConfigured ? `已分配：${detailTarget.contactBookName || detailTarget.contactBookId}` : '尚未配置通訊錄',
+      },
+      {
+        key: 'ecard',
+        label: '電子名片',
+        done: ecardConfigured,
+        text: ecardConfigured ? '已配置電子名片' : '尚未配置電子名片',
+      },
+      {
+        key: 'provisioning',
+        label: '配置文件',
+        text: '登錄二維碼與 Provisioning 連結',
+      },
+    ];
+    return (
+      <section className="view active settings-form-page" id="trial-account-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <style>{`
+          #trial-account-detail textarea::-webkit-scrollbar { width: 8px; height: 8px; }
+          #trial-account-detail textarea::-webkit-scrollbar-track { background: #1a2332; }
+          #trial-account-detail textarea::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+          #trial-account-detail textarea::-webkit-scrollbar-corner { background: #1a2332; }
+          #trial-account-detail textarea { scrollbar-width: thin; scrollbar-color: #374151 #1a2332; }
+        `}</style>
+        <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
+          <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
+            <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', color: '#f3f4f6', fontWeight: 600 }}>帳號詳情 — {detailTarget.username}</h3>
+              <button className="ghost-btn" type="button" onClick={closeDetail} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>
+                返回列表
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {detailLoading ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', margin: 0 }}>基礎帳號資訊</h4>
+                    {canEdit && (
+                      <button
+                        className="ghost-btn"
+                        type="button"
+                        onClick={() => openAccountSettings(detailTarget)}
+                        style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
+                      >去設置</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>用戶名</span>
+                      <input value={detailTarget.username || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>域名</span>
+                      <input value={detailTarget.sipDomain || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>Web 帳號</span>
+                      <input value={detailTarget.webUsername || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>顯示名稱</span>
+                      <input value={detailSettings?.displayName || detailTarget.accountDisplayName || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>狀態</span>
+                      <input value={(PHASE_META[detailTarget.phase] || {}).label || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>歸屬租戶</span>
+                      <input value={detailTarget.ownerTenantName || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                  </div>
+
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>試用資訊</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+                    <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
+                      <span style={labelTextStyle}>試用期</span>
+                      <input value={`${detailTarget.startedAt || '-'} ~ ${detailTarget.expiresAt || '-'}`} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>AI 助手</span>
+                      <input value={detailTarget.aiEnabled ? '已開通' : '—'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>聯繫人</span>
+                      <input value={[detailTarget.contactName, detailTarget.contactPhone, detailTarget.contactEmail].filter(Boolean).join(' · ') || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>
+                      <span style={labelTextStyle}>公司</span>
+                      <input value={detailTarget.company || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                  </div>
+
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '16px', marginTop: 0 }}>聯繫資訊</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '32px' }}>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>郵箱</span>
+                      <input value={detailSettings?.email || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                    <label style={labelStyle}>
+                      <span style={labelTextStyle}>電話</span>
+                      <input value={detailSettings?.phone || '-'} readOnly style={readonlyInputStyle} />
+                    </label>
+                  </div>
+
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '12px', marginTop: '24px' }}>配置情況</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {configRows.map((item) => {
+                      const done = Boolean(item.done);
+                      const isContactBook = item.key === 'contactBook';
+                      const isEcard = item.key === 'ecard';
+                      const isProvisioning = item.key === 'provisioning';
+                      return (
+                        <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', background: '#1a2332', border: '1px solid #1f2937' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: done ? '#16a34a' : '#94a3b8' }}></span>
+                            <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
+                            <span style={{ fontSize: '12px', color: '#94a3b8' }}>{item.text}</span>
+                          </div>
+                          {isProvisioning ? (
+                            <button
+                              className="ghost-btn"
+                              type="button"
+                              onClick={() => setDetailQrOpen(true)}
+                              style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
+                            >詳情</button>
+                          ) : isPlatform ? null : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                className="ghost-btn"
+                                type="button"
+                                disabled={!done}
+                                onClick={() => {
+                                  if (!done) return;
+                                  if (isEcard) setDetailEcardViewOpen(true);
+                                  else setDetailContactBookViewId(detailTarget.contactBookId);
+                                }}
+                                style={{ fontSize: '12px', padding: '4px 10px', background: done ? '#374151' : '#1f2937', color: done ? '#d1d5db' : '#6b7280', border: `1px solid ${done ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: done ? 'pointer' : 'not-allowed' }}
+                              >詳情</button>
+                              <button
+                                className="ghost-btn"
+                                type="button"
+                                disabled={!canEdit}
+                                onClick={() => {
+                                  if (!canEdit) return;
+                                  if (isEcard) { onOpenTrialEcard?.(detailTarget); return; }
+                                  setContactBookTarget(detailTarget);
+                                }}
+                                style={{ fontSize: '12px', padding: '4px 10px', background: canEdit ? '#374151' : '#1f2937', color: canEdit ? '#d1d5db' : '#6b7280', border: `1px solid ${canEdit ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: canEdit ? 'pointer' : 'not-allowed' }}
+                              >去配置</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <h4 style={{ fontSize: '15px', fontWeight: 600, color: '#e5e7eb', marginBottom: '12px', marginTop: '24px' }}>通知文案</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '8px' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>登入密碼（僅寫入下方文案；如需變更帳號密碼請使用「重置密碼」）</span>
+                      <input
+                        autoComplete="off"
+                        value={detailNotifyPassword}
+                        onChange={(event) => handleDetailNotifyPasswordChange(event.target.value)}
+                        placeholder="留空文案顯示「（請與管理員確認）」"
+                        style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>通知文案（可編輯後複製發送）</span>
+                      <textarea
+                        rows={12}
+                        value={detailNotifyText}
+                        onChange={(event) => setDetailNotifyText(event.target.value)}
+                        style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', fontSize: '12px', lineHeight: 1.7, fontFamily: 'inherit', resize: 'vertical' }}
+                      />
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {detailNotifyCopyHint && <span style={{ color: '#4ade80', fontSize: '13px' }}>{detailNotifyCopyHint}</span>}
+                      <button type="button" onClick={() => setDetailNotifyMailOpen(true)} style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: '#d1d5db', fontSize: '13px', cursor: 'pointer' }}>發送電子郵件</button>
+                      <button className="primary-btn" type="button" onClick={copyDetailNotifyText}>複製文案</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <ContactBookConfigDialog
+          open={!!contactBookTarget}
+          accountLabel={contactBookTarget ? `${contactBookTarget.username || '-'}${contactBookTarget.sipDomain ? ` | ${contactBookTarget.sipDomain}` : ''}` : ''}
+          initialContactBookId={contactBookTarget?.contactBookId || ''}
+          tenantName={tenantName}
+          onClose={() => setContactBookTarget(null)}
+          onSave={saveTrialAccountContactBook}
+        />
+
+        <ContactBookViewDialog
+          open={detailContactBookViewId != null}
+          bookId={detailContactBookViewId}
+          onClose={() => setDetailContactBookViewId(null)}
+        />
+
+        <EcardViewDialog
+          open={detailEcardViewOpen}
+          onClose={() => setDetailEcardViewOpen(false)}
+          loadData={async () => {
+            const ecard = detailEcard;
+            const rawImage = ecard?.thumbnailUrl || '';
+            return {
+              accessUrl: ecard?.accessSlug ? `https://ecard.qrtalkie.org/u/${ecard.accessSlug}` : '',
+              imageUrl: rawImage
+                ? (rawImage.startsWith('http') ? rawImage : `${window.location.origin}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`)
+                : '',
+            };
+          }}
+        />
+
+        <LoginQrDialog
+          isOpen={detailQrOpen}
+          onClose={() => setDetailQrOpen(false)}
+          account={detailTarget}
+          apiBasePath="/admin/trials"
+        />
+
+        <NotifyMailDialog
+          open={detailNotifyMailOpen}
+          defaultEmail={detailSettings?.email || ''}
+          sendPath={`/admin/trials/${detailTarget.id}/send-notification-email`}
+          getBody={() => detailNotifyText}
+          onClose={() => setDetailNotifyMailOpen(false)}
+        />
+
+        {accountSettingsDialog}
+      </section>
+    );
+  }
 
   const effectivePageSize = pageSize === 'all' ? 1000 : pageSize;
   const totalPages = Math.max(1, Math.ceil(total / effectivePageSize));
@@ -1610,7 +2227,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                   const canPause = t.phase === 'active' || t.phase === 'expiring';
                   const canResume = t.phase === 'paused' && String(t.expiresAt || '') >= todayStr();
                   const canAccountSettings = !isPlatform && String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
-                  const canOverview = String(t.expiresAt || '') >= todayStr() && ['active', 'expiring', 'paused'].includes(t.phase);
                   return (
                     <tr key={t.id}>
                       <td style={{ width: '48px', textAlign: 'center' }}>
@@ -1663,6 +2279,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                         )}
                         {openActionsId === t.id ? createPortal(
                           <div ref={actionsMenuRef} className="tm-actions-menu" style={{ top: actionsPosition.top, left: actionsPosition.left }}>
+                            <button type="button" className="tm-actions-item" onClick={() => openDetail(t)}>帳號詳情</button>
                             {isPlatform && (
                               <button type="button" className="tm-actions-item" onClick={() => openAiEntitlement(t)}>AI助手</button>
                             )}
@@ -1686,9 +2303,6 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                             )}
                             {isPlatform && (
                               <button type="button" className="tm-actions-item danger" onClick={() => { setOpenActionsId(null); setReclaimConfirm({ open: true, trial: t }); }}>立即回庫</button>
-                            )}
-                            {canOverview && (
-                              <button type="button" className="tm-actions-item" onClick={() => openOverview(t)}>帳號概覽</button>
                             )}
                           </div>,
                           document.body,
@@ -2361,280 +2975,82 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         document.body
       )}
 
-      {overviewTarget && createPortal(
+      {resetTargets && (
         <div id="trial-management-modal">
         <div className="tm-modal">
-          <div className="tm-modal-panel" style={{ width: '560px' }}>
+          <div className="tm-modal-panel" style={{ width: resetNotifyEnabled ? '720px' : '480px', maxWidth: '94vw' }}>
             <div className="tm-modal-head">
-              <h3>帳號概覽 — {overviewTarget.username}</h3>
-              <button className="tm-btn" type="button" onClick={() => setOverviewTarget(null)}>關閉</button>
-            </div>
-            <div className="tm-modal-body">
-              {[
-                ['帳號', `${overviewTarget.username}${overviewTarget.webUsername ? `（${overviewTarget.webUsername}）` : ''}`],
-                ['顯示名', overviewTarget.displayName],
-                ['歸屬租戶', overviewTarget.tenantName],
-                ['聯繫人', [overviewTarget.contactName, overviewTarget.contactPhone, overviewTarget.contactEmail].filter(Boolean).join(' · ')],
-                ['試用期', `${overviewTarget.startedAt} ~ ${overviewTarget.expiresAt}`],
-                ['狀態', overviewTarget.statusLabel],
-                ['AI 助手', overviewTarget.aiEnabled ? '已開通' : '—'],
-              ].map(([label, value]) => (
-                <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
-                  <span style={{ color: '#e5e7eb', fontSize: '13px', wordBreak: 'break-all' }}>{value || '—'}</span>
-                </div>
-              ))}
-              {[
-                ['名片訪問連結', overviewTarget.ecardAccessUrl, '已複製名片訪問連結。'],
-                ['名片圖片連結', overviewTarget.ecardImageUrl, '已複製名片圖片連結。'],
-              ].map(([label, url, hint]) => (
-                <div key={label} style={{ display: 'grid', gridTemplateColumns: '96px 1fr', gap: '8px', alignItems: 'start' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '13px' }}>{label}</span>
-                  <span style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0 }}>
-                    <span style={{ color: '#e5e7eb', fontSize: '13px', wordBreak: 'break-all', flex: 1, minWidth: 0 }}>{url || '—'}</span>
-                    {url && (
-                      <button
-                        type="button"
-                        title="複製連結"
-                        onClick={() => copyToClipboard(url, hint)}
-                        style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: '0 2px', display: 'flex', flexShrink: 0 }}
-                      >
-                        <Copy size={14} />
-                      </button>
-                    )}
-                  </span>
-                </div>
-              ))}
-              <div className="tm-field">
-                <label>登入密碼（僅寫入下方文案；如需變更帳號密碼請使用「重置密碼」）</label>
-                <input
-                  autoComplete="off"
-                  value={overviewPassword}
-                  onChange={(e) => handleOverviewPasswordChange(e.target.value)}
-                  placeholder="留空文案顯示「（請與管理員確認）」"
-                />
-              </div>
-              <div className="tm-field">
-                <label>通知文案（可編輯後複製發送）</label>
-                <textarea
-                  rows="14"
-                  value={overviewText}
-                  onChange={(e) => setOverviewText(e.target.value)}
-                  style={{ fontSize: '12px', lineHeight: '1.7', fontFamily: 'inherit' }}
-                />
-              </div>
-            </div>
-            <div className="tm-modal-foot">
-              {overviewCopyHint && <span style={{ marginRight: 'auto', color: '#22c55e', fontSize: '13px' }}>{overviewCopyHint}</span>}
-              <button className="tm-btn" type="button" onClick={() => setOverviewTarget(null)}>關閉</button>
-              <button className="tm-btn primary" type="button" onClick={() => copyToClipboard(overviewText, '已複製至剪貼簿。')}>複製文案</button>
-            </div>
-          </div>
-        </div>
-        </div>,
-        document.body
-      )}
-
-      {resetPasswordTarget && createPortal(
-        <div id="trial-management-modal">
-        <div className="tm-modal">
-          <div className="tm-modal-panel" style={{ width: '440px' }}>
-            <div className="tm-modal-head">
-              <h3>重置密碼 — {resetPasswordTarget.username}</h3>
-              <button className="tm-btn" type="button" onClick={() => setResetPasswordTarget(null)} disabled={isResettingPassword}>關閉</button>
+              <h3>{resetTargets.length > 1 ? `重置密碼（${resetTargets.length} 個試用）` : `重置密碼 — ${resetTargets[0]?.username || ''}`}</h3>
+              <button className="tm-btn" type="button" onClick={closeResetPassword} disabled={isResettingPassword}>關閉</button>
             </div>
             <form onSubmit={submitResetPassword}>
               <div className="tm-modal-body">
+                {resetSkippedExpired.length > 0 && (
+                  <div style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #78350f', backgroundColor: '#1f1a10', color: '#fbbf24', fontSize: '12px', lineHeight: 1.7 }}>
+                    已自動跳過 {resetSkippedExpired.length} 個過期試用：{resetSkippedExpired.join('、')}
+                  </div>
+                )}
                 <div className="tm-field">
                   <label>密碼</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={resetPasswordForm.password}
-                    onChange={(e) => setResetPasswordForm((f) => ({ ...f, password: e.target.value }))}
-                    placeholder="至少 6 個字元"
-                  />
+                  <input type="password" autoComplete="new-password" value={resetPasswordForm.password} onChange={(e) => handleResetPasswordChange('password', e.target.value)} disabled={isResettingPassword} placeholder="至少 6 個字元" />
                 </div>
                 <div className="tm-field">
                   <label>密碼確認</label>
-                  <input
-                    type="password"
-                    autoComplete="new-password"
-                    value={resetPasswordForm.confirmPassword}
-                    onChange={(e) => setResetPasswordForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                    placeholder="再次輸入新密碼"
-                  />
+                  <input type="password" autoComplete="new-password" value={resetPasswordForm.confirmPassword} onChange={(e) => handleResetPasswordChange('confirmPassword', e.target.value)} disabled={isResettingPassword} placeholder="再次輸入新密碼" />
                 </div>
-                <span className="tm-hint">重置後，該帳號的雲平台登入密碼與通訊核心（App 登錄）密碼同步生效（設備需用新密碼重新註冊）。</span>
+                {!isPlatform && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#d1d5db', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={resetNotifyEnabled} onChange={(e) => handleResetNotifyToggle(e.target.checked)} disabled={isResettingPassword} style={{ cursor: 'pointer' }} />
+                    重置成功後發送通知郵件
+                  </label>
+                )}
+                {resetNotifyEnabled && resetTargets.map((trial) => {
+                  const draft = resetNotifyDrafts[trial.id] || { email: '', message: '' };
+                  return (
+                    <div key={trial.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderRadius: '8px', border: '1px solid #1f2937', backgroundColor: '#0f172a' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', color: '#e5e7eb', fontWeight: 600 }}>
+                          {trial.accountDisplayName && trial.accountDisplayName !== trial.username ? `${trial.accountDisplayName}（${trial.username}）` : trial.username}
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>Web 帳號：{trial.webUsername || '—'}</span>
+                      </div>
+                      <div className="tm-field">
+                        <label>收件人郵箱</label>
+                        <input type="email" autoComplete="off" value={draft.email} onChange={(e) => updateResetNotifyDraft(trial.id, { email: e.target.value })} disabled={isResettingPassword} placeholder="請輸入收件人郵箱" />
+                      </div>
+                      <div className="tm-field">
+                        <label>通知文案（可編輯，密碼取上方設定值）</label>
+                        <textarea rows="8" value={draft.message} onChange={(e) => updateResetNotifyDraft(trial.id, { message: e.target.value })} disabled={isResettingPassword} style={{ fontFamily: 'inherit', fontSize: '12px', lineHeight: 1.7 }} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {resetNotifyCopyHints[trial.id] && <span style={{ fontSize: '12px', color: '#4ade80' }}>{resetNotifyCopyHints[trial.id]}</span>}
+                        <button className="tm-btn" type="button" style={{ marginLeft: 'auto' }} onClick={() => copyResetNotifyDraft(trial.id)} disabled={isResettingPassword}>複製文案</button>
+                      </div>
+                    </div>
+                  );
+                })}
                 {resetPasswordMessage.text && (
                   <p style={{ margin: 0, fontSize: '13px', color: resetPasswordMessage.type === 'error' ? '#ef4444' : '#22c55e' }}>{resetPasswordMessage.text}</p>
                 )}
               </div>
               <div className="tm-modal-foot">
-                <button className="tm-btn" type="button" disabled={isResettingPassword} onClick={() => setResetPasswordTarget(null)}>取消</button>
+                <button className="tm-btn" type="button" disabled={isResettingPassword} onClick={closeResetPassword}>取消</button>
                 <button className="tm-btn primary" type="submit" disabled={isResettingPassword}>{isResettingPassword ? '儲存中...' : '確認重置'}</button>
               </div>
             </form>
           </div>
         </div>
-        </div>,
-        document.body
-      )}
-
-      {accountSettingsTarget && createPortal(
-        <div id="trial-management-modal">
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2147483646,
-            backgroundColor: 'rgba(15, 23, 42, 0.36)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !accountSettingsSaving) setAccountSettingsTarget(null);
-          }}
-        >
-          <form
-            onSubmit={submitAccountSettings}
-            style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>帳號設置 — {accountSettingsTarget.username}</h3>
-              <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-            </div>
-            {accountSettingsLoading ? (
-              <div style={{ padding: '40px 18px', textAlign: 'center', color: '#9ca3af', fontSize: '14px' }}>載入中...</div>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 16px', padding: '18px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' }}>
-                    {accountSettingsAvatar.preview ? (
-                      <img src={accountSettingsAvatar.preview} alt="" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #374151' }} />
-                    ) : (
-                      <div style={{ width: '72px', height: '72px', borderRadius: '50%', border: '1px dashed #4b5563', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', fontSize: '12px' }}>無圖像</div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <label style={{ cursor: 'pointer', padding: '4px 8px', background: 'none', border: 'none', color: '#60a5fa', fontSize: '13px' }}>
-                        {accountSettingsAvatar.preview ? '修改圖像' : '添加圖像'}
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAccountSettingsAvatarPick} />
-                      </label>
-                      {accountSettingsAvatar.preview && (
-                        <button
-                          type="button"
-                          onClick={() => setAccountSettingsAvatar({ preview: '', dataUrl: '', removed: true })}
-                          style={{ padding: '4px 8px', background: 'none', border: 'none', color: '#f87171', fontSize: '13px', cursor: 'pointer' }}
-                        >
-                          刪除圖像
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>顯示名稱</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      value={accountSettingsForm.displayName}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, displayName: event.target.value }))}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      value={accountSettingsForm.phone}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, phone: event.target.value }))}
-                      placeholder="國際格式，如 +886912345678"
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>电子郵箱</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      type="email"
-                      value={accountSettingsForm.email}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, email: event.target.value }))}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>公司</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      value={accountSettingsForm.company}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, company: event.target.value }))}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>職位</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="off"
-                      value={accountSettingsForm.jobTitle}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, jobTitle: event.target.value }))}
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="new-password"
-                      type="password"
-                      value={accountSettingsForm.password}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, password: event.target.value }))}
-                      placeholder="不修改請留空"
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼確認</span>
-                    <input
-                      className="acct-settings-input"
-                      autoComplete="new-password"
-                      type="password"
-                      value={accountSettingsForm.confirmPassword}
-                      onChange={(event) => setAccountSettingsForm((form) => ({ ...form, confirmPassword: event.target.value }))}
-                      placeholder="不修改請留空"
-                      style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                    />
-                  </label>
-                  {accountSettingsMessage.text && (
-                    <p style={{ margin: 0, gridColumn: '1 / -1', fontSize: '14px', color: accountSettingsMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{accountSettingsMessage.text}</p>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
-                  <button type="button" onClick={() => setAccountSettingsTarget(null)} disabled={accountSettingsSaving} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-                  <button className="primary-btn" type="submit" disabled={accountSettingsSaving}>{accountSettingsSaving ? '儲存中...' : '儲存修改'}</button>
-                </div>
-              </>
-            )}
-          </form>
         </div>
-        </div>,
-        document.body
       )}
 
+      {accountSettingsDialog}
       <ContactBookConfigDialog
         open={!!contactBookTarget}
         accountLabel={contactBookTarget ? `${contactBookTarget.username || '-'}${contactBookTarget.sipDomain ? ` | ${contactBookTarget.sipDomain}` : ''}` : ''}
         initialContactBookId={contactBookTarget?.contactBookId || ''}
         tenantName={tenantName}
         onClose={() => setContactBookTarget(null)}
-        onSave={async (contactBookId) => {
-          await apiClient.put(`/admin/trials/${contactBookTarget.id}/contact-book`, { contactBookId });
-          loadTrials();
-        }}
+        onSave={saveTrialAccountContactBook}
       />
 
       {reclaimConfirm.open && reclaimConfirm.trial && createPortal(

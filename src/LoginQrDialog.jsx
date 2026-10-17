@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Download, RefreshCw, Loader } from 'lucide-react';
 import apiClient from './apiClient';
 
-export default function LoginQrDialog({ isOpen, onClose, account }) {
+export default function LoginQrDialog({ isOpen, onClose, account, apiBasePath = '/tenant/sip-accounts' }) {
   const [provisionUrl, setProvisionUrl] = useState('');
   const [expireAt, setExpireAt] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,6 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
     if (isRenew) setRenewing(true); else setLoading(true);
     setError('');
     try {
-      const apiBasePath = '/tenant/sip-accounts';
       const res = await apiClient.get(`${apiBasePath}/${account.id}/provisioning-url`);
       if (res?.data?.provisionUrl) {
         setProvisionUrl(res.data.provisionUrl);
@@ -31,7 +30,7 @@ export default function LoginQrDialog({ isOpen, onClose, account }) {
       setLoading(false);
       setRenewing(false);
     }
-  }, [account?.id]);
+  }, [account?.id, apiBasePath]);
 
   useEffect(() => {
     if (isOpen && account?.id) {

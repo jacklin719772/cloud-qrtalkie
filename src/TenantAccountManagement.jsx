@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom';
 import apiClient from './apiClient';
 import LoginQrDialog from './LoginQrDialog';
 import ContactBookConfigDialog from './ContactBookConfigDialog';
+import ContactBookViewDialog from './ContactBookViewDialog';
+import EcardViewDialog from './EcardViewDialog';
+import NotifyMailDialog from './NotifyMailDialog';
+import { buildAccountNotifyMessage } from './accountNotifyMessage';
 
 const navMap = { ecard: 'e-business-card', agent: 'call-center', entrance: 'access-control', room: 'access-control' };
 
@@ -164,20 +168,12 @@ const TenantAccountManagement = forwardRef(({
   const [sendingEmailKey, setSendingEmailKey] = useState('');
   const [contactBookAccount, setContactBookAccount] = useState(null);
   const [contactBookTargets, setContactBookTargets] = useState([]);
-  const [contactBookViewOpen, setContactBookViewOpen] = useState(false);
-  const [contactBookViewData, setContactBookViewData] = useState(null);
-  const [isLoadingContactBookView, setIsLoadingContactBookView] = useState(false);
-  const [ecardViewOpen, setEcardViewOpen] = useState(false);
-  const [ecardViewData, setEcardViewData] = useState(null);
-  const [isLoadingEcardView, setIsLoadingEcardView] = useState(false);
-  const [ecardCopyMessage, setEcardCopyMessage] = useState({ type: '', text: '' });
+  const [contactBookViewBookId, setContactBookViewBookId] = useState(null);
+  const [ecardViewAccount, setEcardViewAccount] = useState(null);
   const [notifyPassword, setNotifyPassword] = useState('');
   const [notifyText, setNotifyText] = useState('');
   const [notifyCopyHint, setNotifyCopyHint] = useState('');
   const [notifyMailOpen, setNotifyMailOpen] = useState(false);
-  const [notifyMailForm, setNotifyMailForm] = useState({ email: '' });
-  const [notifyMailSending, setNotifyMailSending] = useState(false);
-  const [notifyMailMessage, setNotifyMailMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
@@ -759,76 +755,22 @@ const TenantAccountManagement = forwardRef(({
     setDetailAccount((current) => (current && updatedIds.has(current.id) ? { ...current, ...updated } : current));
   }
 
-  async function openContactBookView(bookId) {
-    setContactBookViewOpen(true);
-    setContactBookViewData(null);
-    setIsLoadingContactBookView(true);
-    try {
-      const data = await apiClient.get(`/contact-books/${bookId}`);
-      setContactBookViewData(data.contactBook || null);
-    } catch {
-      setContactBookViewData(null);
-    } finally {
-      setIsLoadingContactBookView(false);
-    }
-  }
-
-  function closeContactBookView() {
-    setContactBookViewOpen(false);
-    setContactBookViewData(null);
-  }
-
-  async function openEcardView(account) {
-    setEcardViewOpen(true);
-    setEcardViewData(null);
-    setEcardCopyMessage({ type: '', text: '' });
-    setIsLoadingEcardView(true);
-    try {
-      const data = await apiClient.get(`/tenant/ecard-accounts/${account.sipUserId}/ecard`);
-      const slug = data?.accessSlug || account.username || '';
-      const generated = Boolean(data?.thumbnailUrl);
-      setEcardViewData({
-        generated,
-        accessUrl: slug ? `https://ecard.qrtalkie.org/u/${slug}` : '',
-        imageUrl: generated ? `/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(account.username || '')}` : '',
-      });
-    } catch {
-      setEcardViewData(null);
-    } finally {
-      setIsLoadingEcardView(false);
-    }
-  }
-
-  function closeEcardView() {
-    setEcardViewOpen(false);
-    setEcardViewData(null);
-    setEcardCopyMessage({ type: '', text: '' });
-  }
-
   // 通知文案（與試用端「帳號概覽」同模板與複製方式）
   const notifyLinksRef = useRef({ ecardAccessUrl: '', ecardImageUrl: '' });
 
   function buildNotifyMessage(account, password, links) {
     if (!account) return '';
-    const lines = [
-      '您好，已為您開通 QRTalkie 帳號：',
-      '',
-      `▸ 帳號：${account.username || '-'}${account.webAccount ? `（Web 帳號：${account.webAccount}）` : ''}`,
-      `▸ 密碼：${password || '（請與管理員確認）'}`,
-      `▸ 訂閱期：${account.serviceStartsAt || '-'} ~ ${account.serviceExpiresAt || '-'}`,
-    ];
-    if (links?.ecardAccessUrl) lines.push(`▸ 電子名片（訪問）：${links.ecardAccessUrl}`);
-    if (links?.ecardImageUrl) lines.push(`▸ 名片圖片：${links.ecardImageUrl}`);
-    lines.push(
-      '',
-      '使用步驟：',
-      '1. 前往雲平台 https://cloud.qrtalkie.org，使用上述帳號登入並修改密碼；',
-      '2. 於平台下載並安裝 App；',
-      '3. 開啟 App，使用該帳號與新密碼登入即可開始使用。',
-      '',
-      '如需協助，請隨時與我們聯繫。',
-    );
-    return lines.join('\n');
+    return buildAccountNotifyMessage({
+      username: account.username,
+      webAccount: account.webAccount,
+      password,
+      isTrial: false,
+      periodLabel: '訂閱期',
+      periodStart: account.serviceStartsAt,
+      periodEnd: account.serviceExpiresAt,
+      ecardAccessUrl: links?.ecardAccessUrl,
+      ecardImageUrl: links?.ecardImageUrl,
+    });
   }
 
   useEffect(() => {
@@ -879,89 +821,11 @@ const TenantAccountManagement = forwardRef(({
   }
 
   function openNotifyMail() {
-    setNotifyMailForm({ email: detailAccount?.email || '' });
-    setNotifyMailMessage({ type: '', text: '' });
     setNotifyMailOpen(true);
   }
 
   function closeNotifyMail() {
-    if (notifyMailSending) return;
     setNotifyMailOpen(false);
-    setNotifyMailMessage({ type: '', text: '' });
-  }
-
-  async function submitNotifyMail(event) {
-    event.preventDefault();
-    if (!detailAccount) return;
-    const email = notifyMailForm.email.trim();
-    if (!email) {
-      setNotifyMailMessage({ type: 'error', text: '請輸入收件人郵箱。' });
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setNotifyMailMessage({ type: 'error', text: '請輸入有效的電子郵件地址。' });
-      return;
-    }
-    if (!notifyText.trim()) {
-      setNotifyMailMessage({ type: 'error', text: '郵件內容不能為空。' });
-      return;
-    }
-    setNotifyMailSending(true);
-    setNotifyMailMessage({ type: '', text: '' });
-    try {
-      await apiClient.post(`${apiBasePath}/${detailAccount.id}/send-notification-email`, {
-        email,
-        body: notifyText,
-      });
-      setNotifyMailMessage({ type: 'success', text: '郵件已發送。' });
-      window.setTimeout(() => {
-        setNotifyMailOpen(false);
-        setNotifyMailMessage({ type: '', text: '' });
-      }, 1200);
-    } catch (error) {
-      setNotifyMailMessage({ type: 'error', text: error.message || '郵件發送失敗，請稍後重試。' });
-    } finally {
-      setNotifyMailSending(false);
-    }
-  }
-
-  function showEcardCopyMessage(message) {
-    setEcardCopyMessage(message);
-    window.setTimeout(() => {
-      setEcardCopyMessage((current) => (current.text === message.text ? { type: '', text: '' } : current));
-    }, 5000);
-  }
-
-  async function copyEcardAccessLink() {
-    const url = ecardViewData?.accessUrl;
-    if (!url) return;
-    try {
-      await navigator.clipboard.writeText(url);
-      showEcardCopyMessage({ type: 'success', text: '訪問連結已複製。' });
-    } catch {
-      showEcardCopyMessage({ type: 'error', text: '複製失敗，請手動選取複製。' });
-    }
-  }
-
-  async function copyEcardImage() {
-    const imageUrl = ecardViewData?.imageUrl;
-    if (!imageUrl) return;
-    try {
-      const response = await fetch(imageUrl, { credentials: 'same-origin' });
-      if (!response.ok) throw new Error('IMAGE_FETCH_FAILED');
-      const blob = await response.blob();
-      // 統一經畫布轉為真正的 PNG 再寫入剪貼板（下載接口對 jpg 縮圖也聲明為 PNG）
-      const bitmap = await createImageBitmap(blob);
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0);
-      const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
-      showEcardCopyMessage({ type: 'success', text: '名片圖片已複製。' });
-    } catch {
-      showEcardCopyMessage({ type: 'error', text: '複製圖片失敗，請在圖片上右鍵另存。' });
-    }
   }
 
   function handleAction(action, account) {
@@ -1278,8 +1142,8 @@ const TenantAccountManagement = forwardRef(({
                           disabled={!done}
                           onClick={() => {
                             if (!done) return;
-                            if (isEcard) openEcardView(detailAccount);
-                            else openContactBookView(detailAccount.contactBookId);
+                            if (isEcard) setEcardViewAccount(detailAccount);
+                            else setContactBookViewBookId(detailAccount.contactBookId);
                           }}
                           style={{ fontSize: '12px', padding: '4px 10px', background: done ? '#374151' : '#1f2937', color: done ? '#d1d5db' : '#6b7280', border: `1px solid ${done ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: done ? 'pointer' : 'not-allowed' }}
                         >詳情</button>
@@ -1343,170 +1207,35 @@ const TenantAccountManagement = forwardRef(({
         account={qrDialogAccount}
       />
 
-      {notifyMailOpen && createPortal(
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeNotifyMail();
-          }}
-        >
-          <form onSubmit={submitNotifyMail} style={{ width: 'min(520px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>發送電子郵件</h3>
-              <button type="button" onClick={closeNotifyMail} disabled={notifyMailSending} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-            </div>
-            <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>收件人郵箱</span>
-                <input
-                  type="email"
-                  autoComplete="off"
-                  autoFocus
-                  value={notifyMailForm.email}
-                  onChange={(event) => setNotifyMailForm({ email: event.target.value })}
-                  placeholder="請輸入收件人郵箱"
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }}
-                />
-              </label>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>郵件內容為上方「通知文案」的當前內容（含手動編輯）。</p>
-              {notifyMailMessage.text && (
-                <p style={{ margin: 0, fontSize: '14px', color: notifyMailMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{notifyMailMessage.text}</p>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
-              <button type="button" onClick={closeNotifyMail} disabled={notifyMailSending} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
-              <button className="primary-btn" type="submit" disabled={notifyMailSending}>{notifyMailSending ? '發送中...' : '發送'}</button>
-            </div>
-          </form>
-        </div>,
-        document.body
-      )}
+      <NotifyMailDialog
+        open={notifyMailOpen}
+        defaultEmail={detailAccount?.email || ''}
+        sendPath={`${apiBasePath}/${detailAccount?.id}/send-notification-email`}
+        getBody={() => notifyText}
+        onClose={closeNotifyMail}
+      />
 
-      {contactBookViewOpen && createPortal(
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeContactBookView();
-          }}
-        >
-          <div id="tenant-contact-book-view-modal" style={{ width: 'min(600px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
-            <style>{`
-              #tenant-contact-book-view-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
-              #tenant-contact-book-view-modal ::-webkit-scrollbar-track { background: #111827; }
-              #tenant-contact-book-view-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-              #tenant-contact-book-view-modal ::-webkit-scrollbar-corner { background: #111827; }
-            `}</style>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄詳情</h3>
-              <button type="button" onClick={closeContactBookView} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-            </div>
-            <div style={{ overflow: 'auto', flex: 1, padding: '18px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
-              {isLoadingContactBookView ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入中...</div>
-              ) : !contactBookViewData ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>無法讀取通訊錄詳情</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱</span>
-                      <input value={contactBookViewData.name || '-'} readOnly style={readonlyInputStyle} />
-                    </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
-                      <input value={contactBookViewData.description || '-'} readOnly style={readonlyInputStyle} />
-                    </label>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄中包含的帳號 ({(contactBookViewData.includedAccounts || []).length})</span>
-                    <div style={{ border: '1px solid #1f2937', borderRadius: '6px', overflow: 'hidden' }}>
-                      <div style={{ overflowY: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
-                        {(contactBookViewData.includedAccounts || []).length === 0 ? (
-                          <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>該通訊錄暫無帳號</div>
-                        ) : contactBookViewData.includedAccounts.map((member) => (
-                          <div key={member.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
-                              {(member.displayName || member.username || 'U').charAt(0).toUpperCase()}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
-                              <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.displayName || member.username || '-'}</span>
-                              <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.username || '-'}{member.domain ? ` | ${member.domain}` : ''}</span>
-                            </div>
-                            {getStatusBadge(member.status)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
-              <button type="button" onClick={closeContactBookView} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-      {ecardViewOpen && createPortal(
-        <div
-          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeEcardView();
-          }}
-        >
-          <div id="tenant-ecard-view-modal" style={{ width: 'min(720px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
-            <style>{`
-              #tenant-ecard-view-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
-              #tenant-ecard-view-modal ::-webkit-scrollbar-track { background: #111827; }
-              #tenant-ecard-view-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-              #tenant-ecard-view-modal ::-webkit-scrollbar-corner { background: #111827; }
-            `}</style>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>電子名片詳情</h3>
-              <button type="button" onClick={closeEcardView} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
-            </div>
-            <div style={{ overflow: 'auto', flex: 1, padding: '18px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
-              {isLoadingEcardView ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入中...</div>
-              ) : !ecardViewData ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>無法讀取電子名片</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '8px', borderRadius: '8px', border: '1px solid #1f2937', backgroundColor: '#0f172a' }}>
-                    {ecardViewData.imageUrl ? (
-                      <img src={ecardViewData.imageUrl} alt="電子名片" style={{ maxWidth: '100%', maxHeight: '52vh', objectFit: 'contain', borderRadius: '6px' }} />
-                    ) : (
-                      <div style={{ padding: '48px 0', color: '#64748b', fontSize: '13px' }}>尚未生成名片圖片（可點「去配置」在電子名片頁生成）</div>
-                    )}
-                  </div>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>訪客訪問連結</span>
-                    <input value={ecardViewData.accessUrl || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
-                  </label>
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
-              {ecardCopyMessage.text && <span style={{ marginRight: 'auto', fontSize: '13px', color: ecardCopyMessage.type === 'error' ? '#fca5a5' : '#4ade80' }}>{ecardCopyMessage.text}</span>}
-              <button
-                type="button"
-                disabled={!ecardViewData?.imageUrl}
-                onClick={copyEcardImage}
-                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: ecardViewData?.imageUrl ? '#d1d5db' : '#6b7280', fontSize: '13px', cursor: ecardViewData?.imageUrl ? 'pointer' : 'not-allowed' }}
-              >複製圖片</button>
-              <button
-                type="button"
-                disabled={!ecardViewData?.accessUrl}
-                onClick={copyEcardAccessLink}
-                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: ecardViewData?.accessUrl ? '#d1d5db' : '#6b7280', fontSize: '13px', cursor: ecardViewData?.accessUrl ? 'pointer' : 'not-allowed' }}
-              >複製連結</button>
-              <button type="button" onClick={closeEcardView} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <ContactBookViewDialog
+        open={contactBookViewBookId != null}
+        bookId={contactBookViewBookId}
+        onClose={() => setContactBookViewBookId(null)}
+      />
+
+      <EcardViewDialog
+        open={!!ecardViewAccount}
+        onClose={() => setEcardViewAccount(null)}
+        loadData={async () => {
+          const account = ecardViewAccount;
+          const data = await apiClient.get(`/tenant/ecard-accounts/${account.sipUserId}/ecard`);
+          const slug = data?.accessSlug || account.username || '';
+          const generated = Boolean(data?.thumbnailUrl);
+          return {
+            accessUrl: slug ? `https://ecard.qrtalkie.org/u/${slug}` : '',
+            imageUrl: generated ? `/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(account.username || '')}` : '',
+          };
+        }}
+      />
+
       </section>
     );
   }

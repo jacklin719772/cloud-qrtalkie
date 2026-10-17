@@ -8,7 +8,8 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "./db.js";
-import { getAccount as flexisipGetAccount, updateAccount as flexisipUpdateAccount, activateAccount as flexisipActivateAccount, searchAccountBySip } from "./flexisipAccountManagerClient.js";
+import { getAccount as flexisipGetAccount, updateAccount as flexisipUpdateAccount, activateAccount as flexisipActivateAccount, searchAccountBySip, getAccountProvisionLink as flexisipGetProvisionLink, FlexisipAccountManagerError } from "./flexisipAccountManagerClient.js";
+import { sendTrialNotificationEmail } from "./email.js";
 import { assignContactListToAccount, unassignContactListFromAccount } from "./flexisipContactBookClient.js";
 import { hashPassword } from "./security.js";
 import { readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
@@ -1656,6 +1657,114 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to configure trial contact book:", error);
       return response.status(500).json({ message: "配置通訊錄失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // GET /api/admin/trials/:id/provisioning-url - 試用賬號 provisioning 連結（平台任意試用 / 租戶本租戶）
+  app.get("/api/admin/trials/:id/provisioning-url", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ success: false, message: "試用記錄編號無效。" });
+    }
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const [trial] = await connection.query(
+        `SELECT ta.id, ta.owner_tenant_id, u.flexisip_account_id
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ? LIMIT 1`,
+        [trialId],
+      );
+      const isPlatform = request.admin.accountType === "platform";
+      if (!trial || (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId))) {
+        return response.status(404).json({ success: false, message: "找不到試用記錄。" });
+      }
+      if (!trial.flexisip_account_id) {
+        return response.status(400).json({ success: false, message: "該帳號尚未同步到 Flexisip，無法生成二維碼。" });
+      }
+      try {
+        const result = await flexisipGetProvisionLink(trial.flexisip_account_id);
+        const host = (process.env.FLEXISIP_ACCOUNT_MANAGER_BASE_URL || "http://account.qrtalkie.org/api")
+          .replace(/\/api\/?$/, "").replace(/^https?:\/\//, "");
+        let provisionUrl = result?.provisioning_url
+          || result?.provisioningUrl
+          || result?.provision_url
+          || result?.provisionUrl
+          || result?.url
+          || null;
+        if (!provisionUrl && result?.provisioning_token) {
+          provisionUrl = `https://${host}/provisioning/${result.provisioning_token}`;
+        }
+        if (!provisionUrl) {
+          return response.status(502).json({ success: false, message: "Flexisip 未返回有效的 provisioning 連結。" });
+        }
+        return response.json({
+          success: true,
+          data: {
+            provisionUrl,
+            expireAt: result?.provisioning_token_expire_at || result?.expire_at || result?.expireAt || null,
+          },
+        });
+      } catch (error) {
+        const isFlexisipError = error instanceof FlexisipAccountManagerError;
+        console.error("[trial-provisioning] failed:", trialId, error?.message || error);
+        return response.status(isFlexisipError && error.status === 404 ? 404 : 502).json({
+          success: false,
+          message: isFlexisipError && error.status === 404 ? "Flexisip 帳號不存在，無法生成二維碼。" : "生成 provisioning 連結失敗，請稍後重試。",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to get trial provisioning url:", error);
+      return response.status(500).json({ success: false, message: "生成 provisioning 連結失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // POST /api/admin/trials/:id/send-notification-email - 發送試用賬號通知文案（SMTP，平台/所屬租戶）
+  app.post("/api/admin/trials/:id/send-notification-email", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ success: false, message: "試用記錄編號無效。" });
+    }
+    const email = String(request.body?.email || "").trim().slice(0, 255);
+    const body = typeof request.body?.body === "string" ? request.body.body : "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return response.status(400).json({ success: false, message: "請輸入有效的電子郵件地址。" });
+    }
+    if (!body.trim()) {
+      return response.status(400).json({ success: false, message: "郵件內容不能為空。" });
+    }
+    if (body.length > 8000) {
+      return response.status(400).json({ success: false, message: "郵件內容過長。" });
+    }
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const [trial] = await connection.query(
+        `SELECT ta.id, ta.owner_tenant_id, u.username
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ? LIMIT 1`,
+        [trialId],
+      );
+      const isPlatform = request.admin.accountType === "platform";
+      if (!trial || (!isPlatform && Number(trial.owner_tenant_id) !== Number(request.admin.tenantId))) {
+        return response.status(404).json({ success: false, message: "找不到試用記錄。" });
+      }
+      const subject = `QRTalkie 帳號開通通知（${trial.username || trialId}）`;
+      const delivery = await sendTrialNotificationEmail(connection, { to: email, subject, body });
+      if (!delivery.sent) {
+        console.error(`[trial-notification-email] trial=${trialId} to=${email} failed: ${delivery.reason || 'unknown'}`);
+        return response.status(502).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
+      }
+      return response.json({ success: true, message: "郵件已發送。" });
+    } catch (error) {
+      console.error("Failed to send trial notification email:", error);
+      return response.status(500).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
     } finally {
       if (connection) connection.release();
     }
