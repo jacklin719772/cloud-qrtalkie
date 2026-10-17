@@ -3935,12 +3935,10 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
          su.phone_number AS phone,
          su.status
        FROM tenant_contact_book_entries entry
-       JOIN sip_users su
-         ON su.id = entry.sip_user_id
-        AND su.tenant_id = ?
+       JOIN sip_users su ON su.id = entry.sip_user_id
        WHERE entry.contact_book_id = ?
        ORDER BY su.username ASC`,
-      [request.admin.tenantId, contactBookId]
+      [contactBookId]
     );
 
     const assignments = await connection.query(
@@ -3956,7 +3954,6 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
        FROM tenant_contact_book_assignments assign
        JOIN sip_users su
          ON su.id = assign.sip_user_id
-        AND su.tenant_id = assign.tenant_id
         AND su.status = 'active'
        WHERE assign.contact_book_id = ?
          AND assign.tenant_id = ?

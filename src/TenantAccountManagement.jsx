@@ -163,6 +163,9 @@ const TenantAccountManagement = forwardRef(({
   const [isLoadingContactBooks, setIsLoadingContactBooks] = useState(false);
   const [isSavingContactBook, setIsSavingContactBook] = useState(false);
   const [contactBookMessage, setContactBookMessage] = useState({ type: '', text: '' });
+  const [contactBookMembers, setContactBookMembers] = useState([]);
+  const [isLoadingContactBookMembers, setIsLoadingContactBookMembers] = useState(false);
+  const contactBookMembersRequestRef = useRef(0);
   const [isCreateContactBookOpen, setIsCreateContactBookOpen] = useState(false);
   const [newContactBookForm, setNewContactBookForm] = useState({ name: '', description: '' });
   const [newContactBookAccountIds, setNewContactBookAccountIds] = useState([]);
@@ -265,6 +268,31 @@ const TenantAccountManagement = forwardRef(({
       return String(left.username || '').localeCompare(String(right.username || ''), 'zh-Hans-CN', { numeric: true, sensitivity: 'base' });
     });
   }, [newContactBookCandidates, newContactBookAccountIds]);
+
+  async function loadContactBookMembers(bookId) {
+    const token = contactBookMembersRequestRef.current + 1;
+    contactBookMembersRequestRef.current = token;
+    if (!bookId) {
+      setContactBookMembers([]);
+      setIsLoadingContactBookMembers(false);
+      return;
+    }
+    setIsLoadingContactBookMembers(true);
+    try {
+      const data = await apiClient.get(`/contact-books/${bookId}`);
+      if (token !== contactBookMembersRequestRef.current) return;
+      setContactBookMembers(Array.isArray(data.contactBook?.includedAccounts) ? data.contactBook.includedAccounts : []);
+    } catch {
+      if (token === contactBookMembersRequestRef.current) setContactBookMembers([]);
+    } finally {
+      if (token === contactBookMembersRequestRef.current) setIsLoadingContactBookMembers(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!contactBookAccount) return;
+    loadContactBookMembers(selectedContactBookId);
+  }, [contactBookAccount, selectedContactBookId]);
 
   useEffect(() => {
     loadAccounts();
@@ -686,6 +714,7 @@ const TenantAccountManagement = forwardRef(({
     setContactBookAccount(null);
     setContactBookTargets([]);
     setContactBookMessage({ type: '', text: '' });
+    setContactBookMembers([]);
     setIsCreateContactBookOpen(false);
     setNewContactBookForm({ name: '', description: '' });
     setNewContactBookAccountIds([]);
@@ -1634,6 +1663,29 @@ const TenantAccountManagement = forwardRef(({
                   <button type="button" onClick={openCreateContactBook} disabled={isLoadingContactBooks || isSavingContactBook} style={{ flex: '0 0 auto', padding: '10px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: '#d1d5db', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>新建</button>
                 </div>
               </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄中包含的帳號 ({contactBookMembers.length})</span>
+                <div style={{ border: '1px solid #1f2937', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ overflowY: 'auto', maxHeight: '200px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                    {isLoadingContactBookMembers ? (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>載入帳號中...</div>
+                    ) : contactBookMembers.length === 0 ? (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>{selectedContactBookId ? '該通訊錄暫無帳號' : '未選擇通訊錄'}</div>
+                    ) : contactBookMembers.map((member) => (
+                      <div key={member.sipUserId} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderBottom: '1px solid #1f2937' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 600, flex: '0 0 auto' }}>
+                          {(member.displayName || member.username || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                          <span style={{ fontSize: '14px', color: '#e5e7eb', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.displayName || member.username || '-'}</span>
+                          <span style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.username || '-'}{member.domain ? ` | ${member.domain}` : ''}</span>
+                        </div>
+                        {getStatusBadge(member.status)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>正在載入通訊錄...</p>}
               {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>暫無已創建的通訊錄。</p>}
               {contactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: contactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{contactBookMessage.text}</p>}
