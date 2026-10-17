@@ -90,9 +90,9 @@ const PlanManagement = forwardRef(function PlanManagement({ onNavigate, onModeCh
         apiClient.get('/admin/billing-orders/' + order.id).catch(() => null),
       ]);
       const sipAccounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
-      const unassignedSip = sipAccounts.filter(a => !a.tenantName);
+      const unassignedSip = sipAccounts.filter(a => a.lifecycle === 'inventory');
       const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
-      const unassignedWeb = webAccounts.filter(a => !a.tenantName && a.status === 'active');
+      const unassignedWeb = webAccounts.filter(a => !a.tenantName && !a.assignedSipUsername && a.status === 'active');
 
       // 保留清单中状态有效的试用账号（已配 Web 配对）可计入可用数
       const detailRetainedList = Array.isArray(detailRes?.order?.retainedList) ? detailRes.order.retainedList : [];
@@ -214,7 +214,7 @@ const PlanManagement = forwardRef(function PlanManagement({ onNavigate, onModeCh
       ]);
       const sipAccounts = Array.isArray(sipData?.accounts) ? sipData.accounts : [];
       const webAccounts = Array.isArray(webData?.accounts) ? webData.accounts : [];
-      await openReviewModalWithData(order, sipAccounts.filter(a => !a.tenantName), webAccounts.filter(a => !a.tenantName && a.status === 'active'));
+      await openReviewModalWithData(order, sipAccounts.filter(a => a.lifecycle === 'inventory'), webAccounts.filter(a => !a.tenantName && !a.assignedSipUsername && a.status === 'active'));
     } catch (err) {
       console.error('Failed to fetch accounts:', err);
     } finally {

@@ -122,7 +122,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
     try {
       connection = await pool.getConnection();
       const params = [];
-      let where = "tenant_id IS NULL AND status = 'active'";
+      let where = "tenant_id IS NULL AND status = 'active' AND recycled_at IS NULL AND NOT EXISTS (SELECT 1 FROM tenant_sip_account_entitlements e WHERE e.sip_user_id = sip_users.id AND e.status IN ('active', 'expired'))";
       if (keyword) {
         where += " AND (username LIKE ? OR display_name LIKE ?)";
         const pattern = `%${keyword}%`;
@@ -136,7 +136,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         params,
       );
       const webs = await connection.query(
-        "SELECT id, username FROM web_users WHERE tenant_id IS NULL AND status = 'active' ORDER BY username ASC",
+        "SELECT id, username FROM web_users WHERE tenant_id IS NULL AND status = 'active' AND NOT EXISTS (SELECT 1 FROM tenant_web_account_entitlements e WHERE e.web_user_id = web_users.id AND e.status = 'active') ORDER BY username ASC",
       );
       // 隨機預配：Web 池洗牌後按序對位（每次載入重新預配；提交時按所見配對校驗綁定）
       const shuffledWebs = webs.slice();
@@ -392,7 +392,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
         const preRows = await connection.query(
           `SELECT id, username FROM sip_users
            WHERE id IN (${preIds.map(() => "?").join(",")})
-             AND tenant_id IS NULL AND status = 'active'`,
+             AND tenant_id IS NULL AND status = 'active'
+             AND recycled_at IS NULL
+             AND NOT EXISTS (SELECT 1 FROM tenant_sip_account_entitlements e WHERE e.sip_user_id = sip_users.id AND e.status IN ('active', 'expired'))`,
           preIds,
         );
         if (preRows.length !== preIds.length) {
@@ -447,6 +449,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            FROM sip_users
            WHERE id IN (${sipIds.map(() => "?").join(",")})
              AND tenant_id IS NULL AND status = 'active'
+             AND recycled_at IS NULL
+             AND NOT EXISTS (SELECT 1 FROM tenant_sip_account_entitlements e WHERE e.sip_user_id = sip_users.id AND e.status IN ('active', 'expired'))
            FOR UPDATE`,
           sipIds,
         );
@@ -464,6 +468,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            FROM sip_users
            WHERE id IN (${requestedIds.map(() => "?").join(",")})
              AND tenant_id IS NULL AND status = 'active'
+             AND recycled_at IS NULL
+             AND NOT EXISTS (SELECT 1 FROM tenant_sip_account_entitlements e WHERE e.sip_user_id = sip_users.id AND e.status IN ('active', 'expired'))
            FOR UPDATE`,
           requestedIds,
         );
@@ -477,6 +483,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           `SELECT id, username, sip_domain, display_name
            FROM sip_users
            WHERE tenant_id IS NULL AND status = 'active'
+             AND recycled_at IS NULL
+             AND NOT EXISTS (SELECT 1 FROM tenant_sip_account_entitlements e WHERE e.sip_user_id = sip_users.id AND e.status IN ('active', 'expired'))
            ORDER BY RAND()
            LIMIT ${requestedCount}
            FOR UPDATE`,
@@ -589,6 +597,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            FROM web_users
            WHERE id IN (${providedWebIdList.map(() => "?").join(",")})
              AND tenant_id IS NULL AND status = 'active'
+             AND NOT EXISTS (SELECT 1 FROM tenant_web_account_entitlements e WHERE e.web_user_id = web_users.id AND e.status = 'active')
            FOR UPDATE`,
           providedWebIdList,
         );
@@ -607,6 +616,7 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           `SELECT id
            FROM web_users
            WHERE tenant_id IS NULL AND status = 'active'${excludeSql}
+             AND NOT EXISTS (SELECT 1 FROM tenant_web_account_entitlements e WHERE e.web_user_id = web_users.id AND e.status = 'active')
            ORDER BY RAND()
            LIMIT ${missingWebCount}
            FOR UPDATE`,

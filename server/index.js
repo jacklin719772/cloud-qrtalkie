@@ -11597,6 +11597,10 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
            WHERE id IN (${explicitWebIds.map(() => "?").join(",")})
              AND tenant_id IS NULL
              AND status = 'active'
+             AND NOT EXISTS (
+               SELECT 1 FROM tenant_web_account_entitlements e
+               WHERE e.web_user_id = web_users.id AND e.status = 'active'
+             )
            FOR UPDATE`,
           explicitWebIds,
         );
@@ -11624,6 +11628,10 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
            FROM web_users
            WHERE tenant_id IS NULL
              AND status = 'active'
+             AND NOT EXISTS (
+               SELECT 1 FROM tenant_web_account_entitlements e
+               WHERE e.web_user_id = web_users.id AND e.status = 'active'
+             )
            ORDER BY RAND()
            LIMIT ${sipIdsForRandomWeb.length}
            FOR UPDATE`,
@@ -11796,10 +11804,15 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         const replacementAccountCount = requiredAccountCount - renewalEntitlements.length;
         if (replacementAccountCount > 0) {
           renewalReplacementAccounts = await connection.query(
-            `SELECT id, username, sip_domain, display_name
-             FROM sip_users
-             WHERE tenant_id IS NULL
-               AND status = 'active'
+            `SELECT su.id, su.username, su.sip_domain, su.display_name
+             FROM sip_users su
+             WHERE su.tenant_id IS NULL
+               AND su.status = 'active'
+               AND su.recycled_at IS NULL
+               AND NOT EXISTS (
+                 SELECT 1 FROM tenant_sip_account_entitlements e
+                 WHERE e.sip_user_id = su.id AND e.status IN ('active', 'expired')
+               )
              ORDER BY RAND()
              LIMIT ${replacementAccountCount}
              FOR UPDATE`,
@@ -11826,9 +11839,13 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
 
         const accountPlaceholders = uniqueSipAccountIds.map(() => "?").join(",");
         const selectedSipAccounts = await connection.query(
-          `SELECT id, tenant_id, username
-           FROM sip_users
-           WHERE id IN (${accountPlaceholders})
+          `SELECT su.id, su.tenant_id, su.username, su.status, su.recycled_at,
+                  EXISTS(
+                    SELECT 1 FROM tenant_sip_account_entitlements e
+                    WHERE e.sip_user_id = su.id AND e.status IN ('active', 'expired')
+                  ) AS has_blocking_entitlement
+           FROM sip_users su
+           WHERE su.id IN (${accountPlaceholders})
            FOR UPDATE`,
           uniqueSipAccountIds,
         );
@@ -11838,7 +11855,7 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
           return response.status(404).json({ message: "部分待分配帳號不存在，請重新整理後重試。" });
         }
 
-        // 放行三类账号：库存（tenant_id 为空）、保留清单内状态有效的试用账号；其余拒绝
+        // 放行真正的庫存帳號；保留清單內狀態有效的試用帳號走單獨校驗；其餘拒絕
         reservedTrialTenantId = await getReservedTrialTenantId(connection);
         retainedBySip = new Map(
           retainedTrialRows
@@ -11847,7 +11864,6 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
         );
         const invalidReasons = [];
         for (const account of selectedSipAccounts) {
-          if (account.tenant_id == null) continue; // 库存账号
           const retained = retainedBySip.get(Number(account.id));
           if (retained && retained.trial_assignment_id && reservedTrialTenantId) {
             const [trial] = await connection.query(
@@ -11871,7 +11887,23 @@ app.post("/api/admin/billing-orders/:id/review", requireAdmin, async (request, r
             invalidReasons.push(`帳號 ${account.username} 的試用已被回收或狀態異常`);
             continue;
           }
-          invalidReasons.push(`帳號 ${account.username} 已被分配或不在保留清單中`);
+          const hasBlockingEntitlement = Number(account.has_blocking_entitlement) === 1;
+          const isAssignableInventory = account.tenant_id == null
+            && account.status === "active"
+            && !account.recycled_at
+            && !hasBlockingEntitlement;
+          if (isAssignableInventory) continue;
+          if (account.recycled_at) {
+            invalidReasons.push(`帳號 ${account.username} 已回收`);
+          } else if (account.tenant_id != null) {
+            invalidReasons.push(`帳號 ${account.username} 已被分配`);
+          } else if (account.status !== "active") {
+            invalidReasons.push(`帳號 ${account.username} 狀態不可分配`);
+          } else if (hasBlockingEntitlement) {
+            invalidReasons.push(`帳號 ${account.username} 仍有未解除的權益`);
+          } else {
+            invalidReasons.push(`帳號 ${account.username} 不可分配`);
+          }
         }
         if (invalidReasons.length > 0) {
           await connection.rollback();
