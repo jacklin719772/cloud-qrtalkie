@@ -55,13 +55,14 @@ async function scanExpiringResources() {
 // SIP accounts expiring within 7 days（站内信 + 邮件：租户管理员 + 账号登记邮箱；每阶段仅首建时发邮件）
 async function scanExpiringSipAccounts(connection) {
   const rows = await connection.query(
-    `SELECT su.id, su.username, su.tenant_id, t.name AS tenant_name,
+    `SELECT su.id, su.username, e.tenant_id,
             DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS expires_at,
             DATEDIFF(e.service_expires_at, CURDATE()) AS days_left
-     FROM sip_users su
-     JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active'
-     JOIN tenants t ON t.id = su.tenant_id AND t.status = 'active' AND t.is_system = 0
+     FROM tenant_sip_account_entitlements e
+     JOIN sip_users su ON su.id = e.sip_user_id
+     JOIN tenants t ON t.id = e.tenant_id AND t.status = 'active' AND t.is_system = 0
      WHERE su.status = 'active'
+       AND e.status = 'active'
        AND e.service_expires_at >= CURDATE()
        AND e.service_expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`
   );
@@ -115,12 +116,12 @@ async function scanExpiringSipAccounts(connection) {
 // SIP accounts already expired（到期即停用：AM + 本地；站内信 + 邮件；AM 失败下一轮补偿重试）
 async function scanExpiredSipAccounts(connection) {
   const rows = await connection.query(
-    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, su.tenant_id,
-            t.name AS tenant_name, t.is_system AS tenant_is_system,
+    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, e.tenant_id,
+            t.is_system AS tenant_is_system,
             DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS expires_at
      FROM tenant_sip_account_entitlements e
      JOIN sip_users su ON su.id = e.sip_user_id
-     JOIN tenants t ON t.id = su.tenant_id
+     JOIN tenants t ON t.id = e.tenant_id
      WHERE e.status = 'active' AND e.service_expires_at < CURDATE()`
   );
 
@@ -177,12 +178,18 @@ async function scanExpiredSipAccounts(connection) {
   }
 
   // 補償：已過期但本地仍 active（如上一輪 AM 停用失敗）→ 重試停用
+  // 以權益表 tenant_id 為準（兼容 sip_users.tenant_id 為空的歷史賬號）；
+  // 排除同一賬號仍有其他生效權益的情況
   const retryRows = await connection.query(
-    `SELECT su.id AS sip_user_id, su.username, su.tenant_id
+    `SELECT su.id AS sip_user_id, su.username, e.tenant_id
      FROM tenant_sip_account_entitlements e
      JOIN sip_users su ON su.id = e.sip_user_id
-     JOIN tenants t ON t.id = su.tenant_id AND t.is_system = 0
-     WHERE e.status = 'expired' AND su.status = 'active' AND e.service_expires_at < CURDATE()`
+     JOIN tenants t ON t.id = e.tenant_id AND t.is_system = 0
+     WHERE e.status = 'expired' AND su.status = 'active' AND e.service_expires_at < CURDATE()
+       AND NOT EXISTS (
+         SELECT 1 FROM tenant_sip_account_entitlements e2
+         WHERE e2.sip_user_id = su.id AND e2.status = 'active'
+       )`
   );
   for (const row of retryRows) {
     await deactivateExpiredAccount(connection, row);
