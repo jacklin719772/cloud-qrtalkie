@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import QRCode from "qrcode";
 import { pool } from "./db.js";
 import { getAccount as flexisipGetAccount, updateAccount as flexisipUpdateAccount, activateAccount as flexisipActivateAccount, searchAccountBySip } from "./flexisipAccountManagerClient.js";
+import { assignContactListToAccount, unassignContactListFromAccount } from "./flexisipContactBookClient.js";
 import { hashPassword } from "./security.js";
 import { readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
 import { activateTrialAccountInFlexisip, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment } from "./trialService.js";
@@ -264,6 +265,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            wu.username AS web_username,
            ai.enabled AS ai_live_enabled,
            ai.expires_at AS ai_live_expires_at,
+           cba.contact_book_id,
+           tcb.name AS contact_book_name,
            t.name AS owner_tenant_name
          FROM trial_assignments ta
          JOIN sip_users u ON u.id = ta.sip_user_id
@@ -272,6 +275,9 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
            ON we.sip_user_id = ta.sip_user_id AND we.tenant_id = ?
          LEFT JOIN web_users wu ON wu.id = we.web_user_id
          LEFT JOIN ai_bot_account_entitlements ai ON ai.sip_user_id = ta.sip_user_id
+         LEFT JOIN tenant_contact_book_assignments cba
+           ON cba.sip_user_id = ta.sip_user_id AND cba.tenant_id = ta.owner_tenant_id AND cba.status = 'active'
+         LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id
          ${whereSql}
          ORDER BY ta.created_at DESC, ta.id DESC
          LIMIT ${pageSize} OFFSET ${offset}`,
@@ -303,6 +309,8 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
           sipDomain: row.sip_domain || "",
           accountDisplayName: row.account_display_name || "",
           webUsername: row.web_username || "",
+          contactBookId: row.contact_book_id == null ? null : Number(row.contact_book_id),
+          contactBookName: row.contact_book_name || "",
         })),
         total: Number(countRow?.total || 0),
         page,
@@ -1495,6 +1503,159 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to update trial account settings:", error);
       return response.status(500).json({ message: "帳號資訊更新失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // PUT /api/admin/trials/:id/contact-book - 為試用賬號配置通訊錄（租戶管理員；同步 AM 分配）
+  app.put("/api/admin/trials/:id/contact-book", requireAdmin, async (request, response) => {
+    if (request.admin.accountType === "platform" || !request.admin.tenantId) {
+      return response.status(403).json({ message: "只有租戶管理員可以配置通訊錄。" });
+    }
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ message: "試用記錄編號無效。" });
+    }
+    const rawContactBookId = request.body?.contactBookId;
+    const contactBookId = rawContactBookId === "" || rawContactBookId == null ? null : Number(rawContactBookId);
+    if (contactBookId != null && (!Number.isInteger(contactBookId) || contactBookId <= 0)) {
+      return response.status(400).json({ message: "通訊錄編號無效。" });
+    }
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const [trial] = await connection.query(
+        `SELECT id, owner_tenant_id, sip_user_id, status, DATE_FORMAT(expires_at, '%Y-%m-%d') AS expires_at
+         FROM trial_assignments
+         WHERE id = ?
+         LIMIT 1
+         FOR UPDATE`,
+        [trialId],
+      );
+      if (!trial || Number(trial.owner_tenant_id) !== Number(request.admin.tenantId)) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到試用記錄。" });
+      }
+      if (!["active", "paused"].includes(String(trial.status))) {
+        await connection.rollback();
+        return response.status(409).json({ message: "該試用已結束或已回收，無法配置通訊錄。" });
+      }
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (String(trial.expires_at || "") && String(trial.expires_at) < todayStr) {
+        await connection.rollback();
+        return response.status(409).json({ message: "試用已到期，無法配置通訊錄。" });
+      }
+
+      const [sipUser] = await connection.query(
+        `SELECT id, flexisip_account_id FROM sip_users WHERE id = ? LIMIT 1 FOR UPDATE`,
+        [Number(trial.sip_user_id)],
+      );
+      if (!sipUser) {
+        await connection.rollback();
+        return response.status(404).json({ message: "找不到帳號。" });
+      }
+
+      let contactBookName = "";
+      let flexisipContactListId = null;
+      if (contactBookId != null) {
+        const [book] = await connection.query(
+          `SELECT id, name, flexisip_contact_list_id
+           FROM tenant_contact_books
+           WHERE id = ?
+             AND tenant_id = ?
+           LIMIT 1
+           FOR UPDATE`,
+          [contactBookId, request.admin.tenantId],
+        );
+        if (!book) {
+          await connection.rollback();
+          return response.status(404).json({ message: "找不到指定的通訊錄。" });
+        }
+        contactBookName = book.name || "";
+        flexisipContactListId = book.flexisip_contact_list_id == null ? null : Number(book.flexisip_contact_list_id);
+        if (flexisipContactListId == null) {
+          await connection.rollback();
+          return response.status(502).json({ message: "所選通訊錄尚未同步至通訊平台，請在通訊錄管理中修復後重試。", code: "CONTACT_BOOK_NOT_SYNCED" });
+        }
+      }
+
+      const oldAssignmentRows = await connection.query(
+        `SELECT cb.flexisip_contact_list_id
+         FROM tenant_contact_book_assignments a
+         JOIN tenant_contact_books cb ON cb.id = a.contact_book_id
+         WHERE a.tenant_id = ?
+           AND a.sip_user_id = ?
+           AND a.status = 'active'
+           AND cb.flexisip_contact_list_id IS NOT NULL`,
+        [request.admin.tenantId, Number(trial.sip_user_id)],
+      );
+
+      await connection.query(
+        `UPDATE tenant_contact_book_assignments
+         SET status = 'revoked',
+             revoked_at = CURRENT_TIMESTAMP
+         WHERE tenant_id = ?
+           AND sip_user_id = ?
+           AND status = 'active'`,
+        [request.admin.tenantId, Number(trial.sip_user_id)],
+      );
+
+      if (contactBookId != null) {
+        await connection.query(
+          `INSERT INTO tenant_contact_book_assignments (
+             tenant_id, contact_book_id, sip_user_id, assigned_by_admin_id, status, assigned_at, revoked_at
+           )
+           VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, NULL)
+           ON DUPLICATE KEY UPDATE
+             status = 'active',
+             assigned_by_admin_id = VALUES(assigned_by_admin_id),
+             assigned_at = CURRENT_TIMESTAMP,
+             revoked_at = NULL`,
+          [request.admin.tenantId, contactBookId, Number(trial.sip_user_id), request.admin.id],
+        );
+      }
+
+      await connection.query(
+        `UPDATE sip_users SET contact_book_id = ? WHERE id = ?`,
+        [contactBookId, Number(trial.sip_user_id)],
+      );
+
+      // ── 同步通訊平台（AM）：取消舊聯繫簿分配、分配新聯繫簿 ──
+      const accountFlexisipId = sipUser.flexisip_account_id == null ? null : Number(sipUser.flexisip_account_id);
+      if (accountFlexisipId) {
+        try {
+          for (const oldRow of oldAssignmentRows) {
+            const oldListId = Number(oldRow.flexisip_contact_list_id);
+            if (contactBookId != null && oldListId === flexisipContactListId) continue;
+            try {
+              await unassignContactListFromAccount(accountFlexisipId, oldListId);
+            } catch (unassignErr) {
+              if (unassignErr?.status !== 404) throw unassignErr;
+            }
+          }
+          if (contactBookId != null) {
+            await assignContactListToAccount(accountFlexisipId, flexisipContactListId);
+          }
+        } catch (syncErr) {
+          await connection.rollback();
+          console.error("Trial contact book AM sync failed:", syncErr?.message || syncErr);
+          return response.status(502).json({ message: "通訊錄同步至通訊平台失敗，請稍後重試。", code: "FLEXISIP_CONTACT_BOOK_SYNC_FAILED" });
+        }
+      }
+
+      await connection.commit();
+      return response.json({
+        message: "通訊錄配置已儲存。",
+        account: { contactBookId, contactBookName },
+      });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to configure trial contact book:", error);
+      return response.status(500).json({ message: "配置通訊錄失敗。" });
     } finally {
       if (connection) connection.release();
     }

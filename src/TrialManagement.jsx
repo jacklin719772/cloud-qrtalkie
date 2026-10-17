@@ -1,7 +1,8 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Copy, MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 import apiClient from './apiClient';
+import ContactBookConfigDialog from './ContactBookConfigDialog';
+import { Copy, MoreVertical, Plus, RefreshCw, Search, UserPlus } from 'lucide-react';
 
 // 試用帳號管理：添加試用帳號（掛靠保留租戶）與列表/提前結束
 // 方案：试用账号模块设计方案-实施参考.md（2026-10-14）
@@ -103,6 +104,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [accountSettingsLoading, setAccountSettingsLoading] = useState(false);
   const [accountSettingsSaving, setAccountSettingsSaving] = useState(false);
   const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
+  const [contactBookTarget, setContactBookTarget] = useState(null);
   const [resetPasswordForm, setResetPasswordForm] = useState({ password: '', confirmPassword: '' });
   const [resetPasswordCurrent, setResetPasswordCurrent] = useState(null);
   const [resetPasswordMessage, setResetPasswordMessage] = useState({ type: '', text: '' });
@@ -1671,6 +1673,9 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
                               <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); onOpenTrialEcard?.(t); }}>電子名片</button>
                             )}
                             {canAccountSettings && (
+                              <button type="button" className="tm-actions-item" onClick={() => { setOpenActionsId(null); setContactBookTarget(t); }}>通訊錄配置</button>
+                            )}
+                            {canAccountSettings && (
                               <button type="button" className="tm-actions-item" onClick={() => openResetPassword(t)}>重置密碼</button>
                             )}
                             {canPause && (
@@ -2619,6 +2624,18 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         </div>,
         document.body
       )}
+
+      <ContactBookConfigDialog
+        open={!!contactBookTarget}
+        accountLabel={contactBookTarget ? `${contactBookTarget.username || '-'}${contactBookTarget.sipDomain ? ` | ${contactBookTarget.sipDomain}` : ''}` : ''}
+        initialContactBookId={contactBookTarget?.contactBookId || ''}
+        tenantName={tenantName}
+        onClose={() => setContactBookTarget(null)}
+        onSave={async (contactBookId) => {
+          await apiClient.put(`/admin/trials/${contactBookTarget.id}/contact-book`, { contactBookId });
+          loadTrials();
+        }}
+      />
 
       {reclaimConfirm.open && reclaimConfirm.trial && createPortal(
         <div id="trial-management-modal">
