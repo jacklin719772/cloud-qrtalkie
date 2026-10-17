@@ -162,6 +162,10 @@ const TenantAccountManagement = forwardRef(({
   const [contactBookViewOpen, setContactBookViewOpen] = useState(false);
   const [contactBookViewData, setContactBookViewData] = useState(null);
   const [isLoadingContactBookView, setIsLoadingContactBookView] = useState(false);
+  const [ecardViewOpen, setEcardViewOpen] = useState(false);
+  const [ecardViewData, setEcardViewData] = useState(null);
+  const [isLoadingEcardView, setIsLoadingEcardView] = useState(false);
+  const [ecardCopyMessage, setEcardCopyMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
@@ -602,6 +606,74 @@ const TenantAccountManagement = forwardRef(({
     setContactBookViewData(null);
   }
 
+  async function openEcardView(account) {
+    setEcardViewOpen(true);
+    setEcardViewData(null);
+    setEcardCopyMessage({ type: '', text: '' });
+    setIsLoadingEcardView(true);
+    try {
+      const data = await apiClient.get(`/tenant/ecard-accounts/${account.sipUserId}/ecard`);
+      const slug = data?.accessSlug || account.username || '';
+      const generated = Boolean(data?.thumbnailUrl);
+      setEcardViewData({
+        generated,
+        accessUrl: slug ? `https://ecard.qrtalkie.org/u/${slug}` : '',
+        imageUrl: generated ? `/api/desktop/ecard/download-image?sipAccount=${encodeURIComponent(account.username || '')}` : '',
+      });
+    } catch {
+      setEcardViewData(null);
+    } finally {
+      setIsLoadingEcardView(false);
+    }
+  }
+
+  function closeEcardView() {
+    setEcardViewOpen(false);
+    setEcardViewData(null);
+    setEcardCopyMessage({ type: '', text: '' });
+  }
+
+  function showEcardCopyMessage(message) {
+    setEcardCopyMessage(message);
+    window.setTimeout(() => {
+      setEcardCopyMessage((current) => (current.text === message.text ? { type: '', text: '' } : current));
+    }, 5000);
+  }
+
+  async function copyEcardAccessLink() {
+    const url = ecardViewData?.accessUrl;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      showEcardCopyMessage({ type: 'success', text: '訪問連結已複製。' });
+    } catch {
+      showEcardCopyMessage({ type: 'error', text: '複製失敗，請手動選取複製。' });
+    }
+  }
+
+  async function copyEcardImage() {
+    const imageUrl = ecardViewData?.imageUrl;
+    if (!imageUrl) return;
+    try {
+      const response = await fetch(imageUrl, { credentials: 'same-origin' });
+      if (!response.ok) throw new Error('IMAGE_FETCH_FAILED');
+      const blob = await response.blob();
+      let pngBlob = blob;
+      if (blob.type !== 'image/png') {
+        const bitmap = await createImageBitmap(blob);
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0);
+        pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      }
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+      showEcardCopyMessage({ type: 'success', text: '名片圖片已複製。' });
+    } catch {
+      showEcardCopyMessage({ type: 'error', text: '複製圖片失敗，請在圖片上右鍵另存。' });
+    }
+  }
+
   function handleAction(action, account) {
     setOpenDropdownId(null);
     if (action === 'details') {
@@ -763,6 +835,7 @@ const TenantAccountManagement = forwardRef(({
                   { label: '房間分配', key: 'room', msg: '尚未分配至房間', doneMsg: '已分配至房間' },
                 ].map(item => {
                   const isContactBook = item.key === 'contactBook';
+                  const isEcard = item.key === 'ecard';
                   const done = isContactBook ? Boolean(detailAccount.contactBookId) : (configStatus[item.key] || false);
                   const statusText = isContactBook
                     ? (done ? `已分配：${detailAccount.contactBookName || detailAccount.contactBookId}` : item.msg)
@@ -774,10 +847,25 @@ const TenantAccountManagement = forwardRef(({
                       <span style={{ fontSize: '13px', color: '#d1d5db' }}>{item.label}</span>
                       <span style={{ fontSize: '12px', color: '#94a3b8' }}>{statusText}</span>
                     </div>
-                    {isContactBook ? (
+                    {isContactBook || isEcard ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <button className="ghost-btn" type="button" disabled={!done} onClick={() => { if (done) openContactBookView(detailAccount.contactBookId); }} style={{ fontSize: '12px', padding: '4px 10px', background: done ? '#374151' : '#1f2937', color: done ? '#d1d5db' : '#6b7280', border: `1px solid ${done ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: done ? 'pointer' : 'not-allowed' }}>詳情</button>
-                        <button className="ghost-btn" type="button" onClick={() => { setContactBookAccount(detailAccount); setContactBookTargets([detailAccount]); }} style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}>去配置</button>
+                        <button
+                          className="ghost-btn"
+                          type="button"
+                          disabled={!done}
+                          onClick={() => {
+                            if (!done) return;
+                            if (isEcard) openEcardView(detailAccount);
+                            else openContactBookView(detailAccount.contactBookId);
+                          }}
+                          style={{ fontSize: '12px', padding: '4px 10px', background: done ? '#374151' : '#1f2937', color: done ? '#d1d5db' : '#6b7280', border: `1px solid ${done ? '#4b5563' : '#374151'}`, borderRadius: '8px', cursor: done ? 'pointer' : 'not-allowed' }}
+                        >詳情</button>
+                        <button
+                          className="ghost-btn"
+                          type="button"
+                          onClick={isEcard ? handleItemClick : () => { setContactBookAccount(detailAccount); setContactBookTargets([detailAccount]); }}
+                          style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }}
+                        >去配置</button>
                       </div>
                     ) : (
                       <button className="ghost-btn" type="button" style={{ fontSize: '12px', padding: '4px 10px', background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', cursor: 'pointer' }} onClick={handleItemClick}>去配置</button>
@@ -856,6 +944,65 @@ const TenantAccountManagement = forwardRef(({
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
               <button type="button" onClick={closeContactBookView} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {ecardViewOpen && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEcardView();
+          }}
+        >
+          <div id="tenant-ecard-view-modal" style={{ width: 'min(720px, calc(100% - 32px))', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+            <style>{`
+              #tenant-ecard-view-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
+              #tenant-ecard-view-modal ::-webkit-scrollbar-track { background: #111827; }
+              #tenant-ecard-view-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+              #tenant-ecard-view-modal ::-webkit-scrollbar-corner { background: #111827; }
+            `}</style>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>電子名片詳情</h3>
+              <button type="button" onClick={closeEcardView} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            <div style={{ overflow: 'auto', flex: 1, padding: '18px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
+              {isLoadingEcardView ? (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入中...</div>
+              ) : !ecardViewData ? (
+                <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>無法讀取電子名片</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '8px', borderRadius: '8px', border: '1px solid #1f2937', backgroundColor: '#0f172a' }}>
+                    {ecardViewData.imageUrl ? (
+                      <img src={ecardViewData.imageUrl} alt="電子名片" style={{ maxWidth: '100%', maxHeight: '52vh', objectFit: 'contain', borderRadius: '6px' }} />
+                    ) : (
+                      <div style={{ padding: '48px 0', color: '#64748b', fontSize: '13px' }}>尚未生成名片圖片（可點「去配置」在電子名片頁生成）</div>
+                    )}
+                  </div>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>訪客訪問連結</span>
+                    <input value={ecardViewData.accessUrl || '-'} readOnly style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af' }} />
+                  </label>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937', flexShrink: 0 }}>
+              {ecardCopyMessage.text && <span style={{ marginRight: 'auto', fontSize: '13px', color: ecardCopyMessage.type === 'error' ? '#fca5a5' : '#4ade80' }}>{ecardCopyMessage.text}</span>}
+              <button
+                type="button"
+                disabled={!ecardViewData?.imageUrl}
+                onClick={copyEcardImage}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: ecardViewData?.imageUrl ? '#d1d5db' : '#6b7280', fontSize: '13px', cursor: ecardViewData?.imageUrl ? 'pointer' : 'not-allowed' }}
+              >複製圖片</button>
+              <button
+                type="button"
+                disabled={!ecardViewData?.accessUrl}
+                onClick={copyEcardAccessLink}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: ecardViewData?.accessUrl ? '#d1d5db' : '#6b7280', fontSize: '13px', cursor: ecardViewData?.accessUrl ? 'pointer' : 'not-allowed' }}
+              >複製連結</button>
+              <button type="button" onClick={closeEcardView} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
             </div>
           </div>
         </div>,
