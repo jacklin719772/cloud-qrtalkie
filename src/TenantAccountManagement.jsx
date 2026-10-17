@@ -11,7 +11,7 @@ function formatDate(value) {
   return String(value).slice(0, 10);
 }
 
-// 訂閱歷史：訂單類型標籤與顏色
+// 訂閱記錄：訂單類型標籤與顏色
 function orderTypeLabel(type) {
   if (type === 'trial') return '試用';
   if (type === 'renewal') return '續訂';
@@ -1149,7 +1149,7 @@ const TenantAccountManagement = forwardRef(({
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => { setOpenDropdownId(null); onOpenAccountEcard?.(account); }}>電子名片</button>
                             {enableContactBook && <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || account.status !== 'active'} onClick={() => handleAction('configure_contact_book', account)}>通訊錄配置</button>}
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', account)}>詳情</button>
-                            <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱歷史</button>
+                            <button type="button" className="dropdown-item" onClick={() => { setOpenDropdownId(null); setHistoryAccount(account); }}>訂閱記錄</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account)} onClick={() => handleAction('toggle_status', account)}>{account.status === 'active' ? '停用' : '啟用'}</button>
                             <button type="button" className="dropdown-item" onClick={() => setQrDialogAccount(account)}>生成二維碼</button>
                             <button type="button" className="dropdown-item" disabled={!canUseAccountActions(account) || sendingEmailKey === getEmailActionKey(account, 'reset_password')} onClick={() => handleAction('send_reset_password_email', account)}>發送重置密碼郵件</button>
@@ -1429,7 +1429,7 @@ const TenantAccountManagement = forwardRef(({
         }}
       />
       
-      {/* 訂閱歷史對話框 */}
+      {/* 訂閱記錄對話框 */}
       {historyAccount && createPortal(
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
@@ -1437,26 +1437,35 @@ const TenantAccountManagement = forwardRef(({
             if (event.target === event.currentTarget) setHistoryAccount(null);
           }}
         >
-          <div style={{ width: 'min(720px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div id="tenant-account-history-modal" style={{ width: 'min(960px, calc(100% - 32px))', height: '80vh', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <style>{`
+              /* 暗色滾動條 + 暗色固定表頭 */
+              #tenant-account-history-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
+              #tenant-account-history-modal ::-webkit-scrollbar-track { background: #111827; }
+              #tenant-account-history-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+              #tenant-account-history-modal ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+              #tenant-account-history-modal ::-webkit-scrollbar-corner { background: #111827; }
+              #tenant-account-history-modal table thead th { position: sticky; top: 0; background-color: #1a2332; z-index: 1; }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>
-                訂閱歷史
+                訂閱記錄
                 <span style={{ marginLeft: '10px', fontSize: '13px', fontWeight: 400, color: '#9ca3af' }}>{historyAccount.username}{historyAccount.displayName ? `（${historyAccount.displayName}）` : ''}</span>
               </h3>
               <button type="button" onClick={() => setHistoryAccount(null)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ overflow: 'auto', flex: 1, padding: '6px 18px 18px' }}>
+            <div style={{ overflow: 'auto', flex: 1, padding: '0 18px 18px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
               {(historyAccount.orders || []).length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0', color: '#9ca3af', fontSize: '13px' }}>暫無訂閱記錄</div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '70px' }}>類型</th>
-                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151' }}>訂單號</th>
-                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '120px' }}>起始日期</th>
-                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '120px' }}>結束日期</th>
-                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', width: '76px' }}>狀態</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', backgroundColor: '#1a2332', width: '70px' }}>類型</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', backgroundColor: '#1a2332' }}>訂單號</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', backgroundColor: '#1a2332', width: '120px' }}>起始日期</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', backgroundColor: '#1a2332', width: '120px' }}>結束日期</th>
+                      <th style={{ textAlign: 'left', padding: '12px', color: '#9ca3af', fontWeight: 500, borderBottom: '1px solid #374151', backgroundColor: '#1a2332', width: '76px' }}>狀態</th>
                     </tr>
                   </thead>
                   <tbody>

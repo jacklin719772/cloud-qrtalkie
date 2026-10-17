@@ -1996,7 +1996,7 @@ export default function ConsoleLayout({ onLogout }) {
             <div style={{ color: "#e5e7eb", fontSize: "13px", lineHeight: 1.8 }}>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128218; 訂閱帳號管理的功能</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、重置密碼、查看訂閱歷史、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訂閱帳號管理列出當前租戶訂閱過的全部帳號（含已過期），每行顯示該帳號當前狀態、今天正在使用的訂單與訂閱起止日期（結束日期為續訂延伸後的最終到期日）、電子名片狀態。管理員可在此進行帳號設置、重置密碼、查看訂閱記錄、啟用/停用帳號、通訊錄配置和二維碼生成等操作。所有編輯操作均會同步至 Flexisip Account Manager。</p>
               </div>
 
               <div style={{ marginBottom: "24px" }}>
@@ -2023,7 +2023,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li><strong style={{ color: "#e5e7eb" }}>帳號設置</strong> — 設定帳號的顯示名稱、手機號、電子郵箱、公司、職位、頭像與密碼。修改後同步至 Flexisip 與賬號資料卡（App 登錄後自動使用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重置密碼</strong> — 輸入新密碼，同時更新雲平台登錄密碼與通訊核心（App 登錄）密碼，設備需用新密碼重新註冊。密碼至少需要 6 個字符。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>詳情</strong> — 查看帳號基礎資訊和配置狀態（電子名片、客服坐席、門禁入口、房間分配）。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>訂閱歷史</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>訂閱記錄</strong> — 彈窗列出該帳號的全部訂閱記錄（試用/正式/續訂），含訂單號、起止日期與當前標記。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>啟用/停用</strong> — 切換帳號的啟用狀態。已過期帳號無法操作。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>通訊錄配置</strong> — 為該帳號分配通訊錄，選擇已創建的通訊錄進行綁定。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>生成二維碼</strong> — 生成 Provisioning 登錄二維碼，支援複製、下載和 Renew 更新。</li>
