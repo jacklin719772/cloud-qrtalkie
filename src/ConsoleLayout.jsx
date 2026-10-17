@@ -945,6 +945,7 @@ export default function ConsoleLayout({ onLogout }) {
               ref={tenantAccountManagementRef}
               onNavigate={(view) => setCurrentView(view)}
               onModeChange={setTenantAccountMode}
+              tenantName={workspaceName}
               onOpenAccountEcard={(account) => {
                 setAccountEcardContext({
                   sipUserId: account.sipUserId,

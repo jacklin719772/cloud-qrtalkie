@@ -126,6 +126,7 @@ const TenantAccountManagement = forwardRef(({
   onNavigate,
   onModeChange,
   onOpenAccountEcard,
+  tenantName = '',
   apiBasePath = '/tenant/sip-accounts',
   accountLabel = 'SIP',
   showDomain = true,
@@ -162,6 +163,10 @@ const TenantAccountManagement = forwardRef(({
   const [isLoadingContactBooks, setIsLoadingContactBooks] = useState(false);
   const [isSavingContactBook, setIsSavingContactBook] = useState(false);
   const [contactBookMessage, setContactBookMessage] = useState({ type: '', text: '' });
+  const [isCreateContactBookOpen, setIsCreateContactBookOpen] = useState(false);
+  const [newContactBookForm, setNewContactBookForm] = useState({ name: '', description: '' });
+  const [isCreatingContactBook, setIsCreatingContactBook] = useState(false);
+  const [createContactBookMessage, setCreateContactBookMessage] = useState({ type: '', text: '' });
   const [qrDialogAccount, setQrDialogAccount] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
   const [configStatus, setConfigStatus] = useState({});
@@ -625,6 +630,55 @@ const TenantAccountManagement = forwardRef(({
     setContactBookAccount(null);
     setContactBookTargets([]);
     setContactBookMessage({ type: '', text: '' });
+    setIsCreateContactBookOpen(false);
+    setNewContactBookForm({ name: '', description: '' });
+    setCreateContactBookMessage({ type: '', text: '' });
+  }
+
+  function openCreateContactBook() {
+    setNewContactBookForm({ name: '', description: tenantName || '' });
+    setCreateContactBookMessage({ type: '', text: '' });
+    setIsCreateContactBookOpen(true);
+  }
+
+  function closeCreateContactBook() {
+    if (isCreatingContactBook) return;
+    setIsCreateContactBookOpen(false);
+    setNewContactBookForm({ name: '', description: '' });
+    setCreateContactBookMessage({ type: '', text: '' });
+  }
+
+  async function submitCreateContactBook(event) {
+    event.preventDefault();
+    if (!newContactBookForm.name.trim()) {
+      setCreateContactBookMessage({ type: 'error', text: '請輸入通訊錄名稱。' });
+      return;
+    }
+    setIsCreatingContactBook(true);
+    setCreateContactBookMessage({ type: '', text: '' });
+    try {
+      await apiClient.post('/contact-books', {
+        name: newContactBookForm.name.trim(),
+        description: newContactBookForm.description.trim(),
+        accountIds: [],
+        assignedAccountIds: [],
+      });
+      setIsCreateContactBookOpen(false);
+      setNewContactBookForm({ name: '', description: '' });
+      await loadContactBooks();
+      setContactBookMessage({ type: 'success', text: '通訊錄已建立，請在列表中選擇。' });
+      window.setTimeout(() => {
+        setContactBookMessage((message) => (
+          message.type === 'success' && message.text === '通訊錄已建立，請在列表中選擇。'
+            ? { type: '', text: '' }
+            : message
+        ));
+      }, 5000);
+    } catch (error) {
+      setCreateContactBookMessage({ type: 'error', text: error.message || '新增通訊錄失敗。' });
+    } finally {
+      setIsCreatingContactBook(false);
+    }
   }
 
   function handleAction(action, account) {
@@ -1496,17 +1550,20 @@ const TenantAccountManagement = forwardRef(({
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄</span>
-                <select
-                  value={selectedContactBookId}
-                  onChange={(event) => setSelectedContactBookId(event.target.value)}
-                  disabled={isLoadingContactBooks || isSavingContactBook}
-                  style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none', backgroundColor: '#111827', color: '#d1d5db' }}
-                >
-                  <option value="">未配置</option>
-                  {contactBooks.map((book) => (
-                    <option key={book.id} value={book.id}>{book.name}</option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <select
+                    value={selectedContactBookId}
+                    onChange={(event) => setSelectedContactBookId(event.target.value)}
+                    disabled={isLoadingContactBooks || isSavingContactBook}
+                    style={{ width: '260px', padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#111827', color: '#d1d5db', outline: 'none' }}
+                  >
+                    <option value="">未配置</option>
+                    {contactBooks.map((book) => (
+                      <option key={book.id} value={book.id}>{book.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={openCreateContactBook} disabled={isLoadingContactBooks || isSavingContactBook} style={{ padding: '10px 16px', borderRadius: '6px', border: '1px solid #4b5563', background: '#374151', color: '#d1d5db', fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>新建</button>
+                </div>
               </label>
               {isLoadingContactBooks && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>正在載入通訊錄...</p>}
               {!isLoadingContactBooks && contactBooks.length === 0 && <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>暫無已創建的通訊錄。</p>}
@@ -1515,6 +1572,38 @@ const TenantAccountManagement = forwardRef(({
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
               <button type="button" onClick={closeContactBookConfig} disabled={isSavingContactBook} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
               <button className="primary-btn" type="submit" disabled={isLoadingContactBooks || isSavingContactBook}>{isSavingContactBook ? '儲存中...' : '儲存'}</button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+      {/* 新增通訊錄對話框（僅建立，不配置帳號；成功後回到通訊錄配置彈窗供選擇） */}
+      {isCreateContactBookOpen && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483647, backgroundColor: 'rgba(15, 23, 42, 0.36)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeCreateContactBook();
+          }}
+        >
+          <form onSubmit={submitCreateContactBook} style={{ width: 'min(560px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增通訊錄</h3>
+              <button type="button" onClick={closeCreateContactBook} disabled={isCreatingContactBook} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+            </div>
+            <div style={{ display: 'grid', gap: '14px', padding: '18px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
+                <input required autoComplete="off" value={newContactBookForm.name} onChange={(event) => setNewContactBookForm((form) => ({ ...form, name: event.target.value }))} placeholder="例如：開發部通訊錄" style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>描述</span>
+                <input type="text" autoComplete="off" value={newContactBookForm.description} onChange={(event) => setNewContactBookForm((form) => ({ ...form, description: event.target.value }))} placeholder="請輸入通訊錄描述..." style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+              </label>
+              {createContactBookMessage.text && <p style={{ margin: 0, fontSize: '14px', color: createContactBookMessage.type === 'error' ? '#dc2626' : '#16a34a' }}>{createContactBookMessage.text}</p>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={closeCreateContactBook} disabled={isCreatingContactBook} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button className="primary-btn" type="submit" disabled={isCreatingContactBook || !newContactBookForm.name.trim()}>{isCreatingContactBook ? '儲存中...' : '儲存通訊錄'}</button>
             </div>
           </form>
         </div>,
