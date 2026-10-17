@@ -159,6 +159,7 @@ const TenantAccountManagement = forwardRef(({
   const [resetNotifyEnabled, setResetNotifyEnabled] = useState(false);
   const [resetNotifyDrafts, setResetNotifyDrafts] = useState({});
   const [resetNotifyCopyHints, setResetNotifyCopyHints] = useState({});
+  const [resetSkippedExpired, setResetSkippedExpired] = useState([]);
   const resetNotifyLinksRef = useRef({});
   const [sendingEmailKey, setSendingEmailKey] = useState('');
   const [contactBookAccount, setContactBookAccount] = useState(null);
@@ -446,7 +447,7 @@ const TenantAccountManagement = forwardRef(({
     }
   }
 
-  function openResetPassword(account) {
+  function openResetPassword(account, { skippedExpired = [] } = {}) {
     const targets = Array.isArray(account) ? account : [account];
     const localOnlyTargets = targets.filter(isLocalOnly);
     if (localOnlyTargets.length > 0) {
@@ -464,6 +465,7 @@ const TenantAccountManagement = forwardRef(({
     setResetNotifyEnabled(false);
     setResetNotifyDrafts({});
     setResetNotifyCopyHints({});
+    setResetSkippedExpired(skippedExpired.map((item) => item.username));
     resetNotifyLinksRef.current = {};
   }
 
@@ -475,6 +477,7 @@ const TenantAccountManagement = forwardRef(({
     setResetNotifyEnabled(false);
     setResetNotifyDrafts({});
     setResetNotifyCopyHints({});
+    setResetSkippedExpired([]);
     resetNotifyLinksRef.current = {};
   }
 
@@ -663,6 +666,7 @@ const TenantAccountManagement = forwardRef(({
           setResetPasswordMessage({ type: '', text: '' });
           setResetNotifyDrafts({});
           setResetNotifyCopyHints({});
+          setResetSkippedExpired([]);
           resetNotifyLinksRef.current = {};
         }, 600);
         return;
@@ -690,6 +694,7 @@ const TenantAccountManagement = forwardRef(({
           setResetNotifyEnabled(false);
           setResetNotifyDrafts({});
           setResetNotifyCopyHints({});
+          setResetSkippedExpired([]);
           resetNotifyLinksRef.current = {};
         }, 1200);
       } else {
@@ -702,29 +707,26 @@ const TenantAccountManagement = forwardRef(({
     }
   }
 
-  function getSelectedActionableAccounts(actionLabel) {
+  function handleBatchResetPassword() {
     const selectedAccounts = accounts.filter((account) => selectedIds.includes(account.id));
     if (selectedAccounts.length === 0) {
       window.alert('請先選擇帳號。');
-      return [];
+      return;
     }
+
+    // 合規性檢查：本地孤兒賬號阻断，過期賬號自動剔除（不允許重置）
     const localOnlyAccounts = selectedAccounts.filter(isLocalOnly);
     if (localOnlyAccounts.length > 0) {
-      window.alert(`所選帳號中包含僅在本地資料庫中存在的帳號（${localOnlyAccounts.map(a => a.username).join('、')}），無法${actionLabel}，請聯絡平臺管理員！`);
-      return [];
+      window.alert(`以下帳號僅存在於本地資料庫中，無法重置密碼：\n${localOnlyAccounts.map((account) => account.username).join('、')}\n請取消勾選後重新選擇。`);
+      return;
     }
-    const usableAccounts = selectedAccounts.filter(canUseAccountActions);
+    const expiredAccounts = selectedAccounts.filter((account) => isPackageExpired(account.serviceExpiresAt));
+    const usableAccounts = selectedAccounts.filter((account) => !isPackageExpired(account.serviceExpiresAt));
     if (usableAccounts.length === 0) {
-      window.alert(`已過期帳號不能${actionLabel}。`);
-      return [];
+      window.alert('所選帳號均已過期，無法重置密碼。');
+      return;
     }
-    return usableAccounts;
-  }
-
-  function handleBatchResetPassword() {
-    const targets = getSelectedActionableAccounts('重置密碼');
-    if (targets.length === 0) return;
-    openResetPassword(targets);
+    openResetPassword(usableAccounts, { skippedExpired: expiredAccounts });
   }
 
   handleBatchResetPasswordRef.current = handleBatchResetPassword;
@@ -2050,6 +2052,11 @@ const TenantAccountManagement = forwardRef(({
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
             <div style={{ display: 'grid', gap: '14px', padding: '18px', overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
+              {resetSkippedExpired.length > 0 && (
+                <div style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #78350f', backgroundColor: '#1f1a10', color: '#fbbf24', fontSize: '12px', lineHeight: 1.7 }}>
+                  已自動跳過 {resetSkippedExpired.length} 個過期帳號：{resetSkippedExpired.join('、')}
+                </div>
+              )}
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
                 <input
