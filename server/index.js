@@ -9133,7 +9133,7 @@ async function reclaimOneSipAccount(accountId) {
       await connection.query("DELETE FROM ca_conversations WHERE sip_user_id = ?", [target.id]);
 
       await connection.query(
-        "DELETE FROM account_contacts_backup WHERE username = ? AND sip_domain = ?",
+        "DELETE FROM account_contacts_backup WHERE username = ? AND domain = ?",
         [target.username, target.sip_domain || "sip.qrtalkie.org"],
       );
 
