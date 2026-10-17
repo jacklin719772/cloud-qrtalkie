@@ -683,6 +683,13 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
         #contact-books-management .contact-book-table tbody tr:hover { background: #1e293b; }
         #contact-books-management .ghost-btn { background: #374151 !important; color: #d1d5db !important; border: 1px solid #4b5563 !important; border-radius: 8px; cursor: pointer; }
         #contact-books-management .ghost-btn:hover { background: #4b5563 !important; color: #f3f4f6 !important; }
+        /* 彈窗（portal）與抽屜內的滾動容器：統一可見的暗色滾動條 */
+        .cb-dark-scroll { scrollbar-width: thin; scrollbar-color: #374151 #111827; }
+        .cb-dark-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+        .cb-dark-scroll::-webkit-scrollbar-track { background: #111827; }
+        .cb-dark-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 6px; }
+        .cb-dark-scroll::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        .cb-dark-scroll::-webkit-scrollbar-corner { background: #111827; }
 `}</style>
       <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '0', paddingBottom: '0' }}>
         <div className="contact-book-toolbar">
@@ -811,7 +818,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>新增通訊錄</h3>
               <button type="button" onClick={() => setIsCreateModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="cb-dark-scroll" style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
@@ -827,7 +834,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>通訊錄中包含的帳號 ({newBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                    <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active' || acc.status === 'pending'),
                         newBookForm.accountIds,
@@ -840,7 +847,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>允許使用該通訊錄的帳號 ({newBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                    <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                       {renderEditableAccountList(
                         filteredTenantAccounts.filter(acc => acc.status === 'active'),
                         newBookForm.assignedAccountIds,
@@ -867,7 +874,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>通訊錄詳情</h3>
               <button type="button" onClick={() => setIsDetailModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="cb-dark-scroll" style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱</span>
@@ -883,7 +890,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({detailBook.includedAccounts?.length || 0})</span>
                 <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                  <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
                       <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                     ) : renderReadonlyAccountList(detailBook.includedAccounts, '該通訊錄暫無包含帳號')}
@@ -893,7 +900,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({detailBook.assignedAccounts?.length || 0})</span>
                 <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                  <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                  <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                     {isLoadingDetail ? (
                       <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                     ) : renderReadonlyAccountList(detailBook.assignedAccounts, '該通訊錄暫無分配帳號')}
@@ -913,7 +920,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>編輯通訊錄</h3>
               <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="cb-dark-scroll" style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>名稱 <span style={{ color: '#ef4444' }}>*</span></span>
@@ -939,7 +946,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>包含的帳號 ({editBookForm.accountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                    <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
@@ -954,7 +961,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0 }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>已分配的帳號 ({editBookForm.assignedAccountIds.length})</span>
                   <div style={{ border: '1px solid #1f2937', borderRadius: '6px', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                    <div style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
+                    <div className="cb-dark-scroll" style={{ overflowY: 'auto', flex: 1, minHeight: '320px', maxHeight: '50vh' }}>
                       {isLoadingDetail ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>載入詳情中...</div>
                       ) : renderEditableAccountList(
@@ -1004,7 +1011,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
               </div>
               <input type="search" placeholder="搜尋帳號..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)} style={{ width: '100%', height: '36px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', background: '#1a2332', color: '#e5e7eb', outline: 'none', marginBottom: '12px' }} />
             </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 24px 16px' }}>
+            <div className="cb-dark-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 24px 16px' }}>
               {assignLoading ? <div style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>載入中...</div> : (() => {
                 const filtered = assignAccounts.filter(a => {
                   if (assignFilter === 'assigned' && !a._sel) return false;
@@ -1052,7 +1059,7 @@ const ContactBooks = forwardRef(({ tenantName }, ref) => {
             ) : (
               <>
                 <div style={{ marginBottom: '12px', color: '#9ca3af', fontSize: '13px' }}>共 {validateResult.total} 筆記錄，發現以下差異：</div>
-                <div style={{ flex: 1, overflow: 'auto', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                <div className="cb-dark-scroll" style={{ flex: 1, overflow: 'auto', maxHeight: '50vh', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
                   {validateResult.results?.map((r, i) => (
                     <div key={i} style={{ padding: '10px 14px', marginBottom: '8px', borderRadius: '8px', border: '1px solid', background: r.status === 'matched' ? '#0d2818' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#3b1111' : '#1e293b', borderColor: r.status === 'matched' ? '#065f46' : r.status === 'local_only' ? '#1e3a5f' : r.status === 'missing_on_flexisip' ? '#7f1d1d' : '#374151', fontSize: '13px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
