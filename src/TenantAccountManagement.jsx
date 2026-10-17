@@ -1137,6 +1137,14 @@ const TenantAccountManagement = forwardRef(({
 
     return (
       <section className="view active settings-form-page" id="tenant-account-management-detail" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <style>{`
+          /* 通知文案 textarea 暗色滾動條 */
+          #tenant-account-management-detail textarea.account-dark-scroll { scrollbar-width: thin; scrollbar-color: #374151 #1a2332; }
+          #tenant-account-management-detail textarea.account-dark-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+          #tenant-account-management-detail textarea.account-dark-scroll::-webkit-scrollbar-track { background: #1a2332; }
+          #tenant-account-management-detail textarea.account-dark-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+          #tenant-account-management-detail textarea.account-dark-scroll::-webkit-scrollbar-corner { background: #1a2332; }
+        `}</style>
         <div className="tenant-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, width: '100%', boxSizing: 'border-box', paddingTop: '12px', paddingBottom: '12px' }}>
           <div className="panel" style={{ display: 'flex', flexDirection: 'column', flex: 1, backgroundColor: '#111827', borderRadius: '8px', border: '1px solid #1f2937', overflow: 'hidden', margin: 0 }}>
             <div style={{ flexShrink: 0, padding: '20px 24px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1299,6 +1307,7 @@ const TenantAccountManagement = forwardRef(({
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '13px', color: '#9ca3af' }}>通知文案（可編輯後複製發送）</span>
                   <textarea
+                    className="account-dark-scroll"
                     rows={12}
                     value={notifyText}
                     onChange={(event) => setNotifyText(event.target.value)}
@@ -2023,14 +2032,24 @@ const TenantAccountManagement = forwardRef(({
           }}
         >
           <form
+            id="tenant-reset-password-modal"
             onSubmit={submitResetPassword}
             style={{ width: resetNotifyEnabled ? 'min(720px, calc(100% - 32px))' : 'min(480px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.22)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
           >
+            <style>{`
+              /* 暗色滾動條（彈窗主體與其內部 textarea） */
+              #tenant-reset-password-modal ::-webkit-scrollbar { width: 8px; height: 8px; }
+              #tenant-reset-password-modal ::-webkit-scrollbar-track { background: #111827; }
+              #tenant-reset-password-modal ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+              #tenant-reset-password-modal ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+              #tenant-reset-password-modal ::-webkit-scrollbar-corner { background: #111827; }
+              #tenant-reset-password-modal textarea { scrollbar-width: thin; scrollbar-color: #374151 #1a2332; }
+            `}</style>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>重置密碼</h3>
               <button type="button" onClick={closeResetPassword} disabled={isResettingPassword} style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: 'none', background: 'transparent', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }}>✕</button>
             </div>
-            <div style={{ display: 'grid', gap: '14px', padding: '18px', overflowY: 'auto' }}>
+            <div style={{ display: 'grid', gap: '14px', padding: '18px', overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>密碼</span>
                 <input
