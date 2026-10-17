@@ -5,7 +5,8 @@ import { pool } from "./db.js";
 import { cleanupFlexisipCallLogs } from "./flexisipCallLogCleanupService.js";
 import { cleanupCustomerAssistantData } from "./customerAssistant/cleanupService.js";
 import { retryPendingSipAccountDeletes } from "./sipDeleteRetryService.js";
-import { notifyTrialContactOnce, reclaimTrialAssignment } from "./trialService.js";
+import { notifyTrialContactOnce, reclaimTrialAssignment, setFlexisipActivated } from "./trialService.js";
+import { sendTrialNotificationEmail } from "./email.js";
 
 let timers = [];
 
@@ -14,6 +15,8 @@ export function startScheduler() {
 
   // Run expiry scans every 30 minutes
   timers.push(setInterval(scanExpiringResources, 30 * 60 * 1000));
+  // 服務啟動後 60 秒先跑一輪到期掃描，避免重啟後過期狀態/提醒滯後
+  timers.push(setTimeout(scanExpiringResources, 60 * 1000));
   // Run call log cleanup every 24 hours
   timers.push(setInterval(cleanupFlexisipCallLogs, 24 * 60 * 60 * 1000));
   // Customer Assistant 过期令牌/访客/审计 清理（每日）
@@ -49,10 +52,12 @@ async function scanExpiringResources() {
   }
 }
 
-// SIP accounts expiring within 7 days
+// SIP accounts expiring within 7 days（站内信 + 邮件：租户管理员 + 账号登记邮箱；每阶段仅首建时发邮件）
 async function scanExpiringSipAccounts(connection) {
   const rows = await connection.query(
-    `SELECT su.id, su.username, su.tenant_id, t.name AS tenant_name, e.service_expires_at
+    `SELECT su.id, su.username, su.tenant_id, t.name AS tenant_name,
+            DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS expires_at,
+            DATEDIFF(e.service_expires_at, CURDATE()) AS days_left
      FROM sip_users su
      JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active'
      JOIN tenants t ON t.id = su.tenant_id AND t.status = 'active' AND t.is_system = 0
@@ -61,16 +66,25 @@ async function scanExpiringSipAccounts(connection) {
        AND e.service_expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)`
   );
 
+  const title = 'SIP 帳號即將過期';
   for (const row of rows) {
-    const daysLeft = Math.ceil((new Date(row.service_expires_at) - new Date()) / 86400000);
+    const daysLeft = Number(row.days_left);
     const dedupeKey = `tenant:${row.tenant_id}:sip:${row.id}:expiring`;
-    const body = `SIP 帳號 ${row.username} 將在 ${daysLeft} 天後過期（${String(row.service_expires_at).slice(0, 10)}），請及時續訂。`;
+    const dayText = daysLeft <= 0
+      ? `今日到期（${row.expires_at}）`
+      : `將於 ${row.expires_at} 過期（剩餘 ${daysLeft} 天）`;
+    const body = `SIP 帳號 ${row.username} ${dayText}，到期後服務將停止，請及時續訂。`;
+
+    const [existingEvent] = await connection.query(
+      'SELECT id FROM notification_events WHERE dedupe_key = ? LIMIT 1',
+      [dedupeKey],
+    );
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
-       VALUES (?, 'sip_account', ?, 'account_expiring', 'system', ?, 'SIP 帳號即將過期', ?, 'warning', 'active')
-       ON DUPLICATE KEY UPDATE body = VALUES(body), updated_at = CURRENT_TIMESTAMP`,
-      [row.tenant_id, row.id, dedupeKey, body]
+       VALUES (?, 'sip_account', ?, 'account_expiring', 'system', ?, ?, ?, 'warning', 'active')
+       ON DUPLICATE KEY UPDATE body = VALUES(body), title = VALUES(title), updated_at = CURRENT_TIMESTAMP`,
+      [row.tenant_id, row.id, dedupeKey, title, body]
     );
 
     // Create receipts for all tenant admins
@@ -86,19 +100,31 @@ async function scanExpiringSipAccounts(connection) {
         await connection.query("INSERT IGNORE INTO notification_receipts (event_id, sip_user_id, receiver_type) VALUES (?, ?, 'sip')", [ev.id, sipId]);
       }
     }
+
+    if (!existingEvent) {
+      await sendExpiryEmails(connection, {
+        tenantId: row.tenant_id,
+        sipUserId: row.id,
+        subject: `${title}（${row.username}）`,
+        body,
+      });
+    }
   }
 }
 
-// SIP accounts already expired (auto-update status)
+// SIP accounts already expired（到期即停用：AM + 本地；站内信 + 邮件；AM 失败下一轮补偿重试）
 async function scanExpiredSipAccounts(connection) {
   const rows = await connection.query(
-    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, su.tenant_id, t.name AS tenant_name, t.is_system AS tenant_is_system
+    `SELECT e.id AS entitlement_id, su.id AS sip_user_id, su.username, su.tenant_id,
+            t.name AS tenant_name, t.is_system AS tenant_is_system,
+            DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS expires_at
      FROM tenant_sip_account_entitlements e
      JOIN sip_users su ON su.id = e.sip_user_id
      JOIN tenants t ON t.id = su.tenant_id
      WHERE e.status = 'active' AND e.service_expires_at < CURDATE()`
   );
 
+  const title = 'SIP 帳號已過期';
   for (const row of rows) {
     // Mark entitlement as expired
     await connection.query(
@@ -106,17 +132,25 @@ async function scanExpiredSipAccounts(connection) {
       [row.entitlement_id]
     );
 
-    // 試用帳號：狀態照常置 expired（功能即停），但提醒走試用郵件通道，不發站內通知
+    // 試用帳號（系統租戶）：狀態照常置 expired，停止/回收走試用通道
     if (Number(row.tenant_is_system) === 1) continue;
 
+    // 到期自動停用：AM + 本地狀態
+    await deactivateExpiredAccount(connection, row);
+
     const dedupeKey = `tenant:${row.tenant_id}:sip:${row.sip_user_id}:expired`;
-    const body = `SIP 帳號 ${row.username} 已過期，系統已自動將其停用。`;
+    const body = `SIP 帳號 ${row.username} 已於 ${row.expires_at} 過期，服務已停止，帳號已停用。如需繼續使用請盡快續訂。`;
+
+    const [existingEvent] = await connection.query(
+      'SELECT id FROM notification_events WHERE dedupe_key = ? LIMIT 1',
+      [dedupeKey],
+    );
 
     await connection.query(
       `INSERT INTO notification_events (tenant_id, scope_type, scope_id, event_type, sender_type, dedupe_key, title, body, severity, status)
-       VALUES (?, 'sip_account', ?, 'account_expired', 'system', ?, 'SIP 帳號已過期', ?, 'error', 'active')
-       ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP`,
-      [row.tenant_id, row.sip_user_id, dedupeKey, body]
+       VALUES (?, 'sip_account', ?, 'account_expired', 'system', ?, ?, ?, 'error', 'active')
+       ON DUPLICATE KEY UPDATE body = VALUES(body), title = VALUES(title), updated_at = CURRENT_TIMESTAMP`,
+      [row.tenant_id, row.sip_user_id, dedupeKey, title, body]
     );
 
     const [ev] = await connection.query("SELECT id FROM notification_events WHERE dedupe_key = ?", [dedupeKey]);
@@ -130,6 +164,68 @@ async function scanExpiredSipAccounts(connection) {
         const sipId = row.sip_user_id || row.id;
         await connection.query("INSERT IGNORE INTO notification_receipts (event_id, sip_user_id, receiver_type) VALUES (?, ?, 'sip')", [ev.id, sipId]);
       }
+    }
+
+    if (!existingEvent) {
+      await sendExpiryEmails(connection, {
+        tenantId: row.tenant_id,
+        sipUserId: row.sip_user_id,
+        subject: `${title}（${row.username}）`,
+        body,
+      });
+    }
+  }
+
+  // 補償：已過期但本地仍 active（如上一輪 AM 停用失敗）→ 重試停用
+  const retryRows = await connection.query(
+    `SELECT su.id AS sip_user_id, su.username, su.tenant_id
+     FROM tenant_sip_account_entitlements e
+     JOIN sip_users su ON su.id = e.sip_user_id
+     JOIN tenants t ON t.id = su.tenant_id AND t.is_system = 0
+     WHERE e.status = 'expired' AND su.status = 'active' AND e.service_expires_at < CURDATE()`
+  );
+  for (const row of retryRows) {
+    await deactivateExpiredAccount(connection, row);
+  }
+}
+
+// 到期停用：先 AM（含映射保護/回讀確認），成功後再置本地停用；
+// AM 硬失敗時保留本地 active，交由下一輪補償掃描重試
+async function deactivateExpiredAccount(connection, row) {
+  try {
+    await setFlexisipActivated(row.sip_user_id, false, connection);
+  } catch (error) {
+    if (error?.code === 'FLEXISIP_MAPPING_MISMATCH') {
+      console.warn('[Scheduler] AM mapping mismatch, skip AM deactivate:', row.username || row.sip_user_id, error?.message || error);
+    } else {
+      console.error('[Scheduler] AM deactivate failed (will retry next scan):', row.username || row.sip_user_id, error?.message || error);
+      return;
+    }
+  }
+  await connection.query(
+    "UPDATE sip_users SET status = 'disabled' WHERE id = ? AND status = 'active'",
+    [row.sip_user_id]
+  );
+}
+
+// 到期提示邮件：租户全部启用中的管理员 + 账号登记邮箱（跳过系统自动生成的占位地址）
+async function sendExpiryEmails(connection, { tenantId, sipUserId, subject, body }) {
+  const recipients = new Set();
+  const admins = await connection.query(
+    "SELECT email FROM admin_users WHERE tenant_id = ? AND account_type = 'tenant' AND status = 'active' AND email IS NOT NULL AND email <> ''",
+    [tenantId]
+  );
+  for (const admin of admins) recipients.add(String(admin.email).trim());
+  const [sipUser] = await connection.query("SELECT email FROM sip_users WHERE id = ? LIMIT 1", [sipUserId]);
+  if (sipUser?.email) recipients.add(String(sipUser.email).trim());
+
+  for (const email of recipients) {
+    if (!email) continue;
+    if (/@sip\.qrtalkie\.org$/i.test(email)) continue;
+    try {
+      await sendTrialNotificationEmail(connection, { to: email, subject, body });
+    } catch (error) {
+      console.error('[Scheduler] expiry email failed:', email, subject, error?.message || error);
     }
   }
 }
