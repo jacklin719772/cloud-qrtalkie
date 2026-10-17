@@ -3106,12 +3106,13 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
       }
     }
 
+    // 同步 sip_users 鏡像欄位（歸屬已由上面按 tenant_id 鎖定的 billing 行校驗，此處不再以 tenant_id 過濾，
+    // 避免 sip_users.tenant_id 為空/滯後的帳號被靜默跳過）
     await connection.query(
       `UPDATE sip_users
        SET contact_book_id = ?
-       WHERE id IN (${sipUserIds.map(() => "?").join(",")})
-         AND tenant_id = ?`,
-      [contactBookId, ...sipUserIds, request.admin.tenantId],
+       WHERE id IN (${sipUserIds.map(() => "?").join(",")})`,
+      [contactBookId, ...sipUserIds],
     );
 
     await connection.commit();
@@ -3216,12 +3217,12 @@ app.put("/api/tenant/sip-accounts/:id/contact-book", requireAdmin, async (reques
       );
     }
 
+    // 同步 sip_users 鏡像欄位（歸屬已由上面按 tenant_id 鎖定的 billing 行校驗，不再重複過濾 tenant_id）
     await connection.query(
       `UPDATE sip_users
        SET contact_book_id = ?
-       WHERE id = ?
-         AND tenant_id = ?`,
-      [contactBookId, Number(assignedAccount.sip_user_id), request.admin.tenantId],
+       WHERE id = ?`,
+      [contactBookId, Number(assignedAccount.sip_user_id)],
     );
 
     await connection.commit();
