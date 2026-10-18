@@ -16809,17 +16809,15 @@ app.get("/api/tenant/gate-devices", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    // Show: unassigned devices + devices assigned to this tenant
+    // 只返回已分配給本租戶的設備；未分配庫存由平台管理
     const entranceId = request.query.entranceId ? Number(request.query.entranceId) : 0;
     const allMode = request.query.all === '1';
     let rows;
     if (allMode) {
-      // Return ALL devices for this tenant (for stats): unassigned + assigned to this tenant
       rows = await connection.query(
         `SELECT gd.id, gd.device_uuid, gd.relay_id, gd.assignment_status, gd.tenant_id, gd.assigned_at, gd.expires_at
          FROM gate_devices gd
-         WHERE gd.assignment_status = 'unassigned'
-            OR (gd.assignment_status = 'assigned' AND gd.tenant_id = ?)
+         WHERE gd.assignment_status = 'assigned' AND gd.tenant_id = ?
          ORDER BY gd.device_uuid`,
         [request.admin.tenantId]
       );
@@ -16827,12 +16825,12 @@ app.get("/api/tenant/gate-devices", requireAdmin, async (request, response) => {
       rows = await connection.query(
         `SELECT gd.id, gd.device_uuid, gd.relay_id, gd.assignment_status, gd.tenant_id, gd.assigned_at, gd.expires_at
          FROM gate_devices gd
-         WHERE (gd.assignment_status = 'unassigned'
-                OR (gd.assignment_status = 'assigned' AND gd.tenant_id = ?)
-                OR gd.id = (SELECT ae2.device_id FROM access_entrances ae2 WHERE ae2.id = ?))
-           AND NOT EXISTS (SELECT 1 FROM access_entrances ae WHERE ae.device_id = gd.id AND ae.id != ?)
+         WHERE gd.assignment_status = 'assigned'
+           AND gd.tenant_id = ?
+           AND (gd.id = (SELECT ae2.device_id FROM access_entrances ae2 WHERE ae2.id = ? AND ae2.tenant_id = ?)
+                OR NOT EXISTS (SELECT 1 FROM access_entrances ae WHERE ae.device_id = gd.id))
          ORDER BY gd.device_uuid`,
-        [request.admin.tenantId, entranceId, entranceId]
+        [request.admin.tenantId, entranceId, request.admin.tenantId]
       );
     }
     response.json({

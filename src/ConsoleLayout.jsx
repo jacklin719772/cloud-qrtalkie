@@ -2231,7 +2231,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>5</span>
                     <div>
                       <strong style={{ color: "#e5e7eb" }}>配置門控設備</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>先在「設備管理」頁面新增設備，然後返回此頁面。在入口操作列點擊「設備」，為入口綁定具體的門控設備。支援單個和批量分配。</p>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>先在「設備管理」頁面新增設備並分配給租戶，然後返回此頁面。在入口操作列點擊「設備」，為入口綁定具體的門控設備。支援單個和批量分配。</p>
                     </div>
                   </div>
                 </div>
@@ -2268,7 +2268,7 @@ export default function ConsoleLayout({ onLogout }) {
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📡 門控設備</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>設備需先在「設備管理」頁面新增並分配給租戶。返回此頁面後，入口操作列的「設備」按鈕可為入口綁定或更換設備。切換到「門控設備」標籤可查看所有設備的綁定狀態。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>設備需先在「設備管理」頁面新增並分配給租戶。返回此頁面後，入口操作列的「設備」按鈕可為入口綁定或更換設備。切換到「門控設備」標籤可查看本租戶設備的綁定狀態；未分配的設備不會顯示，需由平台管理員分配。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🌐 訪客頁面</h3>

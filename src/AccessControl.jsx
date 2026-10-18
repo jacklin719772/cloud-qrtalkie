@@ -1571,8 +1571,6 @@ const AccessControl = forwardRef((props, ref) => {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
                   <span className="ac-stat-pill">設備總數<strong>{gateDeviceList.length}</strong></span>
-                  <span className="ac-stat-pill">已分配<strong style={{ color: '#2563eb' }}>{gateDeviceList.filter(d => d.status === 'assigned').length}</strong></span>
-                  <span className="ac-stat-pill">未分配<strong style={{ color: '#9ca3af' }}>{gateDeviceList.filter(d => d.status === 'unassigned').length}</strong></span>
                   <span className="ac-stat-pill">已綁定入口<strong style={{ color: '#16a34a' }}>{gateDeviceList.filter(d => d.boundEntrance).length}</strong></span>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
@@ -2948,7 +2946,7 @@ const AccessControl = forwardRef((props, ref) => {
                     ))}
                   </select>
                   {availableDevices.length === 0 && !selectedDeviceId && (
-                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '8px 0 0' }}>暫無可用設備</p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '8px 0 0' }}>暫無可用設備，請先由平台管理員分配裝置。</p>
                   )}
                 </label>
               )}
