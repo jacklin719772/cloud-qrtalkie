@@ -19,17 +19,36 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
   const [alertMessage, setAlertMessage] = useState('');
   const [context, setContext] = useState({ buildingId: null, buildingLabel: '' });
   const [editId, setEditId] = useState(null);
+  const [sipAccounts, setSipAccounts] = useState([]);
+  const [sipLoading, setSipLoading] = useState(false);
+  const [selectedSipUserId, setSelectedSipUserId] = useState('');
+  const [entranceOptions, setEntranceOptions] = useState([]);
+  const [selectedEntranceIds, setSelectedEntranceIds] = useState([]);
 
   const isEdit = editId != null;
 
   useImperativeHandle(ref, () => ({
     showModal(ctx, editData) {
       setContext(ctx || { buildingId: null, buildingLabel: '' });
+      setSelectedSipUserId('');
+      setSelectedEntranceIds([]);
       if (editData) {
         setEditId(editData.id);
+        setSipAccounts([]);
+        setEntranceOptions([]);
         requestAnimationFrame(() => fillForm(formRef.current, editData));
       } else {
         setEditId(null);
+        setEntranceOptions(Array.isArray(ctx?.entranceOptions) ? ctx.entranceOptions : []);
+        setSipAccounts([]);
+        setSipLoading(true);
+        apiClient.get('/sip-users/available')
+          .then((res) => {
+            const list = Array.isArray(res?.data?.list) ? res.data.list : [];
+            setSipAccounts(list.filter((account) => account.webAccount));
+          })
+          .catch(() => setSipAccounts([]))
+          .finally(() => setSipLoading(false));
         requestAnimationFrame(() => formRef.current?.reset());
       }
       dialogRef.current?.showModal();
@@ -62,6 +81,16 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
     if (!payload.roomNumber) {
       showAlert('請填寫門牌號碼。');
       return;
+    }
+
+    if (!isEdit) {
+      const sipUserId = Number(selectedSipUserId);
+      if (!sipUserId) {
+        showAlert('請為房間分配 SIP 帳號。');
+        return;
+      }
+      payload.sipUserId = sipUserId;
+      payload.entranceIds = selectedEntranceIds;
     }
 
     setIsSaving(true);
@@ -154,6 +183,49 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>門牌號碼 <b style={{ color: '#dc2626' }}>*</b></span>
                 <input name="roomNumber" required style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#9ca3af', outline: 'none', boxSizing: 'border-box' }} placeholder="例如：A101" />
               </label>
+
+              {!isEdit && (
+                <label style={{ gridColumn: '1 / -1' }}>
+                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>SIP 帳號 <b style={{ color: '#dc2626' }}>*</b></span>
+                  <select
+                    name="sipUserId"
+                    value={selectedSipUserId}
+                    onChange={(e) => setSelectedSipUserId(e.target.value)}
+                    disabled={sipLoading}
+                    style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#e5e7eb', outline: 'none', boxSizing: 'border-box', cursor: sipLoading ? 'wait' : 'pointer' }}
+                  >
+                    <option value="">{sipLoading ? '載入中...' : sipAccounts.length > 0 ? '請選擇 SIP 帳號' : '暫無可分配帳號，請先在帳號管理中配置'}</option>
+                    {sipAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>{account.username}{account.displayName ? `（${account.displayName}）` : ''}</option>
+                    ))}
+                  </select>
+                  <span style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>每個房間必須綁定一個可用 SIP 帳號</span>
+                </label>
+              )}
+
+              {!isEdit && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>可開啟的門（選填）</span>
+                  {entranceOptions.length === 0 ? (
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>暫無可用入口，可稍後在「入口授權」中設定</div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      {entranceOptions.map((entrance) => (
+                        <label key={entrance.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', cursor: 'pointer', minWidth: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedEntranceIds.includes(entrance.id)}
+                            onChange={(e) => setSelectedEntranceIds((prev) => e.target.checked ? [...new Set([...prev, entrance.id])] : prev.filter((id) => id !== entrance.id))}
+                            style={{ accentColor: '#3b82f6' }}
+                          />
+                          <span style={{ fontSize: '12px', color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entrance.name}</span>
+                          {entrance.belongName ? <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }}>{entrance.belongName}</span> : null}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <label>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>所在樓層</span>

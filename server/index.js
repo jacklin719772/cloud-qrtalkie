@@ -16680,31 +16680,91 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
   const contactPhone = sanitizeString(payload.contactPhone, 40) || null;
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
   const sipUserId = payload.sipUserId != null ? Number(payload.sipUserId) : null;
+  if (!sipUserId) return response.status(400).json({ message: "請為房間分配 SIP 帳號。" });
+  const entranceIds = Array.isArray(payload.entranceIds)
+    ? [...new Set(payload.entranceIds.map(Number).filter(Boolean))]
+    : [];
   const allowVideoCall = payload.allowVideoCall === true || payload.allowVideoCall === 1 ? 1 : 0;
 
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [building] = await connection.query(
       "SELECT id FROM access_buildings WHERE id = ? AND tenant_id = ?",
       [buildingId, request.admin.tenantId]
     );
-    if (!building) return response.status(404).json({ message: "樓宇不存在。" });
+    if (!building) {
+      await connection.rollback();
+      return response.status(404).json({ message: "樓宇不存在。" });
+    }
 
-    if (sipUserId) {
-      const [sipUser] = await connection.query(
-        "SELECT id FROM sip_users WHERE id = ? AND tenant_id = ?",
-        [sipUserId, request.admin.tenantId]
+    // SIP 帳號必須是租戶有效權益內的可用帳號，且已配置 Web 帳號
+    const [sipUser] = await connection.query(
+      `SELECT su.id, su.username, su.display_name
+         FROM sip_users su
+         JOIN tenant_sip_account_entitlements ent
+           ON ent.sip_user_id = su.id
+          AND ent.tenant_id = ?
+          AND ent.status = 'active'
+        WHERE su.id = ?
+          AND su.status = 'active'
+          AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())`,
+      [request.admin.tenantId, sipUserId]
+    );
+    if (!sipUser) {
+      await connection.rollback();
+      return response.status(400).json({ message: "SIP 帳號不存在、已停用或已過期。" });
+    }
+
+    const [web] = await connection.query(
+      `SELECT 1 FROM tenant_web_account_entitlements
+       WHERE sip_user_id = ? AND tenant_id = ? AND status = 'active' LIMIT 1`,
+      [sipUserId, request.admin.tenantId]
+    );
+    if (!web) {
+      await connection.rollback();
+      return response.status(400).json({ message: "該 SIP 帳號未配置 Web 帳號，無法分配。" });
+    }
+
+    const [conflict] = await connection.query(
+      "SELECT id, room_number FROM access_rooms WHERE sip_user_id = ? LIMIT 1",
+      [sipUserId]
+    );
+    if (conflict) {
+      await connection.rollback();
+      return response.status(409).json({ message: `該 SIP 帳號已被房間「${conflict.room_number}」使用。` });
+    }
+
+    // 驗證勾選的入口：屬於本租戶、已啟用、且綁定已分配設備
+    let validEntranceIds = [];
+    if (entranceIds.length) {
+      const entranceRows = await connection.query(
+        `SELECT e.id
+           FROM access_entrances e
+           JOIN gate_devices g
+             ON g.id = e.device_id
+            AND g.tenant_id = e.tenant_id
+            AND g.assignment_status = 'assigned'
+          WHERE e.tenant_id = ? AND e.is_active = 1 AND e.id IN (?)`,
+        [request.admin.tenantId, entranceIds]
       );
-      if (!sipUser) return response.status(400).json({ message: "SIP 使用者不存在。" });
+      validEntranceIds = entranceRows.map(row => Number(row.id));
+      if (validEntranceIds.length !== entranceIds.length) {
+        await connection.rollback();
+        return response.status(400).json({ message: "部分入口不可用（未綁定設備、已停用或不屬於本租戶）。" });
+      }
     }
 
     const [dup] = await connection.query(
       "SELECT id FROM access_rooms WHERE building_id = ? AND tenant_id = ? AND room_number = ?",
       [buildingId, request.admin.tenantId, roomNumber]
     );
-    if (dup) return response.status(409).json({ message: `該樓宇下已存在門牌號碼「${roomNumber}」。` });
+    if (dup) {
+      await connection.rollback();
+      return response.status(409).json({ message: `該樓宇下已存在門牌號碼「${roomNumber}」。` });
+    }
 
     const result = await connection.query(
       `INSERT INTO access_rooms
@@ -16712,11 +16772,23 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [request.admin.tenantId, buildingId, roomNumber, floor, contactPerson, contactPhone, contactEmail, sipUserId, allowVideoCall]
     );
+    const newRoomId = Number(result.insertId);
+
+    if (validEntranceIds.length > 0) {
+      const placeholders = validEntranceIds.map(() => "(?, ?, ?)").join(", ");
+      const values = validEntranceIds.flatMap(id => [request.admin.tenantId, id, newRoomId]);
+      await connection.query(
+        `INSERT IGNORE INTO access_room_entrance_auth (tenant_id, entrance_id, room_id) VALUES ${placeholders}`,
+        values
+      );
+    }
+
+    await connection.commit();
     response.status(201).json({
       code: 0,
       message: "房間已新增。",
       data: {
-        id: Number(result.insertId),
+        id: newRoomId,
         tenantId: request.admin.tenantId,
         buildingId,
         roomNumber,
@@ -16725,12 +16797,17 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
         contactPhone,
         contactEmail,
         sipUserId,
-        sipName: null,
-        sipAccount: null,
+        sipName: sipUser.display_name || sipUser.username,
+        sipAccount: sipUser.username,
         allowVideoCall: allowVideoCall === 1,
+        authorizedEntranceIds: validEntranceIds,
       }
     });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
+    if (error?.code === 'ER_DUP_ENTRY') {
+      return response.status(409).json({ message: "該 SIP 帳號已被其他房間使用。" });
+    }
     console.error("新增房間失敗:", error);
     response.status(500).json({ message: "新增房間失敗，請稍後再試。" });
   } finally {

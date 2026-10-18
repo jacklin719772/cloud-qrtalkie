@@ -327,15 +327,27 @@ const AccessControl = forwardRef((props, ref) => {
   };
 
   const handleRoomCreated = (data) => {
-    setCommunities(prev => prev.map(c => ({
-      ...c,
-      buildings: (c.buildings || []).map(b => {
-        if (b.id === data.buildingId) {
-          return { ...b, rooms: [...(b.rooms || []), data] };
-        }
-        return b;
-      }),
-    })));
+    const authorizedEntranceIds = Array.isArray(data.authorizedEntranceIds) ? data.authorizedEntranceIds : [];
+    setCommunities(prev => prev.map(c => {
+      const hasBuilding = (c.buildings || []).some(b => b.id === data.buildingId);
+      if (!hasBuilding) return c;
+      const auth = { ...(c.authMatrix || {}) };
+      authorizedEntranceIds.forEach((entranceId) => {
+        const key = String(entranceId);
+        auth[key] = [...new Set([...(auth[key] || []), data.id])];
+      });
+      const bumpAuthCount = (list) => (list || []).map(e => authorizedEntranceIds.includes(e.id) ? { ...e, authCount: Number(e.authCount || 0) + 1 } : e);
+      return {
+        ...c,
+        authMatrix: auth,
+        communityEntrances: bumpAuthCount(c.communityEntrances),
+        buildings: (c.buildings || []).map(b => ({
+          ...b,
+          entrances: bumpAuthCount(b.entrances),
+          rooms: b.id === data.buildingId ? [...(b.rooms || []), data] : b.rooms,
+        })),
+      };
+    }));
   };
 
   const handleRoomUpdated = (data) => {
@@ -1572,7 +1584,14 @@ const AccessControl = forwardRef((props, ref) => {
                                     {(() => { const selCount = (b.rooms || []).filter(r => r._selected).length; return (
                                       <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={(ev) => { ev.stopPropagation(); handleBatchDeleteRooms(b.id); }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
                                     ); })()}
-                                    <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: b.id, buildingLabel: b.name }); }}><Plus size={12} /> 添加房間</button>
+                                    <button className="ac-btn-sm" type="button" onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      const entranceOptions = [
+                                        ...(c.communityEntrances || []).map(e => ({ ...e, belongName: c.name })),
+                                        ...(c.buildings || []).flatMap(b2 => (b2.entrances || []).map(e => ({ ...e, belongName: b2.name }))),
+                                      ].filter(isUsableEntrance).map(e => ({ id: e.id, name: e.name, belongName: e.belongName }));
+                                      addRoomDialogRef.current?.showModal({ buildingId: b.id, buildingLabel: b.name, entranceOptions });
+                                    }}><Plus size={12} /> 添加房間</button>
                                   </div>
                                 </div>
                                 <style>{`.room-table-wrap::-webkit-scrollbar { width: 6px; height: 6px; } .room-table-wrap::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; } .room-table-wrap::-webkit-scrollbar-track { background: transparent; }`}</style>

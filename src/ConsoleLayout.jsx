@@ -2211,7 +2211,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>3</span>
                     <div>
                       <strong style={{ color: "#e5e7eb" }}>設定房間</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在樓宇下新增房間（門牌號碼）。如需語音/視訊通話，需為房間分配 SIP 帳號（通過房間操作列的「帳號」按鈕）。需視頻通話則勾選「允許視頻通話」。</p>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>在樓宇下新增房間（門牌號碼）。新增時必須為房間選擇一個可用 SIP 帳號，並可勾選該房間可開啟的入口（選填，之後也可在「入口授權」中調整）。需視頻通話則勾選「允許視頻通話」。</p>
                     </div>
                   </div>
                 </div>
@@ -2264,7 +2264,7 @@ export default function ConsoleLayout({ onLogout }) {
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔑 房間管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>在樓宇下新增房間後，通過房間操作列的「帳號」按鈕為房間分配 SIP 帳號。分配後訪客即可在訪客頁面向該房間發起語音通話。勾選「允許視頻通話」後視訊按鈕才會在訪客頁面啟用。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>新增房間時即完成 SIP 帳號分配；之後可通過房間操作列的「帳號管理」更換或取消。分配後訪客即可在訪客頁面向該房間發起語音通話。勾選「允許視頻通話」後視訊按鈕才會在訪客頁面啟用。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📡 門控設備</h3>
