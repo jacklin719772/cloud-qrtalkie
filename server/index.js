@@ -16892,24 +16892,47 @@ app.delete("/api/access-rooms/:id", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [existing] = await connection.query(
-      "SELECT id, room_number FROM access_rooms WHERE id = ? AND tenant_id = ?",
+      "SELECT id, room_number, sip_user_id FROM access_rooms WHERE id = ? AND tenant_id = ? FOR UPDATE",
       [roomId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "房間不存在。" });
+    if (!existing) {
+      await connection.rollback();
+      return response.status(404).json({ message: "房間不存在。" });
+    }
+
+    const authRows = await connection.query(
+      "SELECT entrance_id FROM access_room_entrance_auth WHERE room_id = ? AND tenant_id = ?",
+      [roomId, request.admin.tenantId]
+    );
+    const authorizedEntranceIds = authRows.map(row => Number(row.entrance_id));
+
+    const authResult = await connection.query(
+      "DELETE FROM access_room_entrance_auth WHERE room_id = ? AND tenant_id = ?",
+      [roomId, request.admin.tenantId]
+    );
 
     await connection.query(
       "DELETE FROM access_rooms WHERE id = ? AND tenant_id = ?",
       [roomId, request.admin.tenantId]
     );
 
+    await connection.commit();
     response.json({
       code: 0,
       message: "房間已刪除。",
-      data: { id: roomId, roomNumber: existing.room_number }
+      data: {
+        id: roomId,
+        roomNumber: existing.room_number,
+        releasedSipUserId: existing.sip_user_id ? Number(existing.sip_user_id) : null,
+        authorizationsDeleted: Number(authResult.affectedRows || 0),
+        authorizedEntranceIds,
+      }
     });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("刪除房間失敗:", error);
     response.status(500).json({ message: "刪除房間失敗，請稍後再試。" });
   } finally {

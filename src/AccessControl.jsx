@@ -401,22 +401,37 @@ const AccessControl = forwardRef((props, ref) => {
   };
 
   const handleDeleteRoom = async (room, buildingId) => {
-    if (!window.confirm(`確定要刪除房間「${room.roomNumber}」嗎？此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除房間「${room.roomNumber}」嗎？\n\n房間綁定的 SIP 帳號將被釋放，該房間的入口授權記錄一併刪除。此操作無法撤銷。`)) return;
     try {
       const res = await apiClient.delete(`/access-rooms/${room.id}`);
       if (res && res.code === 0) {
-        setCommunities(prev => prev.map(c => ({
-          ...c,
-          buildings: (c.buildings || []).map(b => {
-            if (b.id === buildingId) {
-              return { ...b, rooms: (b.rooms || []).filter(r => r.id !== room.id) };
-            }
-            return b;
-          }),
-        })));
+        const authorizedEntranceIds = Array.isArray(res.data?.authorizedEntranceIds) ? res.data.authorizedEntranceIds : [];
+        setCommunities(prev => prev.map(c => {
+          const hasBuilding = (c.buildings || []).some(b => b.id === buildingId);
+          if (!hasBuilding) return c;
+          const auth = { ...(c.authMatrix || {}) };
+          authorizedEntranceIds.forEach((entranceId) => {
+            const key = String(entranceId);
+            auth[key] = (auth[key] || []).filter(rid => rid !== room.id);
+          });
+          const decAuthCount = (list) => (list || []).map(e => authorizedEntranceIds.includes(e.id)
+            ? { ...e, authCount: Math.max(0, Number(e.authCount || 0) - 1) }
+            : e);
+          return {
+            ...c,
+            authMatrix: auth,
+            communityEntrances: decAuthCount(c.communityEntrances),
+            buildings: (c.buildings || []).map(b => ({
+              ...b,
+              entrances: decAuthCount(b.entrances),
+              rooms: b.id === buildingId ? (b.rooms || []).filter(r => r.id !== room.id) : b.rooms,
+            })),
+          };
+        }));
       }
     } catch (error) {
       console.error('刪除房間失敗:', error);
+      setToast({ message: error?.message || '刪除房間失敗。', type: 'error' });
     }
   };
 
@@ -425,7 +440,7 @@ const AccessControl = forwardRef((props, ref) => {
     const building = community?.buildings?.find(b => b.id === buildingId);
     const selected = (building?.rooms || []).filter(r => r._selected);
     if (selected.length === 0) return;
-    if (!window.confirm(`確定要刪除 ${selected.length} 個房間嗎？\n\n${selected.map(r => '· ' + r.roomNumber).join('\n')}\n\n此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除 ${selected.length} 個房間嗎？\n\n${selected.map(r => '· ' + r.roomNumber).join('\n')}\n\n房間綁定的 SIP 帳號將被釋放，入口授權記錄一併刪除。此操作無法撤銷。`)) return;
 
     let errorCount = 0;
     for (const r of selected) {
@@ -444,8 +459,9 @@ const AccessControl = forwardRef((props, ref) => {
           return b;
         }),
       })));
+      fetchCommunities();
     } else {
-      window.alert(`刪除完成，${errorCount} 個房間刪除失敗。`);
+      setToast({ message: `刪除完成，${errorCount} 個房間刪除失敗。`, type: 'error' });
       // Reload to get correct state
       fetchCommunities();
     }
@@ -2097,12 +2113,16 @@ const AccessControl = forwardRef((props, ref) => {
                   </div>
                   <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined, whiteSpace: 'nowrap' }} onClick={() => {
                     const names = allRooms.filter(r => roomViewSelected.has(r.id)).map(r => r.roomNumber);
-                    if (!window.confirm(`確定要刪除 ${selCount} 個房間嗎？\n\n${names.map(n => '· ' + n).join('\n')}\n\n此操作無法撤銷。`)) return;
+                    if (!window.confirm(`確定要刪除 ${selCount} 個房間嗎？\n\n${names.map(n => '· ' + n).join('\n')}\n\n房間綁定的 SIP 帳號將被釋放，入口授權記錄一併刪除。此操作無法撤銷。`)) return;
                     Promise.all(allRooms.filter(r => roomViewSelected.has(r.id)).map(r => apiClient.delete(`/access-rooms/${r.id}`))).then(() => {
                       const deletedIds = new Set(allRooms.filter(r => roomViewSelected.has(r.id)).map(r => r.id));
                       setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r => !deletedIds.has(r.id)) } : null);
                       setRoomViewSelected(new Set());
                       setCommunities(prev => prev.map(c => ({ ...c, buildings: (c.buildings || []).map(b => b.id === viewRoomsBuilding.buildingId ? { ...b, rooms: (b.rooms || []).filter(r => !deletedIds.has(r.id)) } : b) })));
+                      fetchCommunities();
+                    }).catch((error) => {
+                      setToast({ message: error?.message || '批量刪除房間失敗。', type: 'error' });
+                      fetchCommunities();
                     });
                   }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
                 </div>
