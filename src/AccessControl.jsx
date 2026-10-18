@@ -625,6 +625,14 @@ const AccessControl = forwardRef((props, ref) => {
   const countBoundEntrances = (community) => getCommunityEntrances(community).filter(isBoundEntrance).length;
   const countUsableEntrances = (community) => getCommunityEntrances(community).filter(isUsableEntrance).length;
 
+  const getEntranceAuthCount = (community, entranceId) => (community?.authMatrix?.[String(entranceId)] || []).length;
+
+  const ensureEntranceAuthorized = (community, entranceId) => {
+    if (getEntranceAuthCount(community, entranceId) > 0) return true;
+    setToast({ message: '該入口尚未授權任何房間，請先完成入口授權後再預覽或生成訪問連結。', type: 'error' });
+    return false;
+  };
+
   const filteredCommunities = communities;
 
   return (
@@ -1273,8 +1281,8 @@ const AccessControl = forwardRef((props, ref) => {
                                 }}>✎ 編輯</button>
                                 <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => openAuthDrawer({ ...e, communityId: e.communityId })}>🔑 授權</button>
                                 {e.device && <>
-                                  <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { var type = e.buildingId ? '02' : '01'; window.open((import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device), '_blank'); }}>🌐 預覽</button>
-                                  <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { var type = e.buildingId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device); setQrDialog({ url: url, title: e.name, filename: (e.belongName || 'community') + '-' + e.name + '-' + (e.device || 'device') + '-qrcode' }); }}>🔗 鏈接</button>
+                                  <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { const community = communities.find(c => c.id === e.communityId); if (!ensureEntranceAuthorized(community, e.id)) return; var type = e.buildingId ? '02' : '01'; window.open((import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device), '_blank'); }}>🌐 預覽</button>
+                                  <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { const community = communities.find(c => c.id === e.communityId); if (!ensureEntranceAuthorized(community, e.id)) return; var type = e.buildingId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device); setQrDialog({ url: url, title: e.name, filename: (e.belongName || 'community') + '-' + e.name + '-' + (e.device || 'device') + '-qrcode' }); }}>🔗 鏈接</button>
                                 </>}
                                 <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={() => handleDeleteEntrance(e, e.communityId, e.buildingId)}>✕ 刪除</button>
                               </div>
@@ -2827,8 +2835,8 @@ const AccessControl = forwardRef((props, ref) => {
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
               )}
               <div style={{ height: '1px', background: '#1f2937' }} />
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未繫結裝置，無法生成訪問連結。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); window.open(url, '_blank'); setEntranceDropdownOpen(null); }}>🌐 預覽</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); if (!entranceData.device) { window.alert('該入口尚未繫結裝置，無法生成訪問連結。'); setEntranceDropdownOpen(null); return; } var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); setQrDialog({ url: url, title: entranceData.name, filename: (communityData?.name || 'community') + '-' + entranceData.name + '-' + (entranceData.device || 'device') + '-qrcode' }); setEntranceDropdownOpen(null); }}>🔗 鏈接</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setEntranceDropdownOpen(null); if (!entranceData.device) { setToast({ message: '該入口尚未綁定設備，無法生成訪問連結。', type: 'error' }); return; } if (!ensureEntranceAuthorized(communityData, entranceData.id)) return; var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); window.open(url, '_blank'); }}>🌐 預覽</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setEntranceDropdownOpen(null); if (!entranceData.device) { setToast({ message: '該入口尚未綁定設備，無法生成訪問連結。', type: 'error' }); return; } if (!ensureEntranceAuthorized(communityData, entranceData.id)) return; var type = bId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(entranceData.device); setQrDialog({ url: url, title: entranceData.name, filename: (communityData?.name || 'community') + '-' + entranceData.name + '-' + (entranceData.device || 'device') + '-qrcode' }); }}>🔗 鏈接</button>
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteEntrance(entranceData, cId, bId); }}>✕ 刪除</button>
             </div>
           </>

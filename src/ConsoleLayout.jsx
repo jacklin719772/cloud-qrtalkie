@@ -2251,7 +2251,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#22c55e", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</span>
                     <div>
                       <strong style={{ color: "#22c55e" }}>發佈使用</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>完成配置後，點擊入口的「預覽」或「鏈接」按鈕獲取訪客訪問鏈接。訪客掃碼或打開鏈接即可看到授權房間列表，點擊房間發起語音或視訊通話。</p>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>完成授權後，點擊入口的「預覽」或「鏈接」按鈕獲取訪客訪問鏈接；若該入口尚未授權任何房間，系統會提示先完成入口授權。訪客掃碼或打開鏈接即可看到授權房間列表，點擊房間發起語音或視訊通話。</p>
                     </div>
                   </div>
                 </div>
