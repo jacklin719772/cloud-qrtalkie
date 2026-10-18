@@ -1907,7 +1907,7 @@ const AccessControl = forwardRef((props, ref) => {
                 {/* Tab 3: Authorize by Building */}
                 {authTab === 'byBuilding' && (() => {
                   const community = communities.find(c => c.id === cId);
-                  const buildings = community?.buildings || [];
+                  const buildings = (community?.buildings || []).filter(b => (b.rooms || []).length > 0);
                   const buildingStats = buildings.map(b => {
                     const totalRooms = (b.rooms || []).length;
                     const authCount = (b.rooms || []).filter(r => authRooms.some(ar => ar.id === r.id)).length;
@@ -1975,7 +1975,7 @@ const AccessControl = forwardRef((props, ref) => {
                       </div>
                       <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
                         {buildingStats.length === 0 ? (
-                          <div className="ac-empty" style={{ padding: '20px' }}>暫無樓宇</div>
+                          <div className="ac-empty" style={{ padding: '20px' }}>暫無有房間的樓宇</div>
                         ) : (
                           <table className="ac-table" style={{ minWidth: '550px' }}>
                             <thead>
