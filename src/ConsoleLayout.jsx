@@ -1984,9 +1984,12 @@ export default function ConsoleLayout({ onLogout }) {
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>📋 列表管理功能</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用/停用</strong> — 勾選多個名片後使用上方按鈕批次操作。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>帳號範圍</strong> — 列出本租戶的訂閱帳號，以及歸屬本租戶的試用帳號（帶「試用」標籤；暫停的試用顯示「試用·暫停」）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Ecard 縮圖</strong> — 未配置名片顯示「未配置」；已配置但沒有縮圖/頭像顯示「未生成」。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>批量啟用/停用</strong> — 勾選多個名片後使用上方按鈕批次操作；已到期或試用已暫停的名片會自動跳過並提示。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量下載</strong> — 勾選多個已配置名片後打包下載名片圖片。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>預覽與詳情</strong> — 點擊「預覽」查看名片最終效果，「更多」選單提供詳情、下載、啟用/停用。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發送通知</strong> — 在「更多」選單中打開通知彈窗，文案包含 SIP 帳號、名片樣圖下載連結、訪問連結，以及使用 SIP 帳號和密碼登錄 Cloud 平台修改個人名片的方法；可一鍵複製，也可填寫郵箱直接發送（默認帶出帳號登記郵箱，系統佔位郵箱不預填）。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>預覽與操作</strong> — 點擊「預覽」查看名片最終效果；「更多」選單提供編輯、下載、發送通知、啟用/停用。</li>
                 </ul>
               </div>
 
@@ -1996,6 +1999,8 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>名片模板必須先在「電子名片樣式」頁面設計好，才能在此選用。</li>
                   <li>每個 SIP 帳號只能產生一張電子名片。</li>
                   <li>名片產生後會生成唯一的 Slug，訪客通過 /u/slug 訪問。</li>
+                  <li>帳號到期後名片會由系統自動停用；已過期或已停用的帳號不能重新啟用名片。</li>
+                  <li>試用暫停或結束後不能啟用名片；名片狀態會跟隨試用的暫停/恢復。</li>
                   <li>呼叫中心坐席必須先有電子名片才能被添加到呼叫中心。</li>
                 </ul>
               </div>
