@@ -21,6 +21,7 @@
   var callStartTime = 0;
   var callTimerInterval = null;
   var videoUpgradeInProgress = false;
+  var keyframeKickTimer = null;
 
   var callOverlay = document.getElementById('callOverlay');
   var callStatusEl = document.getElementById('callStatusText');
@@ -351,6 +352,10 @@
   }
 
   function cleanupCall() {
+    if (keyframeKickTimer) {
+      clearInterval(keyframeKickTimer);
+      keyframeKickTimer = null;
+    }
     if (currentSession) {
       try { currentSession.terminate(); } catch (e) {}
       currentSession = null;
@@ -766,13 +771,44 @@
     });
 
     navigator.mediaDevices.getUserMedia({
-      video: { width: 640, height: 480, frameRate: 20 },
+      // 低分辨率/低帧率压制发送码率，降低跨国链路 UDP 分片丢包（320x240@15fps）
+      video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } },
     }).then(function (videoStream) {
       var videoTrack = videoStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error('攝像頭不可用');
       if (localStream && videoTrack) localStream.addTrack(videoTrack);
       if (videoTrack) {
         currentPeerConnection.addTrack(videoTrack, localStream || videoStream);
+      }
+      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
+      try {
+        var videoSender = (currentPeerConnection.getSenders() || []).find(function (s) { return s.track && s.track.kind === 'video'; });
+        if (videoSender) {
+          var sendParams = videoSender.getParameters();
+          if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
+          sendParams.encodings.forEach(function (enc) {
+            enc.maxBitrate = 300000;
+            enc.maxFramerate = 15;
+          });
+          videoSender.setParameters(sendParams).catch(function () {});
+          // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
+          // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
+          if (keyframeKickTimer) clearInterval(keyframeKickTimer);
+          var kickAlt = false;
+          keyframeKickTimer = setInterval(function () {
+            kickAlt = !kickAlt;
+            var p = videoSender.getParameters();
+            if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
+            p.encodings.forEach(function (enc) {
+              enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
+              enc.maxBitrate = 300000;
+              enc.maxFramerate = 15;
+            });
+            videoSender.setParameters(p).catch(function () {});
+          }, 2000);
+        }
+      } catch (err) {
+        logSafe('upgradeToVideo tune error', { message: err && err.message ? String(err.message) : '' });
       }
       if (localVideo) {
         localVideo.srcObject = localStream || videoStream;
