@@ -366,6 +366,7 @@ const AccessControl = forwardRef((props, ref) => {
       }),
     })));
     setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).map(r => r.id === data.id ? { ...r, ...data } : r) } : null);
+    fetchCommunities();
   };
 
   const openRoomAuthDrawer = (room, buildingId, buildingName) => {
@@ -624,6 +625,11 @@ const AccessControl = forwardRef((props, ref) => {
 
   const countBoundEntrances = (community) => getCommunityEntrances(community).filter(isBoundEntrance).length;
   const countUsableEntrances = (community) => getCommunityEntrances(community).filter(isUsableEntrance).length;
+
+  const buildEntranceOptions = (community) => [
+    ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community.name })),
+    ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name }))),
+  ].filter(isUsableEntrance).map(e => ({ id: e.id, name: e.name, belongName: e.belongName }));
 
   const getEntranceAuthCount = (community, entranceId) => (community?.authMatrix?.[String(entranceId)] || []).length;
 
@@ -1644,11 +1650,7 @@ const AccessControl = forwardRef((props, ref) => {
                                     ); })()}
                                     <button className="ac-btn-sm" type="button" onClick={(ev) => {
                                       ev.stopPropagation();
-                                      const entranceOptions = [
-                                        ...(c.communityEntrances || []).map(e => ({ ...e, belongName: c.name })),
-                                        ...(c.buildings || []).flatMap(b2 => (b2.entrances || []).map(e => ({ ...e, belongName: b2.name }))),
-                                      ].filter(isUsableEntrance).map(e => ({ id: e.id, name: e.name, belongName: e.belongName }));
-                                      addRoomDialogRef.current?.showModal({ buildingId: b.id, buildingLabel: b.name, entranceOptions });
+                                      addRoomDialogRef.current?.showModal({ buildingId: b.id, buildingLabel: b.name, entranceOptions: buildEntranceOptions(c) });
                                     }}><Plus size={12} /> 添加房間</button>
                                   </div>
                                 </div>
@@ -2200,7 +2202,7 @@ const AccessControl = forwardRef((props, ref) => {
                           <td>{r.sipName || '—'}</td>
                           <td>
                             <div style={{ display: 'flex', gap: '6px' }}>
-                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName }, { id: r.id, roomNumber: r.roomNumber, floor: r.floor, contactPerson: r.contactPerson, contactPhone: r.contactPhone, contactEmail: r.contactEmail, allowVideoCall: r.allowVideoCall }); }}>✎ 編輯</button>
+                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { const community = communities.find(c => (c.buildings || []).some(b => b.id === viewRoomsBuilding.buildingId)); addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName, entranceOptions: buildEntranceOptions(community) }, { id: r.id, roomNumber: r.roomNumber, floor: r.floor, contactPerson: r.contactPerson, contactPhone: r.contactPhone, contactEmail: r.contactEmail, allowVideoCall: r.allowVideoCall }); }}>✎ 編輯</button>
                               <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={async () => { const ok = await handleDeleteRoom(r, viewRoomsBuilding.buildingId); if (ok) setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r2 => r2.id !== r.id) } : null); }}>✕ 刪除</button>
                             </div>
                           </td>
@@ -2934,7 +2936,7 @@ const AccessControl = forwardRef((props, ref) => {
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail, allowVideoCall: roomData.allowVideoCall }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName, entranceOptions: buildEntranceOptions(community) }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail, allowVideoCall: roomData.allowVideoCall }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號管理</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); openRoomAuthDrawer(roomData, roomDropdownOpen.buildingId, bName); }}>🔐 入口授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />

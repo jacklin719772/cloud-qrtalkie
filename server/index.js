@@ -16737,24 +16737,25 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
       return response.status(409).json({ message: `該 SIP 帳號已被房間「${conflict.room_number}」使用。` });
     }
 
-    // 驗證勾選的入口：屬於本租戶、已啟用、且綁定已分配設備
-    let validEntranceIds = [];
-    if (entranceIds.length) {
-      const entranceRows = await connection.query(
-        `SELECT e.id
-           FROM access_entrances e
-           JOIN gate_devices g
-             ON g.id = e.device_id
-            AND g.tenant_id = e.tenant_id
-            AND g.assignment_status = 'assigned'
-          WHERE e.tenant_id = ? AND e.is_active = 1 AND e.id IN (?)`,
-        [request.admin.tenantId, entranceIds]
-      );
-      validEntranceIds = entranceRows.map(row => Number(row.id));
-      if (validEntranceIds.length !== entranceIds.length) {
-        await connection.rollback();
-        return response.status(400).json({ message: "部分入口不可用（未綁定設備、已停用或不屬於本租戶）。" });
-      }
+    // 驗證勾選的入口：屬於本租戶、已啟用、且綁定已分配設備（至少一個）
+    if (entranceIds.length === 0) {
+      await connection.rollback();
+      return response.status(400).json({ message: "請至少選擇一個可開啟的入口。" });
+    }
+    const entranceRows = await connection.query(
+      `SELECT e.id
+         FROM access_entrances e
+         JOIN gate_devices g
+           ON g.id = e.device_id
+          AND g.tenant_id = e.tenant_id
+          AND g.assignment_status = 'assigned'
+        WHERE e.tenant_id = ? AND e.is_active = 1 AND e.id IN (?)`,
+      [request.admin.tenantId, entranceIds]
+    );
+    const validEntranceIds = entranceRows.map(row => Number(row.id));
+    if (validEntranceIds.length !== entranceIds.length) {
+      await connection.rollback();
+      return response.status(400).json({ message: "部分入口不可用（未綁定設備、已停用或不屬於本租戶）。" });
     }
 
     const [dup] = await connection.query(
@@ -16833,22 +16834,51 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
   const contactPhone = sanitizeString(payload.contactPhone, 40) || null;
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
   const allowVideoCall = payload.allowVideoCall === true || payload.allowVideoCall === 1 ? 1 : 0;
+  const entranceIds = Array.isArray(payload.entranceIds)
+    ? [...new Set(payload.entranceIds.map(Number).filter(Boolean))]
+    : [];
+  if (entranceIds.length === 0) {
+    return response.status(400).json({ message: "請至少選擇一個可開啟的入口。" });
+  }
 
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [existing] = await connection.query(
-      "SELECT id, building_id FROM access_rooms WHERE id = ? AND tenant_id = ?",
+      "SELECT id, building_id FROM access_rooms WHERE id = ? AND tenant_id = ? FOR UPDATE",
       [roomId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "房間不存在。" });
+    if (!existing) {
+      await connection.rollback();
+      return response.status(404).json({ message: "房間不存在。" });
+    }
 
     const [dup] = await connection.query(
       "SELECT id FROM access_rooms WHERE building_id = ? AND tenant_id = ? AND room_number = ? AND id != ?",
       [existing.building_id, request.admin.tenantId, roomNumber, roomId]
     );
-    if (dup) return response.status(409).json({ message: `該樓宇下已存在門牌號碼「${roomNumber}」。` });
+    if (dup) {
+      await connection.rollback();
+      return response.status(409).json({ message: `該樓宇下已存在門牌號碼「${roomNumber}」。` });
+    }
+
+    const entranceRows = await connection.query(
+      `SELECT e.id
+         FROM access_entrances e
+         JOIN gate_devices g
+           ON g.id = e.device_id
+          AND g.tenant_id = e.tenant_id
+          AND g.assignment_status = 'assigned'
+        WHERE e.tenant_id = ? AND e.is_active = 1 AND e.id IN (?)`,
+      [request.admin.tenantId, entranceIds]
+    );
+    const validEntranceIds = entranceRows.map(row => Number(row.id));
+    if (validEntranceIds.length !== entranceIds.length) {
+      await connection.rollback();
+      return response.status(400).json({ message: "部分入口不可用（未綁定設備、已停用或不屬於本租戶）。" });
+    }
 
     await connection.query(
       `UPDATE access_rooms
@@ -16857,6 +16887,18 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
       [roomNumber, floor, contactPerson, contactPhone, contactEmail, allowVideoCall, roomId, request.admin.tenantId]
     );
 
+    await connection.query(
+      "DELETE FROM access_room_entrance_auth WHERE room_id = ? AND tenant_id = ?",
+      [roomId, request.admin.tenantId]
+    );
+    const placeholders = validEntranceIds.map(() => "(?, ?, ?)").join(", ");
+    const values = validEntranceIds.flatMap(id => [request.admin.tenantId, id, roomId]);
+    await connection.query(
+      `INSERT IGNORE INTO access_room_entrance_auth (tenant_id, entrance_id, room_id) VALUES ${placeholders}`,
+      values
+    );
+
+    await connection.commit();
     response.json({
       code: 0,
       message: "房間已更新。",
@@ -16870,9 +16912,11 @@ app.put("/api/access-rooms/:id", requireAdmin, async (request, response) => {
         contactPhone,
         contactEmail,
         allowVideoCall: allowVideoCall === 1,
+        authorizedEntranceIds: validEntranceIds,
       }
     });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("編輯房間失敗:", error);
     response.status(500).json({ message: "編輯房間失敗，請稍後再試。" });
   } finally {

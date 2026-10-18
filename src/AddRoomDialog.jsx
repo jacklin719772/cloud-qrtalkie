@@ -24,6 +24,7 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
   const [selectedSipUserId, setSelectedSipUserId] = useState('');
   const [entranceOptions, setEntranceOptions] = useState([]);
   const [selectedEntranceIds, setSelectedEntranceIds] = useState([]);
+  const [entranceAuthLoading, setEntranceAuthLoading] = useState(false);
 
   const isEdit = editId != null;
 
@@ -32,10 +33,19 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       setContext(ctx || { buildingId: null, buildingLabel: '' });
       setSelectedSipUserId('');
       setSelectedEntranceIds([]);
+      setEntranceAuthLoading(false);
       if (editData) {
         setEditId(editData.id);
         setSipAccounts([]);
-        setEntranceOptions([]);
+        setEntranceOptions(Array.isArray(ctx?.entranceOptions) ? ctx.entranceOptions : []);
+        setEntranceAuthLoading(true);
+        apiClient.get(`/access-rooms/${editData.id}/entrance-auth`)
+          .then((res) => {
+            const ids = Array.isArray(res?.data?.entranceIds) ? res.data.entranceIds.map(Number) : [];
+            setSelectedEntranceIds(ids);
+          })
+          .catch(() => setSelectedEntranceIds([]))
+          .finally(() => setEntranceAuthLoading(false));
         requestAnimationFrame(() => fillForm(formRef.current, editData));
       } else {
         setEditId(null);
@@ -83,6 +93,12 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       return;
     }
 
+    if (selectedEntranceIds.length === 0) {
+      showAlert('請至少選擇一個可開啟的入口。');
+      return;
+    }
+    payload.entranceIds = selectedEntranceIds;
+
     if (!isEdit) {
       const sipUserId = Number(selectedSipUserId);
       if (!sipUserId) {
@@ -90,7 +106,6 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
         return;
       }
       payload.sipUserId = sipUserId;
-      payload.entranceIds = selectedEntranceIds;
     }
 
     setIsSaving(true);
@@ -203,29 +218,30 @@ const AddRoomDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
                 </label>
               )}
 
-              {!isEdit && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>可開啟的門（選填）</span>
-                  {entranceOptions.length === 0 ? (
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>暫無可用入口，可稍後在「入口授權」中設定</div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                      {entranceOptions.map((entrance) => (
-                        <label key={entrance.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', cursor: 'pointer', minWidth: 0 }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedEntranceIds.includes(entrance.id)}
-                            onChange={(e) => setSelectedEntranceIds((prev) => e.target.checked ? [...new Set([...prev, entrance.id])] : prev.filter((id) => id !== entrance.id))}
-                            style={{ accentColor: '#3b82f6' }}
-                          />
-                          <span style={{ fontSize: '12px', color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entrance.name}</span>
-                          {entrance.belongName ? <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }}>{entrance.belongName}</span> : null}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>可開啟的門 <b style={{ color: '#dc2626' }}>*</b></span>
+                {entranceAuthLoading ? (
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>授權資料載入中...</div>
+                ) : entranceOptions.length === 0 ? (
+                  <div style={{ fontSize: '11px', color: '#6b7280' }}>暫無可用入口，請先添加並綁定設備的入口後再儲存</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {entranceOptions.map((entrance) => (
+                      <label key={entrance.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', border: '1px solid #374151', borderRadius: '8px', background: '#111827', cursor: 'pointer', minWidth: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedEntranceIds.includes(entrance.id)}
+                          onChange={(e) => setSelectedEntranceIds((prev) => e.target.checked ? [...new Set([...prev, entrance.id])] : prev.filter((id) => id !== entrance.id))}
+                          style={{ accentColor: '#3b82f6' }}
+                        />
+                        <span style={{ fontSize: '12px', color: '#e5e7eb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entrance.name}</span>
+                        {entrance.belongName ? <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: 'auto', flexShrink: 0 }}>{entrance.belongName}</span> : null}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <span style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>至少選擇一個可開啟的入口</span>
+              </div>
 
               <label>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>所在樓層</span>
