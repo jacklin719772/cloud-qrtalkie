@@ -550,10 +550,11 @@
     currentPeerConnection = pc;
     applyCodecPreferences(pc);
     if (directVideoMode && isVideoCall) {
-      tuneVideoSender(pc);
+      var lowBitrateSettings = { maxBitrate: 120000, maxFramerate: 10 };
+      tuneVideoSender(pc, lowBitrateSettings);
       // sender 参数可能需要协商后才可设置，补一次延迟重试
       setTimeout(function () {
-        if (currentPeerConnection === pc) tuneVideoSender(pc);
+        if (currentPeerConnection === pc) tuneVideoSender(pc, lowBitrateSettings);
       }, 1500);
     }
     try {
@@ -705,7 +706,7 @@
     setCallStatus(directVideo ? '正在建立視訊通話（測試）...' : (isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...'));
 
     var mediaConstraints = directVideo
-      ? { audio: true, video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } } }
+      ? { audio: true, video: { width: { max: 160 }, height: { max: 120 }, frameRate: { max: 10 } } }
       : { audio: true, video: false };
     navigator.mediaDevices.getUserMedia(mediaConstraints)
       .then(function (stream) {
@@ -842,17 +843,19 @@
     currentSession = ua.call(callSessionData.targetSipUri, options);
   }
 
-  function tuneVideoSender(pc) {
+  function tuneVideoSender(pc, settings) {
     if (!pc) return;
+    var maxBitrate = settings && settings.maxBitrate ? settings.maxBitrate : 300000;
+    var maxFramerate = settings && settings.maxFramerate ? settings.maxFramerate : 15;
     try {
       var videoSender = (pc.getSenders() || []).find(function (s) { return s.track && s.track.kind === 'video'; });
       if (!videoSender) return;
-      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
+      // 压制视频发送码率与帧率上限，避免大关键帧分片损毁导致持续花屏
       var sendParams = videoSender.getParameters();
       if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
       sendParams.encodings.forEach(function (enc) {
-        enc.maxBitrate = 300000;
-        enc.maxFramerate = 15;
+        enc.maxBitrate = maxBitrate;
+        enc.maxFramerate = maxFramerate;
       });
       videoSender.setParameters(sendParams).catch(function () {});
       // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
@@ -865,8 +868,8 @@
         if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
         p.encodings.forEach(function (enc) {
           enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
-          enc.maxBitrate = 300000;
-          enc.maxFramerate = 15;
+          enc.maxBitrate = maxBitrate;
+          enc.maxFramerate = maxFramerate;
         });
         videoSender.setParameters(p).catch(function () {});
       }, 2000);
