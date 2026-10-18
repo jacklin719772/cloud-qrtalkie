@@ -293,7 +293,7 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
       </nav>
 
       <div className="sidebar-foot">
-        <img className="sidebar-foot-logo" src="/assets/qrtalkie-logo.svg" alt="" />
+        <img className="sidebar-foot-logo" src="/assets/qrtalkie-logo-blue.jpg" alt="" />
         {!isCollapsed && (
           <div>
             <small>All Right Reserverd QRTalkie</small>

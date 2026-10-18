@@ -12611,6 +12611,26 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
   }
 });
 
+async function loadTenantEcardOwnership(connection, sipUserId, tenantId) {
+  const [row] = await connection.query(
+    `SELECT su.id, su.tenant_id, su.status AS account_status,
+            ta.id AS trial_id, ta.status AS trial_status
+     FROM sip_users su
+     LEFT JOIN trial_assignments ta
+       ON ta.sip_user_id = su.id
+      AND ta.owner_tenant_id = ?
+      AND ta.status IN ('active', 'paused')
+     WHERE su.id = ?
+     LIMIT 1`,
+    [tenantId, sipUserId],
+  );
+  if (!row) return null;
+  const tenantOwned = Number(row.tenant_id) === Number(tenantId);
+  const trialOwned = row.trial_id != null;
+  if (!tenantOwned && !trialOwned) return null;
+  return { ...row, tenantOwned, trialOwned };
+}
+
 app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "平臺管理員無法直接檢視租戶電子名片。" });
@@ -12637,9 +12657,15 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
          ec.access_slug,
          au.display_name AS created_by,
          t.name AS tenant_name,
-         DATE_FORMAT(ec.created_at, '%Y-%m-%d') AS created_at
+         DATE_FORMAT(ec.created_at, '%Y-%m-%d') AS created_at,
+         ta.id AS trial_id,
+         ta.status AS trial_status
        FROM sip_users su
-       LEFT JOIN tenant_web_account_entitlements ent 
+       LEFT JOIN trial_assignments ta
+         ON ta.sip_user_id = su.id
+        AND ta.owner_tenant_id = ?
+        AND ta.status IN ('active', 'paused')
+       LEFT JOIN tenant_web_account_entitlements ent
          ON su.id = ent.sip_user_id AND ent.tenant_id = su.tenant_id AND ent.status = 'active'
        LEFT JOIN web_users wu 
          ON ent.web_user_id = wu.id
@@ -12649,9 +12675,9 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
          ON su.tenant_id = t.id
        LEFT JOIN admin_users au 
          ON ec.created_by_admin_id = au.id
-       LEFT JOIN tenant_contact_book_assignments cba ON cba.sip_user_id = su.id AND cba.status != 'revoked' LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id AND tcb.tenant_id = su.tenant_id WHERE su.tenant_id = ? AND su.status = 'active'
+       LEFT JOIN tenant_contact_book_assignments cba ON cba.sip_user_id = su.id AND cba.status != 'revoked' LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id AND tcb.tenant_id = su.tenant_id WHERE (su.tenant_id = ? OR ta.id IS NOT NULL) AND su.status = 'active'
        ORDER BY su.username ASC`,
-      [request.admin.tenantId]
+      [request.admin.tenantId, request.admin.tenantId]
     );
 
     const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
@@ -12676,6 +12702,8 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
         createdBy: row.created_by || "",
         createdAt: row.created_at || "",
         tenantName: row.tenant_name || "",
+        isTrial: row.trial_id != null,
+        trialStatus: row.trial_status || null,
       };
     });
 
@@ -13037,10 +13065,11 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
       }
     }
 
-    const [su] = await connection.query(`SELECT id FROM sip_users WHERE id = ? AND tenant_id = ?`, [sipUserId, request.admin.tenantId]);
-    if (!su) {
+    const ownership = await loadTenantEcardOwnership(connection, sipUserId, request.admin.tenantId);
+    if (!ownership) {
       return response.status(404).json({ message: "SIP 帳號不存在或不屬於當前租戶" });
     }
+    const ecardTenantId = ownership.tenantOwned ? request.admin.tenantId : Number(ownership.tenant_id);
 
     let avatarUrl = payload.avatarDataUrl || "";
     if (avatarUrl.startsWith("data:")) {
@@ -13078,7 +13107,7 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (req
          ecard_data_json = VALUES(ecard_data_json),
          updated_at = NOW()`,
       [
-        request.admin.tenantId,
+        ecardTenantId,
         sipUserId,
         payload.accessSlug || null,
         avatarUrl || null,
@@ -13108,6 +13137,8 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
   let connection;
   try {
     connection = await pool.getConnection();
+    const ownership = await loadTenantEcardOwnership(connection, sipUserId, request.admin.tenantId);
+    if (!ownership) return response.status(404).json({ message: "SIP 帳號不存在或不屬於當前租戶" });
     const [ec] = await connection.query(
       `SELECT ec.ecard_data_json, ec.card_data_json, ec.thumbnail_url, ec.avatar_url, ec.access_slug,
               DATE_FORMAT(COALESCE(ec.valid_from, su.activated_at), '%Y-%m-%d') AS valid_from,
@@ -13115,8 +13146,8 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard", requireAdmin, async (requ
               ec.status
        FROM sip_users su
        LEFT JOIN tenant_ecards ec ON ec.sip_user_id = su.id AND ec.tenant_id = su.tenant_id
-       WHERE su.id = ? AND su.tenant_id = ?`,
-      [sipUserId, request.admin.tenantId]
+       WHERE su.id = ?`,
+      [sipUserId]
     );
     if (!ec) return response.status(404).json({ message: "SIP 帳號不存在" });
     return response.json({
@@ -13300,12 +13331,9 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard/qrcode", requireAdmin, asyn
   let connection;
   try {
     connection = await pool.getConnection();
-    const [su] = await connection.query(
-      "SELECT id FROM sip_users WHERE id = ? AND tenant_id = ? LIMIT 1",
-      [sipUserId, request.admin.tenantId],
-    );
-    if (!su) return response.status(404).json({ success: false, message: "SIP 帳號不存在" });
-    const data = await buildEcardAccessPayload(connection, sipUserId, request.admin.tenantId);
+    const ownership = await loadTenantEcardOwnership(connection, sipUserId, request.admin.tenantId);
+    if (!ownership) return response.status(404).json({ success: false, message: "SIP 帳號不存在或不屬於當前租戶" });
+    const data = await buildEcardAccessPayload(connection, sipUserId, Number(ownership.tenant_id));
     return response.json({ success: true, data });
   } catch (error) {
     console.error("[ecard/qrcode] error:", error?.message || error);
@@ -13969,37 +13997,38 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
   let connection;
   try {
     connection = await pool.getConnection();
+    const ownership = await loadTenantEcardOwnership(connection, sipUserId, request.admin.tenantId);
+    if (!ownership) {
+      return response.status(404).json({ message: "該帳號不存在或不屬於當前租戶。" });
+    }
+    const ecardTenantId = ownership.tenantOwned ? request.admin.tenantId : Number(ownership.tenant_id);
     if (status === 'active') {
-      const [sip] = await connection.query(
-        `SELECT su.id, su.status,
-                EXISTS(
-                  SELECT 1 FROM tenant_sip_account_entitlements e
-                  WHERE e.sip_user_id = su.id
-                    AND e.tenant_id = ?
-                    AND e.status = 'active'
-                    AND (e.service_expires_at IS NULL OR e.service_expires_at >= CURDATE())
-                ) AS has_active_entitlement
-         FROM sip_users su
-         WHERE su.id = ? AND su.tenant_id = ?
-         LIMIT 1`,
-        [request.admin.tenantId, sipUserId, request.admin.tenantId],
-      );
-      if (!sip) {
-        return response.status(404).json({ message: "該帳號不存在或不屬於當前租戶。" });
+      if (ownership.account_status !== 'active') {
+        return response.status(409).json({ message: "該帳號已停用或權益已過期，不能啟用電子名片。" });
       }
-      if (sip.status !== 'active' || Number(sip.has_active_entitlement) !== 1) {
+      if (ownership.trialOwned && ownership.trial_status !== 'active') {
+        return response.status(409).json({ message: "該試用已暫停或結束，不能啟用電子名片。" });
+      }
+      const [entitlement] = await connection.query(
+        `SELECT id FROM tenant_sip_account_entitlements e
+         WHERE e.sip_user_id = ? AND e.tenant_id = ? AND e.status = 'active'
+           AND (e.service_expires_at IS NULL OR e.service_expires_at >= CURDATE())
+         LIMIT 1`,
+        [sipUserId, ecardTenantId],
+      );
+      if (!entitlement) {
         return response.status(409).json({ message: "該帳號已停用或權益已過期，不能啟用電子名片。" });
       }
     }
     const result = await connection.query(
       `UPDATE tenant_ecards SET status = ?, updated_at = NOW() WHERE tenant_id = ? AND sip_user_id = ?`,
-      [status, request.admin.tenantId, sipUserId]
+      [status, ecardTenantId, sipUserId]
     );
     if (result.affectedRows === 0) {
       // 优化：如果 affectedRows 为 0，可能只是狀態没变，而不是不存在。需进一步检查
       const [check] = await connection.query(
         `SELECT id FROM tenant_ecards WHERE tenant_id = ? AND sip_user_id = ?`,
-        [request.admin.tenantId, sipUserId]
+        [ecardTenantId, sipUserId]
       );
       if (check.length === 0) {
         return response.status(404).json({ message: "該帳號尚未配置電子名片。" });

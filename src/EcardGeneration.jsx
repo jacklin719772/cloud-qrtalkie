@@ -1000,6 +1000,10 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       alert('該帳號尚未配置名片，無法啟用/停用。');
       return;
     }
+    if (!item.enabled && item.isTrial && item.trialStatus !== 'active') {
+      alert('該試用已暫停或結束，不能啟用名片。');
+      return;
+    }
     if (!item.enabled && checkExpirationStatus(item.validTo) === 'expired') {
       alert('該電子名片已到期，無法重新啟用。');
       return;
@@ -1045,18 +1049,22 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     const expiredSkipped = status === 'active'
       ? actualTargets.filter(acc => checkExpirationStatus(acc.validTo) === 'expired')
       : [];
-    const finalTargets = actualTargets.filter(acc => !expiredSkipped.includes(acc));
+    const trialSkipped = status === 'active'
+      ? actualTargets.filter(acc => acc.isTrial && acc.trialStatus !== 'active')
+      : [];
+    const skippedTargets = Array.from(new Set([...expiredSkipped, ...trialSkipped]));
+    const finalTargets = actualTargets.filter(acc => !skippedTargets.includes(acc));
 
     if (actualTargets.length === 0) {
       window.alert(`選中的帳號均已處於${actionLabel}狀態。`);
       return;
     }
     if (finalTargets.length === 0) {
-      window.alert(`選中的電子名片均已到期，無法${actionLabel}。`);
+      window.alert(`選中的電子名片均已到期或試用已暫停，無法${actionLabel}。`);
       return;
     }
-    if (expiredSkipped.length > 0) {
-      window.alert(`有 ${expiredSkipped.length} 個電子名片已到期，已自動跳過。`);
+    if (skippedTargets.length > 0) {
+      window.alert(`有 ${skippedTargets.length} 個電子名片已到期或試用已暫停，已自動跳過。`);
     }
 
     if (!window.confirm(`確定要${actionLabel}選中的 ${finalTargets.length} 個電子名片嗎？`)) return;
@@ -2347,7 +2355,14 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   <td>
                     <div className="ecard-generation-account-cell" style={{ gap: '12px' }}>
                       <div className="ecard-generation-account-info">
-                        <strong>{item.userName}</strong>
+                        <strong>
+                          {item.userName}
+                          {item.isTrial && (
+                            <span style={{ marginLeft: 6, fontSize: 10, color: '#7dd3fc', border: '1px solid #0c4a6e', backgroundColor: 'rgba(12,74,110,0.35)', borderRadius: 4, padding: '0 4px', whiteSpace: 'nowrap' }}>
+                              {item.trialStatus === 'paused' ? '試用·暫停' : '試用'}
+                            </span>
+                          )}
+                        </strong>
                         <span>{item.sipAccount}</span>
                       </div>
                     </div>
@@ -2440,7 +2455,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                             {item.configured ? '編輯' : '創建'}
                           </button>
                           <button type="button" className="dropdown-item" disabled={!item.configured || !(item.ecardImageUrl || item.ecardThumbnailUrl || item.thumbnailDataUrl)} onClick={(e) => handleDownloadEcardImage(item, e)}>下載</button>
-                          {!(!item.enabled && checkExpirationStatus(item.validTo) === 'expired') && (
+                          {!(!item.enabled && ((item.isTrial && item.trialStatus !== 'active') || checkExpirationStatus(item.validTo) === 'expired')) && (
                             <button type="button" className="dropdown-item" onClick={() => handleToggleStatus(item)}>{item.enabled ? '停用' : '啟用'}</button>
                           )}
                         </div>, 
