@@ -22,7 +22,6 @@
   var videoUpgradeInProgress = false;
   var keyframeKickTimer = null;
   var directVideoMode = false;
-  var directPreparing = false;
 
   var callOverlay = document.getElementById('callOverlay');
   var callStatusEl = document.getElementById('callStatusText');
@@ -254,62 +253,41 @@
 
   var confirmCallSessionData = null;
 
-  function fetchCallSessionForConfirm(roomData, callType, options) {
-    var isDirect = Boolean(options && options.direct);
+  function fetchCallSessionForConfirm(roomData, callType) {
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/access/room-call-session');
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       try {
-        if (isDirect && !directPreparing) return;
         var res = JSON.parse(xhr.responseText);
         var normalized = res && res.success ? res.data : null;
         if (normalized && normalized.webAccount) {
           confirmCallSessionData = normalized;
           // Start Web registration
-          initUAForConfirm(roomData, callType, options);
-        } else if (isDirect) {
-          setCallStatus((res && res.message) || '無法取得通話配置，請稍後再試。', true);
-          setTimeout(function () { cleanupCall(); }, 3000);
+          initUAForConfirm(roomData, callType);
         } else {
           setConfirmWebStatus('failed');
           if (confirmHintEl) confirmHintEl.textContent = (res && res.message) || '無法取得通話配置，請稍後再試。';
         }
       } catch (e) {
-        if (isDirect) {
-          setCallStatus('服務回應異常，請稍後再試。', true);
-          setTimeout(function () { cleanupCall(); }, 3000);
-        } else {
-          setConfirmWebStatus('failed');
-          if (confirmHintEl) confirmHintEl.textContent = '服務回應異常，請稍後再試。';
-        }
+        setConfirmWebStatus('failed');
+        if (confirmHintEl) confirmHintEl.textContent = '服務回應異常，請稍後再試。';
       }
     };
     xhr.onerror = function () {
-      if (isDirect) {
-        setCallStatus('網絡錯誤，請稍後再試。', true);
-        setTimeout(function () { cleanupCall(); }, 3000);
-      } else {
-        setConfirmWebStatus('failed');
-        if (confirmHintEl) confirmHintEl.textContent = '網絡錯誤，請稍後再試。';
-      }
+      setConfirmWebStatus('failed');
+      if (confirmHintEl) confirmHintEl.textContent = '網絡錯誤，請稍後再試。';
     };
     xhr.send(JSON.stringify({ roomId: roomData.roomId, lockId: roomData.lockId }));
   }
 
-  function initUAForConfirm(roomData, callType, options) {
-    var isDirect = Boolean(options && options.direct);
+  function initUAForConfirm(roomData, callType) {
     if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
     var data = confirmCallSessionData;
     if (!data) return;
 
     ensureJsSIPLoaded().then(function (JS) {
-      if (!JS) {
-        if (isDirect) { setCallStatus('通話模組載入失敗', true); cleanupCall(); }
-        else setConfirmWebStatus('failed');
-        return;
-      }
-      if (isDirect && !directPreparing) return;
+      if (!JS) { setConfirmWebStatus('failed'); return; }
       var socket = new JS.WebSocketInterface(data.wssUrl);
       ua = new JS.UA({
         sockets: [socket],
@@ -319,25 +297,12 @@
       });
       ua.on('registered', function () {
         injectSdpPatch(data.sipServerPublicIp);
-        if (isDirect) {
-          if (!directPreparing) return;
-          directPreparing = false;
-          callSessionData = data;
-          prepareAndCall(roomData, callType, { directVideo: true });
-          return;
-        }
         setConfirmWebStatus('registered');
         setCallSipStatus(data.sipOnline);
         startConfirmCountdown();
       });
-      ua.on('registrationFailed', function () {
-        if (isDirect) { setCallStatus('通話服務註冊失敗', true); setTimeout(function () { cleanupCall(); }, 2000); }
-        else setConfirmWebStatus('failed');
-      });
-      ua.on('disconnected', function () {
-        if (isDirect) { setCallStatus('通話服務已斷開', true); cleanupCall(); }
-        else setConfirmWebStatus('failed');
-      });
+      ua.on('registrationFailed', function () { setConfirmWebStatus('failed'); });
+      ua.on('disconnected', function () { setConfirmWebStatus('failed'); });
       ua.start();
     });
   }
@@ -418,7 +383,6 @@
     activeCall = false;
     isVideoCall = false;
     directVideoMode = false;
-    directPreparing = false;
     callSessionData = null;
     stopTimer();
     hideCallUI();
@@ -550,11 +514,10 @@
     currentPeerConnection = pc;
     applyCodecPreferences(pc);
     if (directVideoMode && isVideoCall) {
-      var lowBitrateSettings = { maxBitrate: 120000, maxFramerate: 10 };
-      tuneVideoSender(pc, lowBitrateSettings);
+      tuneVideoSender(pc);
       // sender 参数可能需要协商后才可设置，补一次延迟重试
       setTimeout(function () {
-        if (currentPeerConnection === pc) tuneVideoSender(pc, lowBitrateSettings);
+        if (currentPeerConnection === pc) tuneVideoSender(pc);
       }, 1500);
     }
     try {
@@ -672,9 +635,16 @@
     if (!callStartTime) startTimer();
   }
 
-  function prepareAndCall(roomData, callType, options) {
+  function isUpgradeVideoMode() {
+    try {
+      return (new URLSearchParams(location.search)).get('videoMode') === 'upgrade';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function prepareAndCall(roomData, callType) {
     if (activeCall) return;
-    var directVideo = Boolean(options && options.directVideo) && callType === 'video';
     if (!callSessionData) {
       setCallStatus('呼叫配置未就緒', true);
       return;
@@ -698,53 +668,75 @@
       return;
     }
 
+    // 默認直接視頻；?videoMode=upgrade 可臨時切回「先語音再升級」
+    var directVideo = callType === 'video' && !isUpgradeVideoMode();
     isVideoCall = Boolean(callType === 'video' && callSessionData.enableVideo);
+    directVideoMode = Boolean(directVideo && isVideoCall);
     activeCall = true;
     showCallUI();
     if (callRoomEl) callRoomEl.textContent = roomData.roomDisplay || (roomData.roomNumber ? roomData.roomNumber + '室' : '');
     if (btnToggleVideo) btnToggleVideo.style.display = isVideoCall ? 'inline-flex' : 'none';
-    setCallStatus(directVideo ? '正在建立視訊通話（測試）...' : (isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...'));
+    setCallStatus(directVideoMode ? '正在建立視訊通話...' : (isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...'));
 
-    var mediaConstraints = directVideo
-      ? { audio: true, video: { width: { max: 160 }, height: { max: 120 }, frameRate: { max: 10 } } }
+    function startCallWithStream(stream) {
+      // 取得媒體期間使用者可能已掛斷/清理，避免幽靈呼叫
+      if (!activeCall) {
+        stream.getTracks().forEach(function (track) { try { track.stop(); } catch (e) {} });
+        return;
+      }
+      localStream = stream;
+      logLocalTracks(stream, 'local media ready');
+      if (isVideoCall && localVideo) {
+        localVideo.srcObject = stream;
+        localVideo.style.display = 'block';
+      }
+      if (directVideoMode) {
+        var icon = document.getElementById('btnToggleVideoIcon');
+        if (icon) icon.src = '/visitor-assets/camera-on.svg';
+      }
+      // UA already registered from confirm modal, skip recreation
+      if (ua && ua.isRegistered()) {
+        logSafe('UA already registered, reuse', {});
+        callViaUa(roomData);
+      } else {
+        return ensureJsSIPLoaded().then(function (JS) {
+          if (!JS) throw new Error('JsSIP 載入失敗');
+          JsSIP = JS;
+          if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
+          var socket = new JsSIP.WebSocketInterface(callSessionData.wssUrl);
+          ua = new JsSIP.UA({
+            sockets: [socket],
+            uri: 'sip:' + callSessionData.webAccount + '@' + callSessionData.webrtcDomain,
+            password: callSessionData.credential.value,
+            register: true,
+          });
+          registerNewUA(roomData);
+        });
+      }
+    }
+
+    var mediaConstraints = directVideoMode
+      ? { audio: true, video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } } }
       : { audio: true, video: false };
     navigator.mediaDevices.getUserMedia(mediaConstraints)
-      .then(function (stream) {
-        // 取得媒體期間使用者可能已掛斷/清理，避免幽靈呼叫
-        if (!activeCall) {
-          stream.getTracks().forEach(function (track) { try { track.stop(); } catch (e) {} });
-          return;
+      .catch(function (err) {
+        if (!directVideoMode) throw err;
+        // 直接視頻：攝像頭不可用時退回純語音，不讓整通呼叫失敗
+        logSafe('direct video media failed, fallback to audio', {
+          name: err && err.name ? String(err.name) : '',
+          message: err && err.message ? String(err.message) : '',
+        });
+        isVideoCall = false;
+        directVideoMode = false;
+        if (btnToggleVideo) btnToggleVideo.style.display = 'none';
+        if (localVideo) {
+          localVideo.srcObject = null;
+          localVideo.style.display = 'none';
         }
-        localStream = stream;
-        logLocalTracks(stream, 'local media ready');
-        if (isVideoCall && localVideo) {
-          localVideo.srcObject = stream;
-          localVideo.style.display = 'block';
-        }
-        if (directVideo) {
-          var icon = document.getElementById('btnToggleVideoIcon');
-          if (icon) icon.src = '/visitor-assets/camera-on.svg';
-        }
-        // UA already registered from confirm modal, skip recreation
-        if (ua && ua.isRegistered()) {
-          logSafe('UA already registered, reuse', {});
-          callViaUa(roomData);
-        } else {
-          return ensureJsSIPLoaded().then(function (JS) {
-            if (!JS) throw new Error('JsSIP 載入失敗');
-            JsSIP = JS;
-            if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
-            var socket = new JsSIP.WebSocketInterface(callSessionData.wssUrl);
-            ua = new JsSIP.UA({
-              sockets: [socket],
-              uri: 'sip:' + callSessionData.webAccount + '@' + callSessionData.webrtcDomain,
-              password: callSessionData.credential.value,
-              register: true,
-            });
-            registerNewUA(roomData);
-          });
-        }
+        setCallStatus('攝像頭不可用，已改為語音通話');
+        return navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       })
+      .then(startCallWithStream)
       .catch(function (err) {
         logSafe('prepare call error', { name: err && err.name ? String(err.name) : '', message: err && err.message ? String(err.message) : '' });
         setCallStatus(getMediaErrorMessage(err), true);
@@ -990,27 +982,6 @@
     showConfirmModal(roomData, callType);
   }
 
-  // 測試用：不經過確認彈窗，直接以音訊+視訊發起初始呼叫（不走先語音再升級）
-  function requestDirectVideo(roomData) {
-    if (!roomData || !roomData.roomId) {
-      alert('無法獲取房間或設備資訊，請重新整理頁面。');
-      return;
-    }
-    if (activeCall || directPreparing) return;
-    directPreparing = true;
-    directVideoMode = true;
-    pendingRoomData = roomData;
-    pendingCallType = 'video';
-    showCallUI();
-    if (callRoomEl) callRoomEl.textContent = roomData.roomDisplay || (roomData.roomNumber ? roomData.roomNumber + '室' : '');
-    setCallStatus('正在準備視訊呼叫（測試）...');
-    logSafe('direct video test start', {
-      roomNumber: roomData.roomNumber || '',
-      roomId: roomData.roomId || 0,
-    });
-    fetchCallSessionForConfirm(roomData, 'video', { direct: true });
-  }
-
   function confirmCall() {
     if (!pendingRoomData) return;
     clearConfirmCountdown();
@@ -1032,7 +1003,6 @@
 
   window.AccessVisitorCall = {
     requestCall: requestCall,
-    requestDirectVideo: requestDirectVideo,
     confirmCall: confirmCall,
     cancelConfirm: cancelConfirm,
     hangup: hangup,
