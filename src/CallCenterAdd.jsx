@@ -917,9 +917,12 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
       <div className="cc-add-header">
         <h2 className="cc-add-title">{context?.mode === 'edit' ? '編輯呼叫中心' : '新增呼叫中心'}</h2>
         <div className="cc-add-actions">
-          <button 
-            type="button" 
-            className="cc-btn cc-btn-preview" 
+          <button type="button" className="cc-btn cc-btn-primary" onClick={handleSaveAndPublish} disabled={isSaving}>
+            {isSaving ? '儲存中...' : '儲存並釋出'}
+          </button>
+          <button
+            type="button"
+            className="cc-btn cc-btn-preview"
             style={{ color: '#60a5fa', borderColor: '#1e3a5f', background: '#1e293b' }}
             onClick={() => window.open(callUrl, '_blank')}
           >
@@ -928,9 +931,6 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
             <ExternalLink size={14} style={{ marginLeft: '2px', opacity: 0.7 }} />
           </button>
           <button type="button" className="cc-btn cc-btn-outline" onClick={onReturn} disabled={isSaving}>返回列表</button>
-          <button type="button" className="cc-btn cc-btn-primary" onClick={handleSaveAndPublish} disabled={isSaving}>
-            {isSaving ? '儲存中...' : '儲存並釋出'}
-          </button>
         </div>
       </div>
 
