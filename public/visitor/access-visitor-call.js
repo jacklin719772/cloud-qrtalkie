@@ -631,7 +631,7 @@
     isVideoCall = Boolean(callType === 'video' && callSessionData.enableVideo);
     activeCall = true;
     showCallUI();
-    if (callRoomEl) callRoomEl.textContent = (roomData.roomDisplay || roomData.roomNumber || '') + '室';
+    if (callRoomEl) callRoomEl.textContent = roomData.roomDisplay || (roomData.roomNumber ? roomData.roomNumber + '室' : '');
     if (btnToggleVideo) btnToggleVideo.style.display = isVideoCall ? 'inline-flex' : 'none';
     setCallStatus(isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...');
 
