@@ -585,6 +585,31 @@
     </div>
   </div>
 
+  <style>
+    #ecardDrawerOverlay { position: fixed; inset: 0; z-index: 100000; pointer-events: none; }
+    #ecardDrawerBackdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); opacity: 0; transition: opacity 0.25s ease; }
+    #ecardDrawerPanel { position: absolute; top: 0; right: 0; bottom: 0; width: min(520px, 100vw); background: #0d1117; box-shadow: -18px 0 45px rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.28s ease; }
+    #ecardDrawerOverlay.open { pointer-events: auto; }
+    #ecardDrawerOverlay.open #ecardDrawerBackdrop { opacity: 1; }
+    #ecardDrawerOverlay.open #ecardDrawerPanel { transform: translateX(0); }
+    #ecardDrawerHeader { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #1f2937; background: #111827; color: #e5e7eb; }
+    #ecardDrawerFrame { flex: 1; width: 100%; border: 0; background: #fff; }
+    @media (max-width: 640px) { #ecardDrawerPanel { width: 100vw; } }
+  </style>
+  <div id="ecardDrawerOverlay">
+    <div id="ecardDrawerBackdrop" onclick="closeEcardDrawer()"></div>
+    <aside id="ecardDrawerPanel" role="dialog" aria-modal="true" aria-label="在線交流">
+      <div id="ecardDrawerHeader">
+        <div>
+          <div id="ecardDrawerTitle" style="font-size:15px;font-weight:700;">在線交流</div>
+          <div id="ecardDrawerSubtitle" style="font-size:12px;color:#9ca3af;margin-top:2px;"></div>
+        </div>
+        <button type="button" onclick="closeEcardDrawer()" title="關閉" style="background:none;border:none;color:#9ca3af;font-size:24px;line-height:1;cursor:pointer;padding:0 4px;">×</button>
+      </div>
+      <iframe id="ecardDrawerFrame" src="about:blank" title="在線交流" allow="camera; microphone; autoplay; clipboard-write; fullscreen" allowfullscreen></iframe>
+    </aside>
+  </div>
+
   <script>
     const data = window.__CALL_CENTER_DATA__ || {
       name: "QRTalkie 全球技術支援中心",
@@ -729,7 +754,7 @@
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '<div class="contact-item">📱 -</div>') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '<div class="contact-item">✉ -</div>') +
         '</div><div class="agent-actions">' +
-          (a.ecardSlug ? '<a class="btn-call" href="' + (data.ecardBaseUrl || '') + '/u/' + a.ecardSlug + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">💬 在線交流</a>' : '<button class="btn-call" disabled title="此坐席暫無可用的交流連結" style="opacity:0.5;cursor:not-allowed;">💬 在線交流</button>') +
+          (a.ecardSlug ? '<button type="button" class="btn-call" onclick="openEcardDrawer(\'' + esc(a.name) + '\', \'' + esc(a.sip) + '\', \'' + esc(a.ecardSlug) + '\')">💬 在線交流</button>' : '<button class="btn-call" disabled title="此坐席暫無可用的交流連結" style="opacity:0.5;cursor:not-allowed;">💬 在線交流</button>') +
           '<button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
       }).join('');
     }
@@ -742,6 +767,29 @@
       document.getElementById('callPopup').style.display = 'flex';
     }
     function closeCallPopup() { document.getElementById('callPopup').style.display = 'none'; }
+
+    function openEcardDrawer(name, sip, slug) {
+      if (!slug) return;
+      var overlay = document.getElementById('ecardDrawerOverlay');
+      var frame = document.getElementById('ecardDrawerFrame');
+      var base = data.ecardBaseUrl || window.location.origin;
+      var subtitle = [name, sip].filter(Boolean).join(' · ');
+      document.getElementById('ecardDrawerSubtitle').textContent = subtitle;
+      frame.src = String(base).replace(/\/$/, '') + '/u/' + encodeURIComponent(slug);
+      overlay.classList.add('open');
+    }
+
+    function closeEcardDrawer() {
+      var overlay = document.getElementById('ecardDrawerOverlay');
+      var frame = document.getElementById('ecardDrawerFrame');
+      if (!overlay) return;
+      overlay.classList.remove('open');
+      if (frame) frame.src = 'about:blank';
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closeEcardDrawer();
+    });
 
     function selectMobileCat(el, catId, catName) {
       document.getElementById('mobileAgentTitle').textContent = catName;
