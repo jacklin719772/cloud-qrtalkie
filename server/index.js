@@ -11035,6 +11035,78 @@ app.put("/api/admin/gate-devices/:id", requireAdmin, async (request, response) =
   }
 });
 
+// 裝置測試結果 → HTTP 回應（平台與租戶共用）
+function respondToDeviceTest(response, deviceUuid, result) {
+  const base = {
+    deviceUuid,
+    deviceStatus: result.deviceStatus || null,
+    elapsedMs: result.elapsedMs ?? null,
+  };
+
+  switch (result.reason) {
+    case 'ok':
+      return response.json({
+        success: true,
+        message: "設備回應正常。",
+        data: { ...base, replyStatus: result.status || "OK" },
+      });
+    case 'device_error':
+      return response.status(502).json({
+        success: false,
+        code: 'DEVICE_TEST_FAILED',
+        message: `設備回應異常（${result.status || '未知'}）。`,
+        data: { ...base, replyStatus: result.status || "" },
+      });
+    case 'offline':
+      return response.status(409).json({
+        success: false,
+        code: 'DEVICE_OFFLINE',
+        message: "設備離線，無法發送指令。",
+        data: base,
+      });
+    case 'unknown':
+      return response.status(409).json({
+        success: false,
+        code: 'DEVICE_STATUS_UNKNOWN',
+        message: "設備在線狀態未知，請確認設備已上線後重試。",
+        data: base,
+      });
+    case 'timeout':
+      return response.status(504).json({
+        success: false,
+        code: 'DEVICE_TEST_TIMEOUT',
+        message: "指令已發送，但設備在 10 秒內未回應。",
+        data: base,
+      });
+    case 'not_configured':
+      return response.status(400).json({
+        success: false,
+        code: 'DEVICE_NOT_CONFIGURED',
+        message: "設備的 Relay ID、發布主題或訂閱主題配置不完整。",
+        data: base,
+      });
+    case 'mqtt_disconnected':
+      return response.status(503).json({
+        success: false,
+        code: 'MQTT_DISCONNECTED',
+        message: "MQTT 未連接，無法發送指令。",
+        data: base,
+      });
+    case 'not_found':
+      return response.status(404).json({
+        success: false,
+        message: "裝置不存在。",
+        data: base,
+      });
+    default:
+      return response.status(500).json({
+        success: false,
+        message: "裝置測試失敗。",
+        data: base,
+      });
+  }
+}
+
 // POST /api/admin/gate-devices/:id/test - 檢測在線並發送設備配置的測試指令
 app.post("/api/admin/gate-devices/:id/test", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
@@ -11056,74 +11128,7 @@ app.post("/api/admin/gate-devices/:id/test", requireAdmin, async (request, respo
     if (!device) return response.status(404).json({ success: false, message: "裝置不存在。" });
 
     const result = await deviceMqttService.testDevice(device.device_uuid);
-    const base = {
-      deviceUuid: device.device_uuid,
-      deviceStatus: result.deviceStatus || null,
-      elapsedMs: result.elapsedMs ?? null,
-    };
-
-    switch (result.reason) {
-      case 'ok':
-        return response.json({
-          success: true,
-          message: "設備回應正常。",
-          data: { ...base, replyStatus: result.status || "OK" },
-        });
-      case 'device_error':
-        return response.status(502).json({
-          success: false,
-          code: 'DEVICE_TEST_FAILED',
-          message: `設備回應異常（${result.status || '未知'}）。`,
-          data: { ...base, replyStatus: result.status || "" },
-        });
-      case 'offline':
-        return response.status(409).json({
-          success: false,
-          code: 'DEVICE_OFFLINE',
-          message: "設備離線，無法發送指令。",
-          data: base,
-        });
-      case 'unknown':
-        return response.status(409).json({
-          success: false,
-          code: 'DEVICE_STATUS_UNKNOWN',
-          message: "設備在線狀態未知，請確認設備已上線後重試。",
-          data: base,
-        });
-      case 'timeout':
-        return response.status(504).json({
-          success: false,
-          code: 'DEVICE_TEST_TIMEOUT',
-          message: "指令已發送，但設備在 10 秒內未回應。",
-          data: base,
-        });
-      case 'not_configured':
-        return response.status(400).json({
-          success: false,
-          code: 'DEVICE_NOT_CONFIGURED',
-          message: "設備的 Relay ID、發布主題或訂閱主題配置不完整。",
-          data: base,
-        });
-      case 'mqtt_disconnected':
-        return response.status(503).json({
-          success: false,
-          code: 'MQTT_DISCONNECTED',
-          message: "MQTT 未連接，無法發送指令。",
-          data: base,
-        });
-      case 'not_found':
-        return response.status(404).json({
-          success: false,
-          message: "裝置不存在。",
-          data: base,
-        });
-      default:
-        return response.status(500).json({
-          success: false,
-          message: "裝置測試失敗。",
-          data: base,
-        });
-    }
+    return respondToDeviceTest(response, device.device_uuid, result);
   } catch (error) {
     console.error("Failed to test gate device:", error);
     return response.status(500).json({ success: false, message: "裝置測試失敗。" });
@@ -17217,6 +17222,45 @@ app.delete("/api/access-entrances/:id", requireAdmin, async (request, response) 
     if (connection) await connection.rollback().catch(() => {});
     console.error("刪除入口失敗:", error);
     response.status(500).json({ message: "刪除入口失敗，請稍後再試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/access-entrances/:id/test - 租戶測試入口綁定的設備
+app.post("/api/access-entrances/:id/test", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ success: false, message: "只有租戶管理員可以測試入口設備。" });
+  }
+
+  const entranceId = Number(request.params.id);
+  if (!Number.isInteger(entranceId) || entranceId <= 0) {
+    return response.status(400).json({ success: false, message: "無效的入口 ID。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [entrance] = await connection.query(
+      `SELECT e.id, e.name, g.device_uuid, g.tenant_id AS device_tenant_id, g.assignment_status
+         FROM access_entrances e
+         LEFT JOIN gate_devices g ON g.id = e.device_id
+        WHERE e.id = ? AND e.tenant_id = ? LIMIT 1`,
+      [entranceId, request.admin.tenantId]
+    );
+    if (!entrance) return response.status(404).json({ success: false, message: "入口不存在。" });
+    if (!entrance.device_uuid) {
+      return response.status(400).json({ success: false, code: 'ENTRANCE_NO_DEVICE', message: "該入口尚未綁定設備。" });
+    }
+    if (Number(entrance.device_tenant_id) !== Number(request.admin.tenantId) || entrance.assignment_status !== 'assigned') {
+      return response.status(400).json({ success: false, code: 'DEVICE_NOT_ASSIGNED', message: "該入口綁定的設備未分配給當前租戶。" });
+    }
+
+    const result = await deviceMqttService.testDevice(entrance.device_uuid);
+    return respondToDeviceTest(response, entrance.device_uuid, result);
+  } catch (error) {
+    console.error("Failed to test entrance device:", error);
+    return response.status(500).json({ success: false, message: "裝置測試失敗。" });
   } finally {
     if (connection) connection.release();
   }

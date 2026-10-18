@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   Building, Home, DoorOpen, Shield, Plus, Settings,
-  Key, Search, ChevronDown, ChevronRight, X, MoreHorizontal
+  Key, Search, ChevronDown, ChevronRight, X, MoreHorizontal, LoaderCircle
 } from 'lucide-react';
 import apiClient from './apiClient';
 import AddBuildingDialog from './AddBuildingDialog';
@@ -47,6 +47,7 @@ const AccessControl = forwardRef((props, ref) => {
   const [gateDeviceList, setGateDeviceList] = useState([]);
   const [gateDeviceLoading, setGateDeviceLoading] = useState(false);
   const [qrDialog, setQrDialog] = useState(null); // { url, title, filename } or null
+  const [deviceTestDialog, setDeviceTestDialog] = useState(null);
   const [roomSort, setRoomSort] = useState({}); // { [buildingId]: { field: 'roomNumber', asc: true } }
   const [toast, setToast] = useState(null); // { message, type } or null
   const addBuildingDialogRef = useRef(null);
@@ -469,6 +470,30 @@ const AccessControl = forwardRef((props, ref) => {
 
   const toggleBuilding = (id) => {
     setExpandedBuilding(expandedBuilding === id ? null : id);
+  };
+
+  const handleTestEntrance = async (entrance) => {
+    setEntranceDropdownOpen(null);
+    setDeviceTestDialog({ entrance, running: true, result: null });
+    try {
+      const res = await apiClient.post(`/access-entrances/${entrance.id}/test`, {}, { timeoutMs: 15000 });
+      setDeviceTestDialog({
+        entrance,
+        running: false,
+        result: { success: true, message: res?.message || '設備回應正常。', data: res?.data || null },
+      });
+    } catch (error) {
+      setDeviceTestDialog({
+        entrance,
+        running: false,
+        result: {
+          success: false,
+          code: error?.code,
+          message: error?.message || '裝置測試失敗。',
+          data: error?.data?.data || null,
+        },
+      });
+    }
   };
 
   const openAuthDrawer = (entrance) => {
@@ -1431,7 +1456,6 @@ const AccessControl = forwardRef((props, ref) => {
                             <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ marginBottom: '4px', opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={() => handleBatchDeleteEntrances(c.id)}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
                           );
                         })()}
-                        <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                       </div>
                     </div>
                     {(c.communityEntrances || []).length > 0 && (
@@ -1582,7 +1606,6 @@ const AccessControl = forwardRef((props, ref) => {
                                       <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={(ev) => { ev.stopPropagation(); handleBatchDeleteEntrances(c.id, b.id); }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
                                     ); })()}
                                     <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal({ type: 'building', id: b.id, label: b.name, community: { address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } }); }}><Plus size={12} /> 添加入口</button>
-                                    <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                                   </div>
                                 </div>
                                 <div className="entrance-table-wrap" style={{ width: '100%', overflow: 'auto', maxHeight: '280px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
@@ -2672,7 +2695,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal(ctx, entranceData); setEntranceDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 權限</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); window.alert('開發中'); setEntranceDropdownOpen(null); }}>🧪 測試</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); handleTestEntrance(entranceData); }}>🧪 測試</button>
               {entranceData.deviceStatus !== 'none' && (
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
               )}
@@ -2779,6 +2802,57 @@ const AccessControl = forwardRef((props, ref) => {
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteRoom(roomData, roomDropdownOpen.buildingId); setRoomDropdownOpen(null); }}>✕ 刪除</button>
             </div>
           </>
+        );
+      })()}
+      {deviceTestDialog && (() => {
+        const { entrance, running, result } = deviceTestDialog;
+        const status = result?.data?.deviceStatus || null;
+        const onlineText = status?.online === true ? '在線' : status?.online === false ? '離線' : '未知';
+        const updatedAt = status?.updatedAt ? new Date(status.updatedAt).toLocaleString('zh-CN', { hour12: false }) : '';
+        const sentCodes = ['DEVICE_TEST_FAILED', 'DEVICE_TEST_TIMEOUT'];
+        const notSentCodes = ['DEVICE_OFFLINE', 'DEVICE_STATUS_UNKNOWN', 'DEVICE_NOT_CONFIGURED', 'MQTT_DISCONNECTED'];
+        const sentText = result?.success || sentCodes.includes(result?.code) ? '已發送' : notSentCodes.includes(result?.code) ? '未發送' : '—';
+        const replyText = result?.data?.replyStatus || (result?.code === 'DEVICE_TEST_TIMEOUT' ? '無回應（逾時）' : '—');
+        const row = (label, value) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', fontSize: '12px' }}>
+            <span style={{ color: '#9ca3af', flexShrink: 0 }}>{label}</span>
+            <span style={{ color: '#e5e7eb', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+          </div>
+        );
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 2000, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !running) setDeviceTestDialog(null); }}>
+            <div style={{ width: 'min(520px, 100%)', backgroundColor: '#111827', borderRadius: '10px', border: '1px solid #1f2937', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+              <style>{`@keyframes acDeviceTestSpin { to { transform: rotate(360deg); } }`}</style>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>入口設備測試 — {entrance.name}</h3>
+                <div style={{ marginTop: '4px', fontSize: '11px', color: '#9ca3af', fontFamily: 'monospace' }}>{entrance.device || result?.data?.deviceUuid || '—'}</div>
+              </div>
+              <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {running ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#9ca3af', fontSize: '13px' }}>
+                      <LoaderCircle size={18} style={{ animation: 'acDeviceTestSpin 0.8s linear infinite' }} />
+                      正在檢測在線狀態並發送測試指令，最多等待 10 秒...
+                    </div>
+                    <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6b7280' }}>測試將使用設備配置的 Relay ID 與發布主題發送指令，可能觸發繼電器動作。</p>
+                  </>
+                ) : (
+                  <>
+                    {row('在線狀態', updatedAt ? `${onlineText}（更新於 ${updatedAt}）` : onlineText)}
+                    {row('指令發送', sentText)}
+                    {row('設備回應', replyText)}
+                    {row('耗時', result?.data?.elapsedMs != null ? `${result.data.elapsedMs} ms` : '—')}
+                    <div style={{ marginTop: '10px', padding: '10px 12px', borderRadius: '6px', backgroundColor: result.success ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: result.success ? '#4ade80' : '#fca5a5', fontSize: '13px' }}>
+                      {result.message}
+                    </div>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                <button type="button" disabled={running} onClick={() => setDeviceTestDialog(null)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', cursor: running ? 'not-allowed' : 'pointer', opacity: running ? 0.6 : 1 }}>關閉</button>
+              </div>
+            </div>
+          </div>
         );
       })()}
     </section>
