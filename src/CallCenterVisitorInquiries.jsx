@@ -604,17 +604,20 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setMenuItem(null)}>
           <div className="cc-action-menu" style={{ top: menuPosition.top, left: menuPosition.left }} onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => { const item = menuItem; setMenuItem(null); openDetail(item); }}>詳情</button>
+            <button type="button" className="danger" onClick={() => { const item = menuItem; setMenuItem(null); handleDeleteInquiry([item.id]); }}>刪除</button>
             <button
               type="button"
               onClick={() => {
                 const item = menuItem;
                 setMenuItem(null);
-                handleMarkStatus(item, item.status === 'processed' ? 'submitted' : 'processed');
+                handleMarkStatus(
+                  item,
+                  String(item.status || '').toLowerCase() === 'processed' ? 'submitted' : 'processed',
+                );
               }}
             >
-              {menuItem.status === 'processed' ? '標記為未處理' : '標記為已處理'}
+              {String(menuItem.status || '').toLowerCase() === 'processed' ? '標記為未處理' : '標記為已處理'}
             </button>
-            <button type="button" className="danger" onClick={() => { const item = menuItem; setMenuItem(null); handleDeleteInquiry([item.id]); }}>刪除</button>
           </div>
         </div>,
         document.body
