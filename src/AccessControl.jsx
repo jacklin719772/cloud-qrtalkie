@@ -1098,7 +1098,6 @@ const AccessControl = forwardRef((props, ref) => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexShrink: 0, flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span className="ac-stat-pill">總計<strong style={{ color: '#3b82f6' }}>{allEntrances.length}</strong></span>
-                      <span className="ac-stat-pill">在線<strong style={{ color: '#16a34a' }}>{allEntrances.filter(e => e.deviceStatus === 'online').length}</strong></span>
                       {(entranceSearch || entranceStatusFilter !== 'all' || entranceLevelFilter !== 'all') && (
                         <span className="ac-stat-pill">篩選<strong style={{ color: '#8b5cf6' }}>{filtered.length}</strong></span>
                       )}
@@ -1359,7 +1358,6 @@ const AccessControl = forwardRef((props, ref) => {
                         <th style={{ width: '200px' }}>設備 UUID</th>
                         <th style={{ width: '90px', whiteSpace: 'nowrap' }}>狀態</th>
                         <th style={{ width: '110px', whiteSpace: 'nowrap' }}>分配日期</th>
-                        <th style={{ width: '90px', whiteSpace: 'nowrap' }}>在線狀態</th>
                         <th style={{ width: '110px', whiteSpace: 'nowrap' }}>到期日期</th>
                         <th style={{ width: '160px' }}>綁定入口</th>
                         <th style={{ width: '160px' }}>所屬樓宇/社區</th>
@@ -1377,7 +1375,6 @@ const AccessControl = forwardRef((props, ref) => {
                             </span>
                           </td>
                           <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{d.assignedAt || '—'}</td>
-                          <td style={{ whiteSpace: 'nowrap', color: '#9ca3af' }}>—</td>
                           <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{d.expiresAt || '—'}</td>
                           <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.boundEntrance?.name || ''}>{d.boundEntrance ? d.boundEntrance.name : '—'}</td>
                           <td style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.boundEntrance?.belongName || ''}>{d.boundEntrance ? d.boundEntrance.belongName : '—'}</td>
@@ -1456,7 +1453,6 @@ const AccessControl = forwardRef((props, ref) => {
                                   </th>
                                   <th>入口名稱</th>
                                   <th>綁定設備</th>
-                                  <th>設備狀態</th>
                                   <th style={{ width: '90px', whiteSpace: 'nowrap' }}>狀態</th>
                                   <th style={{ width: '80px' }}>授權用戶</th>
                                   <th style={{ width: '100px' }}>操作</th>
@@ -1478,12 +1474,6 @@ const AccessControl = forwardRef((props, ref) => {
                                     </td>
                                     <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
                                     <td>{e.device}</td>
-                                    <td>
-                                      <span className={`ac-badge ${e.deviceStatus}`}>
-                                        <span className="ac-badge-dot" />
-                                        {e.deviceStatus === 'online' ? '線上' : e.deviceStatus === 'offline' ? '離線' : '—'}
-                                      </span>
-                                    </td>
                                     <td style={{ whiteSpace: 'nowrap' }}>
                                       {e.deviceStatus === 'none' ? (
                                         <span className="ac-badge none"><span className="ac-badge-dot" />未綁定</span>
