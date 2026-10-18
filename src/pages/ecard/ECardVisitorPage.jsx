@@ -99,6 +99,7 @@ export default function ECardVisitorPage({ slug }) {
   const [isVideoCall, setIsVideoCall] = useState(false);
   const [isLocalVideoActive, setIsLocalVideoActive] = useState(false);
   const [isSystemReady, setIsSystemReady] = useState(false);
+  const [iceOptimizeStatus, setIceOptimizeStatus] = useState('idle'); // idle | optimizing | ready | timeout
   const [isPreparingCall, setIsPreparingCall] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
   const [isReRegistering, setIsReRegistering] = useState(false);
@@ -367,6 +368,8 @@ export default function ECardVisitorPage({ slug }) {
     candidateBufferRef.current = [];
     setIsPreparingCall(false);
     setIsConfirmOpen(false);
+    setIsSystemReady(false);
+    setIceOptimizeStatus('idle');
     setCallBusy(false);
   }
 
@@ -790,6 +793,7 @@ export default function ECardVisitorPage({ slug }) {
   async function prepareLocalMediaAndIce() {
     setIsPreparingCall(true);
     setIsSystemReady(false);
+    setIceOptimizeStatus('optimizing');
     candidateBufferRef.current = [];
     if (iceTimeoutRef.current) {
       clearTimeout(iceTimeoutRef.current);
@@ -804,8 +808,10 @@ export default function ECardVisitorPage({ slug }) {
     stream.getTracks().forEach((track) => tempPc.addTrack(track, stream));
 
     let hasRelay = false;
+    // 網路優化只做後台提示，不再阻塞撥號：3 秒內未取得 relay 候選僅提示風險
     iceTimeoutRef.current = setTimeout(() => {
-      if (!isSystemReady) setIsSystemReady(true);
+      iceTimeoutRef.current = null;
+      if (!hasRelay) setIceOptimizeStatus('timeout');
     }, 3000);
 
     tempPc.onicecandidate = (event) => {
@@ -817,13 +823,16 @@ export default function ECardVisitorPage({ slug }) {
             clearTimeout(iceTimeoutRef.current);
             iceTimeoutRef.current = null;
           }
-          setIsSystemReady(true);
+          setIceOptimizeStatus('ready');
         }
       }
     };
 
     const offer = await tempPc.createOffer();
     await tempPc.setLocalDescription(offer);
+
+    // 麥克風就緒即可撥號；ICE 候選在後台繼續收集
+    setIsSystemReady(true);
   }
 
   async function handleCallClick(video) {
@@ -1351,10 +1360,14 @@ export default function ECardVisitorPage({ slug }) {
         onConfirm={handleConfirmCall}
         title="發起呼叫"
         type="info"
-        confirmText={isSystemReady ? '確認呼叫' : '最佳化網路'}
+        confirmText="確認呼叫"
         confirmDisabled={!isSystemReady}
         cancelText="取消"
-        message={`${isSystemReady ? `確定要呼叫此電子名片的${isVideoCall ? '影片' : '語音'}通話嗎？` : `網路優化結束後點擊確認呼叫按鈕可進行${isVideoCall ? '影片' : '語音'}通話`}`}
+        message={`${iceOptimizeStatus === 'ready'
+          ? '網路已最佳化。'
+          : iceOptimizeStatus === 'timeout'
+            ? '未取得中繼候選，網路受限時可能無法通話。'
+            : '正在背景最佳化網路，可直接撥號。'}確定要呼叫此電子名片的${isVideoCall ? '影片' : '語音'}通話嗎？`}
       />
 
       <CallModal
