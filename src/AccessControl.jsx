@@ -23,6 +23,7 @@ const AccessControl = forwardRef((props, ref) => {
   const [buildingDropdownOpen, setBuildingDropdownOpen] = useState(null); // { id, top, right } or null
   const [roomDropdownOpen, setRoomDropdownOpen] = useState(null);
   const [viewRoomsBuilding, setViewRoomsBuilding] = useState(null); // { buildingId, buildingName, rooms } or null
+  const [roomViewMenu, setRoomViewMenu] = useState(null); // { room, top, left }
   const [roomViewSearch, setRoomViewSearch] = useState('');
   const [roomViewSelected, setRoomViewSelected] = useState(new Set());
   const [entranceSearch, setEntranceSearch] = useState('');
@@ -353,6 +354,9 @@ const AccessControl = forwardRef((props, ref) => {
         })),
       };
     }));
+    setViewRoomsBuilding(prev => prev && Number(prev.buildingId) === Number(data.buildingId)
+      ? { ...prev, rooms: [...(prev.rooms || []), data] }
+      : prev);
   };
 
   const handleRoomUpdated = (data) => {
@@ -397,7 +401,8 @@ const AccessControl = forwardRef((props, ref) => {
       .finally(() => setRoomAuthLoading(false));
   };
 
-  const openSipAssignDialog = async (room, buildingId, buildingName) => {    setAssignSipRoom({ roomId: room.id, roomNumber: room.roomNumber, buildingId, buildingName, currentSipUserId: room.sipUserId });
+  const openSipAssignDialog = async (room, buildingId, buildingName) => {
+    setAssignSipRoom({ roomId: room.id, roomNumber: room.roomNumber, buildingId, buildingName, currentSipUserId: room.sipUserId });
     setSipLoading(true);
     try {
       const res = await apiClient.get(`/sip-users/available?roomId=${room.id}`);
@@ -422,6 +427,14 @@ const AccessControl = forwardRef((props, ref) => {
             return b;
           }),
         })));
+        setViewRoomsBuilding(prev => prev && (prev.rooms || []).some(r => r.id === assignSipRoom.roomId)
+          ? {
+            ...prev,
+            rooms: prev.rooms.map(r => r.id === assignSipRoom.roomId
+              ? { ...r, sipUserId: sipUserId || null, sipName: sipUser ? (sipUser.displayName || sipUser.username) : null, sipAccount: sipUser ? sipUser.username : null }
+              : r),
+          }
+          : prev);
         // Update sipAccounts cache: old account becomes available, new account becomes assigned
         setSipAccounts(prev => prev.map(s => {
           if (s.id === prevSipUserId) return { ...s, currentRoomId: null };
@@ -559,6 +572,23 @@ const AccessControl = forwardRef((props, ref) => {
         },
       });
     }
+  };
+
+  const openBuildingAuthDrawer = (building, community) => {
+    if (!building || !community) return;
+    if ((building.rooms || []).length === 0) {
+      setToast({ message: '請先為該樓宇添加房間。', type: 'error' });
+      return;
+    }
+    if (countUsableEntrances(community) === 0) {
+      setToast({
+        message: countBoundEntrances(community) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。',
+        type: 'error',
+      });
+      return;
+    }
+    setSelectedBuildingAuth({ buildingId: building.id, buildingName: building.name, communityId: community.id, community });
+    setShowBuildingAuthDrawer(true);
   };
 
   const openAuthDrawer = (entrance) => {
@@ -1159,7 +1189,7 @@ const AccessControl = forwardRef((props, ref) => {
                                 <th>地址</th>
                                 <th style={{ width: '80px' }}>房間</th>
                                 <th style={{ width: '80px' }}>入口</th>
-                                <th style={{ width: '150px' }}>操作</th>
+                                <th style={{ width: '230px' }}>操作</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1173,6 +1203,7 @@ const AccessControl = forwardRef((props, ref) => {
                                     <div style={{ display: 'flex', gap: '6px' }}>
                                       <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { addBuildingDialogRef.current?.showModal({ id: c.id, community: { name: c.name, address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } }, { id: b.id, name: b.name, address: b.address, latitude: b.latitude, longitude: b.longitude, serviceScope: b.serviceScope, contactPerson: b.contactPerson, contactPhone: b.contactPhone, contactEmail: b.contactEmail }); }}>✎ 編輯</button>
                                       <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => setViewRoomsBuilding({ buildingId: b.id, buildingName: b.name, rooms: b.rooms || [] })}>🏠 房間</button>
+                                      <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => openBuildingAuthDrawer(b, c)}>🔐 授權</button>
                                       <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={() => handleDeleteBuilding(b, c.id)}>✕ 刪除</button>
                                     </div>
                                   </td>
@@ -2134,7 +2165,7 @@ const AccessControl = forwardRef((props, ref) => {
         const selCount = roomViewSelected.size;
         const allSelected = filtered.length > 0 && filtered.every(r => roomViewSelected.has(r.id));
         return (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }}>
+        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '900px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); setRoomViewMenu(null); }}>
           <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
           <div style={{ display: 'flex', flexDirection: 'column', height: '75vh', maxHeight: '650px' }}>
             <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
@@ -2167,6 +2198,10 @@ const AccessControl = forwardRef((props, ref) => {
                       fetchCommunities();
                     });
                   }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
+                  <button className="ac-btn-sm" type="button" style={{ whiteSpace: 'nowrap' }} onClick={() => {
+                    const community = communities.find(c => (c.buildings || []).some(b => b.id === viewRoomsBuilding.buildingId));
+                    addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName, entranceOptions: buildEntranceOptions(community) });
+                  }}><Plus size={12} /> 添加房間</button>
                 </div>
               </div>
             </div>
@@ -2199,10 +2234,9 @@ const AccessControl = forwardRef((props, ref) => {
                           <td style={{ fontFamily: 'monospace', fontSize: '12px' }}>{r.sipAccount || '—'}</td>
                           <td>{r.sipName || '—'}</td>
                           <td>
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { const community = communities.find(c => (c.buildings || []).some(b => b.id === viewRoomsBuilding.buildingId)); addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName, entranceOptions: buildEntranceOptions(community) }, { id: r.id, roomNumber: r.roomNumber, floor: r.floor, contactPerson: r.contactPerson, contactPhone: r.contactPhone, contactEmail: r.contactEmail, allowVideoCall: r.allowVideoCall }); }}>✎ 編輯</button>
-                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={async () => { const ok = await handleDeleteRoom(r, viewRoomsBuilding.buildingId); if (ok) setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r2 => r2.id !== r.id) } : null); }}>✕ 刪除</button>
-                            </div>
+                            <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); const rect = ev.currentTarget.getBoundingClientRect(); const menuWidth = 140; let left = rect.right - menuWidth; if (left < 12) left = 12; let top = rect.bottom + 4; if (top + 190 > window.innerHeight) top = rect.top - 190 - 4; setRoomViewMenu({ room: r, top, left }); }}>
+                              <MoreHorizontal size={14} />
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -2210,6 +2244,39 @@ const AccessControl = forwardRef((props, ref) => {
                 </table>
               )}
             </div>
+            {roomViewMenu && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 2147483000 }} onClick={() => setRoomViewMenu(null)} />
+                <div className="dropdown-menu-portal" style={{ top: roomViewMenu.top, left: roomViewMenu.left, zIndex: 2147483001 }}>
+                  <button type="button" className="dropdown-item" onClick={() => {
+                    const room = roomViewMenu.room;
+                    setRoomViewMenu(null);
+                    const community = communities.find(c => (c.buildings || []).some(b => b.id === viewRoomsBuilding.buildingId));
+                    addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName, entranceOptions: buildEntranceOptions(community) }, { id: room.id, roomNumber: room.roomNumber, floor: room.floor, contactPerson: room.contactPerson, contactPhone: room.contactPhone, contactEmail: room.contactEmail, allowVideoCall: room.allowVideoCall });
+                  }}>✎ 編輯</button>
+                  <button type="button" className="dropdown-item" onClick={() => {
+                    const room = roomViewMenu.room;
+                    setRoomViewMenu(null);
+                    openSipAssignDialog(room, viewRoomsBuilding.buildingId, viewRoomsBuilding.buildingName);
+                  }}>🔑 帳號管理</button>
+                  <button type="button" className="dropdown-item" onClick={() => {
+                    const room = roomViewMenu.room;
+                    const buildingId = viewRoomsBuilding.buildingId;
+                    const buildingName = viewRoomsBuilding.buildingName;
+                    setRoomViewMenu(null);
+                    setViewRoomsBuilding(null);
+                    openRoomAuthDrawer(room, buildingId, buildingName);
+                  }}>🔐 入口授權</button>
+                  <div style={{ height: '1px', background: '#1f2937' }} />
+                  <button type="button" className="dropdown-item dropdown-item-danger" onClick={async () => {
+                    const room = roomViewMenu.room;
+                    setRoomViewMenu(null);
+                    const ok = await handleDeleteRoom(room, viewRoomsBuilding.buildingId);
+                    if (ok) setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r2 => r2.id !== room.id) } : null);
+                  }}>✕ 刪除</button>
+                </div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
               <button type="button" onClick={() => { setViewRoomsBuilding(null); setRoomViewSearch(''); setRoomViewSelected(new Set()); }} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>關閉</button>
             </div>
@@ -2805,7 +2872,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if ((buildingData.rooms || []).length === 0) { setToast({ message: '請先為該樓宇添加房間。', type: 'error' }); return; } if (countUsableEntrances(communityData) === 0) { setToast({ message: countBoundEntrances(communityData) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); openBuildingAuthDrawer(buildingData, communityData); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteBuilding(buildingData, communityData.id); }}>✕ 刪除</button>
             </div>
