@@ -11,7 +11,6 @@
   var currentPeerConnection = null;
   var localStream = null;
   var callSessionData = null;
-  var originalSend = null;
   var isIntentionalHangup = false;
   var activeCall = false;
   var isVideoCall = false;
@@ -296,6 +295,7 @@
         register: true,
       });
       ua.on('registered', function () {
+        injectSdpPatch(data.sipServerPublicIp);
         setConfirmWebStatus('registered');
         setCallSipStatus(data.sipOnline);
         startConfirmCountdown();
@@ -456,8 +456,10 @@
   }
 
   function injectSdpPatch(serverIp) {
-    if (!ua || !ua.transport || !serverIp || originalSend) return;
-    originalSend = ua.transport.send;
+    if (!ua || !ua.transport || !serverIp) return;
+    // 每个 UA 单独打补丁：UA 重建后旧的防重复标记不能阻止新 UA 生效
+    if (ua.__qrtalkieSdpPatched) return;
+    var originalSend = ua.transport.send;
     ua.transport.send = function () {
       var args = Array.prototype.slice.call(arguments);
       if (args[0] && args[0].body) {
@@ -467,6 +469,7 @@
       }
       return originalSend.apply(this, args);
     };
+    ua.__qrtalkieSdpPatched = true;
   }
 
   function getMediaErrorMessage(error) {
