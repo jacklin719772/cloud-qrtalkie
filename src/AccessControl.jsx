@@ -1427,6 +1427,12 @@ const AccessControl = forwardRef((props, ref) => {
                       <div className="ac-section-label">社區級入口</div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => addEntranceDialogRef.current?.showModal({ type: 'community', id: c.id, label: c.name, community: { address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } })}><Plus size={12} /> 添加入口</button>
+                        {(() => {
+                          const selCount = (c.communityEntrances || []).filter(e => e._selected).length;
+                          return (
+                            <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ marginBottom: '4px', opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={() => handleBatchDeleteEntrances(c.id)}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
+                          );
+                        })()}
                         <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                       </div>
                     </div>
@@ -1436,6 +1442,17 @@ const AccessControl = forwardRef((props, ref) => {
                             <table className="ac-table">
                               <thead>
                                 <tr>
+                                  <th style={{ width: '36px' }}>
+                                    <input
+                                      type="checkbox"
+                                      style={{ accentColor: '#2563eb' }}
+                                      checked={(c.communityEntrances || []).length > 0 && c.communityEntrances.every(e => !!e._selected)}
+                                      onChange={(ev) => {
+                                        const checked = ev.target.checked;
+                                        setCommunities(prev => prev.map(c2 => c2.id === c.id ? { ...c2, communityEntrances: (c2.communityEntrances || []).map(e => ({ ...e, _selected: checked })) } : c2));
+                                      }}
+                                    />
+                                  </th>
                                   <th>入口名稱</th>
                                   <th>綁定設備</th>
                                   <th>設備狀態</th>
@@ -1447,6 +1464,17 @@ const AccessControl = forwardRef((props, ref) => {
                               <tbody>
                                 {c.communityEntrances.map(e => (
                                   <tr key={e.id}>
+                                    <td>
+                                      <input
+                                        type="checkbox"
+                                        checked={!!e._selected}
+                                        style={{ accentColor: '#2563eb' }}
+                                        onChange={(ev) => {
+                                          const checked = ev.target.checked;
+                                          setCommunities(prev => prev.map(c2 => c2.id === c.id ? { ...c2, communityEntrances: (c2.communityEntrances || []).map(e2 => e2.id === e.id ? { ...e2, _selected: checked } : e2) } : c2));
+                                        }}
+                                      />
+                                    </td>
                                     <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
                                     <td>{e.device}</td>
                                     <td>
