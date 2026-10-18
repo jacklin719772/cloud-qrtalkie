@@ -2380,6 +2380,7 @@ const AccessControl = forwardRef((props, ref) => {
           ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community?.name || '', belongType: 'community' })),
           ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name, belongType: 'building' }))),
         ].filter(isUsableEntrance);
+        const roomIds = new Set((community?.buildings?.find(b => b.id === buildingId)?.rooms || []).map(r => r.id));
         const authMatrix = community?.authMatrix || {};
         const entrancesWithAuth = allEntrances.map(e => {
           const authRooms = authMatrix[String(e.id)] || [];
@@ -2408,10 +2409,15 @@ const AccessControl = forwardRef((props, ref) => {
               }
               return c2;
             }));
-          } catch (err) { console.error(err); }
+          } catch (err) {
+            console.error(err);
+            setToast({ message: err?.message || '授權操作失敗，請重試。', type: 'error' });
+          }
         };
         const handleBldBatch = async (authorize) => {
           const selected = entrancesWithAuth.filter(e => e._sel3);
+          const succeeded = [];
+          let failed = 0;
           for (const e of selected) {
             try {
               if (authorize) {
@@ -2419,13 +2425,17 @@ const AccessControl = forwardRef((props, ref) => {
               } else {
                 await apiClient.delete(`/access-entrances/${e.id}/auth/building/${buildingId}`);
               }
-            } catch (err) { console.error(err); }
+              succeeded.push(e);
+            } catch (err) {
+              failed += 1;
+              console.error(err);
+            }
           }
           setCommunities(prev => prev.map(c2 => {
             if (c2.id === communityId) {
               const auth = { ...(c2.authMatrix || {}) };
               const ids = [...roomIds];
-              selected.forEach(e => {
+              succeeded.forEach(e => {
                 const key = String(e.id);
                 if (authorize) {
                   auth[key] = [...new Set([...(auth[key] || []), ...ids])];
@@ -2437,6 +2447,9 @@ const AccessControl = forwardRef((props, ref) => {
             }
             return c2;
           }));
+          if (failed > 0) {
+            setToast({ message: `有 ${failed} 個入口授權失敗，請重試。`, type: 'error' });
+          }
         };
         const toggleEnt3 = (id, checked) => {
           setCommunities(prev => prev.map(c2 => {
@@ -2683,7 +2696,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if (countUsableEntrances(communityData) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if ((buildingData.rooms || []).length === 0) { setToast({ message: '請先為該樓宇添加房間。', type: 'error' }); return; } if (countUsableEntrances(communityData) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteBuilding(buildingData, communityData.id); }}>✕ 刪除</button>
             </div>

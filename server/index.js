@@ -17310,10 +17310,43 @@ app.put("/api/access-entrances/:entranceId/auth/building/:buildingId", requireAd
   try {
     connection = await pool.getConnection();
     // Verify entrance and building belong to tenant
-    const [entrance] = await connection.query("SELECT id FROM access_entrances WHERE id = ? AND tenant_id = ?", [entranceId, request.admin.tenantId]);
+    const [entrance] = await connection.query(
+      `SELECT e.id, e.community_id, e.building_id,
+              g.device_uuid, g.tenant_id AS device_tenant_id, g.assignment_status
+         FROM access_entrances e
+         LEFT JOIN gate_devices g ON g.id = e.device_id
+        WHERE e.id = ? AND e.tenant_id = ? LIMIT 1`,
+      [entranceId, request.admin.tenantId]
+    );
     if (!entrance) return response.status(404).json({ message: "入口不存在。" });
-    const [building] = await connection.query("SELECT id FROM access_buildings WHERE id = ? AND tenant_id = ?", [buildingId, request.admin.tenantId]);
+    if (!entrance.device_uuid || Number(entrance.device_tenant_id) !== Number(request.admin.tenantId) || entrance.assignment_status !== 'assigned') {
+      return response.status(400).json({ message: "該入口未綁定可用設備，無法授權。" });
+    }
+    const [building] = await connection.query(
+      "SELECT id, community_id FROM access_buildings WHERE id = ? AND tenant_id = ?",
+      [buildingId, request.admin.tenantId]
+    );
     if (!building) return response.status(404).json({ message: "樓宇不存在。" });
+
+    let entranceCommunityId = entrance.community_id ? Number(entrance.community_id) : null;
+    if (!entranceCommunityId && entrance.building_id) {
+      const [entranceBuilding] = await connection.query(
+        "SELECT community_id FROM access_buildings WHERE id = ? AND tenant_id = ?",
+        [entrance.building_id, request.admin.tenantId]
+      );
+      entranceCommunityId = entranceBuilding?.community_id ? Number(entranceBuilding.community_id) : null;
+    }
+    if (entranceCommunityId !== Number(building.community_id)) {
+      return response.status(400).json({ message: "入口與樓宇不屬於同一社區。" });
+    }
+
+    const [roomCount] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM access_rooms WHERE building_id = ? AND tenant_id = ?",
+      [buildingId, request.admin.tenantId]
+    );
+    if (Number(roomCount.cnt) === 0) {
+      return response.status(400).json({ message: "該樓宇尚無房間，無法授權。" });
+    }
 
     // Insert auth for all rooms in the building that don't already have it
     await connection.query(
@@ -17342,6 +17375,17 @@ app.delete("/api/access-entrances/:entranceId/auth/building/:buildingId", requir
   let connection;
   try {
     connection = await pool.getConnection();
+    const [entrance] = await connection.query(
+      "SELECT id FROM access_entrances WHERE id = ? AND tenant_id = ?",
+      [entranceId, request.admin.tenantId]
+    );
+    if (!entrance) return response.status(404).json({ message: "入口不存在。" });
+    const [building] = await connection.query(
+      "SELECT id FROM access_buildings WHERE id = ? AND tenant_id = ?",
+      [buildingId, request.admin.tenantId]
+    );
+    if (!building) return response.status(404).json({ message: "樓宇不存在。" });
+
     const result = await connection.query(
       `DELETE FROM access_room_entrance_auth
        WHERE entrance_id = ? AND tenant_id = ?
