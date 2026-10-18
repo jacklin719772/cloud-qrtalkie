@@ -16087,6 +16087,39 @@ app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, resp
 });
 
 // DELETE /api/access-communities/:id - 刪除社區
+// 刪除入口/樓宇/社區前，將其所綁定設備退回平台庫存（unassigned）並寫入分配歷史
+async function releaseDevicesForEntranceWhere(connection, whereSql, params, tenantId, adminUserId, reason) {
+  const devices = await connection.query(
+    `SELECT DISTINCT g.id, g.assignment_status, g.tenant_id
+       FROM access_entrances e
+       JOIN gate_devices g ON g.id = e.device_id
+      WHERE ${whereSql}`,
+    params,
+  );
+  let released = 0;
+  for (const device of devices) {
+    if (device.tenant_id != null && Number(device.tenant_id) !== Number(tenantId)) continue;
+    await connection.query(
+      `UPDATE gate_devices
+          SET tenant_id = NULL,
+              assignment_status = 'unassigned',
+              assigned_at = NULL,
+              assigned_by_admin_user_id = NULL,
+              expires_at = NULL
+        WHERE id = ?`,
+      [Number(device.id)],
+    );
+    await connection.query(
+      `INSERT INTO gate_device_assignment_history
+         (gate_device_id, tenant_id, from_status, to_status, changed_by_admin_user_id, change_reason)
+       VALUES (?, ?, ?, 'unassigned', ?, ?)`,
+      [Number(device.id), tenantId, device.assignment_status || 'assigned', adminUserId, reason],
+    );
+    released += 1;
+  }
+  return released;
+}
+
 app.delete("/api/access-communities/:id", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
     return response.status(403).json({ message: "只有租戶管理員可以管理社群。" });
@@ -16098,20 +16131,35 @@ app.delete("/api/access-communities/:id", requireAdmin, async (request, response
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [existing] = await connection.query(
-      "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
+      "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ? FOR UPDATE",
       [communityId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "社群不存在。" });
+    if (!existing) {
+      await connection.rollback();
+      return response.status(404).json({ message: "社群不存在。" });
+    }
+
+    const devicesReleased = await releaseDevicesForEntranceWhere(
+      connection,
+      "e.tenant_id = ? AND (e.community_id = ? OR e.building_id IN (SELECT id FROM access_buildings WHERE community_id = ? AND tenant_id = ?))",
+      [request.admin.tenantId, communityId, communityId, request.admin.tenantId],
+      request.admin.tenantId,
+      request.admin.id,
+      'community_deleted',
+    );
 
     await connection.query(
       "DELETE FROM access_communities WHERE id = ? AND tenant_id = ?",
       [communityId, request.admin.tenantId]
     );
 
-    response.json({ code: 0, message: "社群已刪除。", data: { id: communityId } });
+    await connection.commit();
+    response.json({ code: 0, message: "社群已刪除。", data: { id: communityId, devicesReleased } });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("刪除社群失敗:", error);
     response.status(500).json({ message: "刪除社群失敗，請稍後再試。" });
   } finally {
@@ -16260,12 +16308,16 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [existing] = await connection.query(
-      "SELECT id, name FROM access_buildings WHERE id = ? AND tenant_id = ?",
+      "SELECT id, name FROM access_buildings WHERE id = ? AND tenant_id = ? FOR UPDATE",
       [buildingId, request.admin.tenantId]
     );
-    if (!existing) return response.status(404).json({ message: "樓宇不存在。" });
+    if (!existing) {
+      await connection.rollback();
+      return response.status(404).json({ message: "樓宇不存在。" });
+    }
 
     const [roomCount] = await connection.query(
       "SELECT COUNT(*) AS cnt FROM access_rooms WHERE building_id = ? AND tenant_id = ?",
@@ -16279,11 +16331,21 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
     const rooms = Number(roomCount.cnt) || 0;
     const entrances = Number(entranceCount.cnt) || 0;
 
+    const devicesReleased = await releaseDevicesForEntranceWhere(
+      connection,
+      "e.building_id = ? AND e.tenant_id = ?",
+      [buildingId, request.admin.tenantId],
+      request.admin.tenantId,
+      request.admin.id,
+      'building_deleted',
+    );
+
     await connection.query(
       "DELETE FROM access_buildings WHERE id = ? AND tenant_id = ?",
       [buildingId, request.admin.tenantId]
     );
 
+    await connection.commit();
     response.json({
       code: 0,
       message: "樓宇已刪除。",
@@ -16292,9 +16354,11 @@ app.delete("/api/access-buildings/:id", requireAdmin, async (request, response) 
         name: existing.name,
         roomsDeleted: rooms,
         entrancesDeleted: entrances,
+        devicesReleased,
       }
     });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("刪除樓宇失敗:", error);
     response.status(500).json({ message: "刪除樓宇失敗，請稍後再試。" });
   } finally {
@@ -17019,20 +17083,41 @@ app.delete("/api/access-entrances/:id", requireAdmin, async (request, response) 
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [entrance] = await connection.query(
-      "SELECT id FROM access_entrances WHERE id = ? AND tenant_id = ?",
+      "SELECT id, name, device_id FROM access_entrances WHERE id = ? AND tenant_id = ? FOR UPDATE",
       [entranceId, request.admin.tenantId]
     );
-    if (!entrance) return response.status(404).json({ message: "入口不存在。" });
+    if (!entrance) {
+      await connection.rollback();
+      return response.status(404).json({ message: "入口不存在。" });
+    }
+
+    const devicesReleased = await releaseDevicesForEntranceWhere(
+      connection,
+      "e.id = ? AND e.tenant_id = ?",
+      [entranceId, request.admin.tenantId],
+      request.admin.tenantId,
+      request.admin.id,
+      'entrance_deleted',
+    );
+
+    // 清除該入口的房間授權記錄（FK 亦有 ON DELETE CASCADE，此處顯式清理）
+    await connection.query(
+      "DELETE FROM access_room_entrance_auth WHERE entrance_id = ? AND tenant_id = ?",
+      [entranceId, request.admin.tenantId]
+    );
 
     await connection.query(
       "DELETE FROM access_entrances WHERE id = ? AND tenant_id = ?",
       [entranceId, request.admin.tenantId]
     );
 
-    response.json({ code: 0, message: "入口已刪除。" });
+    await connection.commit();
+    response.json({ code: 0, message: "入口已刪除。", data: { id: entranceId, devicesReleased } });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("刪除入口失敗:", error);
     response.status(500).json({ message: "刪除入口失敗，請稍後再試。" });
   } finally {

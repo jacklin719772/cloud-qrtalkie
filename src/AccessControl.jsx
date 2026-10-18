@@ -165,7 +165,7 @@ const AccessControl = forwardRef((props, ref) => {
 
   const handleDeleteCommunity = async (c) => {
     setDropdownOpen(null);
-    if (!window.confirm(`確定要刪除社群「${c.name}」嗎？此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除社群「${c.name}」嗎？\n\n其入口綁定的設備將退回平台庫存，相關樓宇、入口、房間與授權記錄一併刪除。此操作無法撤銷。`)) return;
     try {
       const res = await apiClient.delete(`/access-communities/${c.id}`);
       if (res && res.code === 0) {
@@ -220,7 +220,7 @@ const AccessControl = forwardRef((props, ref) => {
 
   const handleDeleteEntrance = async (entrance, communityId, buildingId) => {
     setEntranceDropdownOpen(null);
-    if (!window.confirm(`確定要刪除入口「${entrance.name}」嗎？此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除入口「${entrance.name}」嗎？\n\n綁定的設備將退回平台庫存，該入口的房間授權記錄一併刪除。此操作無法撤銷。`)) return;
     try {
       const res = await apiClient.delete(`/access-entrances/${entrance.id}`);
       if (res && res.code === 0) {
@@ -306,6 +306,7 @@ const AccessControl = forwardRef((props, ref) => {
     } else {
       warnMsg += `此操作無法撤銷。`;
     }
+    warnMsg += `\n\n入口綁定的設備將退回平台庫存，相關房間授權一併刪除。`;
     if (!window.confirm(warnMsg)) return;
     try {
       const res = await apiClient.delete(`/access-buildings/${b.id}`);
