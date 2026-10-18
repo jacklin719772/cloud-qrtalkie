@@ -1292,7 +1292,7 @@ const AccessControl = forwardRef((props, ref) => {
                       <tbody>
                         {filtered.map(e => (
                           <tr key={`${e.belongType}-${e.id}`}>
-                            <td style={{ fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
+                            <td style={{ fontSize: '12px', fontWeight: 600, maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
                             <td style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{e.belongType === 'building' ? '樓宇級' : '社群級'}</td>
                             <td style={{ fontSize: '12px', color: '#9ca3af', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.belongName}>{e.belongName}</td>
                             <td style={{ fontFamily: 'monospace', fontSize: '12px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.device || ''}>{e.device || '—'}</td>
