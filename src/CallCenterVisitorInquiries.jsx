@@ -26,6 +26,11 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
   const [forwardNote, setForwardNote] = useState('');
   const [forwardSending, setForwardSending] = useState(false);
   const [forwardMessage, setForwardMessage] = useState({ type: '', text: '' });
+  const [processItem, setProcessItem] = useState(null);
+  const [processStatus, setProcessStatus] = useState('processed');
+  const [processNote, setProcessNote] = useState('');
+  const [processSaving, setProcessSaving] = useState(false);
+  const [processMessage, setProcessMessage] = useState({ type: '', text: '' });
 
   const fetchInquiries = async () => {
     if (!context?.id) return;
@@ -109,13 +114,34 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
     setForwardSending(false);
   };
 
-  const handleMarkStatus = async (item, status) => {
+  const openProcess = (item) => {
+    setMenuItem(null);
+    setProcessItem(item);
+    setProcessStatus(String(item.status || '').toLowerCase() === 'processed' ? 'processed' : 'submitted');
+    setProcessNote(item.note || '');
+    setProcessMessage({ type: '', text: '' });
+    setProcessSaving(false);
+  };
+
+  const handleProcessSave = async () => {
+    if (!processItem) return;
+    setProcessSaving(true);
+    setProcessMessage({ type: '', text: '' });
     try {
-      await apiClient.put(`/call-centers/${context.id}/visitor-inquiries/${item.id}/status`, { status });
-      setDetailItem(prev => (prev && prev.id === item.id ? { ...prev, status } : prev));
+      const res = await apiClient.put(`/call-centers/${context.id}/visitor-inquiries/${processItem.id}/status`, {
+        status: processStatus,
+        note: processNote.trim(),
+      });
+      const nextStatus = res?.status || processStatus;
+      const nextNote = typeof res?.note === 'string' ? res.note : processNote.trim();
+      setDetailItem(prev => (prev && prev.id === processItem.id ? { ...prev, status: nextStatus, note: nextNote } : prev));
+      setProcessItem(null);
       await fetchInquiries();
     } catch (error) {
-      window.alert(error.message || '更新處理狀態失敗');
+      setProcessMessage({ type: 'error', text: error.message || '保存辦理狀態失敗。' });
+      window.setTimeout(() => setProcessMessage(prev => (prev.type === 'error' ? { type: '', text: '' } : prev)), 5000);
+    } finally {
+      setProcessSaving(false);
     }
   };
 
@@ -604,20 +630,49 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={() => setMenuItem(null)}>
           <div className="cc-action-menu" style={{ top: menuPosition.top, left: menuPosition.left }} onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => { const item = menuItem; setMenuItem(null); openDetail(item); }}>詳情</button>
+            <button type="button" onClick={() => openProcess(menuItem)}>辦理</button>
             <button type="button" className="danger" onClick={() => { const item = menuItem; setMenuItem(null); handleDeleteInquiry([item.id]); }}>刪除</button>
-            <button
-              type="button"
-              onClick={() => {
-                const item = menuItem;
-                setMenuItem(null);
-                handleMarkStatus(
-                  item,
-                  String(item.status || '').toLowerCase() === 'processed' ? 'submitted' : 'processed',
-                );
-              }}
-            >
-              {String(menuItem.status || '').toLowerCase() === 'processed' ? '標記為未處理' : '標記為已處理'}
-            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {processItem && createPortal(
+        <div className="cc-detail-overlay" onClick={() => { if (!processSaving) setProcessItem(null); }}>
+          <div className="cc-detail-modal" style={{ width: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="cc-detail-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', color: '#f3f4f6' }}>辦理訪客留言</h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>{processItem.visitorName || '-'} · {formatDate(processItem.createdAt)}</p>
+              </div>
+              <button type="button" onClick={() => { if (!processSaving) setProcessItem(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '20px' }}>×</button>
+            </div>
+            <div className="cc-detail-body">
+              <div>
+                <div className="cc-detail-label">辦理狀態</div>
+                <select className="cc-detail-input" value={processStatus} onChange={(e) => setProcessStatus(e.target.value)}>
+                  <option value="processed">已辦理</option>
+                  <option value="submitted">未辦理</option>
+                </select>
+              </div>
+              <div>
+                <div className="cc-detail-label">辦理過程描述</div>
+                <textarea
+                  className="cc-detail-textarea"
+                  value={processNote}
+                  onChange={(e) => setProcessNote(e.target.value)}
+                  placeholder="記錄本次辦理過程、結果或後續安排"
+                  maxLength={2000}
+                />
+              </div>
+              {processMessage.text && (
+                <div className="cc-detail-hint" style={{ color: processMessage.type === 'error' ? '#f87171' : '#86efac' }}>{processMessage.text}</div>
+              )}
+              <div className="cc-detail-actions">
+                <button type="button" className="cc-btn-outline" onClick={() => setProcessItem(null)} disabled={processSaving}>取消</button>
+                <button type="button" className="cc-detail-primary" onClick={handleProcessSave} disabled={processSaving}>{processSaving ? '儲存中...' : '儲存'}</button>
+              </div>
+            </div>
           </div>
         </div>,
         document.body
@@ -655,6 +710,13 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
                 <div className="cc-detail-label">留言內容</div>
                 <div className="cc-detail-message">{detailItem.visitorMessage || '-'}</div>
               </div>
+
+              {detailItem.note && (
+                <div>
+                  <div className="cc-detail-label">辦理過程描述</div>
+                  <div className="cc-detail-message">{detailItem.note}</div>
+                </div>
+              )}
 
               {isVisitorEmail && (
                 <div className="cc-detail-section">

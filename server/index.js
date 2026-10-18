@@ -15229,7 +15229,7 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
 
     const rows = await connection.query(`
       SELECT vi.id, vi.visitor_name, vi.visitor_phone, vi.visitor_email, vi.visitor_company,
-             vi.visitor_message, vi.inquiry_status, vi.created_at,
+             vi.visitor_message, vi.inquiry_status, vi.inquiry_note, vi.created_at,
              ca.display_name AS agent_name,
              ccat.category_name,
              vi.sip_number
@@ -15248,6 +15248,7 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
       visitorCompany: row.visitor_company || '-',
       visitorMessage: row.visitor_message || '-',
       status: row.inquiry_status,
+      note: row.inquiry_note || '',
       createdAt: row.created_at,
       agentName: row.agent_name || null,
       categoryName: row.category_name || null,
@@ -15280,6 +15281,7 @@ app.put("/api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/status", r
   if (!nextStatus) {
     return response.status(400).json({ code: -1, message: "無效的狀態值。" });
   }
+  const note = sanitizeString(request.body?.note, 2000);
 
   let connection;
   try {
@@ -15295,13 +15297,14 @@ app.put("/api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/status", r
     );
     if (!inquiry) return response.status(404).json({ code: -1, message: "找不到指定的訪客記錄。" });
     await connection.query(
-      "UPDATE call_center_visitor_inquiries SET inquiry_status = ? WHERE id = ?",
-      [nextStatus, inquiryId],
+      "UPDATE call_center_visitor_inquiries SET inquiry_status = ?, inquiry_note = ? WHERE id = ?",
+      [nextStatus, note || null, inquiryId],
     );
     return response.json({
       code: 0,
       status: nextStatus,
-      message: nextStatus === 'processed' ? "已標記為已處理。" : "已標記為未處理。",
+      note: note || '',
+      message: nextStatus === 'processed' ? "已標記為已辦理。" : "已標記為未辦理。",
     });
   } catch (error) {
     console.error("Failed to update visitor inquiry status:", error?.message || error);
@@ -23307,6 +23310,24 @@ async function ensureSipUsersRecycledAtColumn() {
   }
 }
 await ensureSipUsersRecycledAtColumn();
+
+async function ensureVisitorInquiryNoteColumn() {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    try {
+      await connection.query("ALTER TABLE call_center_visitor_inquiries ADD COLUMN inquiry_note VARCHAR(2000) NULL");
+      console.log("[schema] call_center_visitor_inquiries.inquiry_note added");
+    } catch (error) {
+      if (error?.errno !== 1060 && error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  } catch (error) {
+    console.error("[schema] ensure inquiry_note failed:", error?.message || error);
+  } finally {
+    if (connection) connection.release();
+  }
+}
+await ensureVisitorInquiryNoteColumn();
 
 const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);
