@@ -230,6 +230,11 @@ export default function TenantDashboard({ onNavigate }) {
         .td-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
         .td-table th, .td-table td { text-align: left; padding: 10px; border-bottom: 1px solid #1f2937; color: #d1d5db; }
         .td-table th { color: #9ca3af; font-weight: 500; background: #1a2332; }
+        .td-scroll-dark { scrollbar-width: thin; scrollbar-color: #4b5563 #111827; }
+        .td-scroll-dark::-webkit-scrollbar { width: 8px; height: 8px; }
+        .td-scroll-dark::-webkit-scrollbar-track { background: #111827; }
+        .td-scroll-dark::-webkit-scrollbar-thumb { background: #374151; border-radius: 8px; border: 2px solid #111827; }
+        .td-scroll-dark::-webkit-scrollbar-thumb:hover { background: #4b5563; }
         .td-status { padding: 3px 8px; border-radius: 99px; background: #065f46; color: #6ee7b7; font-size: 12px; }
         .td-status.red { background: #7f1d1d; color: #fca5a5; }
         .td-status.warn { background: #78350f; color: #fcd34d; }
@@ -344,7 +349,7 @@ export default function TenantDashboard({ onNavigate }) {
               ) : <div className="td-meta">暫無訂購套餐</div>}
               <button className="td-btn" style={{ marginTop: 14 }} onClick={() => onNavigate?.('domain')}>我的套餐</button>
             </div>
-            <div className="td-card" style={{ padding: 18, overflow: 'auto' }}>
+            <div className="td-card td-scroll-dark" style={{ padding: 18, overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%', minWidth: '560px' }}>
                 <thead><tr><th>訂單編號</th><th>類型</th><th>套餐名稱</th><th>狀態</th><th>金額</th><th>到期日期</th></tr></thead>
                 <tbody>
@@ -395,7 +400,7 @@ export default function TenantDashboard({ onNavigate }) {
               </div>
             )}
 
-            <div style={{ marginTop: 14, maxHeight: 260, overflow: 'auto', scrollbarWidth: 'none' }}>
+            <div className="td-scroll-dark" style={{ marginTop: 14, maxHeight: 260, overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
@@ -445,7 +450,7 @@ export default function TenantDashboard({ onNavigate }) {
               <div className="td-metric small orange"><div className="td-m-label">已過期</div><div className="td-m-value">{Number(d.ecards.expired).toLocaleString()}</div></div>
               <div className="td-metric small purple"><div className="td-m-label">7 天內到期</div><div className="td-m-value">{Number(d.ecards.expiring).toLocaleString()}</div></div>
             </div>
-            <div style={{ marginTop: 14, maxHeight: 220, overflow: 'auto', scrollbarWidth: 'none' }}>
+            <div className="td-scroll-dark" style={{ marginTop: 14, maxHeight: 220, overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr>
@@ -501,7 +506,7 @@ export default function TenantDashboard({ onNavigate }) {
               <span>今日訪客留言：{Number(d.callCenter.todayInquiries)}</span>
               <span>本月訪客留言：{Number(d.callCenter.monthInquiries)}</span>
             </div>
-            <div style={{ marginTop: 14, maxHeight: 220, overflow: 'auto', scrollbarWidth: 'none' }}>
+            <div className="td-scroll-dark" style={{ marginTop: 14, maxHeight: 220, overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr><th>名稱</th><th>呼叫地址</th><th>訪客登記</th><th>坐席數量</th><th>待處理</th><th>狀態</th><th>創建時間</th></tr>
@@ -576,7 +581,7 @@ export default function TenantDashboard({ onNavigate }) {
                 有 {Number(d.devices.assignmentExpired)} 台設備的分配已過期，請到門禁系統檢查。
               </div>
             )}
-            <div style={{ marginTop: 14, maxHeight: 220, overflow: 'auto', scrollbarWidth: 'none' }}>
+            <div className="td-scroll-dark" style={{ marginTop: 14, maxHeight: 220, overflow: 'auto' }}>
               <table className="td-table" style={{ width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                   <tr><th>社區名稱</th><th>地址</th><th>狀態</th><th>創建時間</th></tr>
