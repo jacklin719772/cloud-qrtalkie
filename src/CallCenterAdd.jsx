@@ -77,6 +77,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
   const [isSaving, setIsSaving] = useState(false);
 
   const activeCategory = categories.find(cat => cat.id === activeCategoryId);
+  const canPreviewVisitorPage = context?.mode === 'edit' && Boolean(context?.id);
 
   const loadAgentAvailability = (categoriesData) => {
     const sips = [...new Set((categoriesData || []).flatMap(cat => (cat.agents || []).map(a => String(a.sip || '').trim()).filter(Boolean)))];
@@ -923,8 +924,21 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
           <button
             type="button"
             className="cc-btn cc-btn-preview"
-            style={{ color: '#60a5fa', borderColor: '#1e3a5f', background: '#1e293b' }}
-            onClick={() => window.open(callUrl, '_blank')}
+            aria-disabled={!canPreviewVisitorPage}
+            style={{
+              color: canPreviewVisitorPage ? '#60a5fa' : '#6b7280',
+              borderColor: '#1e3a5f',
+              background: '#1e293b',
+              opacity: canPreviewVisitorPage ? 1 : 0.5,
+              cursor: canPreviewVisitorPage ? 'pointer' : 'not-allowed',
+            }}
+            onClick={() => {
+              if (!canPreviewVisitorPage) {
+                window.alert('請先儲存呼叫中心後再預覽訪客頁。');
+                return;
+              }
+              window.open(callUrl, '_blank');
+            }}
           >
             <Eye size={16} />
             預覽訪客頁
