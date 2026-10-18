@@ -1295,7 +1295,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
 
       {/* 新增坐席彈窗 */}
       {isAddAgentModalOpen && (
-        <div className="cc-modal-overlay" onClick={() => setIsAddAgentModalOpen(false)}>
+        <div className="cc-modal-overlay">
           <div className="cc-modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '480px' }}>
             <div className="cc-modal-header">
               <h4 className="cc-modal-title">新增坐席至「{activeCategory?.name}」</h4>
