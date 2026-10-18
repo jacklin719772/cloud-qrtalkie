@@ -2972,12 +2972,10 @@ const AccessControl = forwardRef((props, ref) => {
                 const roomCount = (c.buildings || []).reduce((sum, b) => sum + (b.rooms || []).length, 0);
                 const entranceCount = (c.communityEntrances || []).length
                   + (c.buildings || []).reduce((sum, b) => sum + (b.entrances || []).length, 0);
-                const authReady = buildingCount > 0 && roomCount > 0 && entranceCount > 0;
                 return (
                   <button
                     className="ac-dropdown-item"
                     type="button"
-                    style={authReady ? undefined : { color: '#6b7280', cursor: 'not-allowed' }}
                     onClick={(ev) => {
                       ev.stopPropagation();
                       setDropdownOpen(null);
