@@ -1019,7 +1019,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     setOpenDropdownId(null);
     setNotifyItem(item);
     setNotifyCopied(false);
-    setNotifyEmail(item?.email || '');
+    setNotifyEmail(item?.email && !/@sip\.qrtalkie\.org$/i.test(item.email) ? item.email : '');
     setIsSendingNotify(false);
     setNotifyMailMessage({ type: '', text: '' });
   }
