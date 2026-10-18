@@ -2241,7 +2241,7 @@ export default function ConsoleLayout({ onLogout }) {
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>6</span>
                     <div>
                       <strong style={{ color: "#e5e7eb" }}>設定入口使用權</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為入口指定允許使用該門的房間。可點擊入口操作列的「授權」，或在社區「更多 → 入口使用權管理」中按社區批量設定，也可切換到「權限設定」標籤按房間或樓宇維度管理。授權頁面僅顯示已綁定設備的入口；社區須已有樓宇、房間和至少一個已綁定設備的入口，否則會提示先補齊對應資料。</p>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為入口指定允許使用該門的房間。可點擊入口操作列的「授權」，或在社區「更多 → 入口使用權管理」中按社區批量設定，也可切換到「授權設定」標籤按房間或樓宇維度管理。授權頁面僅顯示已綁定設備的入口；社區須已有樓宇、房間和至少一個已綁定設備的入口，否則會提示先補齊對應資料。</p>
                     </div>
                   </div>
                 </div>

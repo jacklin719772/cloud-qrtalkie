@@ -497,6 +497,17 @@ const AccessControl = forwardRef((props, ref) => {
   };
 
   const openAuthDrawer = (entrance) => {
+    const community = communities.find(c => c.id === entrance?.communityId);
+    const buildingCount = (community?.buildings || []).length;
+    const roomCount = (community?.buildings || []).reduce((sum, b) => sum + (b.rooms || []).length, 0);
+    if (buildingCount === 0) {
+      setToast({ message: '請先為社區添加樓宇和房間。', type: 'error' });
+      return;
+    }
+    if (roomCount === 0) {
+      setToast({ message: '請先為樓宇添加房間。', type: 'error' });
+      return;
+    }
     if (!isUsableEntrance(entrance)) {
       setToast({ message: '請先為該入口綁定設備後再設定使用權。', type: 'error' });
       return;
@@ -1015,7 +1026,7 @@ const AccessControl = forwardRef((props, ref) => {
             { id: 'overview', label: '社群列表' },
             { id: 'buildings', label: '樓宇管理' },
             { id: 'entrances', label: '入口管理' },
-            { id: 'auth', label: '許可權設定' },
+            { id: 'auth', label: '授權設定' },
             { id: 'gateDevices', label: '門控裝置' },
           ].map(tab => (
             <button
@@ -1208,7 +1219,7 @@ const AccessControl = forwardRef((props, ref) => {
               );
             })()
           ) : activeTab === 'auth' ? (
-            /* 權限設置標籤頁 */
+            /* 授權設定標籤頁 */
             (() => {
               const allEntrances = communities.flatMap(c => {
                 const communityEntrances = (c.communityEntrances || []).map(e => ({ ...e, belongType: 'community', belongName: c.name, communityId: c.id, community: c }));
@@ -1412,7 +1423,7 @@ const AccessControl = forwardRef((props, ref) => {
                                   (c.buildings || []).forEach(b => (b.entrances || []).forEach(e => { if (e.deviceId === d.id) { ent = e; cid = c.id; } }));
                                 });
                                 if (ent) openAuthDrawer({ ...ent, communityId: cid });
-                              }}>🔑 權限</button>
+                              }}>🔑 授權</button>
                             </div>
                           </td>
                         </tr>
@@ -1694,7 +1705,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer-overlay" onClick={() => setShowAuthDrawer(false)} />
             <div className="ac-drawer" style={{ width: '700px' }}>
               <div className="ac-drawer-header">
-                <h3>權限設置 — {selectedEntrance.name}</h3>
+                <h3>授權設定 — {selectedEntrance.name}</h3>
                 <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowAuthDrawer(false)}><X size={20} /></button>
               </div>
               <div className="ac-drawer-body" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2694,7 +2705,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setEntranceDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal(ctx, entranceData); setEntranceDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 權限</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 授權</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); handleTestEntrance(entranceData); }}>🧪 測試</button>
               {entranceData.deviceStatus !== 'none' && (
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
