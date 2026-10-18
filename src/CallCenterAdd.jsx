@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Eye, ExternalLink, UploadCloud, ChevronRight, Plus, User, RefreshCw, Edit, Trash2 } from 'lucide-react';
 import apiClient from './apiClient';
 
+const DEFAULT_CALL_CENTER_COVER = '/api/call-center-images/cc-black-banner.png';
+
 function getFullImageUrl(url) {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
@@ -1020,16 +1022,27 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                 </div>
                 <div className="cc-field">
                   <span className="cc-field-label">網站封面</span>
-                  <label className="cc-upload-box cc-upload-cover" style={{ padding: coverDataUrl ? 0 : '12px', overflow: 'hidden' }}>
+                  <label
+                    className="cc-upload-box cc-upload-cover"
+                    style={{
+                      padding: coverDataUrl ? 0 : '12px',
+                      overflow: 'hidden',
+                      ...(coverDataUrl ? {} : {
+                        backgroundImage: `url(${getFullImageUrl(DEFAULT_CALL_CENTER_COVER)})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }),
+                    }}
+                  >
                     <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload(setCoverDataUrl)} />
                     {coverDataUrl ? (
                       <img src={getFullImageUrl(coverDataUrl)} alt="網站封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <>
-                        <UploadCloud size={24} />
-                        <span className="cc-upload-text">點擊上傳封面图</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.35)' }}>
+                        <UploadCloud size={22} />
+                        <span className="cc-upload-text">默認封面，點擊更換</span>
                         <span className="cc-upload-hint">支援 JPG、PNG 格式，建議尺寸 1200×400px</span>
-                      </>
+                      </div>
                     )}
                   </label>
                 </div>
