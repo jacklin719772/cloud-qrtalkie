@@ -1,6 +1,6 @@
 ﻿import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Wifi } from 'lucide-react';
+import { Search, Wifi, LoaderCircle } from 'lucide-react';
 import apiClient from './apiClient';
 
 const emptyDeviceForm = {
@@ -84,6 +84,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
   const [batchAssignTenantId, setBatchAssignTenantId] = useState('');
   const [batchAssignTenants, setBatchAssignTenants] = useState([]);
   const [isBatchAssigning, setIsBatchAssigning] = useState(false);
+  const [testDialog, setTestDialog] = useState(null);
 
   async function loadDevices() {
     setIsLoading(true);
@@ -426,6 +427,29 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'copy') {
       startCopy(device);
+      return;
+    }
+    if (action === 'test') {
+      setTestDialog({ device, running: true, result: null });
+      try {
+        const res = await apiClient.post(`/admin/gate-devices/${device.id}/test`, {}, { timeoutMs: 15000 });
+        setTestDialog({
+          device,
+          running: false,
+          result: { success: true, message: res?.message || '設備回應正常。', data: res?.data || null },
+        });
+      } catch (error) {
+        setTestDialog({
+          device,
+          running: false,
+          result: {
+            success: false,
+            code: error?.code,
+            message: error?.message || '裝置測試失敗。',
+            data: error?.data?.data || null,
+          },
+        });
+      }
       return;
     }
     if (action === 'assign') {
@@ -1015,6 +1039,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', device)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('edit', device)}>編輯</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('copy', device)}>複製</button>
+                            <button type="button" className="dropdown-item" onClick={() => handleAction('test', device)}>測試</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction(device.status === 'assigned' ? 'unassign' : 'assign', device)}>{device.status === 'assigned' ? '取消分配' : '分配'}</button>
                             <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', device)}>刪除</button>
                           </div>,
@@ -1135,6 +1160,56 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         </div>,
         document.body
       )}
+      {testDialog && createPortal((() => {
+        const { device, running, result } = testDialog;
+        const status = result?.data?.deviceStatus || null;
+        const onlineText = status?.online === true ? '在線' : status?.online === false ? '離線' : '未知';
+        const updatedAt = status?.updatedAt ? new Date(status.updatedAt).toLocaleString('zh-CN', { hour12: false }) : '';
+        const sentCodes = ['DEVICE_TEST_FAILED', 'DEVICE_TEST_TIMEOUT'];
+        const notSentCodes = ['DEVICE_OFFLINE', 'DEVICE_STATUS_UNKNOWN', 'DEVICE_NOT_CONFIGURED', 'MQTT_DISCONNECTED'];
+        const sentText = result?.success || sentCodes.includes(result?.code) ? '已發送' : notSentCodes.includes(result?.code) ? '未發送' : '—';
+        const replyText = result?.data?.replyStatus || (result?.code === 'DEVICE_TEST_TIMEOUT' ? '無回應（逾時）' : '—');
+        const row = (label, value) => (
+          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', fontSize: '12px' }}>
+            <span style={{ color: '#9ca3af', flexShrink: 0 }}>{label}</span>
+            <span style={{ color: '#e5e7eb', textAlign: 'right', wordBreak: 'break-all' }}>{value}</span>
+          </div>
+        );
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 2147483646, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onMouseDown={(event) => { if (event.target === event.currentTarget && !running) setTestDialog(null); }}>
+            <div style={{ width: 'min(520px, 100%)', backgroundColor: '#111827', borderRadius: '8px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <style>{`@keyframes deviceTestSpin { to { transform: rotate(360deg); } }`}</style>
+              <div style={{ padding: '16px 18px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>設備測試 — {device.uuid}</h3>
+              </div>
+              <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {running ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#9ca3af', fontSize: '13px' }}>
+                      <LoaderCircle size={18} style={{ animation: 'deviceTestSpin 0.8s linear infinite' }} />
+                      正在檢測在線狀態並發送測試指令，最多等待 10 秒...
+                    </div>
+                    <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#6b7280' }}>測試將使用設備配置的 Relay ID 與發布主題發送指令，可能觸發繼電器動作。</p>
+                  </>
+                ) : (
+                  <>
+                    {row('在線狀態', updatedAt ? `${onlineText}（更新於 ${updatedAt}）` : onlineText)}
+                    {row('指令發送', sentText)}
+                    {row('設備回應', replyText)}
+                    {row('耗時', result?.data?.elapsedMs != null ? `${result.data.elapsedMs} ms` : '—')}
+                    <div style={{ marginTop: '10px', padding: '10px 12px', borderRadius: '6px', backgroundColor: result.success ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: result.success ? '#4ade80' : '#fca5a5', fontSize: '13px' }}>
+                      {result.message}
+                    </div>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                <button type="button" disabled={running} onClick={() => setTestDialog(null)} style={{ background: '#374151', color: '#d1d5db', border: '1px solid #4b5563', borderRadius: '8px', padding: '8px 18px', fontSize: '13px', cursor: running ? 'not-allowed' : 'pointer', opacity: running ? 0.6 : 1 }}>關閉</button>
+              </div>
+            </div>
+          </div>
+        );
+      })(), document.body)}
     </section>
   );
 });

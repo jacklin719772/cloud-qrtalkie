@@ -212,6 +212,70 @@ async function unlockDevice(lockId) {
   }
 }
 
+// 設備測試：先看在線狀態，僅在線時發送配置的指令並等待回應
+// 返回 { ok, reason: 'ok'|'offline'|'unknown'|'not_found'|'not_configured'|'mqtt_disconnected'|'timeout'|'device_error'|'error', status?, deviceStatus, elapsedMs? }
+async function testDevice(lockId) {
+  const deviceStatus = getStatus(lockId);
+  if (deviceStatus.online !== true) {
+    return {
+      ok: false,
+      reason: deviceStatus.online === false ? 'offline' : 'unknown',
+      deviceStatus,
+    };
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT device_uuid, relay_id, publish_topic, subscribe_topic
+       FROM gate_devices
+       WHERE device_uuid = ? LIMIT 1`,
+      [lockId]
+    );
+    const device = rows[0];
+    if (!device) return { ok: false, reason: "not_found", deviceStatus };
+    if (!device.relay_id || !device.publish_topic || !device.subscribe_topic) {
+      return { ok: false, reason: "not_configured", deviceStatus };
+    }
+    if (!client?.connected) return { ok: false, reason: "mqtt_disconnected", deviceStatus };
+
+    const startedAt = Date.now();
+    console.log(`[deviceMqtt] Test publish: topic=${device.relay_id} payload=${device.publish_topic}`);
+    client.publish(device.relay_id, device.publish_topic, { qos: 0 });
+
+    const pendingKey = `test:${lockId}`;
+    return await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pendingUnlocks.delete(pendingKey);
+        console.log(`[deviceMqtt] Test timeout: lockId=${lockId}`);
+        resolve({
+          ok: false,
+          reason: "timeout",
+          deviceStatus: getStatus(lockId),
+          elapsedMs: Date.now() - startedAt,
+        });
+      }, UNLOCK_TIMEOUT_MS);
+      pendingUnlocks.set(pendingKey, {
+        resolve: (reply) => resolve({
+          ok: Boolean(reply?.ok),
+          reason: reply?.ok ? "ok" : "device_error",
+          status: reply?.status || "",
+          deviceStatus: getStatus(lockId),
+          elapsedMs: Date.now() - startedAt,
+        }),
+        topic: device.subscribe_topic,
+        timer,
+      });
+    });
+  } catch (error) {
+    console.error("[deviceMqtt] Test error:", error?.message || error);
+    return { ok: false, reason: "error", deviceStatus };
+  } finally {
+    if (connection) connection.release();
+  }
+}
+
 // lockId(device_uuid) -> { online: true|false|null, updatedAt: ISO string|null }
 function getStatus(lockId) {
   const entry = statusCache.get(lockId);
@@ -223,4 +287,4 @@ function isLockKnown(lockId) {
   return statusCache.has(lockId);
 }
 
-export default { start, getStatus, isLockKnown, unlockDevice };
+export default { start, getStatus, isLockKnown, unlockDevice, testDevice };
