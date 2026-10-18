@@ -1100,6 +1100,14 @@ const AccessControl = forwardRef((props, ref) => {
           color: #9ca3af;
         }
 
+        .ac-auth-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #374151 transparent;
+        }
+        .ac-auth-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .ac-auth-scroll::-webkit-scrollbar-track { background: transparent; }
+        .ac-auth-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
         @media (max-width: 1200px) {
           .ac-stats { flex-wrap: wrap; }
         }
@@ -1383,7 +1391,7 @@ const AccessControl = forwardRef((props, ref) => {
                           style={{ height: '34px', padding: '0 12px 0 36px', border: '1px solid #374151', borderRadius: '7px', fontSize: '12px', outline: 'none', color: '#e5e7eb', boxSizing: 'border-box', width: '100%' }} />
                       </div>
                     </div>
-                    <div style={{ flex: 1, overflow: 'auto' }}>
+                    <div className="ac-auth-scroll" style={{ flex: 1, overflow: 'auto' }}>
                       {filteredEntrances.length === 0 ? (
                         <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>{authPageSearch ? '無匹配入口' : '暫無已綁定設備的入口'}</div>
                       ) : (
@@ -1462,7 +1470,7 @@ const AccessControl = forwardRef((props, ref) => {
                             )}
                           </div>
                         </div>
-                        <div style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
+                        <div className="ac-auth-scroll" style={{ flex: 1, overflow: 'auto', padding: '12px 16px' }}>
                           {allRooms.length === 0 ? (
                             <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>暫無房間</div>
                           ) : (
