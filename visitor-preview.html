@@ -594,6 +594,9 @@
     #ecardDrawerOverlay.open #ecardDrawerPanel { transform: translateX(0); }
     #ecardDrawerHeader { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #1f2937; background: #111827; color: #e5e7eb; }
     #ecardDrawerFrame { flex: 1; width: 100%; border: 0; background: #fff; }
+    #ecardDrawerLoading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0d1117; color: #9ca3af; z-index: 2; }
+    .ecard-drawer-spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(96, 165, 250, 0.25); border-top-color: #60a5fa; animation: ecardDrawerSpin 0.8s linear infinite; }
+    @keyframes ecardDrawerSpin { to { transform: rotate(360deg); } }
     @media (max-width: 640px) { #ecardDrawerPanel { width: 100vw; } }
   </style>
   <div id="ecardDrawerOverlay">
@@ -606,7 +609,13 @@
         </div>
         <button type="button" onclick="closeEcardDrawer()" title="關閉" style="background:none;border:none;color:#9ca3af;font-size:24px;line-height:1;cursor:pointer;padding:0 4px;">×</button>
       </div>
-      <iframe id="ecardDrawerFrame" src="about:blank" title="在線交流" allow="camera; microphone; autoplay; clipboard-write; fullscreen" allowfullscreen></iframe>
+      <div style="position:relative; flex:1; min-height:0; display:flex;">
+        <iframe id="ecardDrawerFrame" src="about:blank" title="在線交流" allow="camera; microphone; autoplay; clipboard-write; fullscreen" allowfullscreen></iframe>
+        <div id="ecardDrawerLoading" aria-live="polite">
+          <div class="ecard-drawer-spinner"></div>
+          <div style="font-size:13px;">正在載入名片，請稍候...</div>
+        </div>
+      </div>
     </aside>
   </div>
 
@@ -781,10 +790,15 @@
       if (!slug) return;
       var overlay = document.getElementById('ecardDrawerOverlay');
       var frame = document.getElementById('ecardDrawerFrame');
+      var loading = document.getElementById('ecardDrawerLoading');
       var base = data.ecardBaseUrl || window.location.origin;
       var subtitle = [name, sip].filter(Boolean).join(' · ');
       document.getElementById('ecardDrawerSubtitle').textContent = subtitle;
-      frame.onload = function () { sendVisitorContactToEcard(); };
+      if (loading) loading.style.display = 'flex';
+      frame.onload = function () {
+        if (loading) loading.style.display = 'none';
+        sendVisitorContactToEcard();
+      };
       frame.src = String(base).replace(/\/$/, '') + '/u/' + encodeURIComponent(slug);
       overlay.classList.add('open');
     }
@@ -816,8 +830,10 @@
     function closeEcardDrawer() {
       var overlay = document.getElementById('ecardDrawerOverlay');
       var frame = document.getElementById('ecardDrawerFrame');
+      var loading = document.getElementById('ecardDrawerLoading');
       if (!overlay) return;
       overlay.classList.remove('open');
+      if (loading) loading.style.display = 'none';
       if (frame) frame.src = 'about:blank';
     }
 
