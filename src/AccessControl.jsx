@@ -704,6 +704,10 @@ const AccessControl = forwardRef((props, ref) => {
   };
 
   const openAuthDrawer = (entrance) => {
+    if (!isUsableEntrance(entrance)) {
+      setToast({ message: '請先為該入口綁定設備後再設定使用權。', type: 'error' });
+      return;
+    }
     setSelectedEntrance(entrance);
     setAuthTab('authorized');
     setAuthSearch('');
@@ -736,6 +740,16 @@ const AccessControl = forwardRef((props, ref) => {
     });
     return allRooms.filter(r => !authRoomIds.includes(r.id));
   };
+
+  // 授權只對「已綁定且已分配設備」的入口有意義
+  const isUsableEntrance = (entrance) => Boolean(entrance?.deviceId) && entrance.deviceStatus === 'assigned';
+
+  const getCommunityEntrances = (community) => [
+    ...(community?.communityEntrances || []),
+    ...(community?.buildings || []).flatMap(b => b.entrances || []),
+  ];
+
+  const countUsableEntrances = (community) => getCommunityEntrances(community).filter(isUsableEntrance).length;
 
   const filteredCommunities = communities;
 
@@ -1411,7 +1425,7 @@ const AccessControl = forwardRef((props, ref) => {
                 const communityEntrances = (c.communityEntrances || []).map(e => ({ ...e, belongType: 'community', belongName: c.name, communityId: c.id, community: c }));
                 const buildingEntrances = (c.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongType: 'building', belongName: b.name, communityId: c.id, buildingId: b.id, community: c })));
                 return [...communityEntrances, ...buildingEntrances];
-              });
+              }).filter(isUsableEntrance);
               const filteredEntrances = authPageSearch
                 ? allEntrances.filter(e => (e.name || '').toLowerCase().includes(authPageSearch.toLowerCase()) || (e.belongName || '').toLowerCase().includes(authPageSearch.toLowerCase()))
                 : allEntrances;
@@ -1458,7 +1472,7 @@ const AccessControl = forwardRef((props, ref) => {
                     </div>
                     <div style={{ flex: 1, overflow: 'auto' }}>
                       {filteredEntrances.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>{authPageSearch ? '無匹配入口' : '暫無入口'}</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>{authPageSearch ? '無匹配入口' : '暫無已綁定設備的入口'}</div>
                       ) : (
                         filteredEntrances.map(e => {
                           const isSel = authPageSelected && authPageSelected.belongType === e.belongType && authPageSelected.id === e.id;
@@ -2402,7 +2416,7 @@ const AccessControl = forwardRef((props, ref) => {
         const allEntrances = [
           ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community?.name || '', belongType: 'community' })),
           ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name, belongType: 'building' }))),
-        ];
+        ].filter(isUsableEntrance);
         const allRoomIds = new Set((community?.buildings || []).flatMap(b => (b.rooms || []).map(r => r.id)));
         const authMatrix = community?.authMatrix || {};
         const entrancesWithAuth = allEntrances.map(e => {
@@ -2559,8 +2573,7 @@ const AccessControl = forwardRef((props, ref) => {
         const allEntrances = [
           ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community?.name || '', belongType: 'community' })),
           ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name, belongType: 'building' }))),
-        ];
-        const roomIds = new Set((community?.buildings?.find(b => b.id === buildingId)?.rooms || []).map(r => r.id));
+        ].filter(isUsableEntrance);
         const authMatrix = community?.authMatrix || {};
         const entrancesWithAuth = allEntrances.map(e => {
           const authRooms = authMatrix[String(e.id)] || [];
@@ -2714,7 +2727,7 @@ const AccessControl = forwardRef((props, ref) => {
         const allEntrances = [
           ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community.name, belongType: 'community' })),
           ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name, belongType: 'building' }))),
-        ];
+        ].filter(isUsableEntrance);
         const roomId = selectedRoomAuth.roomId;
         const authEntranceIds = new Set();
         Object.entries(community?.authMatrix || {}).forEach(([entranceId, roomIds]) => {
@@ -2864,7 +2877,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); setBuildingDropdownOpen(null); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if (countUsableEntrances(communityData) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteBuilding(buildingData, communityData.id); }}>✕ 刪除</button>
             </div>
@@ -2972,6 +2985,7 @@ const AccessControl = forwardRef((props, ref) => {
                 const roomCount = (c.buildings || []).reduce((sum, b) => sum + (b.rooms || []).length, 0);
                 const entranceCount = (c.communityEntrances || []).length
                   + (c.buildings || []).reduce((sum, b) => sum + (b.entrances || []).length, 0);
+                const usableEntranceCount = countUsableEntrances(c);
                 return (
                   <button
                     className="ac-dropdown-item"
@@ -2989,6 +3003,10 @@ const AccessControl = forwardRef((props, ref) => {
                       }
                       if (entranceCount === 0) {
                         setToast({ message: '請先添加至少一個入口。', type: 'error' });
+                        return;
+                      }
+                      if (usableEntranceCount === 0) {
+                        setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' });
                         return;
                       }
                       setSelectedCommunityAuth({ communityId: c.id, communityName: c.name });
@@ -3022,7 +3040,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail, allowVideoCall: roomData.allowVideoCall }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); setRoomDropdownOpen(null); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setRoomDropdownOpen(null); if (countUsableEntrances(community) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteRoom(roomData, roomDropdownOpen.buildingId); setRoomDropdownOpen(null); }}>✕ 刪除</button>
             </div>
