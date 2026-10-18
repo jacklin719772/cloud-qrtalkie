@@ -92,6 +92,7 @@ export default function ECardVisitorPage({ slug }) {
   const [externalContact, setExternalContact] = useState(null);
 
   const [callStatus, setCallStatus] = useState('');
+  const [videoFallbackNotice, setVideoFallbackNotice] = useState('');
   const [registrationStatus, setRegistrationStatus] = useState('registering');
   const [registrationMessage, setRegistrationMessage] = useState('帳號註冊中...');
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -370,6 +371,7 @@ export default function ECardVisitorPage({ slug }) {
     setIsConfirmOpen(false);
     setIsSystemReady(false);
     setIceOptimizeStatus('idle');
+    setVideoFallbackNotice('');
     setCallBusy(false);
   }
 
@@ -502,6 +504,39 @@ export default function ECardVisitorPage({ slug }) {
     } catch {}
   }
 
+  function tuneVideoSender(pc) {
+    if (!pc) return;
+    try {
+      const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+      if (!videoSender) return;
+      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
+      const sendParams = videoSender.getParameters();
+      if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
+      sendParams.encodings.forEach((enc) => {
+        enc.maxBitrate = 300000;
+        enc.maxFramerate = 15;
+      });
+      videoSender.setParameters(sendParams).catch(() => {});
+      // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
+      // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
+      if (keyframeKickRef.current) clearInterval(keyframeKickRef.current);
+      let kickAlt = false;
+      keyframeKickRef.current = setInterval(async () => {
+        try {
+          kickAlt = !kickAlt;
+          const p = videoSender.getParameters();
+          if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
+          p.encodings.forEach((enc) => {
+            enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
+            enc.maxBitrate = 300000;
+            enc.maxFramerate = 15;
+          });
+          await videoSender.setParameters(p);
+        } catch {}
+      }, 2000);
+    } catch {}
+  }
+
   async function upgradeToVideo() {
     const session = currentSessionRef.current;
     if (!session || session.connection?.signalingState !== 'stable') {
@@ -518,36 +553,7 @@ export default function ECardVisitorPage({ slug }) {
       const videoTrack = videoStream.getVideoTracks()[0];
       if (localStreamRef.current && videoTrack) localStreamRef.current.addTrack(videoTrack);
       if (videoTrack) pc.addTrack(videoTrack, localStreamRef.current || videoStream);
-      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
-      try {
-        const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
-        if (videoSender) {
-          const sendParams = videoSender.getParameters();
-          if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
-          sendParams.encodings.forEach((enc) => {
-            enc.maxBitrate = 300000;
-            enc.maxFramerate = 15;
-          });
-          await videoSender.setParameters(sendParams);
-          // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
-          // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
-          if (keyframeKickRef.current) clearInterval(keyframeKickRef.current);
-          let kickAlt = false;
-          keyframeKickRef.current = setInterval(async () => {
-            try {
-              kickAlt = !kickAlt;
-              const p = videoSender.getParameters();
-              if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
-              p.encodings.forEach((enc) => {
-                enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
-                enc.maxBitrate = 300000;
-                enc.maxFramerate = 15;
-              });
-              await videoSender.setParameters(p);
-            } catch {}
-          }, 2000);
-        }
-      } catch {}
+      tuneVideoSender(pc);
       if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
       setIsLocalVideoActive(true);
       applyCodecPreferences(pc);
@@ -790,7 +796,15 @@ export default function ECardVisitorPage({ slug }) {
     });
   }
 
-  async function prepareLocalMediaAndIce() {
+  function isUpgradeVideoMode() {
+    try {
+      return new URLSearchParams(window.location.search).get('videoMode') === 'upgrade';
+    } catch {
+      return false;
+    }
+  }
+
+  async function prepareLocalMediaAndIce(wantVideo = false) {
     setIsPreparingCall(true);
     setIsSystemReady(false);
     setIceOptimizeStatus('optimizing');
@@ -800,7 +814,25 @@ export default function ECardVisitorPage({ slug }) {
       iceTimeoutRef.current = null;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    let stream = null;
+    let hasVideo = false;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: wantVideo ? { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } } : false,
+      });
+      hasVideo = Boolean(wantVideo && stream.getVideoTracks().length > 0);
+    } catch (err) {
+      if (!wantVideo) throw err;
+      // 直接視頻：攝像頭不可用時退回純語音，不讓整通呼叫失敗
+      console.warn('[ECardVisitor] video media failed, fallback to audio', {
+        name: err?.name || '',
+        message: err?.message || '',
+      });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      hasVideo = false;
+      setVideoFallbackNotice('攝像頭不可用，已改為語音通話');
+    }
     localStreamRef.current = stream;
 
     const tempPc = new RTCPeerConnection({ iceServers: iceServersRef.current });
@@ -833,6 +865,7 @@ export default function ECardVisitorPage({ slug }) {
 
     // 麥克風就緒即可撥號；ICE 候選在後台繼續收集
     setIsSystemReady(true);
+    return { hasVideo };
   }
 
   async function handleCallClick(video) {
@@ -858,11 +891,19 @@ export default function ECardVisitorPage({ slug }) {
       return;
     }
 
+    const videoAvailable = Boolean(video && callSessionRef.current?.enableVideo);
+    // 默認直接視頻；?videoMode=upgrade 可臨時切回「先語音再升級」
+    const wantDirectVideo = videoAvailable && !isUpgradeVideoMode();
+
     setCallBusy(true);
-    setIsVideoCall(Boolean(video && callSessionRef.current?.enableVideo));
+    setVideoFallbackNotice('');
+    setIsVideoCall(videoAvailable);
     setCallStatus('準備中...');
     try {
-      await prepareLocalMediaAndIce();
+      const mediaResult = await prepareLocalMediaAndIce(wantDirectVideo);
+      if (wantDirectVideo && !mediaResult.hasVideo) {
+        setIsVideoCall(false);
+      }
       setIsConfirmOpen(true);
     } catch (err) {
       cleanupCallResources();
@@ -889,6 +930,12 @@ export default function ECardVisitorPage({ slug }) {
     setCallStatus('呼叫中...');
     callStartTimeRef.current = Date.now();
 
+    const directVideoCall = Boolean(isVideoCall) && !isUpgradeVideoMode();
+    if (isVideoCall && localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      setIsLocalVideoActive(true);
+    }
+
     const targetUri = callSession.targetSipUri;
     const options = {
       mediaStream: localStreamRef.current,
@@ -896,6 +943,10 @@ export default function ECardVisitorPage({ slug }) {
         iceServers: iceServersRef.current,
         iceTransportPolicy: 'all',
         iceCandidatePoolSize: 0,
+      },
+      rtcOfferConstraints: {
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: Boolean(isVideoCall),
       },
       eventHandlers: {
         icecandidate: (data) => {
@@ -928,6 +979,12 @@ export default function ECardVisitorPage({ slug }) {
         peerconnection: (e) => {
           const pc = e.peerconnection;
           applyCodecPreferences(pc);
+          if (directVideoCall) {
+            tuneVideoSender(pc);
+            setTimeout(() => {
+              if (currentSessionRef.current?.connection === pc) tuneVideoSender(pc);
+            }, 1500);
+          }
           pc.onicegatheringstatechange = () => {};
           pc.oniceconnectionstatechange = () => {
             if (pc.iceConnectionState === 'connected') {
@@ -948,7 +1005,7 @@ export default function ECardVisitorPage({ slug }) {
         },
         confirmed: () => {
           setCallStatus('通話中');
-          if (isVideoCall) setTimeout(upgradeToVideo, 4500);
+          if (isVideoCall && !directVideoCall) setTimeout(upgradeToVideo, 4500);
         },
         failed: () => {
           handleHangup();
@@ -973,6 +1030,15 @@ export default function ECardVisitorPage({ slug }) {
   const canVoice = Boolean(publicData?.callCapabilities?.voice && publicData?.callCapabilities?.webrtc);
   const canVideo = Boolean(publicData?.callCapabilities?.video && publicData?.callCapabilities?.webrtc && ecardData?.enableVideoCall);
   const displayAvatar = pageImage || '';
+
+  useEffect(() => {
+    if (!isCallModalOpen || !isVideoCall) return;
+    // 直接視頻：通話彈窗掛載後才能取到本地預覽 ref
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+      setIsLocalVideoActive(true);
+    }
+  }, [isCallModalOpen, isVideoCall]);
 
   useEffect(() => {
     if (loading || errorInfo || !ecardData || !publicData) return;
@@ -1363,7 +1429,7 @@ export default function ECardVisitorPage({ slug }) {
         confirmText="確認呼叫"
         confirmDisabled={!isSystemReady}
         cancelText="取消"
-        message={`${iceOptimizeStatus === 'ready'
+        message={`${videoFallbackNotice ? `${videoFallbackNotice}。` : ''}${iceOptimizeStatus === 'ready'
           ? '網路已最佳化。'
           : iceOptimizeStatus === 'timeout'
             ? '未取得中繼候選，網路受限時可能無法通話。'
