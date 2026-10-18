@@ -21,6 +21,8 @@
   var callTimerInterval = null;
   var videoUpgradeInProgress = false;
   var keyframeKickTimer = null;
+  var directVideoMode = false;
+  var directPreparing = false;
 
   var callOverlay = document.getElementById('callOverlay');
   var callStatusEl = document.getElementById('callStatusText');
@@ -252,41 +254,62 @@
 
   var confirmCallSessionData = null;
 
-  function fetchCallSessionForConfirm(roomData, callType) {
+  function fetchCallSessionForConfirm(roomData, callType, options) {
+    var isDirect = Boolean(options && options.direct);
     var xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/access/room-call-session');
     xhr.setRequestHeader('Content-Type', 'application/json');
     xhr.onload = function () {
       try {
+        if (isDirect && !directPreparing) return;
         var res = JSON.parse(xhr.responseText);
         var normalized = res && res.success ? res.data : null;
         if (normalized && normalized.webAccount) {
           confirmCallSessionData = normalized;
           // Start Web registration
-          initUAForConfirm(roomData, callType);
+          initUAForConfirm(roomData, callType, options);
+        } else if (isDirect) {
+          setCallStatus((res && res.message) || '無法取得通話配置，請稍後再試。', true);
+          setTimeout(function () { cleanupCall(); }, 3000);
         } else {
           setConfirmWebStatus('failed');
           if (confirmHintEl) confirmHintEl.textContent = (res && res.message) || '無法取得通話配置，請稍後再試。';
         }
       } catch (e) {
-        setConfirmWebStatus('failed');
-        if (confirmHintEl) confirmHintEl.textContent = '服務回應異常，請稍後再試。';
+        if (isDirect) {
+          setCallStatus('服務回應異常，請稍後再試。', true);
+          setTimeout(function () { cleanupCall(); }, 3000);
+        } else {
+          setConfirmWebStatus('failed');
+          if (confirmHintEl) confirmHintEl.textContent = '服務回應異常，請稍後再試。';
+        }
       }
     };
     xhr.onerror = function () {
-      setConfirmWebStatus('failed');
-      if (confirmHintEl) confirmHintEl.textContent = '網絡錯誤，請稍後再試。';
+      if (isDirect) {
+        setCallStatus('網絡錯誤，請稍後再試。', true);
+        setTimeout(function () { cleanupCall(); }, 3000);
+      } else {
+        setConfirmWebStatus('failed');
+        if (confirmHintEl) confirmHintEl.textContent = '網絡錯誤，請稍後再試。';
+      }
     };
     xhr.send(JSON.stringify({ roomId: roomData.roomId, lockId: roomData.lockId }));
   }
 
-  function initUAForConfirm(roomData, callType) {
+  function initUAForConfirm(roomData, callType, options) {
+    var isDirect = Boolean(options && options.direct);
     if (ua) { try { ua.stop(); } catch (e) {} ua = null; }
     var data = confirmCallSessionData;
     if (!data) return;
 
     ensureJsSIPLoaded().then(function (JS) {
-      if (!JS) { setConfirmWebStatus('failed'); return; }
+      if (!JS) {
+        if (isDirect) { setCallStatus('通話模組載入失敗', true); cleanupCall(); }
+        else setConfirmWebStatus('failed');
+        return;
+      }
+      if (isDirect && !directPreparing) return;
       var socket = new JS.WebSocketInterface(data.wssUrl);
       ua = new JS.UA({
         sockets: [socket],
@@ -296,12 +319,25 @@
       });
       ua.on('registered', function () {
         injectSdpPatch(data.sipServerPublicIp);
+        if (isDirect) {
+          if (!directPreparing) return;
+          directPreparing = false;
+          callSessionData = data;
+          prepareAndCall(roomData, callType, { directVideo: true });
+          return;
+        }
         setConfirmWebStatus('registered');
         setCallSipStatus(data.sipOnline);
         startConfirmCountdown();
       });
-      ua.on('registrationFailed', function () { setConfirmWebStatus('failed'); });
-      ua.on('disconnected', function () { setConfirmWebStatus('failed'); });
+      ua.on('registrationFailed', function () {
+        if (isDirect) { setCallStatus('通話服務註冊失敗', true); setTimeout(function () { cleanupCall(); }, 2000); }
+        else setConfirmWebStatus('failed');
+      });
+      ua.on('disconnected', function () {
+        if (isDirect) { setCallStatus('通話服務已斷開', true); cleanupCall(); }
+        else setConfirmWebStatus('failed');
+      });
       ua.start();
     });
   }
@@ -381,6 +417,8 @@
     }
     activeCall = false;
     isVideoCall = false;
+    directVideoMode = false;
+    directPreparing = false;
     callSessionData = null;
     stopTimer();
     hideCallUI();
@@ -511,6 +549,13 @@
   function bindPeerConnectionEvents(pc) {
     currentPeerConnection = pc;
     applyCodecPreferences(pc);
+    if (directVideoMode && isVideoCall) {
+      tuneVideoSender(pc);
+      // sender 参数可能需要协商后才可设置，补一次延迟重试
+      setTimeout(function () {
+        if (currentPeerConnection === pc) tuneVideoSender(pc);
+      }, 1500);
+    }
     try {
       pc.oniceconnectionstatechange = function () {
         logSafe('ice state', { state: pc.iceConnectionState || '' });
@@ -626,8 +671,9 @@
     if (!callStartTime) startTimer();
   }
 
-  function prepareAndCall(roomData, callType) {
+  function prepareAndCall(roomData, callType, options) {
     if (activeCall) return;
+    var directVideo = Boolean(options && options.directVideo) && callType === 'video';
     if (!callSessionData) {
       setCallStatus('呼叫配置未就緒', true);
       return;
@@ -656,15 +702,27 @@
     showCallUI();
     if (callRoomEl) callRoomEl.textContent = roomData.roomDisplay || (roomData.roomNumber ? roomData.roomNumber + '室' : '');
     if (btnToggleVideo) btnToggleVideo.style.display = isVideoCall ? 'inline-flex' : 'none';
-    setCallStatus(isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...');
+    setCallStatus(directVideo ? '正在建立視訊通話（測試）...' : (isVideoCall ? '正在建立語音/視訊通話...' : '正在建立語音通話...'));
 
-    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    var mediaConstraints = directVideo
+      ? { audio: true, video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } } }
+      : { audio: true, video: false };
+    navigator.mediaDevices.getUserMedia(mediaConstraints)
       .then(function (stream) {
+        // 取得媒體期間使用者可能已掛斷/清理，避免幽靈呼叫
+        if (!activeCall) {
+          stream.getTracks().forEach(function (track) { try { track.stop(); } catch (e) {} });
+          return;
+        }
         localStream = stream;
         logLocalTracks(stream, 'local media ready');
         if (isVideoCall && localVideo) {
           localVideo.srcObject = stream;
           localVideo.style.display = 'block';
+        }
+        if (directVideo) {
+          var icon = document.getElementById('btnToggleVideoIcon');
+          if (icon) icon.src = '/visitor-assets/camera-on.svg';
         }
         // UA already registered from confirm modal, skip recreation
         if (ua && ua.isRegistered()) {
@@ -751,7 +809,7 @@
         confirmed: function () {
           setCallStatus('通話中');
           startTimerIfNeeded();
-          if (isVideoCall) {
+          if (isVideoCall && !directVideoMode) {
             if (callUpgradeTimer) clearTimeout(callUpgradeTimer);
             callUpgradeTimer = setTimeout(function () { upgradeToVideo(roomData); }, 4500);
           }
@@ -784,6 +842,39 @@
     currentSession = ua.call(callSessionData.targetSipUri, options);
   }
 
+  function tuneVideoSender(pc) {
+    if (!pc) return;
+    try {
+      var videoSender = (pc.getSenders() || []).find(function (s) { return s.track && s.track.kind === 'video'; });
+      if (!videoSender) return;
+      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
+      var sendParams = videoSender.getParameters();
+      if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
+      sendParams.encodings.forEach(function (enc) {
+        enc.maxBitrate = 300000;
+        enc.maxFramerate = 15;
+      });
+      videoSender.setParameters(sendParams).catch(function () {});
+      // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
+      // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
+      if (keyframeKickTimer) clearInterval(keyframeKickTimer);
+      var kickAlt = false;
+      keyframeKickTimer = setInterval(function () {
+        kickAlt = !kickAlt;
+        var p = videoSender.getParameters();
+        if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
+        p.encodings.forEach(function (enc) {
+          enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
+          enc.maxBitrate = 300000;
+          enc.maxFramerate = 15;
+        });
+        videoSender.setParameters(p).catch(function () {});
+      }, 2000);
+    } catch (err) {
+      logSafe('tuneVideoSender error', { message: err && err.message ? String(err.message) : '' });
+    }
+  }
+
   function upgradeToVideo(roomData) {
     if (!currentSession || !currentPeerConnection || !isVideoCall || videoUpgradeInProgress) return;
     if (!secureContextCheck()) return;
@@ -803,36 +894,7 @@
       if (videoTrack) {
         currentPeerConnection.addTrack(videoTrack, localStream || videoStream);
       }
-      // 压制视频发送码率（≤300kbps）与帧率上限，避免大关键帧分片损毁导致持续花屏
-      try {
-        var videoSender = (currentPeerConnection.getSenders() || []).find(function (s) { return s.track && s.track.kind === 'video'; });
-        if (videoSender) {
-          var sendParams = videoSender.getParameters();
-          if (!sendParams.encodings || sendParams.encodings.length === 0) sendParams.encodings = [{}];
-          sendParams.encodings.forEach(function (enc) {
-            enc.maxBitrate = 300000;
-            enc.maxFramerate = 15;
-          });
-          videoSender.setParameters(sendParams).catch(function () {});
-          // 每 2 秒微调一次输出缩放：libwebrtc 在分辨率变化时必发关键帧，
-          // 绕过 Asterisk 无法转发 PLI 的限制——丢包打坏画面后最多 ~2 秒即可自愈
-          if (keyframeKickTimer) clearInterval(keyframeKickTimer);
-          var kickAlt = false;
-          keyframeKickTimer = setInterval(function () {
-            kickAlt = !kickAlt;
-            var p = videoSender.getParameters();
-            if (!p.encodings || p.encodings.length === 0) p.encodings = [{}];
-            p.encodings.forEach(function (enc) {
-              enc.scaleResolutionDownBy = kickAlt ? 1.25 : 1;
-              enc.maxBitrate = 300000;
-              enc.maxFramerate = 15;
-            });
-            videoSender.setParameters(p).catch(function () {});
-          }, 2000);
-        }
-      } catch (err) {
-        logSafe('upgradeToVideo tune error', { message: err && err.message ? String(err.message) : '' });
-      }
+      tuneVideoSender(currentPeerConnection);
       if (localVideo) {
         localVideo.srcObject = localStream || videoStream;
         localVideo.style.display = 'block';
@@ -925,6 +987,27 @@
     showConfirmModal(roomData, callType);
   }
 
+  // 測試用：不經過確認彈窗，直接以音訊+視訊發起初始呼叫（不走先語音再升級）
+  function requestDirectVideo(roomData) {
+    if (!roomData || !roomData.roomId) {
+      alert('無法獲取房間或設備資訊，請重新整理頁面。');
+      return;
+    }
+    if (activeCall || directPreparing) return;
+    directPreparing = true;
+    directVideoMode = true;
+    pendingRoomData = roomData;
+    pendingCallType = 'video';
+    showCallUI();
+    if (callRoomEl) callRoomEl.textContent = roomData.roomDisplay || (roomData.roomNumber ? roomData.roomNumber + '室' : '');
+    setCallStatus('正在準備視訊呼叫（測試）...');
+    logSafe('direct video test start', {
+      roomNumber: roomData.roomNumber || '',
+      roomId: roomData.roomId || 0,
+    });
+    fetchCallSessionForConfirm(roomData, 'video', { direct: true });
+  }
+
   function confirmCall() {
     if (!pendingRoomData) return;
     clearConfirmCountdown();
@@ -946,6 +1029,7 @@
 
   window.AccessVisitorCall = {
     requestCall: requestCall,
+    requestDirectVideo: requestDirectVideo,
     confirmCall: confirmCall,
     cancelConfirm: cancelConfirm,
     hangup: hangup,

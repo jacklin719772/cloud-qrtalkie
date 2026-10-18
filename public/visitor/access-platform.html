@@ -1672,7 +1672,7 @@
         var webAccount = webAccountMap[roomNumKey] || '';
         var hasSipAccount = Boolean(r.sipAccount);
         var allowVideo = r.allowVideoCall !== false;
-        return '<div class="room-row" data-bld="'+r.buildingId+'" data-room-id="'+r.id+'" data-room-num="'+esc(r.roomNumber)+'" data-sip-account="'+esc(r.sipAccount || '')+'" data-web-account="'+esc(webAccount)+'" data-resident-name="'+esc(r.residentName || '')+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話"'+(hasSipAccount?'':' disabled')+'>📞</button><button class="call-icon-btn call-video" onclick="handleAccessVideoCall(this)" title="'+(hasSipAccount && allowVideo ? '視訊通話' : '視訊通話已禁用')+'"'+(hasSipAccount && allowVideo ? '' : ' disabled')+'><img src="/visitor-assets/video-call.svg" style="width:20px;height:20px;vertical-align:middle;'+(hasSipAccount && allowVideo ? '' : 'opacity:0.35;')+'"></button></div></div>';
+        return '<div class="room-row" data-bld="'+r.buildingId+'" data-room-id="'+r.id+'" data-room-num="'+esc(r.roomNumber)+'" data-sip-account="'+esc(r.sipAccount || '')+'" data-web-account="'+esc(webAccount)+'" data-resident-name="'+esc(r.residentName || '')+'"><div class="room-row-left"><span class="room-number">'+esc(r.roomNumber)+'室</span>'+(r.residentName?'<span class="room-contact">'+esc(r.residentName)+'</span>':'')+'</div><div class="room-actions"><button class="call-icon-btn call-voice" onclick="handleAccessVoiceCall(this)" title="語音通話"'+(hasSipAccount?'':' disabled')+'>📞</button><button class="call-icon-btn call-video" onclick="handleAccessVideoCall(this)" title="'+(hasSipAccount && allowVideo ? '視訊通話' : '視訊通話已禁用')+'"'+(hasSipAccount && allowVideo ? '' : ' disabled')+'><img src="/visitor-assets/video-call.svg" style="width:20px;height:20px;vertical-align:middle;'+(hasSipAccount && allowVideo ? '' : 'opacity:0.35;')+'"></button><button class="call-icon-btn call-video-test" onclick="handleAccessDirectVideoCall(this)" title="'+(hasSipAccount && allowVideo ? '直接發起視訊呼叫（測試）' : '直接視訊測試不可用')+'"'+(hasSipAccount && allowVideo ? ' style="border-color:#f59e0b;color:#f59e0b;"' : ' disabled style="border-color:#374151;color:#6b7280;"')+'>🧪</button></div></div>';
       }).join('');
       document.querySelectorAll('.pc-room-grid').forEach(function(g){ g.innerHTML = rh; });
       // Filter rooms by first building
@@ -1764,6 +1764,40 @@
 
   window.handleAccessVoiceCall = function(btn) { openAccessCallConfirm(btn, 'voice'); };
   window.handleAccessVideoCall = function(btn) { openAccessCallConfirm(btn, 'video'); };
+
+  // 測試入口：直接以音訊+視訊發起呼叫，不經過確認彈窗與「先語音再升級」流程
+  window.handleAccessDirectVideoCall = function(btn) {
+    var row = btn && btn.closest ? btn.closest('.room-row') : null;
+    var roomId = row ? parseInt(row.dataset.roomId) : 0;
+    var roomNumber = row ? (row.dataset.roomNum || row.querySelector('.room-number')?.textContent?.replace('室','') || '') : '';
+    var roomDisplay = roomNumber ? roomNumber + '室' : '';
+    var resident = row ? (row.dataset.residentName || row.querySelector('.room-contact')?.textContent || '') : '';
+    var sipAccount = row ? (row.dataset.sipAccount || '') : '';
+    var webAccount = row ? (row.dataset.webAccount || '') : '';
+    var lockId = (new URLSearchParams(location.search)).get('lockId') || '';
+
+    if (!roomId || !lockId) {
+      alert('無法獲取房間或設備資訊，請重新整理頁面。');
+      return;
+    }
+    if (!sipAccount) {
+      alert('該房間尚未綁定SIP帳號，暫時無法呼叫。');
+      return;
+    }
+    if (window.AccessVisitorCall && typeof window.AccessVisitorCall.requestDirectVideo === 'function') {
+      window.AccessVisitorCall.requestDirectVideo({
+        roomId: roomId,
+        roomNumber: roomNumber,
+        roomDisplay: roomDisplay,
+        residentName: resident,
+        lockId: lockId,
+        sipAccount: sipAccount,
+        webAccount: webAccount,
+      });
+      return;
+    }
+    alert('通話模組未載入，請稍後再試。');
+  };
 
   // Call button feedback: static demo only, no real call.
   function handleCall(btn, callType) {
