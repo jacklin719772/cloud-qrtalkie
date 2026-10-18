@@ -16940,6 +16940,35 @@ app.delete("/api/access-rooms/:id", requireAdmin, async (request, response) => {
   }
 });
 
+// GET /api/access-rooms/:id/entrance-auth - 查詢房間已授權的入口
+app.get("/api/access-rooms/:id/entrance-auth", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ message: "只有租戶管理員可以檢視房間授權。" });
+  }
+  const roomId = Number(request.params.id);
+  if (!roomId) return response.status(400).json({ message: "無效的房間 ID。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [room] = await connection.query(
+      "SELECT id FROM access_rooms WHERE id = ? AND tenant_id = ?",
+      [roomId, request.admin.tenantId]
+    );
+    if (!room) return response.status(404).json({ message: "房間不存在。" });
+    const rows = await connection.query(
+      "SELECT entrance_id FROM access_room_entrance_auth WHERE room_id = ? AND tenant_id = ?",
+      [roomId, request.admin.tenantId]
+    );
+    response.json({ code: 0, data: { entranceIds: rows.map(row => Number(row.entrance_id)) } });
+  } catch (error) {
+    console.error("查詢房間授權失敗:", error);
+    response.status(500).json({ message: "查詢房間授權失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // POST /api/access-entrances - 新增入口
 app.post("/api/access-entrances", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {

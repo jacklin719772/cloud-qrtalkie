@@ -37,6 +37,8 @@ const AccessControl = forwardRef((props, ref) => {
   const [authSort, setAuthSort] = useState({ field: 'roomNumber', asc: true });
   const [showRoomAuthDrawer, setShowRoomAuthDrawer] = useState(false);
   const [selectedRoomAuth, setSelectedRoomAuth] = useState(null); // { roomId, roomNumber, buildingId, buildingName, communityId }
+  const [roomAuthEntranceIds, setRoomAuthEntranceIds] = useState(new Set());
+  const [roomAuthLoading, setRoomAuthLoading] = useState(false);
   const [showBuildingAuthDrawer, setShowBuildingAuthDrawer] = useState(false);
   const [selectedBuildingAuth, setSelectedBuildingAuth] = useState(null); // { buildingId, buildingName, communityId, community }
   const [showCommunityAuthDrawer, setShowCommunityAuthDrawer] = useState(false);
@@ -366,8 +368,35 @@ const AccessControl = forwardRef((props, ref) => {
     setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).map(r => r.id === data.id ? { ...r, ...data } : r) } : null);
   };
 
-  const openSipAssignDialog = async (room, buildingId, buildingName) => {
-    setAssignSipRoom({ roomId: room.id, roomNumber: room.roomNumber, buildingId, buildingName, currentSipUserId: room.sipUserId });
+  const openRoomAuthDrawer = (room, buildingId, buildingName) => {
+    const community = communities.find(c => (c.buildings || []).some(b => b.id === buildingId));
+    if (!community) {
+      setToast({ message: '社區不存在。', type: 'error' });
+      return;
+    }
+    if (countUsableEntrances(community) === 0) {
+      setToast({
+        message: countBoundEntrances(community) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。',
+        type: 'error',
+      });
+      return;
+    }
+    setSelectedRoomAuth({ roomId: room.id, roomNumber: room.roomNumber, buildingId, buildingName, communityId: community.id });
+    setRoomAuthEntranceIds(new Set());
+    setRoomAuthLoading(true);
+    setShowRoomAuthDrawer(true);
+    apiClient.get(`/access-rooms/${room.id}/entrance-auth`)
+      .then((res) => {
+        const ids = Array.isArray(res?.data?.entranceIds) ? res.data.entranceIds.map(Number) : [];
+        setRoomAuthEntranceIds(new Set(ids));
+      })
+      .catch((error) => {
+        setToast({ message: error?.message || '載入房間授權失敗。', type: 'error' });
+      })
+      .finally(() => setRoomAuthLoading(false));
+  };
+
+  const openSipAssignDialog = async (room, buildingId, buildingName) => {    setAssignSipRoom({ roomId: room.id, roomNumber: room.roomNumber, buildingId, buildingName, currentSipUserId: room.sipUserId });
     setSipLoading(true);
     try {
       const res = await apiClient.get(`/sip-users/available?roomId=${room.id}`);
@@ -2597,11 +2626,8 @@ const AccessControl = forwardRef((props, ref) => {
           ...(community?.communityEntrances || []).map(e => ({ ...e, belongName: community.name, belongType: 'community' })),
           ...(community?.buildings || []).flatMap(b => (b.entrances || []).map(e => ({ ...e, belongName: b.name, belongType: 'building' }))),
         ].filter(isUsableEntrance);
-        const roomId = selectedRoomAuth.roomId;
-        const authEntranceIds = new Set();
-        Object.entries(community?.authMatrix || {}).forEach(([entranceId, roomIds]) => {
-          if (roomIds.includes(roomId)) authEntranceIds.add(Number(entranceId));
-        });
+        const roomId = Number(selectedRoomAuth.roomId);
+        const authEntranceIds = roomAuthEntranceIds;
         const selEntrances = allEntrances.filter(e => e._sel2);
         const allSel = allEntrances.length > 0 && allEntrances.every(e => e._sel2);
         const toggleEnt = (id, checked) => {
@@ -2636,17 +2662,28 @@ const AccessControl = forwardRef((props, ref) => {
                 if (authorize) {
                   auth[key] = [...new Set([...(auth[key] || []), roomId])];
                 } else {
-                  auth[key] = (auth[key] || []).filter(id => id !== roomId);
+                  auth[key] = (auth[key] || []).filter(id => Number(id) !== roomId);
                 }
                 return { ...c2, authMatrix: auth };
               }
               return c2;
             }));
-          } catch (err) { console.error(err); }
+            setRoomAuthEntranceIds(prev => {
+              const next = new Set(prev);
+              if (authorize) next.add(Number(entranceId));
+              else next.delete(Number(entranceId));
+              return next;
+            });
+          } catch (err) {
+            console.error(err);
+            setToast({ message: err?.message || '授權操作失敗，請重試。', type: 'error' });
+          }
         };
         const handleBatchRoomAuth = async (authorize) => {
-          const selected = selEntrances.map(e => e.id);
+          const selected = [...new Set(selEntrances.map(e => Number(e.id)))];
           if (selected.length === 0) return;
+          const succeeded = [];
+          let failed = 0;
           for (const eid of selected) {
             try {
               if (authorize) {
@@ -2654,23 +2691,35 @@ const AccessControl = forwardRef((props, ref) => {
               } else {
                 await apiClient.delete(`/access-entrances/${eid}/auth/rooms`, { data: { roomIds: [roomId] } });
               }
-            } catch (err) { console.error(err); }
+              succeeded.push(eid);
+            } catch (err) {
+              failed += 1;
+              console.error(err);
+            }
           }
           setCommunities(prev => prev.map(c2 => {
             if (c2.id === selectedRoomAuth.communityId) {
               const auth = { ...(c2.authMatrix || {}) };
-              selected.forEach(eid => {
+              succeeded.forEach(eid => {
                 const key = String(eid);
                 if (authorize) {
                   auth[key] = [...new Set([...(auth[key] || []), roomId])];
                 } else {
-                  auth[key] = (auth[key] || []).filter(id => id !== roomId);
+                  auth[key] = (auth[key] || []).filter(id => Number(id) !== roomId);
                 }
               });
               return { ...c2, authMatrix: auth };
             }
             return c2;
           }));
+          setRoomAuthEntranceIds(prev => {
+            const next = new Set(prev);
+            succeeded.forEach(eid => authorize ? next.add(eid) : next.delete(eid));
+            return next;
+          });
+          if (failed > 0) {
+            setToast({ message: `有 ${failed} 個入口授權失敗，請重試。`, type: 'error' });
+          }
         };
         return (
           <>
@@ -2686,18 +2735,20 @@ const AccessControl = forwardRef((props, ref) => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px', flexShrink: 0, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="ac-stat-pill">總入口<strong>{allEntrances.length}</strong></span>
-                    <span className="ac-stat-pill">已授權<strong style={{ color: '#2563eb' }}>{authEntranceIds.size}</strong></span>
+                    <span className="ac-stat-pill">已授權<strong style={{ color: '#2563eb' }}>{roomAuthLoading ? '…' : authEntranceIds.size}</strong></span>
                     {selEntrances.length > 0 && <span className="ac-stat-pill">已選<strong style={{ color: '#8b5cf6' }}>{selEntrances.length}</strong></span>}
                   </div>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button className="ac-btn-sm" type="button" disabled={selEntrances.length === 0} style={{ fontSize: '11px', padding: '0 10px', height: '28px', opacity: selEntrances.length === 0 ? 0.4 : 1 }}
+                    <button className="ac-btn-sm" type="button" disabled={roomAuthLoading || selEntrances.length === 0} style={{ fontSize: '11px', padding: '0 10px', height: '28px', opacity: roomAuthLoading || selEntrances.length === 0 ? 0.4 : 1 }}
                       onClick={() => handleBatchRoomAuth(true)}>✓ 授權所選</button>
-                    <button className="ac-btn-sm" type="button" disabled={selEntrances.length === 0} style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626', opacity: selEntrances.length === 0 ? 0.4 : 1 }}
+                    <button className="ac-btn-sm" type="button" disabled={roomAuthLoading || selEntrances.length === 0} style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626', opacity: roomAuthLoading || selEntrances.length === 0 ? 0.4 : 1 }}
                       onClick={() => handleBatchRoomAuth(false)}>✕ 取消所選</button>
                   </div>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-                  {allEntrances.length === 0 ? (
+                  {roomAuthLoading ? (
+                    <div className="ac-empty" style={{ padding: '20px' }}>授權資料載入中...</div>
+                  ) : allEntrances.length === 0 ? (
                     <div className="ac-empty" style={{ padding: '20px' }}>暫無入口</div>
                   ) : (
                     <table className="ac-table" style={{ minWidth: '480px' }}>
@@ -2877,7 +2928,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail, allowVideoCall: roomData.allowVideoCall }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號管理</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setRoomDropdownOpen(null); if (countUsableEntrances(community) === 0) { setToast({ message: countBoundEntrances(community) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。', type: 'error' }); return; } setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); }}>🔐 入口授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); openRoomAuthDrawer(roomData, roomDropdownOpen.buildingId, bName); }}>🔐 入口授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteRoom(roomData, roomDropdownOpen.buildingId); setRoomDropdownOpen(null); }}>✕ 刪除</button>
             </div>
