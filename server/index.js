@@ -15118,6 +15118,24 @@ app.post("/api/public/call-centers/:slug/visitor-submit", async (request, respon
   }
 });
 
+// 訪客留言自動轉發坐席郵箱的簡易限流：同一 IP + 呼叫中心 + 坐席 10 分鐘內最多 3 次
+const callCenterMessageForwardWindows = new Map();
+function allowCallCenterMessageForward(key) {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  for (const [itemKey, item] of callCenterMessageForwardWindows) {
+    if (item.resetAt <= now) callCenterMessageForwardWindows.delete(itemKey);
+  }
+  const entry = callCenterMessageForwardWindows.get(key);
+  if (!entry) {
+    callCenterMessageForwardWindows.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  if (entry.count >= 3) return false;
+  entry.count += 1;
+  return true;
+}
+
 // POST /api/public/call-centers/:slug/visitor-message - 访客在線留言
 app.post("/api/public/call-centers/:slug/visitor-message", async (request, response) => {
   const slug = sanitizeString(request.params.slug, 100);
@@ -15145,14 +15163,26 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
       return response.status(404).json({ code: -1, message: "該呼叫中心不存在或已停用。" });
     }
 
-    // Look up agent sip_account_id if targeting a specific agent
+    // Look up agent sip_account_id / email if targeting a specific agent
     let agentSipAccountId = null;
+    let agentEmail = '';
+    let agentDisplayName = targetAgentName;
+    let agentCategoryName = '';
     if (targetAgentId) {
       const [agentRow] = await connection.query(
-        `SELECT sip_account_id FROM call_center_category_agents WHERE id = ? AND call_center_id = ? LIMIT 1`,
+        `SELECT a.sip_account_id, a.email, a.display_name, c.category_name
+         FROM call_center_category_agents a
+         LEFT JOIN call_center_categories c ON c.id = a.category_id
+         WHERE a.id = ? AND a.call_center_id = ?
+         LIMIT 1`,
         [targetAgentId, cc.id]
       );
-      if (agentRow) agentSipAccountId = agentRow.sip_account_id || null;
+      if (agentRow) {
+        agentSipAccountId = agentRow.sip_account_id || null;
+        agentEmail = String(agentRow.email || '').trim();
+        agentDisplayName = agentRow.display_name || targetAgentName;
+        agentCategoryName = agentRow.category_name || '';
+      }
     }
 
     await connection.query(
@@ -15166,6 +15196,42 @@ app.post("/api/public/call-centers/:slug/visitor-message", async (request, respo
        messageContent,
        (request.ip || request.connection?.remoteAddress || '').slice(0, 64), (request.headers['user-agent'] || '').slice(0, 1000)]
     );
+
+    // 指定坐席且有有效郵箱時，自動把留言轉發到坐席郵箱；失敗不影響留言落庫
+    if (targetAgentId && agentEmail && isValidEmail(agentEmail)) {
+      const visitorIp = (request.ip || request.connection?.remoteAddress || '').slice(0, 64);
+      if (allowCallCenterMessageForward(`cc:${cc.id}:${targetAgentId}:${visitorIp}`)) {
+        const messageTime = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        const lines = [
+          '收到一條新的訪客留言，請及時辦理：',
+          '',
+          `呼叫中心：${cc.center_name || '-'}`,
+          `留言對象：${agentCategoryName ? `${agentCategoryName} / ` : ''}${agentDisplayName || '坐席'}`,
+          `訪客姓名：${visitorName || '-'}`,
+          `電話：${visitorPhone || '-'}`,
+          `郵箱：${visitorEmail || '-'}`,
+          `公司：${visitorCompany || '-'}`,
+          `留言時間：${messageTime}`,
+          '',
+          '留言內容：',
+          messageContent,
+        ];
+        try {
+          const delivery = await sendTrialNotificationEmail(connection, {
+            to: agentEmail,
+            subject: `訪客留言通知（${cc.center_name || '呼叫中心'}）`,
+            body: lines.join('\n'),
+          });
+          if (!delivery.sent) {
+            console.error(`[callcenter-message] forward failed to ${agentEmail}: ${delivery.reason || 'unknown'}`);
+          }
+        } catch (error) {
+          console.error(`[callcenter-message] forward error to ${agentEmail}:`, error?.message || error);
+        }
+      } else {
+        console.warn(`[callcenter-message] forward rate-limited for agent ${targetAgentId}`);
+      }
+    }
 
     return response.json({ code: 0, message: "留言提交成功" });
   } catch (error) {
