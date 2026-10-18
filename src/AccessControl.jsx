@@ -1133,14 +1133,12 @@ const AccessControl = forwardRef((props, ref) => {
             /* 樓宇管理標籤頁 */
             (() => {
               const allBuildings = communities.flatMap(c => (c.buildings || []).map(b => ({ ...b, communityName: c.name, communityId: c.id, community: c })));
-              return allBuildings.length === 0 ? (
-                <div className="ac-empty">暫無樓宇數據，請在社區列表中添加樓宇</div>
-              ) : (
+              return (
                 <>
                   <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span className="ac-stat-pill">樓宇總數<strong style={{ color: '#16a34a' }}>{allBuildings.length}</strong></span>
                   </div>
-                  {communities.filter(c => (c.buildings || []).length > 0 || (activeTab === 'buildings')).map(c => (
+                  {communities.map(c => (
                     <div key={c.id} style={{ marginBottom: '20px' }}>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#f3f4f6', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1621,7 +1619,7 @@ const AccessControl = forwardRef((props, ref) => {
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '24px' }}>
                       <div className="ac-section-label">樓宇</div>
-                      <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => addBuildingDialogRef.current?.showModal({ id: c.id, community: { name: c.name, address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } })}><Plus size={12} /> 添加樓宇</button>
+                      <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => addBuildingDialogRef.current?.showModal({ id: c.id, community: { name: c.name, address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } })}><Plus size={12} /> 新增樓宇</button>
                     </div>
                     {(c.buildings || []).map(b => (
                       <div key={b.id} className="ac-building-card">
