@@ -380,8 +380,24 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
           padding-right: 8px !important;
           text-align: center;
           background: #111827;
+          z-index: 2;
         }
         .cc-action-head { z-index: 3 !important; background: #0f172a; }
+
+        .cc-status-head, .cc-status-cell {
+          position: sticky;
+          right: 100px;
+          box-shadow: -1px 0 0 #1f2937;
+          width: 90px;
+          min-width: 90px;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+          text-align: center;
+          background: #111827;
+          z-index: 2;
+        }
+        .cc-status-head { z-index: 3 !important; background: #0f172a; top: 0; }
+        .cc-table tr:hover .cc-status-cell { background: #1a2332; }
 
         .cc-cell-name {
           font-weight: 600;
@@ -542,7 +558,7 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
                 <th>留言對象</th>
                 <th style={{ maxWidth: '300px' }}>諮詢內容</th>
                 <th>登記時間</th>
-                <th>狀態</th>
+                <th className="cc-status-head">狀態</th>
                 <th className="cc-action-head">操作</th>
               </tr>
             </thead>
@@ -576,7 +592,7 @@ const CallCenterVisitorInquiries = forwardRef(({ onReturn, context }, ref) => {
                   </td>
                   <td><span className="cc-cell-message" title={item.visitorMessage}>{item.visitorMessage || '-'}</span></td>
                   <td><span className="cc-cell-time">{formatDate(item.createdAt)}</span></td>
-                  <td>
+                  <td className="cc-status-cell">
                     <span className={`cc-status-badge ${item.status === 'processed' ? 'processed' : 'pending'}`}>
                       {item.status === 'processed' ? '已處理' : '未處理'}
                     </span>
