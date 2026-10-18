@@ -275,7 +275,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       window.alert('請選擇要刪除的裝置。');
       return;
     }
-    const assignedDevices = selectedDevices.filter((device) => device.status === 'assigned');
+    const assignedDevices = selectedDevices.filter((device) => device.status === 'assigned' && device.tenantId);
     if (assignedDevices.length > 0) {
       window.alert(`所選裝置中有 ${assignedDevices.length} 個已分配給租戶，請先取消分配。`);
       return;
@@ -429,7 +429,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       return;
     }
     if (action === 'delete') {
-      if (device.status === 'assigned') {
+      if (device.status === 'assigned' && device.tenantId) {
         window.alert('已經分配給租戶的裝置不允許刪除。');
         return;
       }

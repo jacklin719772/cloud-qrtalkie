@@ -4744,6 +4744,34 @@ app.delete("/api/admin/tenants/:id", requireAdmin, async (request, response) => 
     await connection.query(`DELETE FROM billing_coupons WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`DELETE FROM billing_offline_payment_accounts WHERE tenant_id = ?`, [tenantId]);
 
+    // Release gate devices before deleting the tenant: tenant_id FK is ON DELETE SET NULL,
+    // which would otherwise leave assignment_status='assigned' with tenant_id NULL.
+    const tenantGateDevices = await connection.query(
+      "SELECT id, assignment_status FROM gate_devices WHERE tenant_id = ? FOR UPDATE",
+      [tenantId],
+    );
+    if (tenantGateDevices.length > 0) {
+      await connection.query(
+        `UPDATE gate_devices
+         SET tenant_id = NULL,
+             assignment_status = 'unassigned',
+             assigned_at = NULL,
+             assigned_by_admin_user_id = NULL,
+             expires_at = NULL
+         WHERE tenant_id = ?`,
+        [tenantId],
+      );
+      for (const device of tenantGateDevices) {
+        await connection.query(
+          `INSERT INTO gate_device_assignment_history (
+             gate_device_id, tenant_id, from_status, to_status, changed_by_admin_user_id, change_reason
+           )
+           VALUES (?, ?, ?, 'unassigned', ?, 'tenant_deleted')`,
+          [Number(device.id), tenantId, device.assignment_status || 'assigned', request.admin.id],
+        );
+      }
+    }
+
     // Delete entitlements and unlink SIP accounts
     await connection.query(`DELETE FROM tenant_sip_account_entitlements WHERE tenant_id = ?`, [tenantId]);
     await connection.query(`UPDATE sip_users SET tenant_id = NULL WHERE tenant_id = ?`, [tenantId]);
@@ -11118,7 +11146,7 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
       await connection.rollback();
       return response.status(404).json({ message: "裝置不存在。" });
     }
-    if (device.assignment_status !== "assigned" || device.tenant_id == null) {
+    if (device.assignment_status !== "assigned") {
       await connection.rollback();
       return response.status(409).json({ message: "該裝置尚未分配給租戶。" });
     }
@@ -11137,7 +11165,7 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
          gate_device_id, tenant_id, from_status, to_status, changed_by_admin_user_id, change_reason
        )
        VALUES (?, ?, ?, 'unassigned', ?, 'unassign')`,
-      [deviceId, Number(device.tenant_id), device.assignment_status, request.admin.id],
+      [deviceId, device.tenant_id != null ? Number(device.tenant_id) : null, device.assignment_status, request.admin.id],
     );
     await connection.commit();
     return response.json({ message: "裝置已取消分配。" });
