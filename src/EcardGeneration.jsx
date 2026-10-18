@@ -103,6 +103,9 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [notifyItem, setNotifyItem] = useState(null);
   const [notifyCopied, setNotifyCopied] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [isSendingNotify, setIsSendingNotify] = useState(false);
+  const [notifyMailMessage, setNotifyMailMessage] = useState({ type: '', text: '' });
   const [selectedIds, setSelectedIds] = useState([]);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownAnchorRef = useRef(null);
@@ -1016,6 +1019,34 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     setOpenDropdownId(null);
     setNotifyItem(item);
     setNotifyCopied(false);
+    setNotifyEmail(item?.email || '');
+    setIsSendingNotify(false);
+    setNotifyMailMessage({ type: '', text: '' });
+  }
+
+  async function handleSendEcardNotifyEmail() {
+    if (!notifyItem) return;
+    const email = String(notifyEmail || '').trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNotifyMailMessage({ type: 'error', text: '請輸入有效的電子郵件地址。' });
+      window.setTimeout(() => setNotifyMailMessage((prev) => (prev.type === 'error' ? { type: '', text: '' } : prev)), 5000);
+      return;
+    }
+    setIsSendingNotify(true);
+    setNotifyMailMessage({ type: '', text: '' });
+    try {
+      const res = await apiClient.post(`/tenant/ecard-accounts/${notifyItem.id}/send-notification-email`, {
+        email,
+        body: buildEcardNotifyText(notifyItem),
+      });
+      setNotifyMailMessage({ type: 'success', text: res?.message || '郵件已發送。' });
+      window.setTimeout(() => setNotifyMailMessage((prev) => (prev.type === 'success' ? { type: '', text: '' } : prev)), 5000);
+    } catch (err) {
+      setNotifyMailMessage({ type: 'error', text: err?.message || '郵件發送失敗。' });
+      window.setTimeout(() => setNotifyMailMessage((prev) => (prev.type === 'error' ? { type: '', text: '' } : prev)), 5000);
+    } finally {
+      setIsSendingNotify(false);
+    }
   }
 
   async function handleCopyEcardNotify() {
@@ -2565,13 +2596,28 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
             <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '640px', maxWidth: '92vw', maxHeight: '84vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
               <div style={{ flexShrink: 0, padding: '18px 22px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
                 <h3 style={{ margin: 0, color: '#e5e7eb', fontSize: '17px' }}>發送通知</h3>
-                <p style={{ margin: '6px 0 0', color: '#9ca3af', fontSize: '12px', lineHeight: 1.6 }}>複製以下文案發送給帳號 {notifyItem.sipAccount} 的用戶，告知名片連結與自助修改方式。</p>
+                <p style={{ margin: '6px 0 0', color: '#9ca3af', fontSize: '12px', lineHeight: 1.6 }}>可輸入郵箱直接發送給帳號 {notifyItem.sipAccount} 的用戶，或複製文案另行發送；內容包含名片連結與自助修改方式。</p>
               </div>
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 22px' }}>
-                <textarea readOnly value={buildEcardNotifyText(notifyItem)} style={{ width: '100%', minHeight: '300px', background: '#0f172a', color: '#e5e7eb', border: '1px solid #1f2937', borderRadius: '8px', padding: '12px', fontSize: '13px', lineHeight: 1.7, resize: 'vertical', boxSizing: 'border-box', scrollbarWidth: 'thin', scrollbarColor: '#4b5563 #1b2432' }} />
+                <label style={{ display: 'block', marginBottom: '12px' }}>
+                  <span style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '6px' }}>收件郵箱</span>
+                  <input
+                    type="email"
+                    value={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.value)}
+                    placeholder="請輸入收件郵箱"
+                    autoComplete="off"
+                    style={{ width: '100%', height: '38px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', backgroundColor: '#0f172a', color: '#e5e7eb', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </label>
+                <textarea readOnly value={buildEcardNotifyText(notifyItem)} style={{ width: '100%', minHeight: '280px', background: '#0f172a', color: '#e5e7eb', border: '1px solid #1f2937', borderRadius: '8px', padding: '12px', fontSize: '13px', lineHeight: 1.7, resize: 'vertical', boxSizing: 'border-box', scrollbarWidth: 'thin', scrollbarColor: '#4b5563 #1b2432' }} />
+                {notifyMailMessage.text && (
+                  <p style={{ color: notifyMailMessage.type === 'error' ? '#ef4444' : '#10b981', fontSize: '12px', margin: '8px 0 0' }}>{notifyMailMessage.text}</p>
+                )}
                 {notifyCopied && <p style={{ color: '#10b981', fontSize: '12px', margin: '8px 0 0' }}>已複製到剪貼板。</p>}
               </div>
               <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                <button type="button" onClick={handleSendEcardNotifyEmail} disabled={isSendingNotify} style={{ padding: '8px 18px', borderRadius: '6px', border: '0', background: isSendingNotify ? '#1e3a5f' : 'linear-gradient(90deg,#2563eb,#06b6d4)', color: '#fff', fontSize: '13px', cursor: isSendingNotify ? 'not-allowed' : 'pointer', opacity: isSendingNotify ? 0.7 : 1 }}>{isSendingNotify ? '發送中...' : '發送郵件'}</button>
                 <button type="button" onClick={handleCopyEcardNotify} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #2563eb', background: '#1e3a5f', color: '#dbeafe', fontSize: '13px', cursor: 'pointer' }}>複製文案</button>
                 <button type="button" onClick={() => setNotifyItem(null)} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
               </div>

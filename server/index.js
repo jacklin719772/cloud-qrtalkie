@@ -12613,7 +12613,7 @@ app.get("/api/tenant/ecard-styles", requireAdmin, async (request, response) => {
 
 async function loadTenantEcardOwnership(connection, sipUserId, tenantId) {
   const [row] = await connection.query(
-    `SELECT su.id, su.tenant_id, su.status AS account_status,
+    `SELECT su.id, su.username, su.email, su.tenant_id, su.status AS account_status,
             ta.id AS trial_id, ta.status AS trial_status
      FROM sip_users su
      LEFT JOIN trial_assignments ta
@@ -12646,6 +12646,7 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
       `SELECT
          su.id AS sip_user_id,
          su.username AS sip_account,
+         su.email AS sip_email,
          su.display_name AS user_name,
          wu.username AS web_account,
          ec.id AS ecard_id,
@@ -12689,6 +12690,7 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
         id: Number(row.sip_user_id),
         userName: row.user_name || "",
         sipAccount: row.sip_account || "",
+        email: row.sip_email || "",
         webAccount: row.web_account || "",
         avatarUrl: row.avatar_url || "",
         ecardThumbnailUrl: row.thumbnail_url || "",
@@ -14038,6 +14040,58 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
   } catch (err) {
     console.error(err);
     return response.status(500).json({ message: "更新狀態失敗" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/tenant/ecard-accounts/:sipUserId/send-notification-email - 發送電子名片通知郵件
+app.post("/api/tenant/ecard-accounts/:sipUserId/send-notification-email", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ success: false, message: "只有租戶管理員可以操作。" });
+  }
+  const sipUserId = Number(request.params.sipUserId);
+  if (!Number.isInteger(sipUserId) || sipUserId <= 0) {
+    return response.status(400).json({ success: false, message: "帳號編號無效。" });
+  }
+  const email = sanitizeString(request.body?.email, 255).trim();
+  const body = typeof request.body?.body === 'string' ? request.body.body : '';
+  if (!email || !isValidEmail(email)) {
+    return response.status(400).json({ success: false, message: "請輸入有效的電子郵件地址。" });
+  }
+  if (!body.trim()) {
+    return response.status(400).json({ success: false, message: "郵件內容不能為空。" });
+  }
+  if (body.length > 8000) {
+    return response.status(400).json({ success: false, message: "郵件內容過長。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const ownership = await loadTenantEcardOwnership(connection, sipUserId, request.admin.tenantId);
+    if (!ownership) {
+      return response.status(404).json({ success: false, message: "帳號不存在或不屬於當前租戶。" });
+    }
+    const ecardTenantId = ownership.tenantOwned ? request.admin.tenantId : Number(ownership.tenant_id);
+    const [ecard] = await connection.query(
+      "SELECT id FROM tenant_ecards WHERE sip_user_id = ? AND tenant_id = ? LIMIT 1",
+      [sipUserId, ecardTenantId],
+    );
+    if (!ecard) {
+      return response.status(404).json({ success: false, message: "該帳號尚未配置電子名片。" });
+    }
+
+    const subject = `QRTalkie 電子名片通知（${ownership.username || sipUserId}）`;
+    const delivery = await sendTrialNotificationEmail(connection, { to: email, subject, body });
+    if (!delivery.sent) {
+      console.error(`[ecard-notification-email] tenant=${request.admin.tenantId} sip=${sipUserId} to=${email} failed: ${delivery.reason || 'unknown'}`);
+      return response.status(502).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
+    }
+    return response.json({ success: true, message: "郵件已發送。" });
+  } catch (error) {
+    console.error("Failed to send ecard notification email:", error);
+    return response.status(500).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
   } finally {
     if (connection) connection.release();
   }
