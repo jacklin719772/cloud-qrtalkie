@@ -124,6 +124,13 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
     if (!name.trim()) return window.alert('請輸入呼叫中心名稱');
     if (!slug.trim()) return window.alert('請輸入唯一標識 Slug');
 
+    const emptyCategories = categories.filter(cat => (cat.agents || []).length === 0);
+    if (emptyCategories.length > 0) {
+      const names = emptyCategories.map(cat => `「${cat.name}」`).join('、');
+      window.alert(`${names} 尚未添加坐席，請先刪除該分類或為其添加坐席後再儲存。`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
