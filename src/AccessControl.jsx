@@ -176,6 +176,7 @@ const AccessControl = forwardRef((props, ref) => {
       }
     } catch (error) {
       console.error('刪除社群失敗:', error);
+      setToast({ message: error?.message || '刪除社群失敗。', type: 'error' });
     }
   };
 
@@ -320,9 +321,11 @@ const AccessControl = forwardRef((props, ref) => {
           }
           return c;
         }));
+        fetchCommunities();
       }
     } catch (error) {
       console.error('刪除樓宇失敗:', error);
+      setToast({ message: error?.message || '刪除樓宇失敗。', type: 'error' });
     }
   };
 
@@ -401,7 +404,7 @@ const AccessControl = forwardRef((props, ref) => {
   };
 
   const handleDeleteRoom = async (room, buildingId) => {
-    if (!window.confirm(`確定要刪除房間「${room.roomNumber}」嗎？\n\n房間綁定的 SIP 帳號將被釋放，該房間的入口授權記錄一併刪除。此操作無法撤銷。`)) return;
+    if (!window.confirm(`確定要刪除房間「${room.roomNumber}」嗎？\n\n房間綁定的 SIP 帳號將被釋放，該房間的入口授權記錄一併刪除。此操作無法撤銷。`)) return false;
     try {
       const res = await apiClient.delete(`/access-rooms/${room.id}`);
       if (res && res.code === 0) {
@@ -429,9 +432,11 @@ const AccessControl = forwardRef((props, ref) => {
           };
         }));
       }
+      return Boolean(res && res.code === 0);
     } catch (error) {
       console.error('刪除房間失敗:', error);
       setToast({ message: error?.message || '刪除房間失敗。', type: 'error' });
+      return false;
     }
   };
 
@@ -2159,7 +2164,7 @@ const AccessControl = forwardRef((props, ref) => {
                           <td>
                             <div style={{ display: 'flex', gap: '6px' }}>
                               <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { addRoomDialogRef.current?.showModal({ buildingId: viewRoomsBuilding.buildingId, buildingLabel: viewRoomsBuilding.buildingName }, { id: r.id, roomNumber: r.roomNumber, floor: r.floor, contactPerson: r.contactPerson, contactPhone: r.contactPhone, contactEmail: r.contactEmail, allowVideoCall: r.allowVideoCall }); }}>✎ 編輯</button>
-                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={() => { handleDeleteRoom(r, viewRoomsBuilding.buildingId); setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r2 => r2.id !== r.id) } : null); }}>✕ 刪除</button>
+                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px', color: '#dc2626' }} onClick={async () => { const ok = await handleDeleteRoom(r, viewRoomsBuilding.buildingId); if (ok) setViewRoomsBuilding(prev => prev ? { ...prev, rooms: (prev.rooms || []).filter(r2 => r2.id !== r.id) } : null); }}>✕ 刪除</button>
                             </div>
                           </td>
                         </tr>
