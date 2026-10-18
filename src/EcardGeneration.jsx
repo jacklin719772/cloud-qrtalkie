@@ -2453,10 +2453,23 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                     </div>
                   </td>
                   <td>
-                    {item.configured ? (
-                      <img src={getFullImageUrl(item.ecardThumbnailUrl || item.avatarUrl)} alt="縮圖" className="ecard-generation-thumb-placeholder" style={{ objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                    ) : (
+                    {!item.configured ? (
                       <div className="ecard-generation-thumb-empty">未配置</div>
+                    ) : (item.ecardThumbnailUrl || item.avatarUrl) ? (
+                      <img
+                        src={getFullImageUrl(item.ecardThumbnailUrl || item.avatarUrl)}
+                        alt="縮圖"
+                        className="ecard-generation-thumb-placeholder"
+                        style={{ objectFit: 'cover' }}
+                        onError={(e) => {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'ecard-generation-thumb-empty';
+                          fallback.textContent = '未生成';
+                          e.currentTarget.replaceWith(fallback);
+                        }}
+                      />
+                    ) : (
+                      <div className="ecard-generation-thumb-empty">未生成</div>
                     )}
                   </td>
                   <td>
