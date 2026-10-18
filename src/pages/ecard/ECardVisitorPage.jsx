@@ -6,6 +6,7 @@ import ConfirmModal from './ConfirmModal';
 import { ensureJsSIPLoaded } from './loadJsSIP';
 import ECardChatRegisterDialog from './ECardChatRegisterDialog';
 import { useVisitorChat } from './useVisitorChat';
+import { loadStoredContact, saveStoredContact } from './ecardChatApi';
 import './ecardVisitorTheme.css';
 
 // 聊天面板按需加载：名片页首屏不带聊天代码
@@ -88,6 +89,7 @@ export default function ECardVisitorPage({ slug }) {
   const [errorInfo, setErrorInfo] = useState(null);
   const [ecardData, setEcardData] = useState(null);
   const [publicData, setPublicData] = useState(null);
+  const [externalContact, setExternalContact] = useState(null);
 
   const [callStatus, setCallStatus] = useState('');
   const [registrationStatus, setRegistrationStatus] = useState('registering');
@@ -115,6 +117,33 @@ export default function ECardVisitorPage({ slug }) {
   }, [ecardData]);
   const isChatView = view === 'chat';
   const chat = useVisitorChat(slug);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.parent === window) return;
+    const handler = (event) => {
+      if (event.source !== window.parent) return;
+      const payload = event.data;
+      if (!payload || payload.type !== 'qrtalkie:visitor-contact' || !payload.contact) return;
+      const incoming = {};
+      const name = String(payload.contact.name || '').trim().slice(0, 128);
+      const email = String(payload.contact.email || '').trim().slice(0, 255);
+      const phone = String(payload.contact.phone || '').trim().slice(0, 64);
+      if (name) incoming.name = name;
+      if (email) incoming.email = email;
+      if (phone) incoming.phone = phone;
+      if (Object.keys(incoming).length === 0) return;
+      try {
+        const stored = loadStoredContact(slug) || {};
+        saveStoredContact(slug, { ...stored, ...incoming });
+      } catch {}
+      setExternalContact((prev) => ({ ...(prev || {}), ...incoming }));
+    };
+    window.addEventListener('message', handler);
+    try {
+      window.parent.postMessage({ type: 'qrtalkie:ecard-ready' }, '*');
+    } catch {}
+    return () => window.removeEventListener('message', handler);
+  }, [slug]);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
 
   const uaRef = useRef(null);
@@ -1328,7 +1357,7 @@ export default function ECardVisitorPage({ slug }) {
       {chat.dialogOpen && (
         <ECardChatRegisterDialog
           slug={slug}
-          defaultContact={chat.storedContact}
+          defaultContact={{ ...(chat.storedContact || {}), ...(externalContact || {}) }}
           defaultCode={chat.storedCode}
           focusCode={chatFocusCode}
           onClose={() => { setChatFocusCode(false); chat.closeDialog(); }}

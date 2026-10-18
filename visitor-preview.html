@@ -691,12 +691,21 @@
       renderMain();
     }
 
+    var registeredVisitor = { name: '', email: '', phone: '', company: '' };
     var registeredVisitorEmail = '';
     document.getElementById('visitorForm').addEventListener('submit', function(e) {
       e.preventDefault();
       try {
-        registeredVisitorEmail = String(new FormData(e.target).get('email') || '').trim();
+        var visitorFormData = new FormData(e.target);
+        registeredVisitor = {
+          name: String(visitorFormData.get('name') || '').trim(),
+          email: String(visitorFormData.get('email') || '').trim(),
+          phone: String(visitorFormData.get('phone') || '').trim(),
+          company: String(visitorFormData.get('company') || '').trim(),
+        };
+        registeredVisitorEmail = registeredVisitor.email;
       } catch (err) {
+        registeredVisitor = { name: '', email: '', phone: '', company: '' };
         registeredVisitorEmail = '';
       }
       document.getElementById('visitorModal').classList.add('hidden');
@@ -775,9 +784,34 @@
       var base = data.ecardBaseUrl || window.location.origin;
       var subtitle = [name, sip].filter(Boolean).join(' · ');
       document.getElementById('ecardDrawerSubtitle').textContent = subtitle;
+      frame.onload = function () { sendVisitorContactToEcard(); };
       frame.src = String(base).replace(/\/$/, '') + '/u/' + encodeURIComponent(slug);
       overlay.classList.add('open');
     }
+
+    function sendVisitorContactToEcard() {
+      var frame = document.getElementById('ecardDrawerFrame');
+      if (!frame || !frame.contentWindow) return;
+      var contact = registeredVisitor || {};
+      if (!contact.email && !contact.name && !contact.phone) return;
+      var targetOrigin = '';
+      try {
+        targetOrigin = new URL(data.ecardBaseUrl || window.location.origin).origin;
+      } catch (err) {
+        return;
+      }
+      try {
+        frame.contentWindow.postMessage({ type: 'qrtalkie:visitor-contact', contact: contact }, targetOrigin);
+      } catch (err) {}
+    }
+
+    window.addEventListener('message', function (event) {
+      var frame = document.getElementById('ecardDrawerFrame');
+      if (!frame || event.source !== frame.contentWindow) return;
+      if (event.data && event.data.type === 'qrtalkie:ecard-ready') {
+        sendVisitorContactToEcard();
+      }
+    });
 
     function closeEcardDrawer() {
       var overlay = document.getElementById('ecardDrawerOverlay');

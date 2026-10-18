@@ -29,6 +29,22 @@ export default function ECardChatRegisterDialog({ slug, defaultContact, defaultC
     if (focusCode) codeInputRef.current?.focus();
   }, [focusCode]);
 
+  useEffect(() => {
+    if (!defaultContact) return;
+    setForm((prev) => {
+      const next = {
+        name: prev.name || defaultContact.name || '',
+        email: prev.email || defaultContact.email || '',
+        phone: prev.phone || defaultContact.phone || '',
+        subject: prev.subject || defaultContact.subject || '',
+      };
+      if (next.name === prev.name && next.email === prev.email && next.phone === prev.phone && next.subject === prev.subject) {
+        return prev;
+      }
+      return next;
+    });
+  }, [defaultContact]);
+
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (verified) setVerified(null);
