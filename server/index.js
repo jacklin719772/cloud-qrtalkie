@@ -14975,8 +14975,8 @@ app.get("/callcenter", async (request, response) => {
         `SELECT ent.sip_user_id, wu.username
          FROM tenant_web_account_entitlements ent
          JOIN web_users wu ON wu.id = ent.web_user_id
-         WHERE ent.sip_user_id IN (?) AND ent.tenant_id = ? AND ent.status = 'active'`,
-        [agentSipIds, cc.tenant_id]
+         WHERE ent.sip_user_id IN (?) AND ent.status = 'active'`,
+        [agentSipIds]
       );
       webRows.forEach(r => { webAccountMap[Number(r.sip_user_id)] = r.username; });
     }
@@ -14985,8 +14985,8 @@ app.get("/callcenter", async (request, response) => {
     let ecardSlugMap = {};
     if (agentSipIds.length > 0) {
       const ecardRows = await connection.query(
-        `SELECT sip_user_id, access_slug FROM tenant_ecards WHERE sip_user_id IN (?) AND tenant_id = ? AND status = 'active'`,
-        [agentSipIds, cc.tenant_id]
+        `SELECT sip_user_id, access_slug FROM tenant_ecards WHERE sip_user_id IN (?) AND status = 'active'`,
+        [agentSipIds]
       );
       ecardRows.forEach(r => { ecardSlugMap[Number(r.sip_user_id)] = r.access_slug; });
     }
