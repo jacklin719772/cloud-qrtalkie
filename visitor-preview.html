@@ -666,8 +666,14 @@
       renderMain();
     }
 
+    var registeredVisitorEmail = '';
     document.getElementById('visitorForm').addEventListener('submit', function(e) {
       e.preventDefault();
+      try {
+        registeredVisitorEmail = String(new FormData(e.target).get('email') || '').trim();
+      } catch (err) {
+        registeredVisitorEmail = '';
+      }
       document.getElementById('visitorModal').classList.add('hidden');
       renderMain();
     });
@@ -804,6 +810,8 @@
       document.getElementById('messageModal').classList.remove('hidden');
       document.getElementById('messageError').textContent = '';
       document.getElementById('messageForm').reset();
+      var emailInput = document.querySelector('#messageForm input[name="email"]');
+      if (emailInput && registeredVisitorEmail) emailInput.value = registeredVisitorEmail;
       // Populate agent dropdown
       var agentSelect = document.querySelector('#messageForm select[name="agentId"]');
       agentSelect.innerHTML = '<option value="">不指定（選填）</option>';
