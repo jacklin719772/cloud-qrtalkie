@@ -111,6 +111,11 @@ export default function ECardVisitorPage({ slug }) {
   const [view, setView] = useState('card'); // 'card' | 'chat'
   const [chatFocusCode, setChatFocusCode] = useState(false);
 
+  // 呼叫中心抽屉内加载时走紧凑模式（只保留状态与操作按钮）；
+  // 单独访问不带 embed 参数，渲染与原路径完全一致
+  const isCompactEmbed = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('embed') === 'callcenter';
+
   // 聊天入口按名片設定顯示（tenant_ecards.enable_text_chat，預設允許）
   const chatEntryVisible = useMemo(() => {
     return ecardData?.enableTextChat !== false;
@@ -166,7 +171,7 @@ export default function ECardVisitorPage({ slug }) {
   const isPageUnmountingRef = useRef(false);
   const registeringRef = useRef(false);
   const idleTimeoutRef = useRef(null);
-  const IDLE_TIMEOUT_MS = 30000;
+  const IDLE_TIMEOUT_MS = 60000;
 
   const pageImage = useMemo(() => {
     if (!ecardData?.avatar) return '';
@@ -692,7 +697,7 @@ export default function ECardVisitorPage({ slug }) {
         });
         setRegistrationStatus('registered');
         setRegistrationMessage('');
-        // 通話進行中不得重新啟動閒置倒計時（否則計時到點會停止 UA，通話被 30 秒自動掛斷）
+        // 通話進行中不得重新啟動閒置倒計時（否則計時到點會停止 UA，通話被 1 分鐘自動掛斷）
         if (!activeCallStartedRef.current && !currentSessionRef.current) {
           startIdleTimer();
         }
@@ -1020,7 +1025,7 @@ export default function ECardVisitorPage({ slug }) {
 
   return (
     <div
-      className={`ecard-visitor-page${isChatView ? ' is-chat-page' : ''}`}
+      className={`ecard-visitor-page${isChatView ? ' is-chat-page' : ''}${isCompactEmbed ? ' is-compact' : ''}`}
       style={isChatView
         ? {
           ...pageStyle,
@@ -1035,9 +1040,10 @@ export default function ECardVisitorPage({ slug }) {
           minHeight: 'var(--ecard-vvh, 100dvh)',
           overflow: 'hidden',
         }
-        : pageStyle}
+        : isCompactEmbed ? compactPageStyle : pageStyle}
     >
       <div className={`ecard-shell${isChatView ? ' is-chat' : ''}`}>
+        {!isCompactEmbed && (
         <div className="ecard-shellHeader">
           <div className="ecard-brandTitle">
             <div className="ecard-brandMark" aria-hidden="true">
@@ -1072,6 +1078,7 @@ export default function ECardVisitorPage({ slug }) {
             </button>
           </div>
         </div>
+        )}
 
         {isChatView ? (
           <Suspense fallback={null}>
@@ -1107,6 +1114,7 @@ export default function ECardVisitorPage({ slug }) {
         ) : (
         <div className="ecard-shellBody">
           <div className="ecard-leftPanel">
+            {!isCompactEmbed && (
             <div className="ecard-profileTop">
               <div className="ecard-avatarWrap">
                 <img
@@ -1129,8 +1137,9 @@ export default function ECardVisitorPage({ slug }) {
                 </div>
               )}
             </div>
+            )}
 
-            <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+            <div className="ecard-statusRow" style={{ display: 'flex', gap: '10px', width: '100%' }}>
               <div className="ecard-statusCard ecard-statusCard-inline" style={{ flex: 1 }}>
                 <div className="ecard-statusHead">
                   <div>
@@ -1203,6 +1212,10 @@ export default function ECardVisitorPage({ slug }) {
             </div>
             </div>
 
+            {isCompactEmbed && registrationStatus === 'registered' && idleSeconds > 0 && (
+              <div className="ecard-compactIdleHint">{idleSeconds} 秒後自動註銷</div>
+            )}
+
             {registrationStatus !== 'registered' && (
               <div className="ecard-registrationMessage" style={{
                 marginTop: 2,
@@ -1212,7 +1225,7 @@ export default function ECardVisitorPage({ slug }) {
                 color: registrationStatus === 'idle_timeout' || registrationStatus === 'hangup' ? '#fbbf24' : registrationStatus === 'failed' ? '#fca5a5' : '#d6c59c',
                 fontWeight: 600,
               }}>
-                {registrationStatus === 'idle_timeout' ? '為保護帳號安全，30 秒未操作已自動登出 Web 帳號，請點選重新整理按鈕重新註冊'
+                {registrationStatus === 'idle_timeout' ? '為保護帳號安全，1 分鐘未操作已自動登出 Web 帳號，請點選重新整理按鈕重新註冊'
                   : registrationStatus === 'hangup' ? '通話已結束，Web 帳號已登出，請點選重新整理按鈕重新註冊'
                   : registrationMessage}
               </div>
@@ -1244,6 +1257,7 @@ export default function ECardVisitorPage({ slug }) {
               </div>
             )}
 
+            {!isCompactEmbed && (
             <div className="ecard-contactGrid" style={infoBlockStyle}>
               <div className="ecard-contactItem">
                 <div className="ecard-contactLabel">手機</div>
@@ -1262,6 +1276,7 @@ export default function ECardVisitorPage({ slug }) {
                 <div className="ecard-contactValue ecard-sipTarget">{ecardData.sipAccount || '—'}</div>
               </div>
             </div>
+            )}
 
             <div className="ecard-callButtons" style={buttonGroupStyle}>
               <button
@@ -1430,7 +1445,7 @@ export default function ECardVisitorPage({ slug }) {
 
               <div style={{ marginBottom: '24px' }}>
                 <h3 style={{ color: '#f1d37a', fontSize: '14px', marginBottom: '8px', fontWeight: 700 }}>閒置自動註銷</h3>
-                <p style={{ color: '#9ca3af', margin: 0 }}>為保護帳號安全，若訪客在 30 秒內未進行任何操作，系統會自動註銷 Web 帳號。註銷後頭像右側的倒計時消失，狀態變為黃色「已自動註銷」。點擊刷新按鈕可重新註冊。通話過程中不受此計時影響。</p>
+                <p style={{ color: '#9ca3af', margin: 0 }}>為保護帳號安全，若訪客在 1 分鐘內未進行任何操作，系統會自動註銷 Web 帳號。註銷後頭像右側的倒計時消失，狀態變為黃色「已自動註銷」。點擊刷新按鈕可重新註冊。通話過程中不受此計時影響。</p>
               </div>
 
               <div>
@@ -1529,6 +1544,15 @@ const pageStyle = {
   fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   padding: '8px 12px',
   overflow: 'hidden',
+};
+
+const compactPageStyle = {
+  ...pageStyle,
+  alignItems: 'flex-start',
+  justifyContent: 'flex-start',
+  padding: '10px 12px 16px',
+  overflowX: 'hidden',
+  overflowY: 'auto',
 };
 
 const shellStyle = {

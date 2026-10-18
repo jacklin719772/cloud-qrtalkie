@@ -799,7 +799,7 @@
         if (loading) loading.style.display = 'none';
         sendVisitorContactToEcard();
       };
-      frame.src = String(base).replace(/\/$/, '') + '/u/' + encodeURIComponent(slug);
+      frame.src = String(base).replace(/\/$/, '') + '/u/' + encodeURIComponent(slug) + '?embed=callcenter';
       overlay.classList.add('open');
     }
 

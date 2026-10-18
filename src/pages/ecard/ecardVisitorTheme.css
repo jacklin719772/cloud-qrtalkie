@@ -499,6 +499,58 @@
   }
 }
 
+/* 呼叫中心抽屉內的緊湊模式：只保留狀態與操作按鈕 */
+.ecard-visitor-page.is-compact:not(.is-chat-page) .ecard-shell {
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  overflow: visible;
+  box-shadow: none;
+}
+
+.ecard-visitor-page.is-compact .ecard-shellBody {
+  padding: 0;
+  gap: 8px;
+}
+
+.ecard-visitor-page.is-compact .ecard-leftPanel {
+  padding: 10px;
+  gap: 8px;
+}
+
+.ecard-visitor-page.is-compact .ecard-statusRow {
+  flex-wrap: wrap;
+}
+
+.ecard-visitor-page.is-compact .ecard-callButtons {
+  gap: 8px;
+}
+
+.ecard-compactIdleHint {
+  align-self: flex-end;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(241, 211, 122, 0.24);
+  background: rgba(241, 211, 122, 0.08);
+  color: #f1d37a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 480px) {
+  .ecard-visitor-page.is-compact {
+    padding: 8px 8px 14px;
+  }
+
+  .ecard-visitor-page.is-compact .ecard-statusRow {
+    flex-direction: column;
+  }
+
+  .ecard-visitor-page.is-compact .ecard-statusRow > .ecard-statusCard {
+    width: 100%;
+  }
+}
+
 @media (min-width: 761px) {
   .ecard-shell {
     margin-top: 6px;
