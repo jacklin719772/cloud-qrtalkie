@@ -978,18 +978,45 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
               <div style={{ display: 'flex', gap: '24px' }}>
                 <div className="cc-field">
                   <span className="cc-field-label">企業Logo</span>
-                  <label className="cc-upload-box cc-upload-Logo" style={{ padding: LogoDataUrl ? 0 : '12px', overflow: 'hidden' }}>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload(setLogoDataUrl)} />
-                    {LogoDataUrl ? (
-                      <img src={getFullImageUrl(LogoDataUrl)} alt="企業Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    ) : (
-                      <>
-                        <UploadCloud size={24} />
-                        <span className="cc-upload-text">點擊上傳 Logo</span>
-                        <span className="cc-upload-hint">支援 JPG、PNG 格式，建議尺寸 200×200px</span>
-                      </>
+                  <div style={{ position: 'relative' }}>
+                    <label className="cc-upload-box cc-upload-Logo" style={{ padding: LogoDataUrl ? 0 : '12px', overflow: 'hidden' }}>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload(setLogoDataUrl)} />
+                      {LogoDataUrl ? (
+                        <img src={getFullImageUrl(LogoDataUrl)} alt="企業Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <>
+                          <UploadCloud size={24} />
+                          <span className="cc-upload-text">點擊上傳 Logo</span>
+                          <span className="cc-upload-hint">支援 JPG、PNG 格式，建議尺寸 200×200px</span>
+                        </>
+                      )}
+                    </label>
+                    {LogoDataUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setLogoDataUrl('')}
+                        title="移除 Logo"
+                        style={{
+                          position: 'absolute',
+                          top: '6px',
+                          right: '6px',
+                          zIndex: 2,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #7f1d1d',
+                          background: 'rgba(127, 29, 29, 0.92)',
+                          color: '#fecaca',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={12} /> 移除
+                      </button>
                     )}
-                  </label>
+                  </div>
                 </div>
                 <div className="cc-field">
                   <span className="cc-field-label">網站封面</span>
