@@ -67,6 +67,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           status: item.status,
           createdBy: item.createdByName || item.created_by_name || '-',
           updatedAt: item.updatedAt || item.updated_at,
+          pendingInquiryCount: Number(item.pendingInquiryCount ?? item.pending_inquiry_count ?? 0),
           tenantExpiresAt: item.tenantExpiresAt || item.tenant_expires_at || '-'
         })));
         setTotal(res.data.total || 0);
@@ -406,6 +407,23 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
         .cc-action-head { z-index: 3 !important; background: #1a2332; }
         .cc-action-cell { z-index: 1; background: #111827; }
 
+        .cc-pending-head, .cc-pending-cell {
+          position: sticky;
+          right: 160px;
+          box-shadow: -1px 0 0 #1f2937;
+          width: 100px;
+          min-width: 100px;
+          padding-left: 8px !important;
+          padding-right: 8px !important;
+          text-align: center;
+          background: #111827;
+          z-index: 1;
+        }
+        .cc-pending-head { z-index: 3 !important; background: #1a2332; top: 0; }
+        .cc-table tbody tr:hover .cc-pending-cell { background: #1a2332; }
+        .cc-pending-badge { display: inline-flex; min-width: 24px; justify-content: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #1f2937; color: #9ca3af; }
+        .cc-pending-badge.has { background: rgba(245,158,11,0.18); color: #fbbf24; }
+
         .cc-name { color: #f3f4f6; font-weight: 600; display: inline-block; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
         .cc-link { color: #60a5fa; text-decoration: none; font-size: 13px; }
         .cc-link:hover { text-decoration: underline; }
@@ -545,17 +563,18 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                 <th>狀態</th>
                 <th>創建人</th>
                 <th style={{ width: '110px', whiteSpace: 'nowrap' }}>更新日期</th>
+                <th className="cc-pending-head">未處理留言</th>
                 <th className="cc-action-head">操作</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>數據加載中...</td>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>數據加載中...</td>
                 </tr>
               ) : callCenters.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>暫無數據</td>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#9ca3af' }}>暫無數據</td>
                 </tr>
               ) : callCenters.map((item) => (
                 <tr key={item.id}>
@@ -615,6 +634,9 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                   </td>
                   <td>{item.createdBy || '-'}</td>
                 <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }}>{String(item.updatedAt).split('T')[0].split(' ')[0]}</td>
+                  <td className="cc-pending-cell">
+                    <span className={`cc-pending-badge ${item.pendingInquiryCount > 0 ? 'has' : ''}`}>{item.pendingInquiryCount || 0}</span>
+                  </td>
                   <td className="cc-action-cell">
                     <div className="row-actions dropdown-container" style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                       <button 

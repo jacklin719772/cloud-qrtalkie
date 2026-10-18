@@ -14392,7 +14392,9 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
 
     // 3. 取得当页数据
     const rows = await connection.query(`
-      SELECT id, center_name, center_url, require_visitor_info, status, created_by_name, updated_at
+      SELECT id, center_name, center_url, require_visitor_info, status, created_by_name, updated_at,
+             (SELECT COUNT(*) FROM call_center_visitor_inquiries vi
+              WHERE vi.call_center_id = call_centers.id AND vi.inquiry_status <> 'processed') AS pending_inquiry_count
       FROM call_centers ${whereSql}
       ORDER BY created_at DESC LIMIT ? OFFSET ?
     `, [...params, limit, offset]);
@@ -14416,6 +14418,7 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
       status: row.status,
       createdByName: row.created_by_name,
       updatedAt: row.updated_at,
+      pendingInquiryCount: Number(row.pending_inquiry_count || 0),
       tenantExpiresAt: tenantExpiresAt
     }));
 
