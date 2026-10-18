@@ -46,11 +46,6 @@ const AccessControl = forwardRef((props, ref) => {
   const [deviceStats, setDeviceStats] = useState({ assigned: 0, total: 0 });
   const [gateDeviceList, setGateDeviceList] = useState([]);
   const [gateDeviceLoading, setGateDeviceLoading] = useState(false);
-  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
-  const [deviceEntrance, setDeviceEntrance] = useState(null);
-  const [availableDevices, setAvailableDevices] = useState([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState('');
-  const [deviceLoading, setDeviceLoading] = useState(false);
   const [qrDialog, setQrDialog] = useState(null); // { url, title, filename } or null
   const [roomSort, setRoomSort] = useState({}); // { [buildingId]: { field: 'roomNumber', asc: true } }
   const [toast, setToast] = useState(null); // { message, type } or null
@@ -360,234 +355,6 @@ const AccessControl = forwardRef((props, ref) => {
       if (res && res.code === 0) setSipAccounts(res.data.list || []);
     } catch (error) { console.error('獲取 SIP 使用者失敗:', error); }
     setSipLoading(false);
-  };
-
-  const openDeviceDialog = async (entrance, communityId) => {
-    setDeviceEntrance({ ...entrance, communityId });
-    setSelectedDeviceId(entrance.deviceId ? String(entrance.deviceId) : '');
-    setDeviceLoading(true);
-    try {
-      const res = await apiClient.get(`/tenant/gate-devices?entranceId=${entrance.id}`);
-      setAvailableDevices(Array.isArray(res?.devices) ? res.devices : []);
-    } catch (err) { console.error(err); setAvailableDevices([]); }
-    setDeviceLoading(false);
-    setDeviceDialogOpen(true);
-  };
-
-  const handleBatchAssignDevices = async (communityId) => {
-    // Find all community entrances without devices
-    const community = communities.find(c => c.id === communityId);
-    if (!community) return;
-    const entrancesWithoutDevice = (community.communityEntrances || []).filter(e => e.deviceStatus === 'none');
-    if (entrancesWithoutDevice.length === 0) {
-      window.alert('該社群所有入口均已繫結裝置。');
-      return;
-    }
-    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
-    try {
-      // Get available unassigned devices
-      const res = await apiClient.get('/tenant/gate-devices');
-      const allDevices = Array.isArray(res?.devices) ? res.devices : [];
-      // 後端已篩選：未分配 + 已分配給該租戶的設備
-      if (allDevices.length < entrancesWithoutDevice.length) {
-        window.alert(`可用裝置不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用裝置。`);
-        return;
-      }
-      let assigned = 0;
-      for (let i = 0; i < entrancesWithoutDevice.length; i++) {
-        try {
-          await apiClient.put(`/access-entrances/${entrancesWithoutDevice[i].id}/device`, { deviceId: allDevices[i].id });
-          assigned++;
-        } catch (err) { console.error(err); }
-      }
-      // Update local state
-      setCommunities(prev => prev.map(c => {
-        if (c.id !== communityId) return c;
-        return { ...c, communityEntrances: (c.communityEntrances || []).map(e => {
-          const idx = entrancesWithoutDevice.findIndex(ew => ew.id === e.id);
-          if (idx < 0) return e;
-          const d = allDevices[idx];
-          return { ...e, deviceId: d.id, device: d.uuid, deviceStatus: 'unknown', isActive: true };
-        }) };
-      }));
-      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
-    } catch (err) { console.error(err); window.alert('操作失敗。'); }
-  };
-
-  const handleBatchAssignBuildingDevices = async (communityId, buildingId) => {
-    const community = communities.find(c => c.id === communityId);
-    if (!community) return;
-    const building = (community.buildings || []).find(b => b.id === buildingId);
-    if (!building) return;
-    const entrancesWithoutDevice = (building.entrances || []).filter(e => e.deviceStatus === 'none');
-    if (entrancesWithoutDevice.length === 0) {
-      window.alert('該樓宇所有入口均已繫結裝置。');
-      return;
-    }
-    if (!window.confirm(`將為 ${entrancesWithoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
-    try {
-      const res = await apiClient.get('/tenant/gate-devices');
-      const allDevices = Array.isArray(res?.devices) ? res.devices : [];
-      if (allDevices.length < entrancesWithoutDevice.length) {
-        window.alert(`可用裝置不足：需要 ${entrancesWithoutDevice.length} 個，目前僅有 ${allDevices.length} 個可用裝置。`);
-        return;
-      }
-      let assigned = 0;
-      for (let i = 0; i < entrancesWithoutDevice.length; i++) {
-        try {
-          await apiClient.put(`/access-entrances/${entrancesWithoutDevice[i].id}/device`, { deviceId: allDevices[i].id });
-          assigned++;
-        } catch (err) { console.error(err); }
-      }
-      setCommunities(prev => prev.map(c => {
-        if (c.id !== communityId) return c;
-        return { ...c, buildings: (c.buildings || []).map(b2 => {
-          if (b2.id !== buildingId) return b2;
-          return { ...b2, entrances: (b2.entrances || []).map(e => {
-            const idx = entrancesWithoutDevice.findIndex(ew => ew.id === e.id);
-            if (idx < 0) return e;
-            const d = allDevices[idx];
-            return { ...e, deviceId: d.id, device: d.uuid, deviceStatus: 'unknown', isActive: true };
-          }) };
-        }) };
-      }));
-      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
-    } catch (err) { console.error(err); window.alert('操作失敗。'); }
-  };
-
-  const handleBatchRemoveBuildingDevices = async (communityId, buildingId) => {
-    const community = communities.find(c => c.id === communityId);
-    if (!community) return;
-    const building = (community.buildings || []).find(b => b.id === buildingId);
-    if (!building) return;
-    const entrancesWithDevice = (building.entrances || []).filter(e => e.deviceStatus !== 'none');
-    if (entrancesWithDevice.length === 0) {
-      window.alert('該樓宇沒有已繫結裝置的入口。');
-      return;
-    }
-    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
-    let removed = 0;
-    for (const e of entrancesWithDevice) {
-      try {
-        await apiClient.put(`/access-entrances/${e.id}/device`, { deviceId: null });
-        removed++;
-      } catch (err) { console.error(err); }
-    }
-    setCommunities(prev => prev.map(c => {
-      if (c.id !== communityId) return c;
-      return { ...c, buildings: (c.buildings || []).map(b2 => {
-        if (b2.id !== buildingId) return b2;
-        return { ...b2, entrances: (b2.entrances || []).map(e => e.deviceStatus !== 'none' ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e) };
-      }) };
-    }));
-    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
-  };
-
-  const handleBatchRemoveDevices = async (communityId) => {
-    const community = communities.find(c => c.id === communityId);
-    if (!community) return;
-    const entrancesWithDevice = (community.communityEntrances || []).filter(e => e.deviceStatus !== 'none');
-    if (entrancesWithDevice.length === 0) {
-      window.alert('該社群沒有已繫結裝置的入口。');
-      return;
-    }
-    if (!window.confirm(`將移除 ${entrancesWithDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
-    let removed = 0;
-    for (const e of entrancesWithDevice) {
-      try {
-        await apiClient.put(`/access-entrances/${e.id}/device`, { deviceId: null });
-        removed++;
-      } catch (err) { console.error(err); }
-    }
-    setCommunities(prev => prev.map(c => {
-      if (c.id !== communityId) return c;
-      return { ...c, communityEntrances: (c.communityEntrances || []).map(e => e.deviceStatus !== 'none' ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e) };
-    }));
-    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
-  };
-
-  const handleMgmtBatchAssignDevices = async (entrances) => {
-    const withoutDevice = entrances.filter(e => e.deviceStatus === 'none');
-    if (withoutDevice.length === 0) {
-      window.alert('所選入口均已繫結裝置。');
-      return;
-    }
-    if (!window.confirm(`將為 ${withoutDevice.length} 個未繫結裝置的入口自動分配裝置，確定繼續？`)) return;
-    try {
-      const res = await apiClient.get('/tenant/gate-devices');
-      const devices = Array.isArray(res?.devices) ? res.devices : [];
-      if (devices.length < withoutDevice.length) {
-        window.alert(`可用裝置不足：需要 ${withoutDevice.length} 個，目前僅有 ${devices.length} 個可用裝置。`);
-        return;
-      }
-      let assigned = 0;
-      for (let i = 0; i < withoutDevice.length; i++) {
-        try {
-          await apiClient.put(`/access-entrances/${withoutDevice[i].id}/device`, { deviceId: devices[i].id });
-          assigned++;
-        } catch (err) { console.error(err); }
-      }
-      setCommunities(prev => prev.map(c => ({
-        ...c,
-        communityEntrances: (c.communityEntrances || []).map(e => {
-          const idx = withoutDevice.findIndex(ew => ew.id === e.id);
-          if (idx < 0) return e;
-          return { ...e, deviceId: devices[idx].id, device: devices[idx].uuid, deviceStatus: 'unknown', isActive: true };
-        }),
-        buildings: (c.buildings || []).map(b => ({
-          ...b,
-          entrances: (b.entrances || []).map(e => {
-            const idx = withoutDevice.findIndex(ew => ew.id === e.id);
-            if (idx < 0) return e;
-            return { ...e, deviceId: devices[idx].id, device: devices[idx].uuid, deviceStatus: 'unknown', isActive: true };
-          }),
-        })),
-      })));
-      window.alert(`已成功為 ${assigned} 個入口分配裝置。`);
-    } catch (err) { console.error(err); window.alert('操作失敗。'); }
-  };
-
-  const handleMgmtBatchRemoveDevices = async (entrances) => {
-    const withDevice = entrances.filter(e => e.deviceStatus !== 'none');
-    if (withDevice.length === 0) {
-      window.alert('所選入口沒有已繫結裝置。');
-      return;
-    }
-    if (!window.confirm(`將移除 ${withDevice.length} 個入口的裝置繫結，確定繼續？`)) return;
-    let removed = 0;
-    for (const e of withDevice) {
-      try {
-        await apiClient.put(`/access-entrances/${e.id}/device`, { deviceId: null });
-        removed++;
-      } catch (err) { console.error(err); }
-    }
-    setCommunities(prev => prev.map(c => ({
-      ...c,
-      communityEntrances: (c.communityEntrances || []).map(e => withDevice.some(w => w.id === e.id) ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e),
-      buildings: (c.buildings || []).map(b => ({
-        ...b,
-        entrances: (b.entrances || []).map(e => withDevice.some(w => w.id === e.id) ? { ...e, deviceId: null, device: null, deviceStatus: 'none', isActive: false } : e),
-      })),
-    })));
-    window.alert(`已成功移除 ${removed} 個入口的裝置。`);
-  };
-
-  const handleAssignDevice = async () => {
-    if (!deviceEntrance) return;
-    const deviceId = selectedDeviceId ? Number(selectedDeviceId) : null;
-    try {
-      const res = await apiClient.put(`/access-entrances/${deviceEntrance.id}/device`, { deviceId });
-      if (res && res.code === 0) {
-        setCommunities(prev => prev.map(c => {
-          const updEntrance = (list) => (list || []).map(e => e.id === deviceEntrance.id ? { ...e, deviceId, isActive: deviceId ? true : false, device: availableDevices.find(d => d.id === deviceId)?.uuid || null, deviceStatus: deviceId ? 'unknown' : 'none' } : e);
-          if (deviceEntrance.buildingId) {
-            return { ...c, buildings: (c.buildings || []).map(b => b.id === deviceEntrance.buildingId ? { ...b, entrances: updEntrance(b.entrances) } : b) };
-          }
-          return { ...c, communityEntrances: updEntrance(c.communityEntrances) };
-        }));
-        setDeviceDialogOpen(false);
-      }
-    } catch (err) { console.error(err); }
   };
 
   const handleAssignSip = async (sipUserId) => {
@@ -1349,8 +1116,6 @@ const AccessControl = forwardRef((props, ref) => {
                         <option value="community">社區級</option>
                         <option value="building">樓宇級</option>
                       </select>
-                      <button className="ac-btn-sm" type="button" style={{ whiteSpace: 'nowrap' }} onClick={() => handleMgmtBatchAssignDevices(filtered)}>📡 批量分配設備</button>
-                      <button className="ac-btn-sm" type="button" style={{ whiteSpace: 'nowrap', color: '#dc2626' }} onClick={() => handleMgmtBatchRemoveDevices(filtered)}>📡 批量取消設備</button>
                       <div className="ac-search" style={{ width: '200px', flex: 'none' }}>
                         <Search size={16} />
                         <input type="search" placeholder="搜尋入口名稱..." value={entranceSearch} onChange={(e) => setEntranceSearch(e.target.value)}
@@ -1401,7 +1166,6 @@ const AccessControl = forwardRef((props, ref) => {
                                   addEntranceDialogRef.current?.showModal(ctx, e);
                                 }}>✎ 編輯</button>
                                 <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => openAuthDrawer({ ...e, communityId: e.communityId })}>🔑 授權</button>
-                                <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => openDeviceDialog({ ...e, buildingId: e.buildingId || undefined }, e.communityId)}>📡 設備</button>
                                 {e.device && <>
                                   <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { var type = e.buildingId ? '02' : '01'; window.open((import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device), '_blank'); }}>🌐 預覽</button>
                                   <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 10px', height: '28px' }} onClick={() => { var type = e.buildingId ? '02' : '01'; var url = (import.meta.env.VITE_ACCESS_BASE_URL || window.location.origin) + '/access/visitor?type=' + type + '&lockId=' + encodeURIComponent(e.device); setQrDialog({ url: url, title: e.name, filename: (e.belongName || 'community') + '-' + e.name + '-' + (e.device || 'device') + '-qrcode' }); }}>🔗 鏈接</button>
@@ -1619,15 +1383,6 @@ const AccessControl = forwardRef((props, ref) => {
                           <td>
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 6px', height: '24px' }} onClick={() => {
-                                // Find entrance and open device dialog for this device
-                                let ent = null, cid = null;
-                                communities.forEach(c => {
-                                  (c.communityEntrances || []).forEach(e => { if (e.deviceId === d.id) { ent = e; cid = c.id; } });
-                                  (c.buildings || []).forEach(b => (b.entrances || []).forEach(e => { if (e.deviceId === d.id) { ent = e; cid = c.id; } }));
-                                });
-                                if (ent) openDeviceDialog(ent, cid);
-                              }}>📡 分配</button>
-                              <button className="ac-btn-sm" type="button" style={{ fontSize: '11px', padding: '0 6px', height: '24px' }} onClick={() => {
                                 let ent = null, cid = null;
                                 communities.forEach(c => {
                                   (c.communityEntrances || []).forEach(e => { if (e.deviceId === d.id) { ent = e; cid = c.id; } });
@@ -1672,8 +1427,6 @@ const AccessControl = forwardRef((props, ref) => {
                       <div className="ac-section-label">社區級入口</div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => addEntranceDialogRef.current?.showModal({ type: 'community', id: c.id, label: c.name, community: { address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } })}><Plus size={12} /> 添加入口</button>
-                        <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => handleBatchAssignDevices(c.id)}>📡 批量分配設備</button>
-                        <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px', color: '#dc2626' }} onClick={() => handleBatchRemoveDevices(c.id)}>📡 批量取消設備</button>
                         <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                       </div>
                     </div>
@@ -1810,8 +1563,6 @@ const AccessControl = forwardRef((props, ref) => {
                                       <button className="ac-btn-sm" type="button" disabled={selCount === 0} style={{ opacity: selCount === 0 ? 0.4 : 1, color: selCount > 0 ? '#dc2626' : undefined }} onClick={(ev) => { ev.stopPropagation(); handleBatchDeleteEntrances(c.id, b.id); }}>✕ 批量刪除{selCount > 0 ? ` (${selCount})` : ''}</button>
                                     ); })()}
                                     <button className="ac-btn-sm" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal({ type: 'building', id: b.id, label: b.name, community: { address: c.address, latitude: c.latitude, longitude: c.longitude, serviceScope: c.serviceScope, contactPerson: c.contactPerson, contactPhone: c.contactPhone, contactEmail: c.contactEmail } }); }}><Plus size={12} /> 添加入口</button>
-                                    <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => handleBatchAssignBuildingDevices(c.id, b.id)}>📡 批量分配設備</button>
-                                    <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px', color: '#dc2626' }} onClick={() => handleBatchRemoveBuildingDevices(c.id, b.id)}>📡 批量取消設備</button>
                                     <button className="ac-btn-sm" type="button" style={{ marginBottom: '4px' }} onClick={() => window.alert('開發中')}>🧪 測試</button>
                                   </div>
                                 </div>
@@ -2902,7 +2653,6 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', top: entranceDropdownOpen.top, bottom: entranceDropdownOpen.bottom, right: entranceDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addEntranceDialogRef.current?.showModal(ctx, entranceData); setEntranceDropdownOpen(null); }}>✎ 編輯</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openAuthDrawer({ ...entranceData, communityId: cId }); setEntranceDropdownOpen(null); }}>🔑 權限</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openDeviceDialog({ ...entranceData, buildingId: bId || undefined }, cId); setEntranceDropdownOpen(null); }}>📡 設備</button>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); window.alert('開發中'); setEntranceDropdownOpen(null); }}>🧪 測試</button>
               {entranceData.deviceStatus !== 'none' && (
                 <button className="ac-dropdown-item" type="button" style={{ color: entranceData.isActive !== false ? '#94a3b8' : '#16a34a' }} onClick={(ev) => { ev.stopPropagation(); handleToggleEntrance({ id: entranceData.id, isActive: entranceData.isActive, communityId: cId, buildingId: bId }); }}>{entranceData.isActive !== false ? '◯ 停用' : '✓ 啟用'}</button>
@@ -2936,41 +2686,6 @@ const AccessControl = forwardRef((props, ref) => {
           </div>
         </dialog>
       );})()}
-      {/* 設備分配對話框 */}
-      {deviceDialogOpen && deviceEntrance && (
-        <dialog ref={(el) => { if (el && !el.open) el.showModal(); }} style={{ border: '0', borderRadius: '16px', padding: '0', maxWidth: '520px', width: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', background: '#111827', color: '#e5e7eb' }} onClose={() => setDeviceDialogOpen(false)}>
-          <style>{`dialog::backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }`}</style>
-          <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '70vh' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 28px 0', flexShrink: 0 }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#f3f4f6' }}>綁定設備 — {deviceEntrance.name}</h2>
-              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', padding: '4px' }} onClick={() => setDeviceDialogOpen(false)}>&#x2715;</button>
-            </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: '20px 28px 24px' }}>
-              {deviceLoading ? (
-                <div className="ac-empty">載入中...</div>
-              ) : (
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#e5e7eb' }}>選擇設備</span>
-                  <select value={selectedDeviceId} onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #374151', fontSize: '13px', color: '#e5e7eb', background: '#111827', outline: 'none', cursor: 'pointer' }}>
-                    <option value="">{deviceEntrance.deviceId ? '清除已繫結裝置' : '請選擇門控裝置'}</option>
-                    {availableDevices.map(d => (
-                      <option key={d.id} value={d.id}>{d.uuid}{d.tenantName ? ` (已分配: ${d.tenantName})` : ''}</option>
-                    ))}
-                  </select>
-                  {availableDevices.length === 0 && !selectedDeviceId && (
-                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '8px 0 0' }}>暫無可用設備，請先由平台管理員分配裝置。</p>
-                  )}
-                </label>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 28px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 16px 16px' }}>
-              <button type="button" onClick={() => setDeviceDialogOpen(false)} style={{ height: '40px', padding: '0 18px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '1px solid #374151', background: '#111827', color: '#9ca3af', cursor: 'pointer' }}>取消</button>
-              <button type="button" onClick={handleAssignDevice} style={{ height: '40px', padding: '0 22px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, border: '0', background: 'linear-gradient(90deg, #2563eb 0%, #4f46e5 100%)', color: '#fff', cursor: 'pointer' }}>確認綁定</button>
-            </div>
-          </div>
-        </dialog>
-      )}
       {/* 社區下拉菜單 (root level rendering to avoid overflow clipping) */}
       {dropdownOpen && (() => {
         const c = communities.find(c2 => c2.id === dropdownOpen.id);

@@ -16685,18 +16685,29 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
       if (!building) return response.status(404).json({ message: "樓宇不存在。" });
     }
 
-    if (deviceId) {
-      const [device] = await connection.query(
-        "SELECT id FROM gate_devices WHERE id = ? AND tenant_id = ?",
-        [deviceId, request.admin.tenantId]
-      );
-      if (!device) return response.status(400).json({ message: "裝置不存在。" });
+    if (!deviceId) {
+      return response.status(400).json({ message: "請選擇要綁定的門禁設備。" });
     }
+
+    const [device] = await connection.query(
+      "SELECT id, device_uuid, tenant_id, assignment_status FROM gate_devices WHERE id = ?",
+      [deviceId]
+    );
+    if (!device) return response.status(400).json({ message: "設備不存在。" });
+    if (Number(device.tenant_id) !== Number(request.admin.tenantId) || device.assignment_status !== 'assigned') {
+      return response.status(400).json({ message: "該設備未分配給當前租戶，請聯絡平台管理員分配。" });
+    }
+
+    const [occupied] = await connection.query(
+      "SELECT id, name FROM access_entrances WHERE device_id = ? LIMIT 1",
+      [deviceId]
+    );
+    if (occupied) return response.status(409).json({ message: `該設備已繫結入口「${occupied.name}」。` });
 
     const result = await connection.query(
       `INSERT INTO access_entrances
          (tenant_id, community_id, building_id, name, address, latitude, longitude, service_scope, contact_person, contact_phone, contact_email, device_id, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [request.admin.tenantId, communityId, buildingId, name, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, deviceId]
     );
     response.status(201).json({
@@ -16716,12 +16727,15 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
         contactPhone,
         contactEmail,
         deviceId,
-        isActive: false,
-        device: deviceId ? payload.deviceName || null : null,
-        deviceStatus: deviceId ? "offline" : "none",
+        isActive: true,
+        device: device.device_uuid || null,
+        deviceStatus: "assigned",
       }
     });
   } catch (error) {
+    if (error?.code === 'ER_DUP_ENTRY') {
+      return response.status(409).json({ message: "該設備已被其他入口使用。" });
+    }
     console.error("新增入口失敗:", error);
     response.status(500).json({ message: "新增入口失敗，請稍後再試。" });
   } finally {
@@ -16877,48 +16891,54 @@ app.put("/api/access-entrances/:id/device", requireAdmin, async (request, respon
       return response.status(404).json({ message: "入口不存在。" });
     }
 
-    // Free the old device if any
-    if (entrance.device_id) {
+    if (!deviceId) {
+      await connection.rollback();
+      return response.status(400).json({ message: "入口必須綁定設備，無法取消綁定。" });
+    }
+
+    const [device] = await connection.query(
+      "SELECT id, assignment_status, tenant_id FROM gate_devices WHERE id = ? FOR UPDATE",
+      [deviceId]
+    );
+    if (!device) {
+      await connection.rollback();
+      return response.status(404).json({ message: "裝置不存在。" });
+    }
+    if (Number(device.tenant_id) !== Number(request.admin.tenantId) || device.assignment_status !== 'assigned') {
+      await connection.rollback();
+      return response.status(400).json({ message: "該設備未分配給當前租戶，請聯絡平台管理員分配。" });
+    }
+    // Check if device is already assigned to another entrance
+    const [otherEntrance] = await connection.query(
+      "SELECT id, name FROM access_entrances WHERE device_id = ? AND id != ?",
+      [deviceId, entranceId]
+    );
+    if (otherEntrance) {
+      await connection.rollback();
+      return response.status(409).json({ message: `該裝置已繫結入口「${otherEntrance.name}」。` });
+    }
+
+    // Free the old device only when replacing it
+    if (entrance.device_id && Number(entrance.device_id) !== deviceId) {
       await connection.query(
         "UPDATE gate_devices SET tenant_id = NULL, assignment_status = 'unassigned', assigned_at = NULL, expires_at = NULL WHERE id = ?",
         [Number(entrance.device_id)]
       );
     }
 
-    // Assign new device if provided
-    if (deviceId) {
-      const [device] = await connection.query(
-        "SELECT id, assignment_status FROM gate_devices WHERE id = ? FOR UPDATE",
-        [deviceId]
-      );
-      if (!device) {
-        await connection.rollback();
-        return response.status(404).json({ message: "裝置不存在。" });
-      }
-      // Check if device is already assigned to another entrance
-      const [otherEntrance] = await connection.query(
-        "SELECT id, name FROM access_entrances WHERE device_id = ? AND id != ?",
-        [deviceId, entranceId]
-      );
-      if (otherEntrance) {
-        await connection.rollback();
-        return response.status(409).json({ message: `該裝置已繫結入口「${otherEntrance.name}」。` });
-      }
+    // Calculate expiry from tenant's latest plan expiry
+    const [planExpiry] = await connection.query(
+      `SELECT MAX(expires_at) AS latest FROM billing_orders
+       WHERE tenant_id = ? AND expires_at IS NOT NULL AND expires_at > NOW()`,
+      [request.admin.tenantId]
+    );
+    const expiresAt = planExpiry?.latest || null;
 
-      // Calculate expiry from tenant's latest plan expiry
-      const [planExpiry] = await connection.query(
-        `SELECT MAX(expires_at) AS latest FROM billing_orders
-         WHERE tenant_id = ? AND expires_at IS NOT NULL AND expires_at > NOW()`,
-        [request.admin.tenantId]
-      );
-      const expiresAt = planExpiry?.latest || null;
-
-      // Update device status
-      await connection.query(
-        "UPDATE gate_devices SET tenant_id = ?, assignment_status = 'assigned', assigned_at = NOW(), expires_at = ? WHERE id = ?",
-        [request.admin.tenantId, expiresAt, deviceId]
-      );
-    }
+    // Update device status
+    await connection.query(
+      "UPDATE gate_devices SET tenant_id = ?, assignment_status = 'assigned', assigned_at = NOW(), expires_at = ? WHERE id = ?",
+      [request.admin.tenantId, expiresAt, deviceId]
+    );
 
     // Update entrance
     await connection.query(
