@@ -21916,13 +21916,13 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
 
     // Tenant info
     const [tenant] = await connection.query(
-      "SELECT id, name, sip_domain, contact_person, contact_phone, contact_email, status, created_at FROM tenants WHERE id = ?", [tenantId]
+      "SELECT id, tenant_number, name, sip_domain, contact_person, contact_phone, contact_email, status, created_at FROM tenants WHERE id = ?", [tenantId]
     );
     if (!tenant) return response.status(404).json({ message: "租戶不存在。" });
 
     // Current plan
     const [plan] = await connection.query(
-      "SELECT o.id, o.order_no, o.currency, o.payable_amount, DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at, DATE_FORMAT(o.created_at, '%Y-%m-%d') AS created_at, o.payment_method, i.account_quantity, i.item_name FROM billing_orders o JOIN billing_order_items i ON i.order_id = o.id AND i.item_type = 'plan' WHERE o.tenant_id = ? AND o.order_status = 'review_approved' ORDER BY o.expires_at DESC LIMIT 1",
+      "SELECT o.id, o.order_no, o.order_type, o.currency, o.payable_amount, DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at, DATE_FORMAT(o.created_at, '%Y-%m-%d') AS created_at, o.payment_method, i.account_quantity, i.item_name FROM billing_orders o JOIN billing_order_items i ON i.order_id = o.id AND i.item_type = 'plan' WHERE o.tenant_id = ? AND o.order_status = 'review_approved' AND o.order_type <> 'trial' ORDER BY o.expires_at DESC LIMIT 1",
       [tenantId]
     );
     const planAddons = plan ? await connection.query("SELECT i.item_name FROM billing_order_items i WHERE i.order_id = ? AND i.item_type = 'addon'", [plan.id]) : [];
@@ -21930,91 +21930,310 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
 
     // Order list for plan history
     const orderList = await connection.query(
-      "SELECT o.id, o.order_no, o.order_status, o.payable_amount, o.payment_method, o.payment_status, DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at, i.item_name AS plan_name FROM billing_orders o JOIN billing_order_items i ON i.order_id = o.id AND i.item_type = 'plan' WHERE o.tenant_id = ? ORDER BY o.created_at DESC",
+      "SELECT o.id, o.order_no, o.order_type, o.order_status, o.payable_amount, o.payment_method, o.payment_status, DATE_FORMAT(o.expires_at, '%Y-%m-%d') AS expires_at, i.item_name AS plan_name FROM billing_orders o JOIN billing_order_items i ON i.order_id = o.id AND i.item_type = 'plan' WHERE o.tenant_id = ? AND o.order_type <> 'trial' ORDER BY o.created_at DESC",
       [tenantId]
     );
 
-    // SIP account counts
-    const [sipTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE tenant_id = ?", [tenantId]);
-    const [sipEnabled] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE tenant_id = ? AND status = 'active'", [tenantId]);
-    const [sipNoDisplayName] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE tenant_id = ? AND (display_name IS NULL OR display_name = '' OR display_name = username)", [tenantId]);
-    const [sipNoEmail] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE tenant_id = ? AND (email IS NULL OR email = '')", [tenantId]);
-    const [sipExpired] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users su JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active' WHERE su.tenant_id = ? AND e.service_expires_at < CURDATE()", [tenantId]);
-    const [sipExpiring] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users su JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active' WHERE su.tenant_id = ? AND e.service_expires_at >= CURDATE() AND e.service_expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)", [tenantId]);
-    const sipTotalCount = Number(sipTotal.cnt);
-    const sipEnabledCount = Number(sipEnabled.cnt);
-    const sipNoDisplayNameCount = Number(sipNoDisplayName.cnt);
-    const sipNoEmailCount = Number(sipNoEmail.cnt);
-    const sipExpiredCount = Number(sipExpired.cnt);
-    const sipExpiringCount = Number(sipExpiring.cnt);
+    // 已分配帳號：與 /api/tenant/sip-accounts 同一口徑（訂單快照 + 權益）
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const sevenDaysLater = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const accountRows = await connection.query(
+      `SELECT a.id, a.sip_user_id, a.username, a.display_name, a.email, a.phone_number,
+              a.account_status,
+              DATE_FORMAT(a.service_expires_at, '%Y-%m-%d') AS service_expires_at,
+              ent.status AS entitlement_status,
+              DATE_FORMAT(ext.extended_expires_at, '%Y-%m-%d') AS extended_expires_at,
+              u.sync_status,
+              wu.username AS web_account,
+              cb.name AS contact_book
+       FROM billing_order_sip_accounts a
+       JOIN tenant_sip_account_entitlements ent
+         ON ent.tenant_id = a.tenant_id
+        AND ent.sip_user_id = a.sip_user_id
+        AND ent.current_order_id = a.order_id
+        AND ent.status IN ('active', 'expired')
+       JOIN billing_orders o ON o.id = a.order_id
+       JOIN sip_users u ON u.id = a.sip_user_id
+       LEFT JOIN (
+         SELECT b2.tenant_id, b2.sip_user_id, MAX(o2.expires_at) AS extended_expires_at
+         FROM billing_order_sip_accounts b2
+         JOIN billing_orders o2 ON o2.id = b2.order_id AND o2.order_status = 'review_approved' AND o2.order_type <> 'trial'
+         GROUP BY b2.tenant_id, b2.sip_user_id
+       ) ext ON ext.tenant_id = a.tenant_id AND ext.sip_user_id = a.sip_user_id
+       LEFT JOIN tenant_web_account_entitlements we
+         ON we.sip_user_id = a.sip_user_id AND we.tenant_id = a.tenant_id AND we.status = 'active'
+       LEFT JOIN web_users wu ON wu.id = we.web_user_id
+       LEFT JOIN tenant_contact_book_assignments cba
+         ON cba.sip_user_id = a.sip_user_id AND cba.tenant_id = a.tenant_id AND cba.status = 'active'
+       LEFT JOIN tenant_contact_books cb ON cb.id = cba.contact_book_id AND cb.tenant_id = a.tenant_id
+       WHERE a.tenant_id = ?
+       ORDER BY a.assigned_at DESC, a.id DESC`,
+      [tenantId]
+    );
+    const accountList = [];
+    const seenSipIds = new Set();
+    for (const row of accountRows) {
+      const sipKey = Number(row.sip_user_id);
+      if (seenSipIds.has(sipKey)) continue;
+      seenSipIds.add(sipKey);
+      const expiresAt = row.extended_expires_at || row.service_expires_at || null;
+      const isExpired = row.entitlement_status === 'expired' || Boolean(expiresAt && expiresAt < todayStr);
+      const status = isExpired ? 'expired' : (row.account_status || 'active');
+      accountList.push({
+        id: Number(row.id),
+        sipUserId: sipKey,
+        username: row.username || '',
+        displayName: row.display_name || '',
+        email: row.email || '',
+        phone: row.phone_number || '',
+        status,
+        entitlementStatus: row.entitlement_status || '',
+        expiresAt,
+        expiring: !isExpired && Boolean(expiresAt && expiresAt >= todayStr && expiresAt <= sevenDaysLater),
+        webAccount: row.web_account || '-',
+        contactBook: row.contact_book || '-',
+        syncStatus: row.sync_status || 'local_only',
+      });
+    }
+    const sipAccountSummary = {
+      total: accountList.length,
+      enabled: accountList.filter((a) => a.status === 'active').length,
+      expired: accountList.filter((a) => a.status === 'expired').length,
+      expiring: accountList.filter((a) => a.expiring).length,
+      disabled: accountList.filter((a) => a.status !== 'active' && a.status !== 'expired').length,
+      noDisplayName: accountList.filter((a) => !a.displayName || a.displayName === a.username).length,
+      noEmail: accountList.filter((a) => !a.email).length,
+      syncAnomaly: accountList.filter((a) => a.syncStatus && a.syncStatus !== 'active').length,
+      limit: plan ? Number(plan.account_quantity || 0) : 0,
+      list: accountList,
+    };
 
-    const sipAccountList = await connection.query(
-      "SELECT su.id, su.username, su.display_name, su.email, su.phone_number, su.status, DATE_FORMAT(e.service_expires_at, '%Y-%m-%d') AS service_expires_at, wu.username AS web_account, tcb.name AS contact_book FROM sip_users su LEFT JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active' LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = su.id AND we.tenant_id = su.tenant_id AND we.status = 'active' LEFT JOIN web_users wu ON wu.id = we.web_user_id LEFT JOIN tenant_contact_book_assignments cba ON cba.sip_user_id = su.id AND cba.status != 'revoked' LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id AND tcb.tenant_id = su.tenant_id WHERE su.tenant_id = ? ORDER BY su.created_at DESC",
+    // 試用帳號（帳號掛在保留試用租戶，歸屬看 owner_tenant_id）
+    const [trialSummary] = await connection.query(
+      `SELECT COUNT(*) AS total,
+              SUM(status = 'active') AS active,
+              SUM(status = 'active' AND expires_at >= CURDATE() AND expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS expiring,
+              SUM(status = 'active' AND expires_at < CURDATE()) AS grace,
+              SUM(status = 'paused') AS paused,
+              SUM(status = 'converted') AS converted,
+              SUM(status = 'reclaimed') AS reclaimed
+       FROM trial_assignments WHERE owner_tenant_id = ?`,
+      [tenantId]
+    );
+    const trialList = await connection.query(
+      `SELECT ta.id, ta.status, DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_at, u.username
+       FROM trial_assignments ta JOIN sip_users u ON u.id = ta.sip_user_id
+       WHERE ta.owner_tenant_id = ?
+       ORDER BY ta.expires_at ASC, ta.id ASC LIMIT 5`,
       [tenantId]
     );
 
-    // Ecard counts
-    const [ecardTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ?", [tenantId]);
-    const [ecardActive] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ? AND status = 'active'", [tenantId]);
-    const [ecardConfigured] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE tenant_id = ? AND card_data_json IS NOT NULL", [tenantId]);
-    const ecardTotalCount = Number(ecardTotal.cnt);
-    const ecardActiveCount = Number(ecardActive.cnt);
-    const ecardConfiguredCount = Number(ecardConfigured.cnt);
-    const [ecardExpired] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards te JOIN sip_users su ON su.id = te.sip_user_id LEFT JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active' WHERE te.tenant_id = ? AND e.service_expires_at IS NOT NULL AND e.service_expires_at < CURDATE()", [tenantId]);
-    const [ecardExpiring] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards te JOIN sip_users su ON su.id = te.sip_user_id LEFT JOIN tenant_sip_account_entitlements e ON e.sip_user_id = su.id AND e.tenant_id = su.tenant_id AND e.status = 'active' WHERE te.tenant_id = ? AND e.service_expires_at IS NOT NULL AND e.service_expires_at >= CURDATE() AND e.service_expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)", [tenantId]);
-    const ecardExpiredCount = Number(ecardExpired.cnt);
-    const ecardExpiringCount = Number(ecardExpiring.cnt);
-    const ecardList = await connection.query("SELECT te.id, su.username AS sip_account, su.display_name AS user_name, wu.username AS web_account, te.status, DATE_FORMAT(COALESCE(te.valid_from, su.activated_at), '%Y-%m-%d') AS valid_from, DATE_FORMAT(COALESCE(te.valid_to, su.service_expires_at), '%Y-%m-%d') AS valid_to, DATE_FORMAT(te.created_at, '%Y-%m-%d') AS created_at FROM tenant_ecards te JOIN sip_users su ON su.id = te.sip_user_id LEFT JOIN tenant_web_account_entitlements we ON we.sip_user_id = su.id AND we.tenant_id = su.tenant_id AND we.status = 'active' LEFT JOIN web_users wu ON wu.id = we.web_user_id WHERE te.tenant_id = ? ORDER BY te.created_at DESC",  [tenantId]);
+    // 電子名片：與 /api/tenant/ecard-accounts 同一帳號範圍（含試用帳號）
+    const ecardRows = await connection.query(
+      `SELECT su.id AS sip_user_id, su.username AS sip_account, su.display_name AS user_name,
+              wu.username AS web_account,
+              ec.id AS ecard_id, ec.status AS ecard_status,
+              DATE_FORMAT(COALESCE(ec.valid_from, su.activated_at), '%Y-%m-%d') AS valid_from,
+              DATE_FORMAT(COALESCE(ec.valid_to, ext.extended_expires_at, ent.service_expires_at, su.service_expires_at), '%Y-%m-%d') AS valid_to,
+              DATE_FORMAT(ec.created_at, '%Y-%m-%d') AS created_at,
+              (ta.id IS NOT NULL) AS is_trial
+       FROM sip_users su
+       LEFT JOIN trial_assignments ta
+         ON ta.sip_user_id = su.id AND ta.owner_tenant_id = ? AND ta.status IN ('active', 'paused')
+       LEFT JOIN tenant_ecards ec ON ec.sip_user_id = su.id
+       LEFT JOIN (
+         SELECT b2.tenant_id, b2.sip_user_id, MAX(o2.expires_at) AS extended_expires_at
+         FROM billing_order_sip_accounts b2
+         JOIN billing_orders o2 ON o2.id = b2.order_id AND o2.order_status = 'review_approved' AND o2.order_type <> 'trial'
+         GROUP BY b2.tenant_id, b2.sip_user_id
+       ) ext ON ext.sip_user_id = su.id AND ext.tenant_id = COALESCE(ec.tenant_id, su.tenant_id)
+       LEFT JOIN tenant_sip_account_entitlements ent
+         ON ent.sip_user_id = su.id
+        AND ent.tenant_id = COALESCE(ec.tenant_id, su.tenant_id)
+        AND ent.status IN ('active', 'expired')
+       LEFT JOIN tenant_web_account_entitlements we
+         ON we.sip_user_id = su.id AND we.tenant_id = COALESCE(ec.tenant_id, su.tenant_id) AND we.status = 'active'
+       LEFT JOIN web_users wu ON wu.id = we.web_user_id
+       WHERE (su.tenant_id = ? OR ta.id IS NOT NULL OR EXISTS (
+         SELECT 1 FROM billing_order_sip_accounts b
+         JOIN tenant_sip_account_entitlements e2
+           ON e2.tenant_id = b.tenant_id AND e2.sip_user_id = b.sip_user_id
+          AND e2.current_order_id = b.order_id AND e2.status IN ('active', 'expired')
+         WHERE b.tenant_id = ? AND b.sip_user_id = su.id
+       )) AND su.status = 'active'
+       ORDER BY su.username ASC`,
+      [tenantId, tenantId, tenantId]
+    );
+    const ecardAccounts = [];
+    const seenEcardSipIds = new Set();
+    for (const row of ecardRows) {
+      const sipKey = Number(row.sip_user_id);
+      if (seenEcardSipIds.has(sipKey)) continue;
+      seenEcardSipIds.add(sipKey);
+      const configured = row.ecard_id != null;
+      const validTo = row.valid_to || null;
+      const expired = Boolean(configured && validTo && validTo < todayStr);
+      const expiring = Boolean(configured && !expired && validTo && validTo >= todayStr && validTo <= sevenDaysLater);
+      ecardAccounts.push({
+        id: Number(row.ecard_id || row.sip_user_id),
+        sipAccount: row.sip_account || '',
+        userName: row.user_name || '',
+        webAccount: row.web_account || '-',
+        configured,
+        status: configured ? (row.ecard_status || 'disabled') : 'none',
+        validFrom: row.valid_from || null,
+        validTo,
+        createdAt: row.created_at || null,
+        isTrial: Boolean(row.is_trial),
+        expired,
+        expiring,
+      });
+    }
+    const ecardSummary = {
+      total: ecardAccounts.length,
+      configured: ecardAccounts.filter((e) => e.configured).length,
+      unconfigured: ecardAccounts.filter((e) => !e.configured).length,
+      active: ecardAccounts.filter((e) => e.configured && e.status === 'active' && !e.expired).length,
+      expired: ecardAccounts.filter((e) => e.expired).length,
+      expiring: ecardAccounts.filter((e) => e.expiring).length,
+      list: ecardAccounts.filter((e) => e.configured),
+    };
 
-    // Device counts
-    const [deviceTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM gate_devices WHERE tenant_id = ?", [tenantId]);
-    const [deviceOnline] = await connection.query("SELECT COUNT(*) AS cnt FROM gate_devices WHERE tenant_id = ? AND assignment_status = 'assigned'", [tenantId]);
-    const deviceTotalCount = Number(deviceTotal.cnt);
-    const deviceOnlineCount = Number(deviceOnline.cnt);
+    // 門禁設備：已分配設備 + MQTT 實時在線狀態
+    const deviceRows = await connection.query(
+      "SELECT id, device_uuid, assignment_status, DATE_FORMAT(expires_at, '%Y-%m-%d') AS expires_at FROM gate_devices WHERE tenant_id = ? AND assignment_status = 'assigned' ORDER BY id ASC",
+      [tenantId]
+    );
+    const deviceDetails = deviceRows.map((row) => {
+      const status = deviceMqttService.getStatus(row.device_uuid);
+      return {
+        id: Number(row.id),
+        uuid: row.device_uuid || '',
+        online: status.online,
+        updatedAt: status.updatedAt || null,
+        expiresAt: row.expires_at || null,
+        assignmentExpired: Boolean(row.expires_at && row.expires_at < todayStr),
+      };
+    });
+    const deviceSummary = {
+      total: deviceDetails.length,
+      online: deviceDetails.filter((d) => d.online === true).length,
+      offline: deviceDetails.filter((d) => d.online === false).length,
+      unknown: deviceDetails.filter((d) => d.online === null).length,
+      assignmentExpired: deviceDetails.filter((d) => d.assignmentExpired).length,
+      onlineRate: deviceDetails.length > 0
+        ? Math.round((deviceDetails.filter((d) => d.online === true).length / deviceDetails.length) * 1000) / 10
+        : 0,
+      list: deviceDetails,
+    };
 
     // Community & room counts
-    const [communityCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities WHERE tenant_id = ? AND is_active = 1", [tenantId]);
+    const [communityCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities WHERE tenant_id = ?", [tenantId]);
+    const [communityActive] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities WHERE tenant_id = ? AND is_active = 1", [tenantId]);
     const [roomCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_rooms WHERE tenant_id = ?", [tenantId]);
     const [buildingCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_buildings WHERE tenant_id = ?", [tenantId]);
     const [entranceTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM access_entrances WHERE tenant_id = ?", [tenantId]);
     const [entranceBound] = await connection.query("SELECT COUNT(*) AS cnt FROM access_entrances WHERE tenant_id = ? AND device_id IS NOT NULL", [tenantId]);
+    const [entranceUsable] = await connection.query(
+      `SELECT COUNT(*) AS cnt
+       FROM access_entrances e
+       JOIN gate_devices g ON g.id = e.device_id AND g.assignment_status = 'assigned' AND g.tenant_id = e.tenant_id
+       WHERE e.tenant_id = ? AND e.is_active = 1`,
+      [tenantId]
+    );
     const communityList = await connection.query("SELECT id, name, address, is_active, DATE_FORMAT(created_at, '%Y-%m-%d') AS created_at FROM access_communities WHERE tenant_id = ? ORDER BY created_at DESC",  [tenantId]);
 
-    // Call center stats
+    // Call center stats（訪客留言 + Flexisip 通話記錄）
     const [ccTotal] = await connection.query("SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ?", [tenantId]);
     const [ccActive] = await connection.query("SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ? AND status = 'active'", [tenantId]);
     const [ccDisabled] = await connection.query("SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ? AND status = 'disabled'", [tenantId]);
-    const [ccVisitor] = await connection.query("SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ? AND require_visitor_info = 1", [tenantId]);
+    const [ccVisitor] = await connection.query("SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ? AND status = 'active' AND require_visitor_info = 1", [tenantId]);
     const [ccAgents] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_category_agents WHERE tenant_id = ?", [tenantId]);
+    const [ccPending] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND inquiry_status <> 'processed'", [tenantId]);
     const ccTotalCount = Number(ccTotal.cnt);
     const ccActiveCount = Number(ccActive.cnt);
     const ccDisabledCount = Number(ccDisabled.cnt);
     const ccVisitorCount = Number(ccVisitor.cnt);
     const ccAgentCount = Number(ccAgents.cnt);
-    const ccList = await connection.query("SELECT cc.id, cc.center_name, cc.center_url, cc.require_visitor_info, cc.status, DATE_FORMAT(cc.created_at, '%Y-%m-%d') AS created_at, COUNT(ca.id) AS agent_count FROM call_centers cc LEFT JOIN call_center_category_agents ca ON ca.call_center_id = cc.id WHERE cc.tenant_id = ? GROUP BY cc.id ORDER BY cc.created_at DESC",  [tenantId]);
-    
-    const [todayCalls] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND DATE(created_at) = CURDATE()", [tenantId]);
-    const [monthCalls] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE())", [tenantId]);
-const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC", [tenantId]);
+    const ccPendingCount = Number(ccPending.cnt);
+    const ccList = await connection.query(
+      `SELECT cc.id, cc.center_name, cc.center_url, cc.require_visitor_info, cc.status,
+              DATE_FORMAT(cc.created_at, '%Y-%m-%d') AS created_at,
+              COUNT(ca.id) AS agent_count,
+              (SELECT COUNT(*) FROM call_center_visitor_inquiries vi
+               WHERE vi.call_center_id = cc.id AND vi.inquiry_status <> 'processed') AS pending_inquiry_count
+       FROM call_centers cc
+       LEFT JOIN call_center_category_agents ca ON ca.call_center_id = cc.id
+       WHERE cc.tenant_id = ?
+       GROUP BY cc.id ORDER BY cc.created_at DESC`,
+      [tenantId]
+    );
+
+    const [todayInquiries] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND DATE(created_at) = CURDATE()", [tenantId]);
+    const [monthInquiries] = await connection.query("SELECT COUNT(*) AS cnt FROM call_center_visitor_inquiries WHERE tenant_id = ? AND YEAR(created_at) = YEAR(CURDATE()) AND MONTH(created_at) = MONTH(CURDATE())", [tenantId]);
+    const recentInquiries = await connection.query(
+      `SELECT vi.created_at, vi.sip_number, vi.visitor_name, vi.visitor_phone, vi.inquiry_status, cc.center_name
+       FROM call_center_visitor_inquiries vi
+       LEFT JOIN call_centers cc ON cc.id = vi.call_center_id
+       WHERE vi.tenant_id = ? ORDER BY vi.created_at DESC LIMIT 5`,
+      [tenantId]
+    );
+
+    // 通話記錄：按本租戶的 SIP 帳號（含試用帳號）過濾
+    const tenantUsernameRows = await connection.query(
+      `SELECT DISTINCT username FROM (
+         SELECT username FROM sip_users WHERE tenant_id = ?
+         UNION
+         SELECT u.username FROM trial_assignments ta JOIN sip_users u ON u.id = ta.sip_user_id WHERE ta.owner_tenant_id = ?
+       ) t WHERE username IS NOT NULL AND username <> ''`,
+      [tenantId, tenantId]
+    );
+    const tenantUsernames = tenantUsernameRows.map((r) => r.username);
+    const callUserPlaceholders = tenantUsernames.length ? tenantUsernames.map(() => "?").join(",") : "NULL";
+    const callUserWhere = `(from_user IN (${callUserPlaceholders}) OR to_user IN (${callUserPlaceholders}))`;
+    const callUserParams = tenantUsernames.length ? [...tenantUsernames, ...tenantUsernames] : [];
+    const [todayCalls] = await connection.query(
+      `SELECT COUNT(*) AS cnt FROM flexisip_call_logs WHERE initiated_at >= CURDATE() AND ${callUserWhere}`,
+      callUserParams
+    );
+    const [monthCalls] = await connection.query(
+      `SELECT COUNT(*) AS cnt FROM flexisip_call_logs WHERE initiated_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND ${callUserWhere}`,
+      callUserParams
+    );
+    const recentCalls = await connection.query(
+      `SELECT initiated_at, from_user, to_user, result, final_status
+       FROM flexisip_call_logs
+       WHERE initiated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND ${callUserWhere}
+       ORDER BY initiated_at DESC LIMIT 5`,
+      callUserParams
+    );
 
     // Last login
     const [lastLogin] = await connection.query("SELECT last_login_at FROM admin_users WHERE tenant_id = ? AND account_type = 'tenant' ORDER BY last_login_at DESC LIMIT 1", [tenantId]);
 
-    // Plan usage limits
-    const planLimit = (plan && plan.item_name && plan.item_name.includes('Pro')) ? { sip: 5000, device: 500, community: 100, room: 10000 } : { sip: 1000, device: 100, community: 20, room: 500 };
-
-    // Recent call records
-    const recentCalls = await connection.query(
-      "SELECT vi.created_at, vi.sip_number AS caller_number, vi.visitor_phone AS callee_number, vi.inquiry_status AS status FROM call_center_visitor_inquiries vi WHERE vi.tenant_id = ? ORDER BY vi.created_at DESC LIMIT 4",
-      [tenantId]
-    );
-
-    // Device alerts (mock for now)
-    const alerts = [];
+    // 待處理提醒（到期、異常、待處理留言等）
+    const todos = [];
+    if (plan && plan.expires_at) {
+      const daysLeft = Math.max(0, Math.ceil((new Date(plan.expires_at + 'T00:00:00') - new Date()) / 86400000));
+      if (daysLeft <= 7) todos.push({ type: 'plan', text: `套餐將在 ${daysLeft} 天後到期（${plan.expires_at}）`, severity: 'warning', view: 'domain' });
+    }
+    if (sipAccountSummary.expired > 0) todos.push({ type: 'account', text: `${sipAccountSummary.expired} 個帳號已過期，服務已停止`, severity: 'error', view: 'tenant-account-management' });
+    if (sipAccountSummary.expiring > 0) todos.push({ type: 'account', text: `${sipAccountSummary.expiring} 個帳號將在 7 天內到期`, severity: 'warning', view: 'tenant-account-management' });
+    if (sipAccountSummary.syncAnomaly > 0) todos.push({ type: 'account', text: `${sipAccountSummary.syncAnomaly} 個帳號同步異常，請檢查 AM 狀態`, severity: 'warning', view: 'tenant-account-management' });
+    if (ecardSummary.expiring > 0) todos.push({ type: 'ecard', text: `${ecardSummary.expiring} 張電子名片將在 7 天內到期`, severity: 'warning', view: 'ecard-styles-management' });
+    if (Number(trialSummary?.expiring || 0) > 0) todos.push({ type: 'trial', text: `${Number(trialSummary.expiring)} 個試用帳號將在 7 天內到期`, severity: 'warning', view: 'trial-management' });
+    if (Number(trialSummary?.grace || 0) > 0) todos.push({ type: 'trial', text: `${Number(trialSummary.grace)} 個試用帳號已到期（寬限期）`, severity: 'error', view: 'trial-management' });
+    const offlineDevices = deviceDetails.filter((d) => d.online === false);
+    if (offlineDevices.length > 0) todos.push({ type: 'device', text: `${offlineDevices.length} 台門禁設備離線${offlineDevices[0]?.uuid ? `（${offlineDevices[0].uuid}）` : ''}`, severity: 'error', view: 'access-control' });
+    if (deviceSummary.assignmentExpired > 0) todos.push({ type: 'device', text: `${deviceSummary.assignmentExpired} 台設備的分配已過期`, severity: 'warning', view: 'access-control' });
+    const pendingOrders = orderList.filter((o) => ['pending_payment', 'payment_submitted', 'pending_review'].includes(o.order_status));
+    if (pendingOrders.length > 0) todos.push({ type: 'order', text: `${pendingOrders.length} 筆訂單待付款或待審核`, severity: 'warning', view: 'domain' });
+    if (ccPendingCount > 0) todos.push({ type: 'callcenter', text: `${ccPendingCount} 筆訪客留言待處理`, severity: 'warning', view: 'call-center' });
 
     return response.json(bigIntSafe({
       tenant: {
         id: Number(tenant.id),
+        tenantNumber: tenant.tenant_number || `TENANT-${String(tenant.id).padStart(6, '0')}`,
         name: tenant.name || "",
         sipDomain: tenant.sip_domain || "",
         contactPerson: tenant.contact_person || "",
@@ -22040,48 +22259,37 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
       orderList: orderList.map(o => ({
         id: Number(o.id),
         orderNo: o.order_no || "-",
+        orderType: o.order_type || "new_purchase",
         planName: o.plan_name || "-",
         orderStatus: o.order_status || "-",
         paymentStatus: o.payment_status || "-",
         payableAmount: Number(o.payable_amount || 0),
         expiresAt: o.expires_at || "-",
       })),
-      sipAccounts: {
-        total: sipTotalCount,
-        enabled: sipEnabledCount,
-        noDisplayName: sipNoDisplayNameCount,
-        noEmail: sipNoEmailCount,
-        expired: sipExpiredCount,
-        expiring: sipExpiringCount,
-        limit: planLimit.sip,
-        list: sipAccountList.map(a => ({ id: Number(a.id), username: a.username, displayName: a.display_name, email: a.email, phone: a.phone_number, status: a.status, webAccount: a.web_account || '-', contactBook: a.contact_book || '-', expiresAt: a.service_expires_at || null })),
+      accounts: sipAccountSummary,
+      sipAccounts: sipAccountSummary,
+      trial: {
+        total: Number(trialSummary?.total || 0),
+        active: Number(trialSummary?.active || 0),
+        expiring: Number(trialSummary?.expiring || 0),
+        grace: Number(trialSummary?.grace || 0),
+        paused: Number(trialSummary?.paused || 0),
+        converted: Number(trialSummary?.converted || 0),
+        reclaimed: Number(trialSummary?.reclaimed || 0),
+        list: trialList.map(t => ({ id: Number(t.id), username: t.username || '', status: t.status, expiresAt: t.expires_at || null })),
       },
-      ecards: {
-        total: ecardTotalCount,
-        configured: ecardConfiguredCount,
-        unconfigured: ecardTotalCount - ecardConfiguredCount,
-        active: ecardActiveCount,
-        expired: ecardExpiredCount,
-        expiring: ecardExpiringCount,
-        list: ecardList.map(e => ({ id: Number(e.id), sipAccount: e.sip_account, userName: e.user_name, webAccount: e.web_account || "-", status: e.status, validFrom: e.valid_from, validTo: e.valid_to, createdAt: e.created_at })),
-      },
-      devices: {
-        total: deviceTotalCount,
-        online: deviceOnlineCount,
-        offline: deviceTotalCount - deviceOnlineCount,
-        onlineRate: deviceTotalCount > 0 ? Math.round((deviceOnlineCount / deviceTotalCount) * 1000) / 10 : 0,
-        limit: planLimit.device,
-      },
+      ecards: ecardSummary,
+      devices: deviceSummary,
       buildings: {
         communities: Number(communityCount.cnt),
+        activeCommunities: Number(communityActive.cnt),
         buildings: Number(buildingCount.cnt),
         rooms: Number(roomCount.cnt),
         entrances: Number(entranceTotal.cnt),
         entranceBound: Number(entranceBound.cnt),
-        devices: deviceTotalCount,
-        deviceBound: deviceOnlineCount,
-        limit: planLimit.community,
-        roomLimit: planLimit.room,
+        usableEntrances: Number(entranceUsable.cnt),
+        devices: deviceSummary.total,
+        deviceOnline: deviceSummary.online,
         list: communityList.map(r => ({ id: Number(r.id), name: r.name, address: r.address, isActive: r.is_active === 1, createdAt: r.created_at })),
       },
       callCenter: {
@@ -22089,21 +22297,38 @@ const callTrend = await connection.query("SELECT DATE_FORMAT(created_at, '%Y-%m-
         active: ccActiveCount,
         disabled: ccDisabledCount,
         visitorEnabled: ccVisitorCount,
-        expiring: 0,
         agents: ccAgentCount,
-        list: ccList.map(r => ({ id: Number(r.id), name: r.center_name, url: r.center_url, visitorEnabled: r.require_visitor_info === 1, status: r.status, agentCount: Number(r.agent_count), createdAt: r.created_at })),
+        pendingInquiries: ccPendingCount,
+        todayInquiries: Number(todayInquiries.cnt),
+        monthInquiries: Number(monthInquiries.cnt),
         todayCalls: Number(todayCalls.cnt),
         monthCalls: Number(monthCalls.cnt),
-        callTrend: callTrend.map(r => ({ date: r.date, count: Number(r.cnt) })),
+        list: ccList.map(r => ({
+          id: Number(r.id),
+          name: r.center_name,
+          url: r.center_url,
+          visitorEnabled: r.require_visitor_info === 1,
+          status: r.status,
+          agentCount: Number(r.agent_count),
+          pendingInquiryCount: Number(r.pending_inquiry_count || 0),
+          createdAt: r.created_at,
+        })),
+        recentInquiries: recentInquiries.map(v => ({
+          createdAt: v.created_at || null,
+          centerName: v.center_name || "-",
+          sipNumber: v.sip_number || "-",
+          visitorName: v.visitor_name || "",
+          visitorPhone: v.visitor_phone || "",
+          status: v.inquiry_status || "submitted",
+        })),
         recentCalls: recentCalls.map(c => ({
-          time: c.created_at ? String(c.created_at).slice(11, 16) : "-",
-          caller: c.caller_number || "-",
-          callee: c.callee_number || "-",
-          status: c.status || "completed",
+          initiatedAt: c.initiated_at || null,
+          caller: c.from_user || "-",
+          callee: c.to_user || "-",
+          status: c.result || c.final_status || "unknown",
         })),
       },
-      alerts: alerts,
-      cloudStorage: { used: 128, limit: 500 },
+      todos: todos.slice(0, 8),
     }));
   } catch (error) {
     console.error("Failed to fetch tenant dashboard:", error);
