@@ -2969,9 +2969,30 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addCommunityDialogRef.current?.showModal(c); setDropdownOpen(null); }}>✎ 編輯</button>
-              {c.isActive !== false && (
-                <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setSelectedCommunityAuth({ communityId: c.id, communityName: c.name }); setShowCommunityAuthDrawer(true); setDropdownOpen(null); }}>🔐 授權</button>
-              )}
+              {c.isActive !== false && (() => {
+                const entranceCount = (c.communityEntrances || []).length
+                  + (c.buildings || []).reduce((sum, b) => sum + (b.entrances || []).length, 0);
+                return (
+                  <button
+                    className="ac-dropdown-item"
+                    type="button"
+                    style={entranceCount === 0 ? { color: '#6b7280', cursor: 'not-allowed' } : undefined}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      if (entranceCount === 0) {
+                        setDropdownOpen(null);
+                        setToast({ message: '請先添加至少一個入口後再進行授權。', type: 'error' });
+                        return;
+                      }
+                      setSelectedCommunityAuth({ communityId: c.id, communityName: c.name });
+                      setShowCommunityAuthDrawer(true);
+                      setDropdownOpen(null);
+                    }}
+                  >
+                    🔐 授權
+                  </button>
+                );
+              })()}
               <button className="ac-dropdown-item" type="button" style={{ color: c.isActive === false ? '#16a34a' : '#94a3b8' }} onClick={(ev) => { ev.stopPropagation(); handleToggleCommunity(c); }}>{c.isActive === false ? '✓' : '◯'} {c.isActive === false ? '啟用' : '停用'}</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteCommunity(c); }}>✕ 刪除</button>
