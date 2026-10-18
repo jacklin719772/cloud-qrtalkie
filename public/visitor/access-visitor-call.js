@@ -486,8 +486,28 @@
     return '無法訪問麥克風/攝像頭';
   }
 
+  // 强制 PCMU 优先：与电子名片一致，避免 Asterisk 在 Opus↔PCMU 之间转码，
+  // 并保留 telephone-event 以便發送 DTMF
+  function applyCodecPreferences(pc) {
+    if (!pc || !window.RTCRtpSender || !window.RTCRtpSender.getCapabilities) return;
+    var transceivers = pc.getTransceivers ? pc.getTransceivers() : [];
+    var audioTransceiver = transceivers.find(function (t) {
+      return (t.sender && t.sender.track && t.sender.track.kind === 'audio')
+        || (t.receiver && t.receiver.track && t.receiver.track.kind === 'audio');
+    });
+    if (!audioTransceiver) return;
+    try {
+      var caps = window.RTCRtpSender.getCapabilities('audio');
+      var codecs = (caps && caps.codecs) || [];
+      var pcmuCodec = codecs.find(function (c) { return String(c.mimeType).toLowerCase() === 'audio/pcmu'; });
+      var dtmfCodec = codecs.find(function (c) { return String(c.mimeType).toLowerCase().indexOf('telephone-event') !== -1; });
+      if (pcmuCodec && dtmfCodec) audioTransceiver.setCodecPreferences([pcmuCodec, dtmfCodec]);
+    } catch (err) {}
+  }
+
   function bindPeerConnectionEvents(pc) {
     currentPeerConnection = pc;
+    applyCodecPreferences(pc);
     try {
       pc.oniceconnectionstatechange = function () {
         logSafe('ice state', { state: pc.iceConnectionState || '' });
