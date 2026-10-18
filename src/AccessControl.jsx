@@ -146,6 +146,7 @@ const AccessControl = forwardRef((props, ref) => {
       }
     } catch (error) {
       console.error('切換社群狀態失敗:', error);
+      setToast({ message: error?.message || '狀態更新失敗。', type: 'error' });
     }
   };
 
@@ -216,6 +217,7 @@ const AccessControl = forwardRef((props, ref) => {
       }
     } catch (error) {
       console.error('切換入口狀態失敗:', error);
+      setToast({ message: error?.message || '狀態更新失敗。', type: 'error' });
     }
   };
 

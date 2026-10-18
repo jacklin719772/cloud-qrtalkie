@@ -43,12 +43,34 @@ async function scanExpiringResources() {
     await scanExpiredSipAccounts(connection);
     await scanExpiredTrials(connection);
     await scanExpiringPlans(connection);
+    await disableExpiredTenantEntrances(connection);
     await scanExpiringEcards(connection);
     console.log("[Scheduler] Expiry scan complete");
   } catch (error) {
     console.error("[Scheduler] Scan error:", error.message);
   } finally {
     if (connection) connection.release();
+  }
+}
+
+// 套餐過期後自動停用該租戶所有入口
+async function disableExpiredTenantEntrances(connection) {
+  const result = await connection.query(
+    `UPDATE access_entrances e
+       JOIN (
+         SELECT tenant_id
+           FROM billing_orders
+          WHERE order_status = 'review_approved'
+          GROUP BY tenant_id
+         HAVING MAX(expires_at) < CURDATE()
+            AND SUM(CASE WHEN expires_at IS NULL THEN 1 ELSE 0 END) = 0
+       ) expired ON expired.tenant_id = e.tenant_id
+        SET e.is_active = 0
+      WHERE e.is_active = 1`
+  );
+  const affected = Number(result.affectedRows || 0);
+  if (affected > 0) {
+    console.log(`[Scheduler] Disabled ${affected} entrances for expired tenant plans`);
   }
 }
 

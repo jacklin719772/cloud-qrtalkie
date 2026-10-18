@@ -16149,6 +16149,20 @@ app.put("/api/access-communities/:id", requireAdmin, async (request, response) =
   }
 });
 
+// 租戶套餐是否已過期：存在已審核訂單，且全部到期日早於今天（無訂單的租戶不視為過期）
+async function isTenantPlanExpired(connection, tenantId) {
+  const rows = await connection.query(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN expires_at IS NULL OR expires_at >= CURDATE() THEN 1 ELSE 0 END) AS active_count
+       FROM billing_orders
+      WHERE tenant_id = ? AND order_status = 'review_approved'`,
+    [tenantId]
+  );
+  const total = Number(rows[0]?.total || 0);
+  const activeCount = Number(rows[0]?.active_count || 0);
+  return total > 0 && activeCount === 0;
+}
+
 // PUT /api/access-communities/:id/toggle - 啟用/停用社區
 app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
@@ -16169,6 +16183,10 @@ app.put("/api/access-communities/:id/toggle", requireAdmin, async (request, resp
       [communityId, request.admin.tenantId]
     );
     if (!existing) return response.status(404).json({ message: "社群不存在。" });
+
+    if (isActive && await isTenantPlanExpired(connection, request.admin.tenantId)) {
+      return response.status(403).json({ message: "套餐已過期，無法啟用社區。" });
+    }
 
     await connection.query(
       "UPDATE access_communities SET is_active = ? WHERE id = ? AND tenant_id = ?",
@@ -16855,6 +16873,10 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
       return response.status(400).json({ message: "請選擇要綁定的門禁設備。" });
     }
 
+    if (await isTenantPlanExpired(connection, request.admin.tenantId)) {
+      return response.status(403).json({ message: "套餐已過期，無法新增入口。" });
+    }
+
     const [device] = await connection.query(
       "SELECT id, device_uuid, tenant_id, assignment_status FROM gate_devices WHERE id = ?",
       [deviceId]
@@ -17062,6 +17084,11 @@ app.put("/api/access-entrances/:id/device", requireAdmin, async (request, respon
       return response.status(400).json({ message: "入口必須綁定設備，無法取消綁定。" });
     }
 
+    if (await isTenantPlanExpired(connection, request.admin.tenantId)) {
+      await connection.rollback();
+      return response.status(403).json({ message: "套餐已過期，無法變更入口設備。" });
+    }
+
     const [device] = await connection.query(
       "SELECT id, assignment_status, tenant_id FROM gate_devices WHERE id = ? FOR UPDATE",
       [deviceId]
@@ -17150,6 +17177,10 @@ app.put("/api/access-entrances/:id/toggle", requireAdmin, async (request, respon
       [entranceId, request.admin.tenantId]
     );
     if (!existing) return response.status(404).json({ message: "入口不存在。" });
+
+    if (isActive && await isTenantPlanExpired(connection, request.admin.tenantId)) {
+      return response.status(403).json({ message: "套餐已過期，無法啟用入口。" });
+    }
 
     if (isActive && !existing.device_id) {
       return response.status(400).json({ message: "未繫結裝置的入口無法啟用，請先繫結裝置。" });
