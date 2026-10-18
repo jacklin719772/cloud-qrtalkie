@@ -15187,9 +15187,16 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
   const keyword = sanitizeString(request.query.keyword, 120);
   const startDate = sanitizeString(request.query.startDate, 20);
   const endDate = sanitizeString(request.query.endDate, 20);
+  const statusFilter = sanitizeString(request.query.status, 20);
 
   const whereClauses = ["vi.tenant_id = ?", "vi.call_center_id = ?"];
   const params = [request.admin.tenantId, callCenterId];
+
+  if (statusFilter === "processed") {
+    whereClauses.push("vi.inquiry_status = 'processed'");
+  } else if (statusFilter === "pending") {
+    whereClauses.push("vi.inquiry_status <> 'processed'");
+  }
 
   if (keyword) {
     whereClauses.push("(vi.visitor_name LIKE ? OR vi.visitor_phone LIKE ? OR vi.visitor_email LIKE ? OR vi.visitor_company LIKE ? OR vi.visitor_message LIKE ?)");
@@ -15250,6 +15257,171 @@ app.get("/api/call-centers/:id/visitor-inquiries", requireAdmin, async (request,
   } catch (error) {
     console.error("Failed to fetch visitor inquiries:", error.message, error.stack);
     return response.status(500).json({ code: -1, message: error.message || "取得訪客記錄失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// PUT /api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/status - 標記處理狀態
+app.put("/api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/status", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以操作訪客記錄。" });
+  }
+  const callCenterId = Number(request.params.callCenterId);
+  const inquiryId = Number(request.params.inquiryId);
+  if (!Number.isInteger(callCenterId) || callCenterId <= 0 || !Number.isInteger(inquiryId) || inquiryId <= 0) {
+    return response.status(400).json({ code: -1, message: "無效的記錄編號。" });
+  }
+  const nextStatus = request.body?.status === 'processed'
+    ? 'processed'
+    : request.body?.status === 'submitted'
+      ? 'submitted'
+      : null;
+  if (!nextStatus) {
+    return response.status(400).json({ code: -1, message: "無效的狀態值。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const [cc] = await connection.query(
+      "SELECT id FROM call_centers WHERE id = ? AND tenant_id = ? LIMIT 1",
+      [callCenterId, request.admin.tenantId],
+    );
+    if (!cc) return response.status(404).json({ code: -1, message: "找不到指定的呼叫中心。" });
+    const [inquiry] = await connection.query(
+      "SELECT id FROM call_center_visitor_inquiries WHERE id = ? AND call_center_id = ? AND tenant_id = ? LIMIT 1",
+      [inquiryId, callCenterId, request.admin.tenantId],
+    );
+    if (!inquiry) return response.status(404).json({ code: -1, message: "找不到指定的訪客記錄。" });
+    await connection.query(
+      "UPDATE call_center_visitor_inquiries SET inquiry_status = ? WHERE id = ?",
+      [nextStatus, inquiryId],
+    );
+    return response.json({
+      code: 0,
+      status: nextStatus,
+      message: nextStatus === 'processed' ? "已標記為已處理。" : "已標記為未處理。",
+    });
+  } catch (error) {
+    console.error("Failed to update visitor inquiry status:", error?.message || error);
+    return response.status(500).json({ code: -1, message: "更新處理狀態失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+async function loadVisitorInquiryForEmail(connection, callCenterId, inquiryId, tenantId) {
+  const [row] = await connection.query(
+    `SELECT vi.id, vi.visitor_name, vi.visitor_email, vi.visitor_phone, vi.visitor_company,
+            vi.visitor_message, vi.inquiry_status, vi.created_at,
+            cc.center_name,
+            ca.display_name AS agent_name,
+            ccat.category_name
+     FROM call_center_visitor_inquiries vi
+     JOIN call_centers cc ON cc.id = vi.call_center_id AND cc.tenant_id = vi.tenant_id
+     LEFT JOIN call_center_category_agents ca ON ca.id = vi.agent_id
+     LEFT JOIN call_center_categories ccat ON ccat.id = vi.category_id
+     WHERE vi.id = ? AND vi.call_center_id = ? AND vi.tenant_id = ?
+     LIMIT 1`,
+    [inquiryId, callCenterId, tenantId],
+  );
+  return row || null;
+}
+
+// POST /api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/reply - 回覆訪客郵箱
+app.post("/api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/reply", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以操作訪客記錄。" });
+  }
+  const callCenterId = Number(request.params.callCenterId);
+  const inquiryId = Number(request.params.inquiryId);
+  if (!Number.isInteger(callCenterId) || callCenterId <= 0 || !Number.isInteger(inquiryId) || inquiryId <= 0) {
+    return response.status(400).json({ code: -1, message: "無效的記錄編號。" });
+  }
+  const subjectInput = sanitizeString(request.body?.subject, 200).trim();
+  const body = typeof request.body?.body === 'string' ? request.body.body : '';
+  if (!body.trim()) return response.status(400).json({ code: -1, message: "回覆內容不能為空。" });
+  if (body.length > 8000) return response.status(400).json({ code: -1, message: "回覆內容過長。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const inquiry = await loadVisitorInquiryForEmail(connection, callCenterId, inquiryId, request.admin.tenantId);
+    if (!inquiry) return response.status(404).json({ code: -1, message: "找不到指定的訪客記錄。" });
+    if (!isValidEmail(inquiry.visitor_email)) {
+      return response.status(400).json({ code: -1, message: "訪客未留下有效郵箱，無法回覆。" });
+    }
+    const subject = subjectInput || `回覆：${inquiry.center_name || '呼叫中心'} 諮詢`;
+    const delivery = await sendTrialNotificationEmail(connection, {
+      to: inquiry.visitor_email,
+      subject,
+      body,
+    });
+    if (!delivery.sent) {
+      return response.status(502).json({ code: -1, message: "回覆郵件發送失敗，請稍後重試。" });
+    }
+    return response.json({ code: 0, message: "回覆郵件已發送。" });
+  } catch (error) {
+    console.error("Failed to reply visitor inquiry:", error?.message || error);
+    return response.status(500).json({ code: -1, message: "回覆郵件發送失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// POST /api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/forward - 轉發訪客留言
+app.post("/api/call-centers/:callCenterId/visitor-inquiries/:inquiryId/forward", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ code: -1, message: "只有租戶管理員可以操作訪客記錄。" });
+  }
+  const callCenterId = Number(request.params.callCenterId);
+  const inquiryId = Number(request.params.inquiryId);
+  if (!Number.isInteger(callCenterId) || callCenterId <= 0 || !Number.isInteger(inquiryId) || inquiryId <= 0) {
+    return response.status(400).json({ code: -1, message: "無效的記錄編號。" });
+  }
+  const email = sanitizeString(request.body?.email, 255).trim();
+  const note = sanitizeString(request.body?.note, 2000);
+  if (!email || !isValidEmail(email)) {
+    return response.status(400).json({ code: -1, message: "請輸入有效的收件郵箱。" });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const inquiry = await loadVisitorInquiryForEmail(connection, callCenterId, inquiryId, request.admin.tenantId);
+    if (!inquiry) return response.status(404).json({ code: -1, message: "找不到指定的訪客記錄。" });
+    const createdText = inquiry.created_at
+      ? new Date(inquiry.created_at).toISOString().slice(0, 16).replace('T', ' ')
+      : '-';
+    const subject = `轉發：訪客留言（${inquiry.visitor_name || '匿名訪客'}）`;
+    const lines = [
+      '以下訪客留言需要您協助處理：',
+      '',
+      `呼叫中心：${inquiry.center_name || '-'}`,
+      `訪客姓名：${inquiry.visitor_name || '-'}`,
+      `電話：${inquiry.visitor_phone || '-'}`,
+      `郵箱：${inquiry.visitor_email || '-'}`,
+      `公司：${inquiry.visitor_company || '-'}`,
+      `留言對象：${inquiry.category_name ? `${inquiry.category_name} / ` : ''}${inquiry.agent_name || '未指定'}`,
+      `留言時間：${createdText}`,
+      '',
+      '留言內容：',
+      inquiry.visitor_message || '-',
+    ];
+    if (note) lines.push('', `備註：${note}`);
+    const delivery = await sendTrialNotificationEmail(connection, {
+      to: email,
+      subject,
+      body: lines.join('\n'),
+    });
+    if (!delivery.sent) {
+      return response.status(502).json({ code: -1, message: "轉發郵件發送失敗，請稍後重試。" });
+    }
+    return response.json({ code: 0, message: "已轉發該訪客留言。" });
+  } catch (error) {
+    console.error("Failed to forward visitor inquiry:", error?.message || error);
+    return response.status(500).json({ code: -1, message: "轉發郵件發送失敗。" });
   } finally {
     if (connection) connection.release();
   }
