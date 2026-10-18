@@ -101,6 +101,8 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const [ecardAccounts, setEcardAccounts] = useState([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [notifyItem, setNotifyItem] = useState(null);
+  const [notifyCopied, setNotifyCopied] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownAnchorRef = useRef(null);
@@ -994,8 +996,50 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
     }
   };
 
-  const handleToggleStatus = async (item) => {
+  function buildEcardNotifyText(item) {
+    const loginUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cloud.qrtalkie.org';
+    return [
+      '您好，',
+      '',
+      `您的 SIP 帳號：${item?.sipAccount || '—'}`,
+      `電子名片樣圖下載連結：${item?.downloadUrl || '—'}`,
+      `電子名片訪問連結：${item?.accessUrl || '—'}`,
+      '',
+      '如需修改個人電子名片，請使用您的 SIP 帳號與密碼登錄 Cloud 平台：',
+      loginUrl,
+      '登錄後在「電子名片」區域點擊「編輯/建立」，即可修改並保存您的個人名片。',
+      '（SIP 帳號即登錄帳號；如忘記密碼，請聯繫管理員重置。）',
+    ].join('\n');
+  }
+
+  function openEcardNotify(item) {
     setOpenDropdownId(null);
+    setNotifyItem(item);
+    setNotifyCopied(false);
+  }
+
+  async function handleCopyEcardNotify() {
+    if (!notifyItem) return;
+    const text = buildEcardNotifyText(notifyItem);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      setNotifyCopied(true);
+      window.setTimeout(() => setNotifyCopied(false), 3000);
+    } catch {
+      window.alert('複製失敗，請手動選中文字複製。');
+    }
+  }
+
+  const handleToggleStatus = async (item) => {    setOpenDropdownId(null);
     if (!item.configured) {
       alert('該帳號尚未配置名片，無法啟用/停用。');
       return;
@@ -2455,6 +2499,9 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                             {item.configured ? '編輯' : '創建'}
                           </button>
                           <button type="button" className="dropdown-item" disabled={!item.configured || !(item.ecardImageUrl || item.ecardThumbnailUrl || item.thumbnailDataUrl)} onClick={(e) => handleDownloadEcardImage(item, e)}>下載</button>
+                          {item.configured && (
+                            <button type="button" className="dropdown-item" onClick={() => openEcardNotify(item)}>發送通知</button>
+                          )}
                           {!(!item.enabled && ((item.isTrial && item.trialStatus !== 'active') || checkExpirationStatus(item.validTo) === 'expired')) && (
                             <button type="button" className="dropdown-item" onClick={() => handleToggleStatus(item)}>{item.enabled ? '停用' : '啟用'}</button>
                           )}
@@ -2507,6 +2554,26 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <img src={previewImageUrl} alt="Ecard Preview" style={{ maxWidth: '100%', maxHeight: 'calc(85vh - 80px)', borderRadius: '8px', objectFit: 'contain' }} />
               <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '14px', fontWeight: 500 }}>
                 請扫描名片中的二維碼测试通话功能是否正常
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {notifyItem && createPortal(
+          <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100002 }} onClick={() => setNotifyItem(null)}>
+            <div style={{ backgroundColor: '#111827', borderRadius: '10px', width: '640px', maxWidth: '92vw', maxHeight: '84vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.45)' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ flexShrink: 0, padding: '18px 22px', borderBottom: '1px solid #1f2937', backgroundColor: '#1a2332' }}>
+                <h3 style={{ margin: 0, color: '#e5e7eb', fontSize: '17px' }}>發送通知</h3>
+                <p style={{ margin: '6px 0 0', color: '#9ca3af', fontSize: '12px', lineHeight: 1.6 }}>複製以下文案發送給帳號 {notifyItem.sipAccount} 的用戶，告知名片連結與自助修改方式。</p>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '16px 22px' }}>
+                <textarea readOnly value={buildEcardNotifyText(notifyItem)} style={{ width: '100%', minHeight: '300px', background: '#0f172a', color: '#e5e7eb', border: '1px solid #1f2937', borderRadius: '8px', padding: '12px', fontSize: '13px', lineHeight: 1.7, resize: 'vertical', boxSizing: 'border-box', scrollbarWidth: 'thin', scrollbarColor: '#4b5563 #1b2432' }} />
+                {notifyCopied && <p style={{ color: '#10b981', fontSize: '12px', margin: '8px 0 0' }}>已複製到剪貼板。</p>}
+              </div>
+              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 18px', backgroundColor: '#1a2332', borderTop: '1px solid #1f2937' }}>
+                <button type="button" onClick={handleCopyEcardNotify} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #2563eb', background: '#1e3a5f', color: '#dbeafe', fontSize: '13px', cursor: 'pointer' }}>複製文案</button>
+                <button type="button" onClick={() => setNotifyItem(null)} style={{ padding: '8px 18px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '13px', cursor: 'pointer' }}>關閉</button>
               </div>
             </div>
           </div>,
