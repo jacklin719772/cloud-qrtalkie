@@ -17104,32 +17104,87 @@ app.put("/api/access-entrances/:id", requireAdmin, async (request, response) => 
   const contactPerson = sanitizeString(payload.contactPerson, 120) || null;
   const contactPhone = sanitizeString(payload.contactPhone, 40) || null;
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
+  const deviceId = payload.deviceId != null ? Number(payload.deviceId) : null;
 
   let connection;
   try {
     connection = await pool.getConnection();
+    await connection.beginTransaction();
 
     const [entrance] = await connection.query(
-      "SELECT id, tenant_id, community_id, building_id FROM access_entrances WHERE id = ? AND tenant_id = ?",
+      `SELECT e.id, e.tenant_id, e.community_id, e.building_id, e.device_id, e.is_active,
+              g.device_uuid, g.assignment_status
+         FROM access_entrances e
+         LEFT JOIN gate_devices g ON g.id = e.device_id
+        WHERE e.id = ? AND e.tenant_id = ?
+        FOR UPDATE`,
       [entranceId, request.admin.tenantId]
     );
-    if (!entrance) return response.status(404).json({ message: "入口不存在。" });
+    if (!entrance) {
+      await connection.rollback();
+      return response.status(404).json({ message: "入口不存在。" });
+    }
 
     // 檢查名稱唯一性（排除自身）
     const [existingName] = await connection.query(
       "SELECT id FROM access_entrances WHERE tenant_id = ? AND name = ? AND id != ? LIMIT 1",
       [request.admin.tenantId, name, entranceId]
     );
-    if (existingName) return response.status(409).json({ message: "該入口名稱已被佔用，請更換。" });
+    if (existingName) {
+      await connection.rollback();
+      return response.status(409).json({ message: "該入口名稱已被佔用，請更換。" });
+    }
+
+    let nextDeviceId = entrance.device_id ? Number(entrance.device_id) : null;
+    let nextDeviceUuid = entrance.device_uuid || null;
+    let nextDeviceStatus = entrance.assignment_status || 'none';
+    let nextIsActive = Number(entrance.is_active) || 0;
+
+    if (deviceId && deviceId !== nextDeviceId) {
+      if (await isTenantPlanExpired(connection, request.admin.tenantId)) {
+        await connection.rollback();
+        return response.status(403).json({ message: "套餐已過期，無法變更入口設備。" });
+      }
+
+      const [device] = await connection.query(
+        "SELECT id, device_uuid, tenant_id, assignment_status FROM gate_devices WHERE id = ?",
+        [deviceId]
+      );
+      if (!device) {
+        await connection.rollback();
+        return response.status(404).json({ message: "設備不存在。" });
+      }
+      if (Number(device.tenant_id) !== Number(request.admin.tenantId) || device.assignment_status !== 'assigned') {
+        await connection.rollback();
+        return response.status(400).json({ message: "該設備未分配給當前租戶，請聯絡平台管理員分配。" });
+      }
+
+      const [otherEntrance] = await connection.query(
+        "SELECT id, name FROM access_entrances WHERE device_id = ? AND id != ? LIMIT 1",
+        [deviceId, entranceId]
+      );
+      if (otherEntrance) {
+        await connection.rollback();
+        return response.status(409).json({ message: `該設備已繫結入口「${otherEntrance.name}」。` });
+      }
+
+      // 原本沒有設備的入口，綁定後自動啟用；更換設備不改變既有啟停狀態
+      if (!nextDeviceId) nextIsActive = 1;
+      nextDeviceId = Number(device.id);
+      nextDeviceUuid = device.device_uuid || null;
+      nextDeviceStatus = device.assignment_status;
+    }
 
     await connection.query(
       `UPDATE access_entrances
        SET name = ?, address = ?, latitude = ?, longitude = ?, service_scope = ?,
-           contact_person = ?, contact_phone = ?, contact_email = ?
+           contact_person = ?, contact_phone = ?, contact_email = ?,
+           device_id = ?, is_active = ?
        WHERE id = ? AND tenant_id = ?`,
-      [name, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, entranceId, request.admin.tenantId]
+      [name, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, nextDeviceId, nextIsActive, entranceId, request.admin.tenantId]
     );
 
+    await connection.commit();
     response.json({
       code: 0,
       message: "入口已更新。",
@@ -17146,9 +17201,14 @@ app.put("/api/access-entrances/:id", requireAdmin, async (request, response) => 
         contactPerson,
         contactPhone,
         contactEmail,
+        deviceId: nextDeviceId,
+        device: nextDeviceUuid,
+        deviceStatus: nextDeviceStatus,
+        isActive: nextIsActive === 1,
       }
     });
   } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("編輯入口失敗:", error);
     response.status(500).json({ message: "編輯入口失敗，請稍後再試。" });
   } finally {

@@ -24,7 +24,6 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
   const [availableDevices, setAvailableDevices] = useState([]);
   const [deviceLoading, setDeviceLoading] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
-  const [currentDeviceUuid, setCurrentDeviceUuid] = useState('');
 
   const isEdit = editId != null;
 
@@ -35,11 +34,16 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       setSelectedDeviceId('');
       if (editData) {
         setEditId(editData.id);
-        setCurrentDeviceUuid(editData.device || '');
+        setSelectedDeviceId(editData.deviceId ? String(editData.deviceId) : '');
+        setAvailableDevices([]);
+        setDeviceLoading(true);
+        apiClient.get(`/tenant/gate-devices?entranceId=${editData.id}`)
+          .then((res) => setAvailableDevices(Array.isArray(res?.devices) ? res.devices : []))
+          .catch(() => setAvailableDevices([]))
+          .finally(() => setDeviceLoading(false));
         requestAnimationFrame(() => fillForm(formRef.current, editData));
       } else {
         setEditId(null);
-        setCurrentDeviceUuid('');
         setAvailableDevices([]);
         setDeviceLoading(true);
         apiClient.get('/tenant/gate-devices')
@@ -85,18 +89,19 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
       return;
     }
 
+    const deviceId = Number(selectedDeviceId);
+    if (!deviceId) {
+      showAlert('請選擇要綁定的門禁設備。');
+      return;
+    }
+    payload.deviceId = deviceId;
+
     if (!isEdit) {
-      const deviceId = Number(selectedDeviceId);
-      if (!deviceId) {
-        showAlert('請選擇要綁定的門禁設備。');
-        return;
-      }
       if (context.type === 'community') {
         payload.communityId = context.id;
       } else {
         payload.buildingId = context.id;
       }
-      payload.deviceId = deviceId;
     }
 
     setIsSaving(true);
@@ -185,28 +190,24 @@ const AddEntranceDialog = forwardRef(({ onCreated, onUpdated }, ref) => {
                 </div>
               )}
 
-              {isEdit ? (
-                <div style={{ gridColumn: '1 / -1', fontSize: '13px', color: '#9ca3af', background: '#1a2332', padding: '8px 12px', borderRadius: '8px', border: '1px solid #1f2937' }}>
-                  已綁定設備：<strong style={{ color: '#f3f4f6', fontFamily: 'monospace' }}>{currentDeviceUuid || '—'}</strong>
-                </div>
-              ) : (
-                <label style={{ gridColumn: '1 / -1' }}>
-                  <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>綁定門禁設備 <b style={{ color: '#dc2626' }}>*</b></span>
-                  <select
-                    name="deviceId"
-                    value={selectedDeviceId}
-                    onChange={(e) => setSelectedDeviceId(e.target.value)}
-                    disabled={deviceLoading}
-                    style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#e5e7eb', outline: 'none', boxSizing: 'border-box', cursor: deviceLoading ? 'wait' : 'pointer' }}
-                  >
-                    <option value="">{deviceLoading ? '設備載入中...' : availableDevices.length > 0 ? '請選擇設備' : '暫無可用設備，請先由平台分配'}</option>
-                    {availableDevices.map((device) => (
-                      <option key={device.id} value={device.id}>{device.uuid}</option>
-                    ))}
-                  </select>
-                  <span style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>每個入口必須綁定一台已分配給本租戶且未使用的設備</span>
-                </label>
-              )}
+              <label style={{ gridColumn: '1 / -1' }}>
+                <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>綁定門禁設備 <b style={{ color: '#dc2626' }}>*</b></span>
+                <select
+                  name="deviceId"
+                  value={selectedDeviceId}
+                  onChange={(e) => setSelectedDeviceId(e.target.value)}
+                  disabled={deviceLoading}
+                  style={{ width: '100%', height: '40px', padding: '0 12px', border: '1px solid #374151', borderRadius: '8px', fontSize: '13px', color: '#e5e7eb', outline: 'none', boxSizing: 'border-box', cursor: deviceLoading ? 'wait' : 'pointer' }}
+                >
+                  <option value="">{deviceLoading ? '設備載入中...' : availableDevices.length > 0 ? '請選擇設備' : '暫無可用設備，請先由平台分配'}</option>
+                  {availableDevices.map((device) => (
+                    <option key={device.id} value={device.id}>{device.uuid}</option>
+                  ))}
+                </select>
+                <span style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>
+                  {isEdit ? '可更換為其他已分配且未使用的設備；原設備會保留在租戶庫存' : '每個入口必須綁定一台已分配給本租戶且未使用的設備'}
+                </span>
+              </label>
 
               <label style={{ gridColumn: '1 / -1' }}>
                 <span style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#9ca3af', marginBottom: '6px' }}>入口名稱 <b style={{ color: '#dc2626' }}>*</b></span>
