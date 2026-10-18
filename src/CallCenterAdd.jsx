@@ -265,6 +265,10 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
   };
 
   const handleAddAgentClick = () => {
+    if (!activeCategory) {
+      window.alert('請先在左側新增或選擇一個服務分類，再添加坐席。');
+      return;
+    }
     setNewAgentForm({ ecardId: '', name: '', sip: '', phone: '', email: '', title: '', avatarDataUrl: '' });
     setAgentError('');
     setIsAddAgentModalOpen(true);
@@ -291,6 +295,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
   };
 
   const handleAddAgentSubmit = () => {
+    if (!activeCategory) return setAgentError('請先新增或選擇服務分類');
     if (!newAgentForm.ecardId) return setAgentError('請選擇電子名片');
     if (!newAgentForm.name.trim()) return setAgentError('請輸入坐席姓名');
     if (!newAgentForm.title.trim()) return setAgentError('請輸入職務');
@@ -1156,7 +1161,14 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                   <h4>{activeCategory?.name}坐席</h4>
                   <span className="cc-agent-badge">共 {activeCategory?.agentCount} 名坐席</span>
                 </div>
-                <button type="button" className="cc-btn cc-btn-outline" onClick={handleAddAgentClick}>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-outline"
+                  aria-disabled={!activeCategory}
+                  title={activeCategory ? undefined : '請先新增或選擇服務分類'}
+                  style={{ opacity: activeCategory ? 1 : 0.5, cursor: activeCategory ? 'pointer' : 'not-allowed' }}
+                  onClick={handleAddAgentClick}
+                >
                   <Plus size={16} /> 新增坐席
                 </button>
               </div>
