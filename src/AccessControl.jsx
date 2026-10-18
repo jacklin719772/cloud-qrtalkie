@@ -510,8 +510,12 @@ const AccessControl = forwardRef((props, ref) => {
       setToast({ message: '請先為樓宇添加房間。', type: 'error' });
       return;
     }
-    if (!isUsableEntrance(entrance)) {
-      setToast({ message: '請先為該入口綁定設備後再設定使用權。', type: 'error' });
+    if (!isBoundEntrance(entrance)) {
+      setToast({ message: '請先為該入口綁定設備後再設定授權。', type: 'error' });
+      return;
+    }
+    if (entrance.isActive === false) {
+      setToast({ message: '該入口已停用，請先啟用後再設定授權。', type: 'error' });
       return;
     }
     setSelectedEntrance(entrance);
@@ -547,14 +551,16 @@ const AccessControl = forwardRef((props, ref) => {
     return allRooms.filter(r => !authRoomIds.includes(r.id));
   };
 
-  // 授權只對「已綁定且已分配設備」的入口有意義
-  const isUsableEntrance = (entrance) => Boolean(entrance?.deviceId) && entrance.deviceStatus === 'assigned';
+  // 授權只對「已綁定且已分配設備、且已啟用」的入口有意義
+  const isBoundEntrance = (entrance) => Boolean(entrance?.deviceId) && entrance.deviceStatus === 'assigned';
+  const isUsableEntrance = (entrance) => isBoundEntrance(entrance) && entrance.isActive !== false;
 
   const getCommunityEntrances = (community) => [
     ...(community?.communityEntrances || []),
     ...(community?.buildings || []).flatMap(b => b.entrances || []),
   ];
 
+  const countBoundEntrances = (community) => getCommunityEntrances(community).filter(isBoundEntrance).length;
   const countUsableEntrances = (community) => getCommunityEntrances(community).filter(isUsableEntrance).length;
 
   const filteredCommunities = communities;
@@ -2696,7 +2702,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: buildingDropdownOpen.top, bottom: buildingDropdownOpen.bottom, right: buildingDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const ctx = { id: communityData.id, community: { name: communityData.name, address: communityData.address, latitude: communityData.latitude, longitude: communityData.longitude, serviceScope: communityData.serviceScope, contactPerson: communityData.contactPerson, contactPhone: communityData.contactPhone, contactEmail: communityData.contactEmail } }; addBuildingDialogRef.current?.showModal(ctx, { id: buildingData.id, name: buildingData.name, address: buildingData.address, latitude: buildingData.latitude, longitude: buildingData.longitude, serviceScope: buildingData.serviceScope, contactPerson: buildingData.contactPerson, contactPhone: buildingData.contactPhone, contactEmail: buildingData.contactEmail }); setBuildingDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if ((buildingData.rooms || []).length === 0) { setToast({ message: '請先為該樓宇添加房間。', type: 'error' }); return; } if (countUsableEntrances(communityData) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); setBuildingDropdownOpen(null); if ((buildingData.rooms || []).length === 0) { setToast({ message: '請先為該樓宇添加房間。', type: 'error' }); return; } if (countUsableEntrances(communityData) === 0) { setToast({ message: countBoundEntrances(communityData) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。', type: 'error' }); return; } setSelectedBuildingAuth({ buildingId: buildingData.id, buildingName: buildingData.name, communityId: communityData.id, community: communityData }); setShowBuildingAuthDrawer(true); }}>🔐 授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteBuilding(buildingData, communityData.id); }}>✕ 刪除</button>
             </div>
@@ -2769,6 +2775,7 @@ const AccessControl = forwardRef((props, ref) => {
                 const entranceCount = (c.communityEntrances || []).length
                   + (c.buildings || []).reduce((sum, b) => sum + (b.entrances || []).length, 0);
                 const usableEntranceCount = countUsableEntrances(c);
+                const boundEntranceCount = countBoundEntrances(c);
                 return (
                   <button
                     className="ac-dropdown-item"
@@ -2789,7 +2796,10 @@ const AccessControl = forwardRef((props, ref) => {
                         return;
                       }
                       if (usableEntranceCount === 0) {
-                        setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' });
+                        setToast({
+                          message: boundEntranceCount === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。',
+                          type: 'error',
+                        });
                         return;
                       }
                       setSelectedCommunityAuth({ communityId: c.id, communityName: c.name });
@@ -2822,8 +2832,8 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={(ev) => { ev.stopPropagation(); setRoomDropdownOpen(null); }} />
             <div style={{ position: 'fixed', top: roomDropdownOpen.top, bottom: roomDropdownOpen.bottom, right: roomDropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '120px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addRoomDialogRef.current?.showModal({ buildingId: roomDropdownOpen.buildingId, buildingLabel: bName }, { id: roomData.id, roomNumber: roomData.roomNumber, floor: roomData.floor, contactPerson: roomData.contactPerson, contactPhone: roomData.contactPhone, contactEmail: roomData.contactEmail, allowVideoCall: roomData.allowVideoCall }); setRoomDropdownOpen(null); }}>✎ 編輯</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號</button>
-              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setRoomDropdownOpen(null); if (countUsableEntrances(community) === 0) { setToast({ message: '請先為至少一個入口綁定設備。', type: 'error' }); return; } setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); }}>🔐 授權</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); openSipAssignDialog(roomData, roomDropdownOpen.buildingId, bName); setRoomDropdownOpen(null); }}>🔑 帳號管理</button>
+              <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); const community = communities.find(c => (c.buildings || []).some(b2 => b2.id === roomDropdownOpen.buildingId)); setRoomDropdownOpen(null); if (countUsableEntrances(community) === 0) { setToast({ message: countBoundEntrances(community) === 0 ? '請先為至少一個入口綁定設備。' : '請先啟用至少一個入口。', type: 'error' }); return; } setSelectedRoomAuth({ roomId: roomData.id, roomNumber: roomData.roomNumber, buildingId: roomDropdownOpen.buildingId, buildingName: bName, communityId: community?.id }); setShowRoomAuthDrawer(true); }}>🔐 入口授權</button>
               <div style={{ height: '1px', background: '#1f2937' }} />
               <button className="ac-dropdown-item" type="button" style={{ color: '#dc2626' }} onClick={(ev) => { ev.stopPropagation(); handleDeleteRoom(roomData, roomDropdownOpen.buildingId); setRoomDropdownOpen(null); }}>✕ 刪除</button>
             </div>

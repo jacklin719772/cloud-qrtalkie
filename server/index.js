@@ -16543,19 +16543,30 @@ app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
     connection = await pool.getConnection();
     const rows = await connection.query(
       `SELECT su.id, su.username, su.sip_domain, su.display_name, su.email,
-              su.phone_number, su.status, su.service_expires_at,
+              su.phone_number, su.status,
+              COALESCE(ent.service_expires_at, su.service_expires_at) AS service_expires_at,
               r2.id AS current_room_id,
               wu.username AS web_username
        FROM sip_users su
-       LEFT JOIN access_rooms r2 ON r2.sip_user_id = su.id AND r2.tenant_id = su.tenant_id
-       LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = su.id AND ent.tenant_id = su.tenant_id AND ent.status = 'active'
-       LEFT JOIN web_users wu ON wu.id = ent.web_user_id
-       WHERE su.tenant_id = ?
-         AND su.status = 'active'
-         AND (su.service_expires_at IS NULL OR su.service_expires_at > NOW())
-         AND (r2.id IS NULL OR r2.id = ?)
+       LEFT JOIN tenant_sip_account_entitlements ent
+         ON ent.sip_user_id = su.id
+        AND ent.tenant_id = ?
+        AND ent.status = 'active'
+       LEFT JOIN access_rooms r2 ON r2.sip_user_id = su.id
+       LEFT JOIN tenant_web_account_entitlements we
+         ON we.sip_user_id = su.id
+        AND we.tenant_id = ?
+        AND we.status = 'active'
+       LEFT JOIN web_users wu ON wu.id = we.web_user_id
+       WHERE su.status = 'active'
+         AND (
+           (ent.id IS NOT NULL
+             AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())
+             AND (r2.id IS NULL OR r2.id = ?))
+           OR r2.id = ?
+         )
        ORDER BY su.username`,
-      [request.admin.tenantId, Number(request.query.roomId) || 0]
+      [request.admin.tenantId, request.admin.tenantId, Number(request.query.roomId) || 0, Number(request.query.roomId) || 0]
     );
     const list = rows.map(r => ({
       id: Number(r.id),
@@ -16601,8 +16612,16 @@ app.put("/api/access-rooms/:id/assign-sip", requireAdmin, async (request, respon
 
     if (sipUserId) {
       const [sipUser] = await connection.query(
-        "SELECT id, username FROM sip_users WHERE id = ? AND tenant_id = ? AND status = 'active' AND (service_expires_at IS NULL OR service_expires_at > NOW())",
-        [sipUserId, request.admin.tenantId]
+        `SELECT su.id, su.username
+           FROM sip_users su
+           JOIN tenant_sip_account_entitlements ent
+             ON ent.sip_user_id = su.id
+            AND ent.tenant_id = ?
+            AND ent.status = 'active'
+          WHERE su.id = ?
+            AND su.status = 'active'
+            AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())`,
+        [request.admin.tenantId, sipUserId]
       );
       if (!sipUser) return response.status(400).json({ message: "SIP 使用者不存在或已停用/過期。" });
 
@@ -16614,10 +16633,15 @@ app.put("/api/access-rooms/:id/assign-sip", requireAdmin, async (request, respon
       if (!web) return response.status(400).json({ message: "該 SIP 帳號未配置 Web 帳號，無法分配。" });
 
       const [conflict] = await connection.query(
-        "SELECT id, room_number FROM access_rooms WHERE sip_user_id = ? AND tenant_id = ? AND id != ?",
-        [sipUserId, request.admin.tenantId, roomId]
+        "SELECT id, room_number, tenant_id FROM access_rooms WHERE sip_user_id = ? AND id != ? LIMIT 1",
+        [sipUserId, roomId]
       );
-      if (conflict) return response.status(409).json({ message: `該 SIP 帳號已被房間「${conflict.room_number}」使用。` });
+      if (conflict) {
+        const message = Number(conflict.tenant_id) === Number(request.admin.tenantId)
+          ? `該 SIP 帳號已被房間「${conflict.room_number}」使用。`
+          : "該 SIP 帳號已被其他房間使用。";
+        return response.status(409).json({ message });
+      }
     }
 
     await connection.query(
@@ -17311,7 +17335,7 @@ app.put("/api/access-entrances/:entranceId/auth/building/:buildingId", requireAd
     connection = await pool.getConnection();
     // Verify entrance and building belong to tenant
     const [entrance] = await connection.query(
-      `SELECT e.id, e.community_id, e.building_id,
+      `SELECT e.id, e.community_id, e.building_id, e.is_active,
               g.device_uuid, g.tenant_id AS device_tenant_id, g.assignment_status
          FROM access_entrances e
          LEFT JOIN gate_devices g ON g.id = e.device_id
@@ -17319,6 +17343,9 @@ app.put("/api/access-entrances/:entranceId/auth/building/:buildingId", requireAd
       [entranceId, request.admin.tenantId]
     );
     if (!entrance) return response.status(404).json({ message: "入口不存在。" });
+    if (!Number(entrance.is_active)) {
+      return response.status(400).json({ message: "該入口已停用，無法授權。" });
+    }
     if (!entrance.device_uuid || Number(entrance.device_tenant_id) !== Number(request.admin.tenantId) || entrance.assignment_status !== 'assigned') {
       return response.status(400).json({ message: "該入口未綁定可用設備，無法授權。" });
     }
@@ -17413,8 +17440,9 @@ app.post("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (re
   let connection;
   try {
     connection = await pool.getConnection();
-    const [entrance] = await connection.query("SELECT id FROM access_entrances WHERE id = ? AND tenant_id = ?", [entranceId, request.admin.tenantId]);
+    const [entrance] = await connection.query("SELECT id, is_active FROM access_entrances WHERE id = ? AND tenant_id = ?", [entranceId, request.admin.tenantId]);
     if (!entrance) return response.status(404).json({ message: "入口不存在。" });
+    if (!Number(entrance.is_active)) return response.status(400).json({ message: "該入口已停用，無法授權。" });
 
     const placeholders = roomIds.map(() => "(?, ?, ?)").join(", ");
     const values = roomIds.flatMap(id => [request.admin.tenantId, entranceId, id]);
