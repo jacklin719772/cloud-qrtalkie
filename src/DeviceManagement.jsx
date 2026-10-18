@@ -196,6 +196,23 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     setFormMessage({ type: '', text: '' });
   }
 
+  function startCopy(device) {
+    const existingUuids = new Set(devices.map((item) => item.uuid).filter(Boolean));
+    setViewMode('add');
+    setFormData({
+      ...emptyDeviceForm,
+      id: null,
+      uuid: generateDeviceUuid(existingUuids),
+      relayId: device.relayId || '',
+      subscribeTopic: device.subscribeTopic || '',
+      publishTopic: device.publishTopic || '',
+      wifiName: device.wifiName || '',
+      wifiPassword: device.wifiPassword || '',
+      notes: device.notes || '',
+    });
+    setFormMessage({ type: '', text: '' });
+  }
+
   function startBatchAdd() {
     setBatchAddForm({
       relayId: emptyDeviceForm.relayId,
@@ -405,6 +422,10 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
     }
     if (action === 'edit') {
       startEdit(device);
+      return;
+    }
+    if (action === 'copy') {
+      startCopy(device);
       return;
     }
     if (action === 'assign') {
@@ -993,6 +1014,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
                           <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left }}>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('details', device)}>詳情</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction('edit', device)}>編輯</button>
+                            <button type="button" className="dropdown-item" onClick={() => handleAction('copy', device)}>複製</button>
                             <button type="button" className="dropdown-item" onClick={() => handleAction(device.status === 'assigned' ? 'unassign' : 'assign', device)}>{device.status === 'assigned' ? '取消分配' : '分配'}</button>
                             <button type="button" className="dropdown-item dropdown-item-danger" onClick={() => handleAction('delete', device)}>刪除</button>
                           </div>,
