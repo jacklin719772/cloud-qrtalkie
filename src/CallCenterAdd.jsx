@@ -977,7 +977,7 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
               </div>
             </div>
             <div className="cc-basic-right">
-              <div style={{ display: 'flex', gap: '24px' }}>
+              <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
                 <div className="cc-field">
                   <span className="cc-field-label">企業Logo</span>
                   <div style={{ position: 'relative' }}>
@@ -1022,29 +1022,30 @@ export default function CallCenterAdd({ onReturn, tenant, context }) {
                 </div>
                 <div className="cc-field">
                   <span className="cc-field-label">網站封面</span>
-                  <label
-                    className="cc-upload-box cc-upload-cover"
-                    style={{
-                      padding: coverDataUrl ? 0 : '12px',
-                      overflow: 'hidden',
-                      ...(coverDataUrl ? {} : {
-                        backgroundImage: `url(${getFullImageUrl(DEFAULT_CALL_CENTER_COVER)})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }),
-                    }}
-                  >
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload(setCoverDataUrl)} />
-                    {coverDataUrl ? (
-                      <img src={getFullImageUrl(coverDataUrl)} alt="網站封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '10px 14px', borderRadius: '8px', background: 'rgba(15,23,42,0.72)', border: '1px solid rgba(148,163,184,0.35)' }}>
-                        <UploadCloud size={22} />
-                        <span className="cc-upload-text">默認封面，點擊更換</span>
-                        <span className="cc-upload-hint">支援 JPG、PNG 格式，建議尺寸 1200×400px</span>
-                      </div>
-                    )}
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                    <label className="cc-upload-box cc-upload-cover" style={{ padding: coverDataUrl ? 0 : '12px', overflow: 'hidden' }}>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload(setCoverDataUrl)} />
+                      {coverDataUrl ? (
+                        <img src={getFullImageUrl(coverDataUrl)} alt="網站封面" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <>
+                          <UploadCloud size={24} />
+                          <span className="cc-upload-text">點擊上傳封面图</span>
+                          <span className="cc-upload-hint">支援 JPG、PNG 格式，建議尺寸 1200×400px</span>
+                        </>
+                      )}
+                    </label>
+                    <div style={{ width: '180px' }}>
+                      <img
+                        src={getFullImageUrl(coverDataUrl || DEFAULT_CALL_CENTER_COVER)}
+                        alt="封面預覽"
+                        style={{ width: '180px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #374151', background: '#0f172a', display: 'block' }}
+                      />
+                      <span style={{ display: 'block', marginTop: '6px', fontSize: '11px', color: '#6b7280' }}>
+                        {coverDataUrl ? '當前封面預覽' : '默認封面預覽'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
