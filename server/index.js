@@ -13969,6 +13969,28 @@ app.put("/api/tenant/ecard-accounts/:sipUserId/ecard/status", requireAdmin, asyn
   let connection;
   try {
     connection = await pool.getConnection();
+    if (status === 'active') {
+      const [sip] = await connection.query(
+        `SELECT su.id, su.status,
+                EXISTS(
+                  SELECT 1 FROM tenant_sip_account_entitlements e
+                  WHERE e.sip_user_id = su.id
+                    AND e.tenant_id = ?
+                    AND e.status = 'active'
+                    AND (e.service_expires_at IS NULL OR e.service_expires_at >= CURDATE())
+                ) AS has_active_entitlement
+         FROM sip_users su
+         WHERE su.id = ? AND su.tenant_id = ?
+         LIMIT 1`,
+        [request.admin.tenantId, sipUserId, request.admin.tenantId],
+      );
+      if (!sip) {
+        return response.status(404).json({ message: "該帳號不存在或不屬於當前租戶。" });
+      }
+      if (sip.status !== 'active' || Number(sip.has_active_entitlement) !== 1) {
+        return response.status(409).json({ message: "該帳號已停用或權益已過期，不能啟用電子名片。" });
+      }
+    }
     const result = await connection.query(
       `UPDATE tenant_ecards SET status = ?, updated_at = NOW() WHERE tenant_id = ? AND sip_user_id = ?`,
       [status, request.admin.tenantId, sipUserId]
