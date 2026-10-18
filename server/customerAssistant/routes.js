@@ -102,7 +102,7 @@ function bearerToken(request) {
 async function loadEcardBySlug(connection, slug) {
   if (!SLUG_PATTERN.test(String(slug || "").trim())) return { error: { status: 400, code: "INVALID_ECARD_SLUG", message: "查詢引數格式不正確" } };
   const rows = await connection.query(
-    `SELECT id, sip_user_id, status, valid_from, valid_to FROM tenant_ecards WHERE access_slug = ? LIMIT 1`,
+    `SELECT id, sip_user_id, status, valid_from, valid_to, enable_text_chat FROM tenant_ecards WHERE access_slug = ? LIMIT 1`,
     [String(slug).trim()],
   );
   const row = rows[0];
@@ -114,7 +114,7 @@ async function loadEcardBySlug(connection, slug) {
   if ((from && today < from) || (to && today > to)) {
     return { error: { status: 403, code: "ECARD_CHAT_DISABLED", message: "該名片目前未開放" } };
   }
-  return { ecard: { id: Number(row.id), sipUserId: Number(row.sip_user_id) } };
+  return { ecard: { id: Number(row.id), sipUserId: Number(row.sip_user_id), chatEnabled: row.enable_text_chat !== 0 } };
 }
 
 /** ecard 聊天开关（缺省行视为未开启） */
@@ -127,8 +127,9 @@ async function loadEcardSettings(connection, ecardId) {
   return rows[0] || null;
 }
 
-function isChatEnabled(settings) {
-  return Boolean(settings && Number(settings.enabled) === 1);
+/** 访客聊天放行以名片自身的「允許文字聊天」为准；ca_ecard_settings 只承载欢迎语等展示配置 */
+function isChatEnabled(ecard) {
+  return Boolean(ecard && ecard.chatEnabled);
 }
 
 /**
@@ -182,7 +183,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       const { ecard } = loaded;
 
       const settings = await loadEcardSettings(connection, ecard.id);
-      if (!isChatEnabled(settings)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
+      if (!isChatEnabled(ecard)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
 
       await connection.beginTransaction();
 
@@ -397,7 +398,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       const { ecard } = loaded;
 
       const settings = await loadEcardSettings(connection, ecard.id);
-      if (!isChatEnabled(settings)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
+      if (!isChatEnabled(ecard)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
 
       const rows = await connection.query(
         `SELECT id, public_id, display_name, contact_name, contact_email, contact_phone, subject, blocked
@@ -601,7 +602,7 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       const loaded = await loadEcardBySlug(connection, slug);
       if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
       const settings = await loadEcardSettings(connection, loaded.ecard.id);
-      if (!isChatEnabled(settings)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
+      if (!isChatEnabled(loaded.ecard)) return fail(response, 403, "ECARD_CHAT_DISABLED", "該名片目前未開放線上諮詢");
 
       const visitorRows = await connection.query("SELECT id, blocked FROM ca_visitors WHERE id = ? LIMIT 1", [request.caVisitor.visitorId]);
       if (!visitorRows[0]) return fail(response, 401, "SESSION_EXPIRED", "授權已過期，請重新取得");
