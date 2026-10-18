@@ -80,6 +80,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
   const copiedTimerRef = useRef(null);
   const feedbackTimerRef = useRef(null);
   const emailErrorTimerRef = useRef(null);
+  const emailInputRef = useRef(null);
 
   const resetLinkDialog = () => {
     setLinkDialogItem(null);
@@ -776,8 +777,34 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           resize: vertical;
         }
         .cc-link-input:focus, .cc-link-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .cc-link-email-input { resize: none; }
-        .cc-link-email-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .cc-link-email-field {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          min-height: 62px;
+          box-sizing: border-box;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          background: #0b1220;
+          padding: 8px 10px;
+          cursor: text;
+        }
+        .cc-link-email-field:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .cc-link-email-field.has-error { border-color: #7f1d1d; }
+        .cc-link-email-field-input {
+          flex: 1 1 180px;
+          min-width: 140px;
+          border: 0;
+          outline: none;
+          background: transparent;
+          color: #e5e7eb;
+          font-size: 12px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          padding: 4px 0;
+        }
+        .cc-link-email-field-input::placeholder { color: #6b7280; }
         .cc-link-email-tag {
           display: inline-flex;
           align-items: center;
@@ -1171,32 +1198,37 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                   <span className="cc-link-field-label">發送郵件</span>
                   <span className="cc-link-field-hint">輸入郵箱後按 Enter 確認，可添加多個</span>
                 </div>
-                <textarea
-                  className="cc-link-textarea cc-link-email-input"
-                  rows={2}
-                  value={emailInput}
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="name@example.com（按 Enter 添加）"
-                  onChange={(event) => setEmailInput(event.target.value)}
-                  onKeyDown={handleEmailKeyDown}
-                />
-                {emailList.length > 0 && (
-                  <div className="cc-link-email-tags">
-                    {emailList.map((email) => (
-                      <span className="cc-link-email-tag" key={email}>
-                        {email}
-                        <button
-                          type="button"
-                          onClick={() => setEmailList((prev) => prev.filter((value) => value !== email))}
-                          aria-label={`移除 ${email}`}
-                        >
-                          <X size={12} />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div
+                  className={`cc-link-email-field${emailError ? ' has-error' : ''}`}
+                  onClick={() => emailInputRef.current?.focus()}
+                >
+                  {emailList.map((email) => (
+                    <span className="cc-link-email-tag" key={email}>
+                      {email}
+                      <button
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setEmailList((prev) => prev.filter((value) => value !== email));
+                        }}
+                        aria-label={`移除 ${email}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    ref={emailInputRef}
+                    className="cc-link-email-field-input"
+                    value={emailInput}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={emailList.length ? '' : 'name@example.com（按 Enter 添加）'}
+                    onChange={(event) => setEmailInput(event.target.value)}
+                    onKeyDown={handleEmailKeyDown}
+                  />
+                </div>
                 {emailError ? <div className="cc-link-error">{emailError}</div> : null}
               </div>
             </div>
