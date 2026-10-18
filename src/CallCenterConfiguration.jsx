@@ -1,7 +1,29 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Settings, Eye, Copy } from 'lucide-react';
+import { Search, Settings, Eye, Copy, X, Send, LoaderCircle } from 'lucide-react';
 import apiClient from './apiClient';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function buildIframeCode(item) {
+  const title = String(item?.name || '').replace(/"/g, '&quot;');
+  return `<iframe\n  src="${item?.url || ''}"\n  width="100%"\n  height="720"\n  style="border:0;border-radius:12px;max-width:1200px;"\n  allow="camera; microphone; autoplay; clipboard-write; fullscreen"\n  title="${title}"\n></iframe>`;
+}
+
+function buildNotificationText(item) {
+  return `您好：\n\n我們的客戶服務中心「${item?.name || ''}」已正式上線，歡迎隨時與我們聯繫。\n\n使用方式：\n1. 點擊下方連結進入客戶服務中心：\n${item?.url || ''}\n2. 填寫您的姓名與聯絡方式\n3. 選擇服務分類與坐席，即可發起線上交流或留言\n\n期待您的光臨！`;
+}
+
+function parseEmailTokens(raw) {
+  const parts = String(raw || '').split(/[,;\s]+/).map((value) => value.trim()).filter(Boolean);
+  const valid = [];
+  const invalid = [];
+  parts.forEach((part) => {
+    if (EMAIL_PATTERN.test(part)) valid.push(part);
+    else invalid.push(part);
+  });
+  return { valid, invalid };
+}
 
 async function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -44,6 +66,136 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [stats, setStats] = useState({ total: 0, active: 0, disabled: 0, visitorEnabled: 0, expiringSoon: 0 });
+
+  // --- 推廣與嵌入彈窗 ---
+  const [linkDialogItem, setLinkDialogItem] = useState(null);
+  const [notificationText, setNotificationText] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [emailList, setEmailList] = useState([]);
+  const [emailError, setEmailError] = useState('');
+  const [sendingNotification, setSendingNotification] = useState(false);
+  const [dialogFeedback, setDialogFeedback] = useState(null);
+  const [copiedField, setCopiedField] = useState('');
+  const copiedTimerRef = useRef(null);
+  const feedbackTimerRef = useRef(null);
+  const emailErrorTimerRef = useRef(null);
+
+  const resetLinkDialog = () => {
+    setLinkDialogItem(null);
+    setNotificationText('');
+    setEmailInput('');
+    setEmailList([]);
+    setEmailError('');
+    setSendingNotification(false);
+    setDialogFeedback(null);
+    setCopiedField('');
+    clearTimeout(copiedTimerRef.current);
+    clearTimeout(feedbackTimerRef.current);
+    clearTimeout(emailErrorTimerRef.current);
+  };
+
+  const openLinkDialog = (item) => {
+    setOpenDropdownId(null);
+    resetLinkDialog();
+    setLinkDialogItem(item);
+    setNotificationText(buildNotificationText(item));
+  };
+
+  const showDialogFeedback = (type, text) => {
+    clearTimeout(feedbackTimerRef.current);
+    setDialogFeedback({ type, text });
+    feedbackTimerRef.current = setTimeout(() => setDialogFeedback(null), type === 'error' ? 6000 : 3500);
+  };
+
+  const showEmailError = (text) => {
+    clearTimeout(emailErrorTimerRef.current);
+    setEmailError(text);
+    emailErrorTimerRef.current = setTimeout(() => setEmailError(''), 5000);
+  };
+
+  const handleDialogCopy = async (field, text) => {
+    const ok = await copyToClipboard(text);
+    if (!ok) {
+      showDialogFeedback('error', '複製失敗，請手動選取複製');
+      return;
+    }
+    setCopiedField(field);
+    clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopiedField(''), 2000);
+  };
+
+  const addEmails = (raw) => {
+    const { valid, invalid } = parseEmailTokens(raw);
+    if (!valid.length && !invalid.length) return;
+    setEmailList((prev) => {
+      const next = [...prev];
+      valid.forEach((email) => { if (!next.includes(email)) next.push(email); });
+      return next;
+    });
+    setEmailInput('');
+    if (invalid.length) showEmailError(`無效的郵箱：${invalid.join('、')}`);
+    else setEmailError('');
+  };
+
+  const handleEmailKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addEmails(emailInput);
+    } else if (event.key === 'Backspace' && !emailInput && emailList.length) {
+      setEmailList((prev) => prev.slice(0, -1));
+    }
+  };
+
+  const handleSendNotification = async () => {
+    if (!linkDialogItem || sendingNotification) return;
+    const { valid: pendingValid, invalid: pendingInvalid } = parseEmailTokens(emailInput);
+    if (pendingInvalid.length) {
+      showEmailError(`無效的郵箱：${pendingInvalid.join('、')}`);
+      return;
+    }
+    const recipients = [...emailList];
+    pendingValid.forEach((email) => { if (!recipients.includes(email)) recipients.push(email); });
+    if (!recipients.length) {
+      showEmailError('請至少輸入一個有效郵箱');
+      return;
+    }
+    if (!notificationText.trim()) {
+      showDialogFeedback('error', '通知文案不能為空');
+      return;
+    }
+
+    setSendingNotification(true);
+    setDialogFeedback(null);
+    try {
+      const res = await apiClient.post(`/call-centers/${linkDialogItem.id}/send-notification-email`, {
+        emails: recipients,
+        body: notificationText,
+      });
+      if (res?.success) {
+        setEmailList([]);
+        setEmailInput('');
+        setEmailError('');
+        const failed = Array.isArray(res.failed) ? res.failed : [];
+        if (failed.length) {
+          showDialogFeedback('error', `已發送 ${res.sent} 封，${failed.length} 封失敗：${failed.join('、')}`);
+        } else {
+          showDialogFeedback('ok', `郵件已發送（${res.sent} 封）`);
+        }
+      } else {
+        showDialogFeedback('error', res?.message || '郵件發送失敗，請稍後重試');
+      }
+    } catch (error) {
+      showDialogFeedback('error', error?.response?.data?.message || error?.message || '郵件發送失敗，請稍後重試');
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
+  useEffect(() => () => {
+    clearTimeout(copiedTimerRef.current);
+    clearTimeout(feedbackTimerRef.current);
+    clearTimeout(emailErrorTimerRef.current);
+  }, []);
 
   useImperativeHandle(ref, () => ({
     handleBatchDelete,
@@ -503,6 +655,125 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           background: #1a2332 !important;
           color: #e5e7eb !important;
         }
+
+        .cc-link-dialog-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 2147483000;
+          background: rgba(3, 7, 18, 0.72);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+        }
+        .cc-link-dialog {
+          width: min(720px, 100%);
+          max-height: calc(100vh - 48px);
+          display: flex;
+          flex-direction: column;
+          background: #111827;
+          border: 1px solid #1f2937;
+          border-radius: 14px;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+          overflow: hidden;
+        }
+        .cc-link-dialog-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 18px 22px;
+          border-bottom: 1px solid #1f2937;
+          background: #1a2332;
+        }
+        .cc-link-dialog-title { color: #f3f4f6; font-size: 16px; font-weight: 700; }
+        .cc-link-dialog-sub { margin-top: 4px; color: #9ca3af; font-size: 12px; }
+        .cc-link-dialog-close { background: none; border: none; color: #9ca3af; cursor: pointer; display: inline-flex; padding: 2px; }
+        .cc-link-dialog-close:hover { color: #e5e7eb; }
+        .cc-link-dialog-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+        .cc-link-field { display: flex; flex-direction: column; gap: 6px; }
+        .cc-link-field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .cc-link-field-label { color: #e5e7eb; font-size: 13px; font-weight: 600; }
+        .cc-link-field-hint { color: #6b7280; font-size: 11px; }
+        .cc-link-copy-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          border-radius: 6px;
+          border: 1px solid #374151;
+          background: #1a2332;
+          color: #9ca3af;
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .cc-link-copy-btn:hover { color: #e5e7eb; border-color: #4b5563; }
+        .cc-link-input, .cc-link-textarea {
+          width: 100%;
+          box-sizing: border-box;
+          border: 1px solid #374151;
+          border-radius: 8px;
+          background: #0b1220;
+          color: #e5e7eb;
+          padding: 10px 12px;
+          font-size: 12px;
+          outline: none;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          line-height: 1.6;
+          resize: vertical;
+        }
+        .cc-link-input:focus, .cc-link-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .cc-link-email-input { resize: none; }
+        .cc-link-email-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+        .cc-link-email-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(37, 99, 235, 0.16);
+          border: 1px solid rgba(59, 130, 246, 0.35);
+          color: #93c5fd;
+          font-size: 12px;
+        }
+        .cc-link-email-tag button { background: none; border: none; padding: 0; color: #93c5fd; cursor: pointer; display: inline-flex; }
+        .cc-link-email-tag button:hover { color: #dbeafe; }
+        .cc-link-error { color: #f87171; font-size: 12px; }
+        .cc-link-dialog-foot {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 14px 22px;
+          border-top: 1px solid #1f2937;
+          background: #0f172a;
+        }
+        .cc-link-feedback { font-size: 12px; font-weight: 600; }
+        .cc-link-feedback.is-ok { color: #34d399; }
+        .cc-link-feedback.is-error { color: #f87171; }
+        .cc-link-dialog-actions { display: flex; gap: 10px; margin-left: auto; }
+        .cc-link-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          border-radius: 7px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .cc-link-btn.ghost { border: 1px solid #374151; background: #111827; color: #9ca3af; }
+        .cc-link-btn.ghost:hover { color: #e5e7eb; }
+        .cc-link-btn.primary { border: 1px solid #2563eb; background: #2563eb; color: #fff; }
+        .cc-link-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .cc-link-btn .spin { animation: ccLinkSpin 0.8s linear infinite; }
+        @keyframes ccLinkSpin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) {
+          .cc-link-dialog-overlay { padding: 10px; }
+          .cc-link-dialog { max-height: calc(100vh - 20px); }
+          .cc-link-dialog-body { padding: 14px 16px; }
+          .cc-link-dialog-foot { flex-wrap: wrap; }
+        }
       `}</style>
 
       {/* 工具栏 */}
@@ -656,40 +927,40 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                       {/* 更多 操作菜单 */}
                       {openDropdownId === item.id && createPortal(
                         <div ref={dropdownMenuRef} className="dropdown-menu-portal" style={{ top: dropdownPosition.top, left: dropdownPosition.left }}>
-                          <button 
-                            type="button" 
-                            className="dropdown-item" 
+                          <button
+                            type="button"
+                            className="dropdown-item"
                             onClick={() => handleEdit(item)}
                           >
                             配置
                           </button>
-                          <button 
-                            type="button" 
-                            className="dropdown-item" 
-                            onClick={() => { setOpenDropdownId(null); if (onViewInquiries) onViewInquiries(item.id); }}
-                          >
-                            訪客留言
-                          </button>
-                          <button 
-                            type="button" 
-                            className="dropdown-item" 
+                          <button
+                            type="button"
+                            className="dropdown-item"
                             onClick={() => { setOpenDropdownId(null); handleToggleStatus(item); }}
                           >
                             {item.status === 'active' ? '停用' : '啟用'}
                           </button>
-                          <button type="button" className="dropdown-item" onClick={async () => {
-                            const ok = await copyToClipboard(item.url);
-                            alert(ok ? '連結已複製！' : '複製失敗，請手動複製');
-                            setOpenDropdownId(null);
-                          }}>
-                            複製連結
-                          </button>
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             className="dropdown-item dropdown-item-danger"
                             onClick={() => { setOpenDropdownId(null); handleDelete(item); }}
                           >
                             刪除
+                          </button>
+                          <button
+                            type="button"
+                            className="dropdown-item"
+                            onClick={() => { setOpenDropdownId(null); if (onViewInquiries) onViewInquiries(item.id); }}
+                          >
+                            訪客留言
+                          </button>
+                          <button
+                            type="button"
+                            className="dropdown-item"
+                            onClick={() => openLinkDialog(item)}
+                          >
+                            複製連結
                           </button>
                         </div>, 
                         document.body
@@ -737,6 +1008,123 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           </div>
         </div>
       </div>
+
+      {linkDialogItem && createPortal(
+        <div className="cc-link-dialog-overlay" onClick={resetLinkDialog}>
+          <div className="cc-link-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="cc-link-dialog-head">
+              <div>
+                <div className="cc-link-dialog-title">推廣與嵌入</div>
+                <div className="cc-link-dialog-sub">{linkDialogItem.name}</div>
+              </div>
+              <button type="button" className="cc-link-dialog-close" onClick={resetLinkDialog} aria-label="關閉">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="cc-link-dialog-body">
+              <div className="cc-link-field">
+                <div className="cc-link-field-head">
+                  <span className="cc-link-field-label">訪問連結</span>
+                  <button type="button" className="cc-link-copy-btn" onClick={() => handleDialogCopy('url', linkDialogItem.url)}>
+                    <Copy size={13} /> {copiedField === 'url' ? '已複製' : '複製'}
+                  </button>
+                </div>
+                <input
+                  className="cc-link-input"
+                  readOnly
+                  value={linkDialogItem.url}
+                  onFocus={(event) => event.target.select()}
+                />
+              </div>
+
+              <div className="cc-link-field">
+                <div className="cc-link-field-head">
+                  <span className="cc-link-field-label">iframe 嵌入代碼</span>
+                  <button type="button" className="cc-link-copy-btn" onClick={() => handleDialogCopy('iframe', buildIframeCode(linkDialogItem))}>
+                    <Copy size={13} /> {copiedField === 'iframe' ? '已複製' : '複製'}
+                  </button>
+                </div>
+                <textarea
+                  className="cc-link-textarea"
+                  rows={5}
+                  readOnly
+                  value={buildIframeCode(linkDialogItem)}
+                  onFocus={(event) => event.target.select()}
+                />
+              </div>
+
+              <div className="cc-link-field">
+                <div className="cc-link-field-head">
+                  <span className="cc-link-field-label">通知文案</span>
+                  <button type="button" className="cc-link-copy-btn" onClick={() => handleDialogCopy('message', notificationText)}>
+                    <Copy size={13} /> {copiedField === 'message' ? '已複製' : '複製'}
+                  </button>
+                </div>
+                <textarea
+                  className="cc-link-textarea"
+                  rows={7}
+                  value={notificationText}
+                  onChange={(event) => setNotificationText(event.target.value)}
+                />
+              </div>
+
+              <div className="cc-link-field">
+                <div className="cc-link-field-head">
+                  <span className="cc-link-field-label">發送郵件</span>
+                  <span className="cc-link-field-hint">輸入郵箱後按 Enter 確認，可添加多個</span>
+                </div>
+                <textarea
+                  className="cc-link-textarea cc-link-email-input"
+                  rows={2}
+                  value={emailInput}
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="name@example.com（按 Enter 添加）"
+                  onChange={(event) => setEmailInput(event.target.value)}
+                  onKeyDown={handleEmailKeyDown}
+                />
+                {emailList.length > 0 && (
+                  <div className="cc-link-email-tags">
+                    {emailList.map((email) => (
+                      <span className="cc-link-email-tag" key={email}>
+                        {email}
+                        <button
+                          type="button"
+                          onClick={() => setEmailList((prev) => prev.filter((value) => value !== email))}
+                          aria-label={`移除 ${email}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {emailError ? <div className="cc-link-error">{emailError}</div> : null}
+              </div>
+            </div>
+
+            <div className="cc-link-dialog-foot">
+              {dialogFeedback ? (
+                <div className={`cc-link-feedback ${dialogFeedback.type === 'error' ? 'is-error' : 'is-ok'}`}>{dialogFeedback.text}</div>
+              ) : <div />}
+              <div className="cc-link-dialog-actions">
+                <button type="button" className="cc-link-btn ghost" onClick={resetLinkDialog}>關閉</button>
+                <button
+                  type="button"
+                  className="cc-link-btn primary"
+                  onClick={handleSendNotification}
+                  disabled={sendingNotification || (!emailList.length && !emailInput.trim())}
+                >
+                  {sendingNotification ? <LoaderCircle size={15} className="spin" /> : <Send size={15} />}
+                  {sendingNotification ? '發送中...' : '發送郵件'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </section>
   );
 });

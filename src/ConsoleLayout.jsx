@@ -2362,8 +2362,14 @@ export default function ConsoleLayout({ onLogout }) {
                 <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面的歡迎語右側提供了在線留言按鈕。訪客無需選擇坐席即可提交留言諮詢。留言可指定接收坐席，提交後會在訪客留言中記錄。被指定的坐席所屬租戶管理員會收到站內通知。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
-                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔗 訪問鏈接</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>每個呼叫中心通過唯一的 Slug 標識生成訪問鏈接。鏈接格式為：/callcenter?id=你的slug。在列表中可複製鏈接或直接預覽。呼叫中心狀態設為「啟用」後訪客才能訪問，且所屬租戶套餐需在有效期內。</p>
+                <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔗 推廣與嵌入</h3>
+                <p style={{ color: "#9ca3af", margin: 0 }}>每個呼叫中心通過唯一的 Slug 生成訪問鏈接（格式：/callcenter?id=你的slug）。操作列「更多」選單依次為：配置、停用/啟用、刪除、訪客留言、複製連結；點擊「複製連結」會打開「推廣與嵌入」彈窗：</p>
+                <ul style={{ color: "#9ca3af", margin: "8px 0 0", paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <li><strong style={{ color: "#e5e7eb" }}>訪問連結</strong> — 顯示完整連結並可一鍵複製；呼叫中心需為「啟用」狀態，且所屬租戶套餐在有效期內，訪客才能訪問。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>iframe 嵌入代碼</strong> — 可直接複製並貼到自有網站，將訪客頁嵌入頁面中。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>通知文案</strong> — 預置上線說明與使用方式，可依需要修改後複製。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>發送郵件</strong> — 在輸入框中輸入郵箱後按 Enter 確認，可依次添加多個郵箱；點擊「發送郵件」將當前文案發送給全部已添加的收件人。</li>
+                </ul>
               </div>
               <div>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💡 注意事項</h3>

@@ -14625,6 +14625,66 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
   }
 });
 
+// POST /api/call-centers/:id/send-notification-email - 發送呼叫中心上線通知郵件
+app.post("/api/call-centers/:id/send-notification-email", requireAdmin, async (request, response) => {
+  if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
+    return response.status(403).json({ success: false, message: "只有租戶管理員可以操作。" });
+  }
+
+  const id = Number(request.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return response.status(400).json({ success: false, message: "無效的呼叫中心編號。" });
+  }
+
+  const rawEmails = Array.isArray(request.body?.emails) ? request.body.emails : [];
+  const emails = [];
+  for (const raw of rawEmails) {
+    const email = sanitizeString(raw, 255).trim();
+    if (!email || !isValidEmail(email)) {
+      return response.status(400).json({ success: false, message: "請輸入有效的電子郵件地址。" });
+    }
+    if (!emails.includes(email)) emails.push(email);
+  }
+  if (!emails.length) return response.status(400).json({ success: false, message: "請至少輸入一個電子郵件地址。" });
+  if (emails.length > 20) return response.status(400).json({ success: false, message: "一次最多發送 20 個郵箱。" });
+
+  const body = typeof request.body?.body === 'string' ? request.body.body : '';
+  if (!body.trim()) return response.status(400).json({ success: false, message: "郵件內容不能為空。" });
+  if (body.length > 8000) return response.status(400).json({ success: false, message: "郵件內容過長。" });
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT id, center_name FROM call_centers WHERE id = ? AND tenant_id = ? LIMIT 1",
+      [id, request.admin.tenantId],
+    );
+    if (!rows[0]) return response.status(404).json({ success: false, message: "找不到呼叫中心。" });
+
+    const subject = `QRTalkie 客戶服務中心上線通知（${rows[0].center_name}）`;
+    const failed = [];
+    let sent = 0;
+    for (const to of emails) {
+      const delivery = await sendTrialNotificationEmail(connection, { to, subject, body });
+      if (delivery.sent) {
+        sent += 1;
+      } else {
+        failed.push(to);
+        console.error(`[call-center-notification-email] tenant=${request.admin.tenantId} center=${id} to=${to} failed: ${delivery.reason || 'unknown'}`);
+      }
+    }
+    if (sent === 0) {
+      return response.status(502).json({ success: false, message: "郵件發送失敗，請稍後重試。", sent: 0, failed });
+    }
+    return response.json({ success: true, sent, failed });
+  } catch (error) {
+    console.error("Failed to send call center notification email:", error);
+    return response.status(500).json({ success: false, message: "郵件發送失敗，請稍後重試。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // PUT /api/call-centers/:id/visitor-info - 更新呼叫中心访客登记狀態
 app.put("/api/call-centers/:id/visitor-info", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
