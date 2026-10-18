@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Settings, Eye, Copy, X, Send, LoaderCircle } from 'lucide-react';
+import { Search, Settings, Eye, Copy, X, Send, LoaderCircle, Download } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import apiClient from './apiClient';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -122,6 +123,48 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
     setCopiedField(field);
     clearTimeout(copiedTimerRef.current);
     copiedTimerRef.current = setTimeout(() => setCopiedField(''), 2000);
+  };
+
+  const renderAccessQrCanvas = (callback) => {
+    const svg = document.getElementById('cc-access-qr-svg');
+    if (!svg) return;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = 512;
+      canvas.height = 512;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 512, 512);
+      ctx.drawImage(img, 0, 0, 512, 512);
+      callback(canvas);
+    };
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
+  const handleCopyQr = () => {
+    renderAccessQrCanvas((canvas) => {
+      canvas.toBlob(async (blob) => {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          setCopiedField('qr');
+          clearTimeout(copiedTimerRef.current);
+          copiedTimerRef.current = setTimeout(() => setCopiedField(''), 2000);
+        } catch {
+          showDialogFeedback('error', '複製二維碼失敗，請改用下載');
+        }
+      });
+    });
+  };
+
+  const handleDownloadQr = () => {
+    renderAccessQrCanvas((canvas) => {
+      const link = document.createElement('a');
+      link.download = `callcenter-qrcode-${linkDialogItem?.id || 'qr'}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
   };
 
   const addEmails = (raw) => {
@@ -676,7 +719,17 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
           border-radius: 14px;
           box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
           overflow: hidden;
+          color-scheme: dark;
         }
+        .cc-link-dialog,
+        .cc-link-dialog * {
+          scrollbar-width: thin;
+          scrollbar-color: #374151 transparent;
+        }
+        .cc-link-dialog *::-webkit-scrollbar { width: 8px; height: 8px; }
+        .cc-link-dialog *::-webkit-scrollbar-track { background: transparent; }
+        .cc-link-dialog *::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        .cc-link-dialog *::-webkit-scrollbar-thumb:hover { background: #4b5563; }
         .cc-link-dialog-head {
           display: flex;
           align-items: flex-start;
@@ -739,6 +792,26 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
         .cc-link-email-tag button { background: none; border: none; padding: 0; color: #93c5fd; cursor: pointer; display: inline-flex; }
         .cc-link-email-tag button:hover { color: #dbeafe; }
         .cc-link-error { color: #f87171; font-size: 12px; }
+        .cc-link-qr-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          margin-top: 12px;
+          padding: 12px;
+          border: 1px solid #1f2937;
+          border-radius: 10px;
+          background: #0f172a;
+        }
+        .cc-link-qr-box {
+          flex-shrink: 0;
+          padding: 8px;
+          border-radius: 8px;
+          background: #ffffff;
+          line-height: 0;
+        }
+        .cc-link-qr-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        .cc-link-qr-hint { color: #9ca3af; font-size: 12px; }
+        .cc-link-qr-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .cc-link-dialog-foot {
           display: flex;
           align-items: center;
@@ -1036,6 +1109,30 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                   value={linkDialogItem.url}
                   onFocus={(event) => event.target.select()}
                 />
+                <div className="cc-link-qr-row">
+                  <div className="cc-link-qr-box">
+                    <QRCodeSVG
+                      id="cc-access-qr-svg"
+                      value={linkDialogItem.url}
+                      size={144}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      level="M"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <div className="cc-link-qr-side">
+                    <div className="cc-link-qr-hint">用手機掃碼即可訪問客戶服務中心</div>
+                    <div className="cc-link-qr-actions">
+                      <button type="button" className="cc-link-copy-btn" onClick={handleCopyQr}>
+                        <Copy size={13} /> {copiedField === 'qr' ? '已複製' : '複製二維碼'}
+                      </button>
+                      <button type="button" className="cc-link-copy-btn" onClick={handleDownloadQr}>
+                        <Download size={13} /> 下載二維碼
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="cc-link-field">
