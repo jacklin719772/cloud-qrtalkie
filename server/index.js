@@ -251,9 +251,9 @@ app.post("/api/access/room-call-session", async (request, response) => {
   try {
     connection = await pool.getConnection();
 
-    // Verify device exists
-    const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
-    if (!device) return response.status(404).json({ success: false, message: "裝置不存在" });
+    // Verify device exists and is usable
+    const [device] = await connection.query("SELECT id, tenant_id, assignment_status FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
+    if (!device || device.assignment_status !== 'assigned') return response.status(404).json({ success: false, message: "裝置不存在或目前不可用" });
 
     // Get room with SIP account
     const [room] = await connection.query(
@@ -326,8 +326,8 @@ app.get("/api/access/room-sip-status", async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
-    const [device] = await connection.query("SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
-    if (!device) return response.status(404).json({ success: false, message: "裝置不存在" });
+    const [device] = await connection.query("SELECT id, tenant_id, assignment_status FROM gate_devices WHERE device_uuid = ? LIMIT 1", [lockId]);
+    if (!device || device.assignment_status !== 'assigned') return response.status(404).json({ success: false, message: "裝置不存在或目前不可用" });
 
     const [room] = await connection.query(
       `SELECT s.username AS sip_account FROM access_rooms r
@@ -369,11 +369,11 @@ app.get("/access/visitor", async (request, response) => {
 
     // Find entrance by device_uuid via gate_devices
     const [device] = await connection.query(
-      "SELECT id, tenant_id FROM gate_devices WHERE device_uuid = ? LIMIT 1",
+      "SELECT id, tenant_id, assignment_status FROM gate_devices WHERE device_uuid = ? LIMIT 1",
       [lockId]
     );
-    if (!device) {
-      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>裝置不存在。</p>");
+    if (!device || device.assignment_status !== 'assigned') {
+      return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>裝置不存在或目前不可用。</p>");
     }
 
     // Find entrance bound to this device
@@ -11271,8 +11271,29 @@ app.post("/api/admin/gate-devices/:id/unassign", requireAdmin, async (request, r
        VALUES (?, ?, ?, 'unassigned', ?, 'unassign')`,
       [deviceId, device.tenant_id != null ? Number(device.tenant_id) : null, device.assignment_status, request.admin.id],
     );
+
+    // 同步解除入口綁定，避免入口指向已取消分配/不可用的設備
+    const boundEntrances = await connection.query(
+      "SELECT id, name FROM access_entrances WHERE device_id = ?",
+      [deviceId],
+    );
+    if (boundEntrances.length > 0) {
+      await connection.query(
+        "UPDATE access_entrances SET device_id = NULL, is_active = 0 WHERE device_id = ?",
+        [deviceId],
+      );
+    }
+
     await connection.commit();
-    return response.json({ message: "裝置已取消分配。" });
+    return response.json({
+      message: boundEntrances.length > 0
+        ? `裝置已取消分配，${boundEntrances.length} 個入口已自動解除綁定並停用。`
+        : "裝置已取消分配。",
+      data: {
+        unboundEntrances: boundEntrances.length,
+        entrances: boundEntrances.map(row => row.name),
+      },
+    });
   } catch (error) {
     if (connection) await connection.rollback().catch(() => {});
     console.error("Failed to unassign gate device:", error);
@@ -11306,6 +11327,11 @@ app.delete("/api/admin/gate-devices/:id", requireAdmin, async (request, response
       await connection.rollback();
       return response.status(409).json({ message: "已經分配給租戶的裝置不允許刪除。" });
     }
+    // 異常殘留綁定一併清理，避免入口指向已刪除設備
+    await connection.query(
+      "UPDATE access_entrances SET device_id = NULL, is_active = 0 WHERE device_id = ?",
+      [deviceId],
+    );
     await connection.query(`DELETE FROM gate_devices WHERE id = ?`, [deviceId]);
     await connection.commit();
     return response.json({ message: "裝置已刪除。" });
@@ -17157,7 +17183,7 @@ app.put("/api/access-entrances/:id", requireAdmin, async (request, response) => 
 
     const [entrance] = await connection.query(
       `SELECT e.id, e.tenant_id, e.community_id, e.building_id, e.device_id, e.is_active,
-              g.device_uuid, g.assignment_status
+              g.device_uuid, g.assignment_status, g.tenant_id AS device_tenant_id
          FROM access_entrances e
          LEFT JOIN gate_devices g ON g.id = e.device_id
         WHERE e.id = ? AND e.tenant_id = ?
@@ -17183,6 +17209,19 @@ app.put("/api/access-entrances/:id", requireAdmin, async (request, response) => 
     let nextDeviceUuid = entrance.device_uuid || null;
     let nextDeviceStatus = entrance.assignment_status || 'none';
     let nextIsActive = Number(entrance.is_active) || 0;
+
+    if (!nextDeviceId) {
+      await connection.rollback();
+      return response.status(400).json({ message: "請選擇要綁定的門禁設備。" });
+    }
+
+    // 未更換設備時，當前設備仍必須是本租戶已分配的可用設備
+    if (!deviceId || Number(deviceId) === nextDeviceId) {
+      if (Number(entrance.device_tenant_id) !== Number(request.admin.tenantId) || entrance.assignment_status !== 'assigned') {
+        await connection.rollback();
+        return response.status(400).json({ message: "該入口目前綁定的設備已失效，請先選擇新的設備再儲存。" });
+      }
+    }
 
     if (deviceId && deviceId !== nextDeviceId) {
       if (await isTenantPlanExpired(connection, request.admin.tenantId)) {
@@ -17430,7 +17469,10 @@ app.put("/api/access-entrances/:id/toggle", requireAdmin, async (request, respon
     connection = await pool.getConnection();
 
     const [existing] = await connection.query(
-      "SELECT id, is_active, device_id FROM access_entrances WHERE id = ? AND tenant_id = ?",
+      `SELECT e.id, e.is_active, e.device_id, g.assignment_status
+         FROM access_entrances e
+         LEFT JOIN gate_devices g ON g.id = e.device_id
+        WHERE e.id = ? AND e.tenant_id = ?`,
       [entranceId, request.admin.tenantId]
     );
     if (!existing) return response.status(404).json({ message: "入口不存在。" });
@@ -17441,6 +17483,10 @@ app.put("/api/access-entrances/:id/toggle", requireAdmin, async (request, respon
 
     if (isActive && !existing.device_id) {
       return response.status(400).json({ message: "未繫結裝置的入口無法啟用，請先繫結裝置。" });
+    }
+
+    if (isActive && existing.assignment_status !== 'assigned') {
+      return response.status(403).json({ message: "該入口綁定的設備未分配給當前租戶，無法啟用。" });
     }
 
     await connection.query(
@@ -17673,9 +17719,16 @@ app.post("/api/access-entrances/:entranceId/auth/rooms", requireAdmin, async (re
   let connection;
   try {
     connection = await pool.getConnection();
-    const [entrance] = await connection.query("SELECT id, is_active FROM access_entrances WHERE id = ? AND tenant_id = ?", [entranceId, request.admin.tenantId]);
+    const [entrance] = await connection.query(
+      `SELECT e.id, e.is_active, g.assignment_status
+         FROM access_entrances e
+         LEFT JOIN gate_devices g ON g.id = e.device_id
+        WHERE e.id = ? AND e.tenant_id = ?`,
+      [entranceId, request.admin.tenantId]
+    );
     if (!entrance) return response.status(404).json({ message: "入口不存在。" });
     if (!Number(entrance.is_active)) return response.status(400).json({ message: "該入口已停用，無法授權。" });
+    if (entrance.assignment_status !== 'assigned') return response.status(400).json({ message: "該入口綁定的設備不可用，無法授權。" });
 
     const placeholders = roomIds.map(() => "(?, ?, ?)").join(", ");
     const values = roomIds.flatMap(id => [request.admin.tenantId, entranceId, id]);

@@ -404,7 +404,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
       window.alert('所選裝置均未分配給租戶。');
       return;
     }
-    if (!window.confirm(`確定要取消分配選中的 ${assignedDevices.length} 個裝置嗎？`)) return;
+    if (!window.confirm(`確定要取消分配選中的 ${assignedDevices.length} 個裝置嗎？\n\n若裝置已綁定入口，入口將自動解除綁定並停用。`)) return;
     try {
       await Promise.all(assignedDevices.map((device) => apiClient.post(`/admin/gate-devices/${device.id}/unassign`)));
       setSelectedIds([]);
@@ -464,7 +464,7 @@ const DeviceManagement = forwardRef(({ onModeChange }, ref) => {
         window.alert('該裝置尚未分配給租戶。');
         return;
       }
-      if (!window.confirm(`確定取消裝置 ${device.uuid} 的租戶分配嗎？`)) return;
+      if (!window.confirm(`確定取消裝置 ${device.uuid} 的租戶分配嗎？\n\n若該裝置已綁定入口，入口將自動解除綁定並停用。`)) return;
       try {
         await apiClient.post(`/admin/gate-devices/${device.id}/unassign`);
         await loadDevices();
