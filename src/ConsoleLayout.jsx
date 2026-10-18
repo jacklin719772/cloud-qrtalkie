@@ -2240,8 +2240,8 @@ export default function ConsoleLayout({ onLogout }) {
                   <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                     <span style={{ flexShrink: 0, width: "24px", height: "24px", borderRadius: "50%", background: "#2563eb", color: "#fff", fontSize: "12px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>6</span>
                     <div>
-                      <strong style={{ color: "#e5e7eb" }}>設定訪問權限</strong>
-                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為每個入口指定允許訪問哪些房間。點擊入口操作列的「授權」，勾選該入口可訪問的房間。切換到「權限設置」標籤可按房間或樓宇維度管理授權。</p>
+                      <strong style={{ color: "#e5e7eb" }}>設定入口使用權</strong>
+                      <p style={{ color: "#9ca3af", margin: "2px 0 0", fontSize: "12px" }}>為入口指定允許使用該門的房間。可點擊入口操作列的「授權」，或在社區「更多 → 入口使用權管理」中按社區批量設定，也可切換到「權限設定」標籤按房間或樓宇維度管理。前提是社區已有樓宇、房間和入口，否則會提示先補齊對應資料。</p>
                     </div>
                   </div>
                 </div>
@@ -2260,7 +2260,7 @@ export default function ConsoleLayout({ onLogout }) {
               {/* ── 各功能區塊說明 ── */}
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🏘️ 社區管理</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>社區列表以卡片形式展示。展開社區可查看和管理其下的樓宇和入口。每個社區右側的「更多」選單提供編輯、授權、啟用/停用和刪除操作。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>社區列表以卡片形式展示。展開社區可查看和管理其下的樓宇和入口。每個社區右側的「更多」選單提供編輯、入口使用權管理、啟用/停用和刪除操作。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔑 房間管理</h3>

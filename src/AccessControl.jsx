@@ -2488,7 +2488,7 @@ const AccessControl = forwardRef((props, ref) => {
             <div className="ac-drawer-overlay" onClick={() => setShowCommunityAuthDrawer(false)} />
             <div className="ac-drawer" style={{ width: '650px' }}>
               <div className="ac-drawer-header">
-                <h3>社區授權 — {selectedCommunityAuth.communityName}
+                <h3>入口使用權管理 — {selectedCommunityAuth.communityName}
                   <span style={{ fontSize: '13px', fontWeight: 400, color: '#9ca3af', marginLeft: '8px' }}>{allRoomIds.size} 個房間 · {entrancesWithAuth.length} 個入口</span>
                 </h3>
                 <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }} onClick={() => setShowCommunityAuthDrawer(false)}><X size={20} /></button>
@@ -2968,26 +2968,36 @@ const AccessControl = forwardRef((props, ref) => {
             <div style={{ position: 'fixed', top: dropdownOpen.top, bottom: dropdownOpen.bottom, right: dropdownOpen.right, background: '#111827', border: '1px solid #1f2937', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 1000, minWidth: '140px', overflow: 'hidden' }}>
               <button className="ac-dropdown-item" type="button" onClick={(ev) => { ev.stopPropagation(); addCommunityDialogRef.current?.showModal(c); setDropdownOpen(null); }}>✎ 編輯</button>
               {c.isActive !== false && (() => {
+                const buildingCount = (c.buildings || []).length;
+                const roomCount = (c.buildings || []).reduce((sum, b) => sum + (b.rooms || []).length, 0);
                 const entranceCount = (c.communityEntrances || []).length
                   + (c.buildings || []).reduce((sum, b) => sum + (b.entrances || []).length, 0);
+                const authReady = buildingCount > 0 && roomCount > 0 && entranceCount > 0;
                 return (
                   <button
                     className="ac-dropdown-item"
                     type="button"
-                    style={entranceCount === 0 ? { color: '#6b7280', cursor: 'not-allowed' } : undefined}
+                    style={authReady ? undefined : { color: '#6b7280', cursor: 'not-allowed' }}
                     onClick={(ev) => {
                       ev.stopPropagation();
+                      setDropdownOpen(null);
+                      if (buildingCount === 0) {
+                        setToast({ message: '請先為社區創建樓宇。', type: 'error' });
+                        return;
+                      }
+                      if (roomCount === 0) {
+                        setToast({ message: '請先為樓宇添加房間。', type: 'error' });
+                        return;
+                      }
                       if (entranceCount === 0) {
-                        setDropdownOpen(null);
-                        setToast({ message: '請先添加至少一個入口後再進行授權。', type: 'error' });
+                        setToast({ message: '請先添加至少一個入口。', type: 'error' });
                         return;
                       }
                       setSelectedCommunityAuth({ communityId: c.id, communityName: c.name });
                       setShowCommunityAuthDrawer(true);
-                      setDropdownOpen(null);
                     }}
                   >
-                    🔐 授權
+                    🔐 入口使用權管理
                   </button>
                 );
               })()}
