@@ -668,7 +668,7 @@ const CallCenterConfiguration = forwardRef((props, ref) => {
                             className="dropdown-item" 
                             onClick={() => { setOpenDropdownId(null); if (onViewInquiries) onViewInquiries(item.id); }}
                           >
-                            訪客日誌
+                            訪客留言
                           </button>
                           <button 
                             type="button" 

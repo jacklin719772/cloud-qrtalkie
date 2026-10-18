@@ -2359,7 +2359,7 @@ export default function ConsoleLayout({ onLogout }) {
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>💬 在線留言</h3>
-                <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面的歡迎語右側提供了在線留言按鈕。訪客無需選擇坐席即可提交留言諮詢。留言可指定接收坐席，提交後會在訪客日誌中記錄。被指定的坐席所屬租戶管理員會收到站內通知。</p>
+                <p style={{ color: "#9ca3af", margin: 0 }}>訪客頁面的歡迎語右側提供了在線留言按鈕。訪客無需選擇坐席即可提交留言諮詢。留言可指定接收坐席，提交後會在訪客留言中記錄。被指定的坐席所屬租戶管理員會收到站內通知。</p>
               </div>
               <div style={{ marginBottom: "24px" }}>
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>🔗 訪問鏈接</h3>
@@ -2372,7 +2372,7 @@ export default function ConsoleLayout({ onLogout }) {
                   <li>每個呼叫中心可配置多個服務分類，每個分類可包含多位坐席。</li>
                   <li>未上傳 LOGO 時頁面不顯示 LOGO 佔位，封面未上傳時使用預設橫幅。</li>
                   <li>坐席卡片的 SIP 狀態會即時顯示在線/離線，並支援單卡刷新。</li>
-                  <li>訪客日誌記錄所有訪客登記和留言，可在操作列的「訪客日誌」查看。</li>
+                  <li>訪客留言記錄所有訪客登記和留言，可在操作列的「訪客留言」查看。</li>
                 </ul>
               </div>
             </div>
