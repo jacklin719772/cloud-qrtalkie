@@ -2766,7 +2766,7 @@ const AccessControl = forwardRef((props, ref) => {
                           return (
                             <tr key={`${e.belongType}-${e.id}`}>
                               <td><input type="checkbox" checked={!!e._sel2} style={{ accentColor: '#2563eb' }} onChange={(ev) => toggleEnt(e.id, ev.target.checked)} /></td>
-                              <td style={{ fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
+                              <td style={{ fontSize: '12px', fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
                               <td style={{ fontSize: '12px', color: '#9ca3af' }}>{e.belongName} ({e.belongType === 'building' ? '樓宇級' : '社群級'})</td>
                               <td>
                                 {isAuth ? (
