@@ -143,7 +143,6 @@ export default function BackupManagement() {
         .bkm-badge.success { background: #dcfce7; color: #15803d; }
         .bkm-badge.running { background: #fef3c7; color: #b45309; }
         .bkm-badge.failed { background: #fee2e2; color: #dc2626; }
-        .bkm-password { font-family: monospace; font-size: 12px; color: #f1d37a; }
         .bkm-action-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid #4b5563; background: #374151; color: #d1d5db; font-size: 12px; cursor: pointer; margin-right: 6px; display: inline-flex; align-items: center; gap: 4px; }
         .bkm-action-btn:hover { background: #4b5563; color: #f3f4f6; }
         .bkm-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -166,7 +165,7 @@ export default function BackupManagement() {
       <div className="bkm-toolbar">
         <div className="bkm-note">
           每日 {settings.scheduleHour ?? 3}:00（{settings.timezone || 'Asia/Hong_Kong'}）自動備份，保留 {settings.retentionDays ?? 7} 天。<br />
-          下載密碼為固定前綴加備份日期（YYYYMMDD），見下方「下載密碼」欄。
+          備份包已加密，下載後需輸入密碼。
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="bkm-secondary" onClick={() => loadData()} disabled={loading}>
@@ -188,13 +187,12 @@ export default function BackupManagement() {
                 <th>大小</th>
                 <th>類型</th>
                 <th>狀態</th>
-                <th>下載密碼</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {backups.length === 0 ? (
-                <tr><td colSpan="7"><div className="bkm-empty">暫無備份記錄</div></td></tr>
+                <tr><td colSpan="6"><div className="bkm-empty">暫無備份記錄</div></td></tr>
               ) : backups.map((row) => (
                 <tr key={row.id}>
                   <td className="bkm-file">{row.filename}</td>
@@ -207,7 +205,6 @@ export default function BackupManagement() {
                       <span style={{ marginLeft: 8, fontSize: 11, color: '#fca5a5' }} title={row.errorMessage}>查看錯誤</span>
                     )}
                   </td>
-                  <td>{row.status === 'success' ? <span className="bkm-password">{row.password || '-'}</span> : '-'}</td>
                   <td>
                     <button type="button" className="bkm-action-btn" disabled={row.status !== 'success' || downloadingId === row.id} onClick={() => handleDownload(row)}>
                       <Download size={13} />{downloadingId === row.id ? '下載中...' : '下載'}

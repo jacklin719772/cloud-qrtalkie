@@ -379,7 +379,6 @@ export async function startBackup({ type = "manual", adminId = null } = {}) {
       backup_type: type,
       status: "running",
       password_date: parts.compactDate,
-      password: `${PASSWORD_PREFIX}${parts.compactDate}`,
     };
   } finally {
     connection.release();
@@ -405,7 +404,6 @@ export async function listBackups() {
     status: row.status,
     errorMessage: row.error_message || "",
     passwordDate: row.password_date || "",
-    password: row.status === "success" && PASSWORD_PREFIX ? `${PASSWORD_PREFIX}${row.password_date}` : "",
     startedAt: row.started_at,
     finishedAt: row.finished_at,
     createdAt: row.created_at,
