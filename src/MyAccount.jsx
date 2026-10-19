@@ -423,17 +423,13 @@ export default function MyAccount({ identity }) {
         <div style={{ height: '100%' }}>
           <div className="ma-card">
             <h3>基本信息</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
               <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', background: '#1f2937', border: '1px solid #374151', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {form.avatarPreview ? (
                   <img src={avatarSrc(form.avatarPreview)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <span style={{ color: '#9ca3af', fontSize: '22px', fontWeight: 600 }}>{(form.displayName || admin.username || '?').slice(0, 1)}</span>
                 )}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ color: '#f3f4f6', fontSize: '16px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || admin.username || '-'}</div>
-                <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[form.company, form.jobTitle].filter(Boolean).join(' · ') || '未設定工作單位/職務'}</div>
               </div>
             </div>
             <div className="ma-info-row"><span className="ma-info-label">账号</span><span className="ma-info-value">{admin.username || '-'}</span></div>
