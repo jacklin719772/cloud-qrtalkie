@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Pencil, Plus, RefreshCw, Trash2, Wallet } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import apiClient from './apiClient';
 
 const todayString = () => new Date().toISOString().slice(0, 10);
@@ -85,8 +85,20 @@ export default function FinanceManagement() {
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [savingPayment, setSavingPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState(null);
+  const [openMenuOrderId, setOpenMenuOrderId] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const requestIdRef = useRef(0);
   const messageTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (!openMenuOrderId) return undefined;
+    const handleOutsideClick = (event) => {
+      if (event.target.closest('.fin-dropdown-container') || event.target.closest('.fin-dropdown-menu')) return;
+      setOpenMenuOrderId(null);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [openMenuOrderId]);
 
   const showMessage = useCallback((type, text) => {
     setMessage({ type, text });
@@ -356,10 +368,17 @@ export default function FinanceManagement() {
     <section className="view active" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
       <style>{`
         .fin-table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #374151 transparent; }
-        .fin-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px; }
+        .fin-table { width: 100%; min-width: 1180px; border-collapse: separate; border-spacing: 0; font-size: 13px; }
         .fin-table th { height: 48px; padding: 0 12px; text-align: left; font-size: 12px; color: #e5e7eb; background: #1e293b; border-bottom: 2px solid #2d3a4a; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
         .fin-table td { height: 54px; padding: 0 12px; color: #e5e7eb; border-bottom: 1px solid #1f2937; white-space: nowrap; }
         .fin-table tr:hover td { background: #1e293b; }
+        .fin-table th.fin-sticky-action,
+        .fin-table td.fin-sticky-action { position: sticky; right: 0; z-index: 3; width: 180px; background: #111827; border-left: 1px solid #374151; box-shadow: -4px 0 8px rgba(0,0,0,0.35); }
+        .fin-table th.fin-sticky-action { background: #1e293b; z-index: 4; }
+        .fin-table tr:hover td.fin-sticky-action { background: #1e293b; }
+        .fin-dropdown-menu { position: fixed; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); min-width: 140px; display: flex; flex-direction: column; padding: 4px 0; }
+        .fin-dropdown-item { padding: 8px 16px; font-size: 13px; color: #334155; background: transparent; border: none; text-align: left; width: 100%; cursor: pointer; }
+        .fin-dropdown-item:hover { background: #f1f5f9; }
         .fin-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; border: 1px solid #374151; background: #1f2937; color: #93c5fd; font-size: 12px; cursor: pointer; white-space: nowrap; }
         .fin-btn:hover { background: #374151; }
         .fin-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -414,11 +433,13 @@ export default function FinanceManagement() {
       </div>
 
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
-        <div className="fin-table-wrap">
+        <div className="fin-table-wrap" onScroll={() => setOpenMenuOrderId(null)}>
           <table className="fin-table">
             <thead>
               <tr>
-                {['訂單號', '租戶', '類型', '訂單金額', '應收', '實收', '欠款', '發票金額', '付款筆數', '收款狀態', '操作'].map((label) => <th key={label}>{label}</th>)}
+                {['訂單號', '租戶', '類型', '訂單金額', '應收', '實收', '欠款', '發票金額', '付款筆數', '收款狀態', '操作'].map((label) => (
+                  <th key={label} className={label === '操作' ? 'fin-sticky-action' : undefined}>{label}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -440,9 +461,23 @@ export default function FinanceManagement() {
                     <td style={{ fontFamily: 'monospace', color: '#fcd34d' }}>{formatMoney(order.invoicedAmount, order.currency)}</td>
                     <td style={{ textAlign: 'center' }}>{order.paymentCount}</td>
                     <td><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', background: badge.bg, color: badge.color }}>{badge.text}</span></td>
-                    <td>
-                      <button type="button" className="fin-btn" onClick={() => openReceivable(order)}><Wallet size={13} /> 應收</button>
-                      <button type="button" className="fin-btn" onClick={() => openPayments(order)} style={{ marginLeft: '6px' }}><FileText size={13} /> 收款記錄</button>
+                    <td className="fin-sticky-action" style={{ textAlign: 'center' }}>
+                      <div className="row-actions fin-dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openPayments(order)}>收款記錄</button>
+                        <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(event) => {
+                          event.stopPropagation();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ top: rect.bottom + 4, left: Math.max(12, rect.right - 140) });
+                          setOpenMenuOrderId((current) => (current === order.id ? null : order.id));
+                        }}>更多</button>
+                        {openMenuOrderId === order.id && createPortal(
+                          <div className="fin-dropdown-menu" style={{ top: menuPosition.top, left: menuPosition.left, zIndex: 2147483647 }}>
+                            <button type="button" className="fin-dropdown-item" onClick={() => { openPayments(order); setOpenMenuOrderId(null); }}>收款記錄</button>
+                            <button type="button" className="fin-dropdown-item" onClick={() => { openReceivable(order); setOpenMenuOrderId(null); }}>設定應收</button>
+                          </div>,
+                          document.body,
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
