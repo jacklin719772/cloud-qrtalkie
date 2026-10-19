@@ -6,6 +6,7 @@ import apiClient from './apiClient';
 const emptyForm = {
   email: '',
   displayName: '',
+  organization: '',
   phoneNumber: '',
   password: '',
   status: 'active',
@@ -76,6 +77,7 @@ export default function TenantSubAdmins() {
     setForm({
       email: item.email || '',
       displayName: item.displayName || '',
+      organization: item.organization || '',
       phoneNumber: item.phoneNumber || '',
       password: '',
       status: item.status || 'active',
@@ -121,6 +123,7 @@ export default function TenantSubAdmins() {
       if (editing) {
         await apiClient.put(`/tenant/sub-admins/${editing.id}`, {
           displayName: form.displayName,
+          organization: form.organization,
           phoneNumber: form.phoneNumber,
           status: form.status,
           password: form.password || undefined,
@@ -132,6 +135,7 @@ export default function TenantSubAdmins() {
           email: form.email,
           password: form.password,
           displayName: form.displayName,
+          organization: form.organization,
           phoneNumber: form.phoneNumber,
           sipUserIds: form.sipUserIds,
         });
@@ -197,20 +201,21 @@ export default function TenantSubAdmins() {
         <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              {['登入信箱', '顯示名稱', '狀態', '管轄帳號', '最後登入', '操作'].map((label) => (
+              {['登入信箱', '顯示名稱', '所屬單位', '狀態', '管轄帳號', '最後登入', '操作'].map((label) => (
                 <th key={label} style={{ padding: '10px 14px', textAlign: 'left', color: '#e5e7eb', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', background: '#1e293b' }}>{label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{ padding: '36px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+              <tr><td colSpan="7" style={{ padding: '36px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
             ) : items.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: '36px', textAlign: 'center', color: '#6b7280' }}>暫無子管理員</td></tr>
+              <tr><td colSpan="7" style={{ padding: '36px', textAlign: 'center', color: '#6b7280' }}>暫無子管理員</td></tr>
             ) : items.map((item) => (
               <tr key={item.id} style={{ borderTop: '1px solid #1f2937' }}>
                 <td style={{ padding: '10px 14px', color: '#e5e7eb' }}>{item.email}</td>
                 <td style={{ padding: '10px 14px', color: '#d1d5db' }}>{item.displayName || '-'}</td>
+                <td style={{ padding: '10px 14px', color: '#d1d5db' }}>{item.organization || '-'}</td>
                 <td style={{ padding: '10px 14px' }}>
                   <span style={{ padding: '2px 10px', borderRadius: '999px', fontSize: '11px', background: item.status === 'active' ? '#065f46' : '#374151', color: item.status === 'active' ? '#6ee7b7' : '#9ca3af' }}>
                     {statusLabels[item.status] || item.status}
@@ -255,6 +260,11 @@ export default function TenantSubAdmins() {
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#d1d5db', fontSize: '12px' }}>
                   顯示名稱
                   <input autoComplete="off" value={form.displayName} onChange={(e) => setForm((c) => ({ ...c, displayName: e.target.value }))}
+                    style={{ height: '38px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#d1d5db', fontSize: '12px' }}>
+                  所屬單位
+                  <input autoComplete="off" value={form.organization} onChange={(e) => setForm((c) => ({ ...c, organization: e.target.value }))} maxLength={120}
                     style={{ height: '38px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#d1d5db', fontSize: '12px' }}>

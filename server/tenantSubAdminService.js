@@ -31,6 +31,9 @@ export async function ensureTenantSubAdminSchema() {
        CONSTRAINT fk_ausa_sip FOREIGN KEY (sip_user_id) REFERENCES sip_users(id) ON DELETE CASCADE
      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   );
+  await pool.query(
+    "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS organization VARCHAR(120) NULL AFTER display_name",
+  );
 }
 
 export function tenantSubAdminPermissions() {
@@ -101,7 +104,8 @@ async function replaceManagedAccounts(connection, adminUserId, tenantId, sipUser
 export async function listTenantSubAdmins(tenantId) {
   await ensureTenantSubAdminSchema();
   const rows = await pool.query(
-    `SELECT a.id, a.email, a.display_name AS displayName, a.phone_number AS phoneNumber,
+    `SELECT a.id, a.email, a.display_name AS displayName, a.organization,
+            a.phone_number AS phoneNumber,
             a.status, a.created_at AS createdAt, a.last_login_at AS lastLoginAt,
             COUNT(s.sip_user_id) AS managedCount
        FROM admin_users a
@@ -118,6 +122,7 @@ export async function listTenantSubAdmins(tenantId) {
     id: Number(row.id),
     email: row.email || "",
     displayName: row.displayName || "",
+    organization: row.organization || "",
     phoneNumber: row.phoneNumber || "",
     status: row.status || "active",
     managedCount: Number(row.managedCount || 0),
@@ -131,6 +136,7 @@ export async function createTenantSubAdmin({
   email,
   password,
   displayName = "",
+  organization = "",
   phoneNumber = "",
   sipUserIds = [],
 }) {
@@ -159,13 +165,14 @@ export async function createTenantSubAdmin({
     const passwordHash = await hashPassword(password);
     const result = await connection.query(
       `INSERT INTO admin_users
-         (tenant_id, email, password_hash, display_name, phone_number, account_type, role, permissions_json, status)
-       VALUES (?, ?, ?, ?, ?, 'tenant', 'admin', ?, 'active')`,
+         (tenant_id, email, password_hash, display_name, organization, phone_number, account_type, role, permissions_json, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'tenant', 'admin', ?, 'active')`,
       [
         tenantId,
         normalizedEmail,
         passwordHash,
         String(displayName || "").trim(),
+        String(organization || "").trim().slice(0, 120),
         String(phoneNumber || "").trim(),
         JSON.stringify(tenantSubAdminPermissions()),
       ],
@@ -186,6 +193,7 @@ export async function updateTenantSubAdmin({
   tenantId,
   adminId,
   displayName,
+  organization,
   phoneNumber,
   status,
   password,
@@ -213,6 +221,10 @@ export async function updateTenantSubAdmin({
     if (displayName !== undefined) {
       sets.push("display_name = ?");
       params.push(String(displayName || "").trim());
+    }
+    if (organization !== undefined) {
+      sets.push("organization = ?");
+      params.push(String(organization || "").trim().slice(0, 120));
     }
     if (phoneNumber !== undefined) {
       sets.push("phone_number = ?");

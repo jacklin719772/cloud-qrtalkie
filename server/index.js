@@ -2165,6 +2165,7 @@ app.post("/api/tenant/sub-admins", requireAdmin, requireTenantPrimaryAdmin, asyn
       email: request.body?.email,
       password: request.body?.password,
       displayName: request.body?.displayName,
+      organization: request.body?.organization,
       phoneNumber: request.body?.phoneNumber,
       sipUserIds: request.body?.sipUserIds,
     });
@@ -2196,6 +2197,7 @@ app.put("/api/tenant/sub-admins/:id", requireAdmin, requireTenantPrimaryAdmin, a
       tenantId: request.admin.tenantId,
       adminId,
       displayName: request.body?.displayName,
+      organization: request.body?.organization,
       phoneNumber: request.body?.phoneNumber,
       status: request.body?.status,
       password: request.body?.password,
