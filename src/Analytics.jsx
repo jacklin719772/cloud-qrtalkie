@@ -59,7 +59,7 @@ function formatTime(iso) {
 
 export default function Analytics({ tenantId, isPlatformAdmin }) {
   const isTenantView = Boolean(!isPlatformAdmin && tenantId);
-  const visibleTabs = isPlatformAdmin ? TABS : TABS.filter((tab) => tab.key !== 'callLog');
+  const visibleTabs = TABS;
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -178,7 +178,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
 
   // 「Web 呼叫日誌」分機下拉：只載入已分配的 Web 帳號（含對應 SIP 帳號）
   useEffect(() => {
-    if (!isPlatformAdmin || activeTab !== 'callLog') return;
+    if (activeTab !== 'callLog') return;
     let cancelled = false;
     (async () => {
       try {
@@ -199,7 +199,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [isPlatformAdmin, activeTab]);
+  }, [activeTab]);
 
   // 搜尋防抖
   useEffect(() => {
@@ -495,8 +495,8 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
         onSearchChange={v => setSipSearch(v)} onStatusChange={v => { setSipStatusFilter(v); setSipPage(1); }} onTenantChange={v => { setSipTenantFilter(v); setSipPage(1); }}
         page={sipPage} pageSize={sipPageSize} onPageChange={setSipPage} onPageSizeChange={v => { setSipPageSize(v); setSipPage(1); }}
         sortField={sipSortField} sortDir={sipSortDir} onSort={handleSipSort} />}
-      {/* Web 呼叫日誌 Tab（平台管理員專用） */}
-      {activeTab === 'callLog' && isPlatformAdmin && (
+      {/* Web 呼叫日誌 Tab */}
+      {activeTab === 'callLog' && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }}>

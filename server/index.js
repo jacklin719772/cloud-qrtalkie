@@ -19543,16 +19543,8 @@ function isValidDateOnly(value) {
 }
 
 async function handleWebrtcAccountCallLogsQuery(request, response) {
-  if (request.admin.accountType !== "platform") {
-    return response.status(403).json({
-      success: false,
-      message: "只有平臺管理員可以查詢 WebRTC 呼叫日誌。",
-      error: {
-        code: "WEBRTC_CALL_LOG_QUERY_FAILED",
-        message: "只有平臺管理員可以查詢 WebRTC 呼叫日誌。",
-      },
-    });
-  }
+  const isPlatform = request.admin.accountType === "platform";
+  const tenantId = request.admin.tenantId;
 
   const extension = String(request.params?.extension || request.query?.extension || "").trim();
   if (!/^\d+$/.test(extension)) {
@@ -19564,6 +19556,36 @@ async function handleWebrtcAccountCallLogsQuery(request, response) {
         message: "WebRTC 帳號必須為純數字",
       },
     });
+  }
+
+  // 租戶管理員只能查詢歸屬本租戶的 Web 帳號
+  if (!isPlatform) {
+    if (!tenantId) {
+      return response.status(403).json({ success: false, message: "無許可權查詢 WebRTC 呼叫日誌。" });
+    }
+    let ownershipConnection;
+    try {
+      ownershipConnection = await pool.getConnection();
+      const [owned] = await ownershipConnection.query(
+        `SELECT u.id
+           FROM web_users u
+           LEFT JOIN tenant_web_account_entitlements e
+             ON e.web_user_id = u.id AND e.status = 'active'
+          WHERE u.username = ?
+            AND COALESCE(e.tenant_id, u.tenant_id) = ?
+          LIMIT 1`,
+        [extension, tenantId],
+      );
+      if (!owned) {
+        return response.status(403).json({
+          success: false,
+          message: "無許可權查詢該帳號的通話記錄。",
+          error: { code: "WEBRTC_CALL_LOG_FORBIDDEN", message: "無許可權查詢該帳號的通話記錄。" },
+        });
+      }
+    } finally {
+      if (ownershipConnection) ownershipConnection.release();
+    }
   }
 
   const dateFrom = String(request.query?.dateFrom || request.query?.from || "").trim();
@@ -22133,10 +22155,12 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
   }
 
   try {
-    // Tenant filtering: override accounts param with tenant's SIP accounts
+    // 租戶隔離：只允許查詢本租戶 SIP 帳號；若指定帳號，取交集，不能藉 account 參數越權
+    let queryAccount = account;
     let queryAccounts = accounts;
     if (!isPlatform && tenantId) {
       const dbConn = await pool.getConnection();
+      let tenantUsernames = [];
       try {
         const tenantSips = await dbConn.query(
           `SELECT s.username
@@ -22147,15 +22171,31 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
               AND s.recycled_at IS NULL`,
           [tenantId],
         );
-        queryAccounts = tenantSips.map(r => r.username).join(',');
-        if (!queryAccounts) {
+        tenantUsernames = tenantSips.map((r) => String(r.username || "")).filter(Boolean);
+      } finally { dbConn.release(); }
+
+      if (!tenantUsernames.length) {
+        return response.json({ success: true, message: "Flexisip 通話記錄已取得", data: { total: 0, items: [] } });
+      }
+
+      const allowed = new Set(tenantUsernames);
+      const requested = [account, accounts]
+        .filter(Boolean)
+        .flatMap((value) => String(value).split(",").map((item) => item.trim()).filter(Boolean));
+      if (requested.length > 0) {
+        const filtered = [...new Set(requested)].filter((item) => allowed.has(item));
+        if (!filtered.length) {
           return response.json({ success: true, message: "Flexisip 通話記錄已取得", data: { total: 0, items: [] } });
         }
-      } finally { dbConn.release(); }
+        queryAccounts = filtered.join(",");
+      } else {
+        queryAccounts = tenantUsernames.join(",");
+      }
+      queryAccount = "";
     }
 
     const data = await queryFlexisipCallLogs({
-      account,
+      account: queryAccount,
       accounts: queryAccounts,
       domain,
       direction,
