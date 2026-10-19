@@ -198,7 +198,7 @@ export default function TenantSubAdmins() {
           <thead>
             <tr style={{ background: '#1e293b' }}>
               {['登入信箱', '顯示名稱', '狀態', '管轄帳號', '最後登入', '操作'].map((label) => (
-                <th key={label} style={{ padding: '10px 14px', textAlign: 'left', color: '#e5e7eb', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</th>
+                <th key={label} style={{ padding: '10px 14px', textAlign: 'left', color: '#e5e7eb', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', background: '#1e293b' }}>{label}</th>
               ))}
             </tr>
           </thead>
