@@ -356,9 +356,9 @@ export default function FinanceManagement() {
   const labelStyle = { display: 'flex', flexDirection: 'column', gap: '6px', color: '#9ca3af', fontSize: '12px' };
 
   return (
-    <section className="view active" style={{ background: '#0f172a', minHeight: '100%', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <section className="view active" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
       <style>{`
-        .fin-table-wrap { overflow: auto; max-height: calc(100dvh - 380px); scrollbar-width: thin; scrollbar-color: #374151 transparent; }
+        .fin-table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #374151 transparent; }
         .fin-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px; }
         .fin-table th { height: 48px; padding: 0 12px; text-align: left; font-size: 12px; color: #e5e7eb; background: #1e293b; border-bottom: 2px solid #2d3a4a; white-space: nowrap; position: sticky; top: 0; z-index: 2; }
         .fin-table td { height: 54px; padding: 0 12px; color: #e5e7eb; border-bottom: 1px solid #1f2937; white-space: nowrap; }
@@ -370,31 +370,28 @@ export default function FinanceManagement() {
       `}</style>
 
       {message.text && (
-        <div style={{ padding: '9px 14px', borderRadius: '8px', fontSize: '13px', background: message.type === 'error' ? '#7f1d1d' : '#065f46', color: message.type === 'error' ? '#fecaca' : '#a7f3d0' }}>
+        <div style={{ flexShrink: 0, padding: '9px 14px', borderRadius: '8px', fontSize: '13px', background: message.type === 'error' ? '#7f1d1d' : '#065f46', color: message.type === 'error' ? '#fecaca' : '#a7f3d0' }}>
           {message.text}
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+      <div style={{ flexShrink: 0, display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
         {[
-          { label: '訂單總額', value: stats.orderAmount, color: '#e5e7eb' },
-          { label: '應收總額', value: stats.receivableAmount, color: '#93c5fd' },
-          { label: '實收總額', value: stats.receivedAmount, color: '#6ee7b7' },
-          { label: '欠款總額', value: stats.outstandingAmount, color: Number(stats.outstandingAmount) > 0 ? '#fca5a5' : '#9ca3af' },
-          { label: '已開發票金額', value: stats.invoicedAmount, color: '#fcd34d' },
-        ].map((card) => (
-          <div key={card.label} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '14px 16px' }}>
-            <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>{card.label}</div>
-            <div style={{ color: card.color, fontSize: '20px', fontWeight: 700, fontFamily: 'monospace' }}>{formatMoney(card.value)}</div>
+          { label: '訂單總額', value: formatMoney(stats.orderAmount), color: '#e5e7eb' },
+          { label: '應收總額', value: formatMoney(stats.receivableAmount), color: '#93c5fd' },
+          { label: '實收總額', value: formatMoney(stats.receivedAmount), color: '#6ee7b7' },
+          { label: '欠款總額', value: formatMoney(stats.outstandingAmount), color: Number(stats.outstandingAmount) > 0 ? '#fca5a5' : '#9ca3af' },
+          { label: '已開發票金額', value: formatMoney(stats.invoicedAmount), color: '#fcd34d' },
+          { label: '訂單數', value: String(stats.orders || 0), color: '#e5e7eb' },
+        ].map((card, index) => (
+          <div key={card.label} style={{ minWidth: 0, padding: '14px 18px', borderLeft: index ? '1px solid #1f2937' : 'none' }}>
+            <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{card.label}</div>
+            <div title={card.value} style={{ color: card.color, fontSize: '20px', lineHeight: 1.1, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{card.value}</div>
           </div>
         ))}
-        <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '14px 16px' }}>
-          <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>訂單數</div>
-          <div style={{ color: '#e5e7eb', fontSize: '20px', fontWeight: 700 }}>{stats.orders}</div>
-        </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '14px 16px' }}>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', padding: '14px 16px' }}>
         <input type="search" placeholder="搜尋訂單號或租戶" value={filters.search}
           onChange={(e) => setFilters((current) => ({ ...current, search: e.target.value }))}
           style={{ ...inputStyle, width: '220px' }} />
@@ -422,7 +419,7 @@ export default function FinanceManagement() {
         </button>
       </div>
 
-      <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
         <div className="fin-table-wrap">
           <table className="fin-table">
             <thead>
@@ -459,7 +456,7 @@ export default function FinanceManagement() {
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #1f2937' }}>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #1f2937' }}>
           <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 筆訂單</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ height: '34px', padding: '0 10px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px' }}>
