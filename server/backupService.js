@@ -98,10 +98,12 @@ async function ensureBackupSchema() {
   await mkdir(BACKUP_ROOT, { recursive: true, mode: 0o700 });
 }
 
-async function listDatabases(connection) {
-  const rows = await connection.query("SHOW DATABASES");
-  return rows
-    .map((row) => row.Database || row.database || Object.values(row)[0])
+async function listDatabases() {
+  // 以 root 的 unix socket 權限列出全部資料庫；池連線只有業務庫權限
+  const { stdout } = await run("mariadb", ["-N", "-B", "-e", "SHOW DATABASES"]);
+  return stdout
+    .split(/\r?\n/)
+    .map((name) => name.trim())
     .filter((name) => name && !SYSTEM_DATABASES.has(name));
 }
 
@@ -185,7 +187,7 @@ async function runBackupJob(record) {
     await mkdir(configsDir, { recursive: true });
     connection = await pool.getConnection();
 
-    const databases = await listDatabases(connection);
+    const databases = await listDatabases();
     for (const database of databases) {
       await dumpDatabase(connection, database, path.join(databasesDir, `${database}.sql.gz`));
     }
