@@ -356,7 +356,7 @@ export default function FinanceManagement() {
   const labelStyle = { display: 'flex', flexDirection: 'column', gap: '6px', color: '#9ca3af', fontSize: '12px' };
 
   return (
-    <section className="view active" style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
+    <section className="view active" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
       <style>{`
         .fin-table-wrap { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #374151 transparent; }
         .fin-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px; }
