@@ -181,7 +181,8 @@ export default function TenantDashboard({ onNavigate }) {
   }, [d.ecards?.list, ecardSortKey, ecardSortDir]);
 
   const accountQuota = Number(d.plan?.accountQuantity || 0);
-  const accountUsed = Number(d.accounts?.total || 0);
+  const accountUsed = Number(d.accounts?.subscriptionTotal ?? d.accounts?.total ?? 0);
+  const trialUsed = Number(d.accounts?.trialActive || 0);
   const quotaPercent = accountQuota > 0 ? Math.min(100, Math.round((accountUsed / accountQuota) * 100)) : 0;
   const overQuota = accountQuota > 0 && accountUsed > accountQuota;
 
@@ -334,11 +335,12 @@ export default function TenantDashboard({ onNavigate }) {
               </div>
               {d.plan ? (
                 <div className="td-meta">
-                  帳號配額：{accountUsed} / {accountQuota || '-'}<br />
+                  訂閱帳號配額：{accountUsed} / {accountQuota || '-'}<br />
                   <div className="td-progress">
                     <div className={`td-bar ${overQuota ? 'orange' : ''}`} style={{ width: `${quotaPercent}%` }} />
                   </div>
                   {overQuota && <div className="td-small" style={{ color: '#f59e0b', marginTop: 4 }}>已超出套餐帳號配額</div>}
+                  {trialUsed > 0 && <div className="td-small" style={{ marginTop: 4 }}>另有試用帳號 {trialUsed} 個（不計入配額）</div>}
                   增值服務：{d.plan.addonNames || '-'}<br />
                   金額：${(d.plan.payableAmount ?? 0).toFixed(2)}<br />
                   付款時間：{d.plan.paymentDate || '-'}<br />
@@ -379,7 +381,11 @@ export default function TenantDashboard({ onNavigate }) {
           <h2 className="td-section-title"><span className="td-num">3</span>已分配帳號 <button className="td-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate?.('tenant-account-management')}>訂閱帳號管理</button></h2>
           <div className="td-card" style={{ padding: 18 }}>
             <div className="td-metrics-6">
-              <div className="td-metric small"><div className="td-m-label">總帳號數</div><div className="td-m-value">{Number(d.accounts.total).toLocaleString()}</div></div>
+              <div className="td-metric small">
+                <div className="td-m-label">總帳號數</div>
+                <div className="td-m-value">{Number(d.accounts.total).toLocaleString()}</div>
+                <div className="td-m-sub">訂閱 {Number(d.accounts.subscriptionTotal ?? d.accounts.total)} · 試用 {Number(d.accounts.trialActive || 0)}</div>
+              </div>
               <div className="td-metric small green"><div className="td-m-label">啟用中</div><div className="td-m-value">{Number(d.accounts.enabled).toLocaleString()}</div></div>
               <div className="td-metric small orange"><div className="td-m-label">已過期</div><div className="td-m-value">{Number(d.accounts.expired).toLocaleString()}</div></div>
               <div className="td-metric small purple"><div className="td-m-label">7 天內到期</div><div className="td-m-value">{Number(d.accounts.expiring).toLocaleString()}</div></div>
@@ -418,8 +424,11 @@ export default function TenantDashboard({ onNavigate }) {
                   {sortedList.length === 0 ? (
                     <tr><td colSpan="8" style={{ textAlign: 'center', color: '#94a3b8' }}>暫無數據</td></tr>
                   ) : sortedList.map((a) => (
-                    <tr key={a.id}>
-                      <td style={{ fontFamily: 'monospace' }}>{a.username}</td>
+                    <tr key={a.isTrial ? `trial-${a.id}` : a.id}>
+                      <td style={{ fontFamily: 'monospace' }}>
+                        {a.username}
+                        {a.isTrial && <span className="td-tag warn" style={{ marginLeft: 6, fontSize: 10 }}>試用</span>}
+                      </td>
                       <td>{a.displayName || '-'}</td>
                       <td>{a.email || '-'}</td>
                       <td>{a.phone || '-'}</td>

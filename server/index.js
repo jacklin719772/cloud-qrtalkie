@@ -21995,7 +21995,7 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
         syncStatus: row.sync_status || 'local_only',
       });
     }
-    const sipAccountSummary = {
+    const formalAccountSummary = {
       total: accountList.length,
       enabled: accountList.filter((a) => a.status === 'active').length,
       expired: accountList.filter((a) => a.status === 'expired').length,
@@ -22011,7 +22011,7 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
     // 試用帳號（帳號掛在保留試用租戶，歸屬看 owner_tenant_id）
     const [trialSummary] = await connection.query(
       `SELECT COUNT(*) AS total,
-              SUM(status = 'active') AS active,
+              SUM(status = 'active' AND expires_at > DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS active,
               SUM(status = 'active' AND expires_at >= CURDATE() AND expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS expiring,
               SUM(status = 'active' AND expires_at < CURDATE()) AS grace,
               SUM(status = 'paused') AS paused,
@@ -22027,6 +22027,51 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
        ORDER BY ta.expires_at ASC, ta.id ASC LIMIT 5`,
       [tenantId]
     );
+    const trialActiveRows = await connection.query(
+      `SELECT ta.id AS trial_id, ta.sip_user_id,
+              DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_at,
+              ta.contact_name, ta.contact_email, ta.contact_phone,
+              u.username, u.display_name, u.email, u.phone_number, u.sync_status
+       FROM trial_assignments ta
+       JOIN sip_users u ON u.id = ta.sip_user_id
+       WHERE ta.owner_tenant_id = ? AND ta.status = 'active' AND ta.expires_at >= CURDATE()
+       ORDER BY ta.expires_at ASC, ta.id ASC`,
+      [tenantId]
+    );
+    const trialActiveAccounts = trialActiveRows.map((row) => ({
+      id: Number(row.trial_id),
+      sipUserId: Number(row.sip_user_id),
+      username: row.username || '',
+      displayName: row.display_name || row.contact_name || '',
+      email: row.email || row.contact_email || '',
+      phone: row.phone_number || row.contact_phone || '',
+      status: 'active',
+      entitlementStatus: 'trial',
+      expiresAt: row.expires_at || null,
+      expiring: Boolean(row.expires_at && row.expires_at <= sevenDaysLater),
+      webAccount: '-',
+      contactBook: '-',
+      syncStatus: row.sync_status || 'local_only',
+      isTrial: true,
+    }));
+    const trialGraceCount = Number(trialSummary?.grace || 0);
+    const combinedAccountList = [...formalAccountSummary.list, ...trialActiveAccounts];
+    const sipAccountSummary = {
+      total: formalAccountSummary.total + trialActiveAccounts.length,
+      enabled: formalAccountSummary.enabled + trialActiveAccounts.length,
+      expired: formalAccountSummary.expired + trialGraceCount,
+      expiring: formalAccountSummary.expiring + trialActiveAccounts.filter((a) => a.expiring).length,
+      disabled: formalAccountSummary.disabled,
+      noDisplayName: combinedAccountList.filter((a) => !a.displayName || a.displayName === a.username).length,
+      noEmail: combinedAccountList.filter((a) => !a.email).length,
+      syncAnomaly: combinedAccountList.filter((a) => a.syncStatus && a.syncStatus !== 'active').length,
+      subscriptionTotal: formalAccountSummary.total,
+      subscriptionEnabled: formalAccountSummary.enabled,
+      trialActive: trialActiveAccounts.length,
+      trialExpiring: trialActiveAccounts.filter((a) => a.expiring).length,
+      limit: formalAccountSummary.limit,
+      list: combinedAccountList,
+    };
 
     // 電子名片：與 /api/tenant/ecard-accounts 同一帳號範圍（含試用帳號）
     const ecardRows = await connection.query(
@@ -22217,8 +22262,8 @@ app.get("/api/tenant/dashboard", requireAdmin, async (request, response) => {
       const daysLeft = Math.max(0, Math.ceil((new Date(plan.expires_at + 'T00:00:00') - new Date()) / 86400000));
       if (daysLeft <= 7) todos.push({ type: 'plan', text: `套餐將在 ${daysLeft} 天後到期（${plan.expires_at}）`, severity: 'warning', view: 'domain' });
     }
-    if (sipAccountSummary.expired > 0) todos.push({ type: 'account', text: `${sipAccountSummary.expired} 個帳號已過期，服務已停止`, severity: 'error', view: 'tenant-account-management' });
-    if (sipAccountSummary.expiring > 0) todos.push({ type: 'account', text: `${sipAccountSummary.expiring} 個帳號將在 7 天內到期`, severity: 'warning', view: 'tenant-account-management' });
+    if (formalAccountSummary.expired > 0) todos.push({ type: 'account', text: `${formalAccountSummary.expired} 個帳號已過期，服務已停止`, severity: 'error', view: 'tenant-account-management' });
+    if (formalAccountSummary.expiring > 0) todos.push({ type: 'account', text: `${formalAccountSummary.expiring} 個帳號將在 7 天內到期`, severity: 'warning', view: 'tenant-account-management' });
     if (sipAccountSummary.syncAnomaly > 0) todos.push({ type: 'account', text: `${sipAccountSummary.syncAnomaly} 個帳號同步異常，請檢查 AM 狀態`, severity: 'warning', view: 'tenant-account-management' });
     if (ecardSummary.expiring > 0) todos.push({ type: 'ecard', text: `${ecardSummary.expiring} 張電子名片將在 7 天內到期`, severity: 'warning', view: 'ecard-styles-management' });
     if (Number(trialSummary?.expiring || 0) > 0) todos.push({ type: 'trial', text: `${Number(trialSummary.expiring)} 個試用帳號將在 7 天內到期`, severity: 'warning', view: 'trial-management' });
