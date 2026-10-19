@@ -28,6 +28,18 @@ const emptyPaymentForm = {
   notes: '',
 };
 
+const emptyInvoiceForm = {
+  paymentId: '',
+  invoiceNo: '',
+  invoiceCode: '',
+  invoiceDate: '',
+  invoiceAmount: '',
+  invoiceDataUrl: '',
+  invoiceFileName: '',
+  existingInvoiceFile: '',
+  removeInvoice: false,
+};
+
 const emptyFilters = {
   search: '',
   tenantId: '',
@@ -120,6 +132,11 @@ export default function FinanceManagement() {
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
   const [savingPayment, setSavingPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState(null);
+  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
+  const [invoiceEditing, setInvoiceEditing] = useState(false);
+  const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState(null);
   const [openMenuOrderId, setOpenMenuOrderId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const requestIdRef = useRef(0);
@@ -260,17 +277,23 @@ export default function FinanceManagement() {
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
     setPaymentForm(emptyPaymentForm);
+    setInvoiceFormOpen(false);
+    setInvoiceEditing(false);
+    setInvoiceForm(emptyInvoiceForm);
     await loadPayments(order.id);
   };
 
   const closePayments = () => {
-    if (savingPayment) return;
+    if (savingPayment || savingInvoice) return;
     setPaymentModalOrder(null);
     setPaymentModalMode('payments');
     setPayments([]);
     setPaymentStats(null);
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
+    setInvoiceFormOpen(false);
+    setInvoiceEditing(false);
+    setInvoiceForm(emptyInvoiceForm);
   };
 
   const startCreatePayment = () => {
@@ -279,10 +302,124 @@ export default function FinanceManagement() {
     setPaymentFormOpen(true);
   };
 
-  const startCreateInvoicePayment = () => {
+  const openInvoiceCreate = () => {
+    const eligible = payments.filter((payment) => !payment.invoiced);
+    if (!eligible.length) {
+      showMessage('error', '請先在收款日誌新增收款記錄。');
+      return;
+    }
+    setPaymentFormOpen(false);
     setEditingPaymentId(null);
-    setPaymentForm({ ...emptyPaymentForm, currency: paymentModalOrder?.currency || '', paymentDate: todayString(), invoiced: true });
-    setPaymentFormOpen(true);
+    setInvoiceEditing(false);
+    setInvoiceForm({
+      ...emptyInvoiceForm,
+      paymentId: String(eligible[0].id),
+      invoiceDate: todayString(),
+    });
+    setInvoiceFormOpen(true);
+  };
+
+  const openInvoiceEdit = (payment) => {
+    setPaymentFormOpen(false);
+    setEditingPaymentId(null);
+    setInvoiceEditing(true);
+    setInvoiceForm({
+      paymentId: String(payment.id),
+      invoiceNo: payment.invoiceNo || '',
+      invoiceCode: payment.invoiceCode || '',
+      invoiceDate: payment.invoiceDate || '',
+      invoiceAmount: payment.invoiceAmount == null ? '' : String(payment.invoiceAmount),
+      invoiceDataUrl: '',
+      invoiceFileName: '',
+      existingInvoiceFile: payment.invoiceFile || '',
+      removeInvoice: false,
+    });
+    setInvoiceFormOpen(true);
+  };
+
+  const closeInvoiceForm = () => {
+    if (savingInvoice) return;
+    setInvoiceFormOpen(false);
+    setInvoiceEditing(false);
+    setInvoiceForm(emptyInvoiceForm);
+  };
+
+  const handleInvoiceFile = (file) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showMessage('error', '檔案大小需小於 10MB。');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setInvoiceForm((current) => ({
+        ...current,
+        invoiceDataUrl: String(reader.result || ''),
+        invoiceFileName: file.name,
+        removeInvoice: false,
+      }));
+    };
+    reader.onerror = () => showMessage('error', '讀取檔案失敗。');
+    reader.readAsDataURL(file);
+  };
+
+  const clearInvoiceFile = () => {
+    setInvoiceForm((current) => ({
+      ...current,
+      invoiceDataUrl: '',
+      invoiceFileName: '',
+      removeInvoice: Boolean(current.existingInvoiceFile) || current.removeInvoice,
+    }));
+  };
+
+  const saveInvoice = async () => {
+    if (!paymentModalOrder) return;
+    const paymentId = Number(invoiceForm.paymentId);
+    if (!paymentId) {
+      showMessage('error', '請選擇收款記錄。');
+      return;
+    }
+    const invoiceAmount = Number(invoiceForm.invoiceAmount);
+    if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      showMessage('error', '發票金額必須大於 0。');
+      return;
+    }
+    setSavingInvoice(true);
+    try {
+      await apiClient.put(`/platform/finance/payments/${paymentId}/invoice`, {
+        invoiceNo: invoiceForm.invoiceNo,
+        invoiceCode: invoiceForm.invoiceCode,
+        invoiceDate: invoiceForm.invoiceDate,
+        invoiceAmount,
+        invoiceDataUrl: invoiceForm.invoiceDataUrl || undefined,
+        removeInvoice: invoiceForm.removeInvoice === true,
+      });
+      showMessage('success', '開票記錄已儲存。');
+      setInvoiceFormOpen(false);
+      setInvoiceEditing(false);
+      setInvoiceForm(emptyInvoiceForm);
+      await loadPayments(paymentModalOrder.id);
+      await loadOrders({ silent: true });
+    } catch (error) {
+      showMessage('error', error?.message || '儲存開票記錄失敗。');
+    } finally {
+      setSavingInvoice(false);
+    }
+  };
+
+  const deleteInvoice = async (payment) => {
+    if (!window.confirm(`確定刪除 ${payment.invoiceDate || ''} 的開票記錄（${payment.invoiceNo || '-'}）？收款記錄會保留。`)) return;
+    setDeletingInvoiceId(payment.id);
+    try {
+      await apiClient.delete(`/platform/finance/payments/${payment.id}/invoice`);
+      showMessage('success', '開票記錄已刪除。');
+      await loadPayments(paymentModalOrder.id);
+      await loadOrders({ silent: true });
+    } catch (error) {
+      showMessage('error', error?.message || '刪除開票記錄失敗。');
+    } finally {
+      setDeletingInvoiceId(null);
+    }
   };
 
   const startEditPayment = (payment) => {
@@ -359,7 +496,7 @@ export default function FinanceManagement() {
       showMessage('error', '收款金額必須大於 0。');
       return;
     }
-    const effectiveInvoiced = paymentModalMode === 'invoices' ? true : paymentForm.invoiced;
+    const effectiveInvoiced = paymentForm.invoiced;
     if (effectiveInvoiced) {
       const invoiceAmount = Number(paymentForm.invoiceAmount);
       if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
@@ -427,6 +564,7 @@ export default function FinanceManagement() {
   const uploadBtnStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', color: '#d1d5db', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' };
   const voucherDisplayName = paymentForm.removeVoucher ? '' : (paymentForm.voucherFileName || fileNameFromUrl(paymentForm.existingVoucherFile));
   const invoiceDisplayName = paymentForm.removeInvoice ? '' : (paymentForm.invoiceFileName || fileNameFromUrl(paymentForm.existingInvoiceFile));
+  const invoiceFileDisplayName = invoiceForm.removeInvoice ? '' : (invoiceForm.invoiceFileName || fileNameFromUrl(invoiceForm.existingInvoiceFile));
 
   return (
     <section className="view active" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
@@ -658,7 +796,7 @@ export default function FinanceManagement() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="fin-btn" onClick={paymentModalMode === 'invoices' ? startCreateInvoicePayment : startCreatePayment}>
+                <button type="button" className="fin-btn" onClick={paymentModalMode === 'invoices' ? openInvoiceCreate : startCreatePayment}>
                   <Plus size={13} /> {paymentModalMode === 'invoices' ? '新增開票記錄' : '新增收款'}
                 </button>
                 <button type="button" className="fin-btn" onClick={closePayments} disabled={savingPayment}>關閉</button>
@@ -700,7 +838,10 @@ export default function FinanceManagement() {
                             <td>{payment.invoiceFile ? <a href={fileUrl(payment.invoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>查看</a> : '-'}</td>
                             <td style={{ color: '#9ca3af', fontSize: '12px' }}>{payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}</td>
                             <td>
-                              <button type="button" className="fin-btn" onClick={() => startEditPayment(payment)}><Pencil size={12} /> 編輯</button>
+                              <button type="button" className="fin-btn" onClick={() => openInvoiceEdit(payment)}><Pencil size={12} /> 編輯</button>
+                              <button type="button" className="fin-btn danger" onClick={() => deleteInvoice(payment)} disabled={deletingInvoiceId === payment.id} style={{ marginLeft: '6px' }}>
+                                <Trash2 size={12} /> {deletingInvoiceId === payment.id ? '刪除中...' : '刪除'}
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -739,13 +880,56 @@ export default function FinanceManagement() {
                 </div>
               )}
 
-              {paymentFormOpen && (
+              {paymentModalMode === 'invoices' && invoiceFormOpen && (
                 <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>
-                    {editingPaymentId
-                      ? (paymentModalMode === 'invoices' ? '編輯開票記錄' : '編輯收款記錄')
-                      : (paymentModalMode === 'invoices' ? '新增開票記錄' : '新增收款記錄')}
-                  </h4>
+                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{invoiceEditing ? '編輯開票記錄' : '新增開票記錄'}</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                    <label style={labelStyle}>收款記錄 *
+                      <select value={invoiceForm.paymentId} disabled={invoiceEditing}
+                        onChange={(e) => setInvoiceForm((c) => ({ ...c, paymentId: e.target.value }))}
+                        style={{ ...inputStyle, cursor: invoiceEditing ? 'default' : 'pointer' }}>
+                        <option value="">選擇收款記錄</option>
+                        {payments.map((payment) => (
+                          <option key={payment.id} value={payment.id} disabled={!invoiceEditing && payment.invoiced}>
+                            {payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}{payment.invoiced ? '（已開票）' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={labelStyle}>發票號碼（票面唯一號碼）<input value={invoiceForm.invoiceNo} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
+                    <label style={labelStyle}>發票代碼（地區/類型代碼）<input value={invoiceForm.invoiceCode} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>
+                    <label style={labelStyle}>開具日期
+                      <input className="fin-form-date" type="date" value={invoiceForm.invoiceDate} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'light' }} />
+                    </label>
+                    <label style={labelStyle}>發票金額 *<input type="number" min="0" step="0.01" value={invoiceForm.invoiceAmount} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceAmount: e.target.value }))} style={inputStyle} /></label>
+                    <div style={labelStyle}>
+                      發票檔案（PNG/JPG/WEBP/PDF）
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input readOnly value={invoiceFileDisplayName} placeholder="未上傳檔案" title={invoiceFileDisplayName} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                        <label style={uploadBtnStyle}>
+                          <Upload size={14} /> 上傳
+                          <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" style={{ display: 'none' }} onChange={(e) => handleInvoiceFile(e.target.files?.[0])} />
+                        </label>
+                        <button type="button" onClick={clearInvoiceFile} disabled={!invoiceFileDisplayName}
+                          style={{ ...uploadBtnStyle, color: invoiceFileDisplayName ? '#fca5a5' : '#6b7280', borderColor: invoiceFileDisplayName ? '#7f1d1d' : '#374151', cursor: invoiceFileDisplayName ? 'pointer' : 'not-allowed', opacity: invoiceFileDisplayName ? 1 : 0.5 }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      {invoiceForm.existingInvoiceFile && !invoiceForm.removeInvoice && !invoiceForm.invoiceFileName && (
+                        <a href={fileUrl(invoiceForm.existingInvoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', fontSize: '11px' }}>查看現有發票</a>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px' }}>
+                    <button type="button" className="fin-btn" onClick={closeInvoiceForm} disabled={savingInvoice}>取消</button>
+                    <button type="button" className="fin-btn" onClick={saveInvoice} disabled={savingInvoice} style={{ background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}>{savingInvoice ? '儲存中...' : '儲存開票記錄'}</button>
+                  </div>
+                </div>
+              )}
+
+              {paymentFormOpen && paymentModalMode === 'payments' && (
+                <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
+                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{editingPaymentId ? '編輯收款記錄' : '新增收款記錄'}</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                     <label style={labelStyle}>收款日期 *
                       <input className="fin-form-date" type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm((c) => ({ ...c, paymentDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'light' }} />
@@ -781,10 +965,10 @@ export default function FinanceManagement() {
                       )}
                     </div>
                     <label style={{ ...labelStyle, gridColumn: '1 / -1', flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '4px' }}>
-                      <input type="checkbox" checked={paymentModalMode === 'invoices' ? true : paymentForm.invoiced} disabled={paymentModalMode === 'invoices'} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiced: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
+                      <input type="checkbox" checked={paymentForm.invoiced} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiced: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
                       已開具發票
                     </label>
-                    {(paymentForm.invoiced || paymentModalMode === 'invoices') && (
+                    {paymentForm.invoiced && (
                       <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', borderTop: '1px solid #1f2937', paddingTop: '12px' }}>
                         <label style={labelStyle}>發票號碼（票面唯一號碼）<input value={paymentForm.invoiceNo} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
                         <label style={labelStyle}>發票代碼（地區/類型代碼）<input value={paymentForm.invoiceCode} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>

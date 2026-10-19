@@ -19757,8 +19757,7 @@ app.put("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin
   }
 });
 
-app.delete("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {
-  const paymentId = Number(request.params.id);
+app.delete("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {  const paymentId = Number(request.params.id);
   if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
   try {
     const [payment] = await pool.query(
@@ -19773,6 +19772,77 @@ app.delete("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAd
   } catch (error) {
     console.error("Failed to delete finance payment:", error);
     return response.status(500).json({ message: "刪除收款記錄失敗。" });
+  }
+});
+
+app.put("/api/platform/finance/payments/:id/invoice", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const paymentId = Number(request.params.id);
+  if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
+  try {
+    const [existing] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ? LIMIT 1", [paymentId]);
+    if (!existing) return response.status(404).json({ message: "收款記錄不存在。" });
+    const payload = request.body || {};
+    const invoiceAmount = Number(payload.invoiceAmount);
+    if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+      return response.status(400).json({ message: "發票金額必須大於 0。" });
+    }
+    const invoiceDate = String(payload.invoiceDate || "").trim();
+    if (invoiceDate && !isValidDateOnly(invoiceDate)) {
+      return response.status(400).json({ message: "發票開具日期格式不正確。" });
+    }
+    let invoiceFile = existing.invoice_file || "";
+    if (payload.invoiceDataUrl) {
+      const nextFile = await saveFinanceFile(payload.invoiceDataUrl, {
+        orderId: Number(existing.order_id),
+        prefix: "invoice",
+      });
+      if (invoiceFile && invoiceFile !== nextFile) await deleteFinanceFile(invoiceFile);
+      invoiceFile = nextFile;
+    } else if (payload.removeInvoice === true) {
+      await deleteFinanceFile(invoiceFile);
+      invoiceFile = "";
+    }
+    await pool.query(
+      `UPDATE order_payment_logs
+          SET invoiced = 1, invoice_no = ?, invoice_code = ?, invoice_date = ?,
+              invoice_amount = ?, invoice_file = ?
+        WHERE id = ?`,
+      [
+        sanitizeString(payload.invoiceNo, 120),
+        sanitizeString(payload.invoiceCode, 120),
+        invoiceDate || null,
+        invoiceAmount.toFixed(2),
+        invoiceFile,
+        paymentId,
+      ],
+    );
+    const [row] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ?", [paymentId]);
+    return response.json({ success: true, payment: mapFinancePayment(row) });
+  } catch (error) {
+    const status = error instanceof FinanceError ? error.statusCode : 500;
+    if (!(error instanceof FinanceError)) console.error("Failed to save finance invoice:", error);
+    return response.status(status).json({ message: error?.message || "儲存開票記錄失敗。" });
+  }
+});
+
+app.delete("/api/platform/finance/payments/:id/invoice", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const paymentId = Number(request.params.id);
+  if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
+  try {
+    const [existing] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ? LIMIT 1", [paymentId]);
+    if (!existing) return response.status(404).json({ message: "收款記錄不存在。" });
+    await deleteFinanceFile(existing.invoice_file);
+    await pool.query(
+      `UPDATE order_payment_logs
+          SET invoiced = 0, invoice_no = '', invoice_code = '', invoice_date = NULL,
+              invoice_amount = NULL, invoice_file = ''
+        WHERE id = ?`,
+      [paymentId],
+    );
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete finance invoice:", error);
+    return response.status(500).json({ message: "刪除開票記錄失敗。" });
   }
 });
 
