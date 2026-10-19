@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
 
@@ -17,6 +17,19 @@ const statusBadge = (s) => {
     not_found: { bg: '#1f2937', color: '#6b7280', text: '不存在' },
   };
   const style = map[s] || map.unknown;
+  return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: style.bg, color: style.color }}>{style.text}</span>;
+};
+
+const userStatusBadge = (s) => {
+  const map = {
+    active: { bg: '#065f46', color: '#6ee7b7', text: '正常' },
+    pending: { bg: '#78350f', color: '#fcd34d', text: '待啟用' },
+    inactive: { bg: '#1f2937', color: '#9ca3af', text: '未啟用' },
+    disabled: { bg: '#7f1d1d', color: '#fca5a5', text: '已停用' },
+    expired: { bg: '#7f1d1d', color: '#fca5a5', text: '已過期' },
+    rejected: { bg: '#7f1d1d', color: '#fca5a5', text: '已拒絕' },
+  };
+  const style = map[s] || map.inactive;
   return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: style.bg, color: style.color }}>{style.text}</span>;
 };
 
@@ -79,11 +92,28 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
   const [sipLastFetchAt, setSipLastFetchAt] = useState(null);
 
   const [accounts, setAccounts] = useState([]);
-  const [statusMap, setStatusMap] = useState({});
+  const [webRows, setWebRows] = useState([]);
+  const [webTotal, setWebTotal] = useState(0);
+  const [webStats, setWebStats] = useState({ total: 0, online: 0, offline: 0, unknown: 0, notFound: 0, assigned: 0, unassigned: 0 });
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [webError, setWebError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastFetchAt, setLastFetchAt] = useState(null);
+  const webRequestIdRef = useRef(0);
+  const webErrorTimerRef = useRef(null);
 
+  const showWebError = useCallback((text) => {
+    setWebError(text);
+    if (webErrorTimerRef.current) clearTimeout(webErrorTimerRef.current);
+    webErrorTimerRef.current = setTimeout(() => setWebError(''), 6000);
+  }, []);
+
+  useEffect(() => () => {
+    if (webErrorTimerRef.current) clearTimeout(webErrorTimerRef.current);
+  }, []);
+
+  // 「Web 呼叫日誌」分機下拉仍需要完整帳號清單，僅載入一次
   const fetchAccounts = useCallback(async () => {
     try {
       const res = await apiClient.get('/admin/web-accounts');
@@ -93,48 +123,55 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
     } catch { return []; }
   }, []);
 
-  const fetchStatuses = useCallback(async (accList, silent) => {
-    const exts = accList.map(a => a.username).filter(e => /^\d+$/.test(e));
-    if (!exts.length) return;
-    try {
-      const statusRes = await apiClient.get(`/pbx/webrtc-accounts/status?extensions=${exts.join(',')}`);
-      const items = statusRes.data?.items || [];
-      const map = {};
-      for (const it of items) { map[it.extension] = it; }
+  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
 
-      // Batch presence for lastSeenAt
-      try {
-        const presRes = await apiClient.get(`/pbx/webrtc-accounts/presence?extensions=${exts.join(',')}`);
-        const presItems = presRes.data?.items || presRes?.data?.items || [];
-        for (const p of presItems) {
-          if (map[p.extension]) {
-            map[p.extension].lastSeenAt = p.lastSeenAt || null;
-            map[p.extension].onlineAt = p.onlineAt || null;
-            map[p.extension].presenceStatus = p.status;
-          }
-        }
-      } catch {}
-      setStatusMap(map);
-    } catch {}
-  }, []);
-
-  const loadData = useCallback(async (silent) => {
-    if (!silent) setIsLoading(true); else setIsRefreshing(true);
-    const accList = await fetchAccounts();
-    await fetchStatuses(accList, silent);
-    setLastFetchAt(new Date().toISOString());
-    setIsLoading(false);
-    setIsRefreshing(false);
-  }, [fetchAccounts, fetchStatuses]);
-
-  // Initial load
-  useEffect(() => { loadData(false); }, [loadData]);
-
-  // Auto-refresh every 30s
+  // 搜尋防抖
   useEffect(() => {
-    const timer = setInterval(() => loadData(true), 30000);
+    const timer = setTimeout(() => {
+      setAppliedSearch(searchKeyword.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchKeyword]);
+
+  const loadWebAccounts = useCallback(async ({ silent = false, live = false } = {}) => {
+    const requestId = ++webRequestIdRef.current;
+    if (silent) setIsRefreshing(true); else setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(currentPage),
+        pageSize: pageSize === '全部' ? 'all' : String(pageSize),
+        status: statusFilter,
+        assign: isTenantView ? 'all' : assignFilter,
+      });
+      if (appliedSearch) params.set('search', appliedSearch);
+      if (live) params.set('live', '1');
+      const res = await apiClient.get(`/analytics/web-accounts?${params.toString()}`);
+      if (requestId !== webRequestIdRef.current) return;
+      const payload = res?.data || {};
+      setWebRows(Array.isArray(payload.items) ? payload.items : []);
+      setWebTotal(Number(payload.total || 0));
+      setWebStats(payload.stats || { total: 0, online: 0, offline: 0, unknown: 0, notFound: 0, assigned: 0, unassigned: 0 });
+      setLastFetchAt(new Date().toISOString());
+      setWebError('');
+    } catch (err) {
+      if (requestId !== webRequestIdRef.current) return;
+      showWebError(err?.data?.message || err?.message || '讀取 Web 帳號狀態失敗。');
+    } finally {
+      if (requestId === webRequestIdRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    }
+  }, [currentPage, pageSize, statusFilter, assignFilter, appliedSearch, isTenantView, showWebError]);
+
+  useEffect(() => { loadWebAccounts(); }, [loadWebAccounts]);
+
+  // 自動刷新：presence 輪詢結果（每 30 秒）
+  useEffect(() => {
+    const timer = setInterval(() => loadWebAccounts({ silent: true }), 30000);
     return () => clearInterval(timer);
-  }, [loadData]);
+  }, [loadWebAccounts]);
 
   // SIP data
   const loadSipData = useCallback(async (silent) => {
@@ -178,52 +215,14 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
 
   useEffect(() => { loadSipData(false); }, [loadSipData]);
 
-  const data = useMemo(() => {
-    let list = accounts.map(acc => {
-      const st = statusMap[acc.username] || {};
-      return {
-        id: acc.id,
-        extension: acc.username,
-        displayName: acc.displayName || '',
-        sipAccount: `${acc.username}@${acc.domain || 'pbx.qrtalkie.org'}`,
-        tenantName: acc.tenantName || null,
-        tenantId: acc.tenantId || null,
-        assigned: Boolean(acc.tenantName),
-        status: st.status || st.presenceStatus || 'unknown',
-        statusText: st.statusText || '未知',
-        transport: st.transport || '-',
-        channelCount: typeof st.channelCount === 'number' ? st.channelCount : 0,
-        lastSeen: st.lastSeenAt || st.lastSeen || null,
-      };
-    });
-    if (isTenantView) {
-      list = list.filter(a => a.tenantId === tenantId);
-    }
-    return list;
-  }, [accounts, statusMap, isTenantView, tenantId]);
-
-  const filtered = useMemo(() => {
-    let list = data;
-    if (searchKeyword.trim()) {
-      const kw = searchKeyword.trim().toLowerCase();
-      list = list.filter(a => a.extension.includes(kw) || a.displayName.toLowerCase().includes(kw));
-    }
-    if (statusFilter !== 'all') list = list.filter(a => a.status === statusFilter);
-    if (assignFilter !== 'all') list = list.filter(a => assignFilter === 'assigned' ? a.assigned : !a.assigned);
-    return list;
-  }, [data, searchKeyword, statusFilter, assignFilter]);
-
-  const effectivePageSize = pageSize === '全部' ? filtered.length : Number(pageSize);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / effectivePageSize));
+  const effectivePageSize = pageSize === '全部' ? Math.max(webTotal, 1) : Number(pageSize);
+  const totalPages = Math.max(1, Math.ceil(webTotal / effectivePageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const paginated = filtered.slice((safePage - 1) * effectivePageSize, safePage * effectivePageSize);
+  const paginated = webRows;
 
-  const stats = useMemo(() => ({
-    total: data.length,
-    online: data.filter(a => a.status === 'online').length,
-    offline: data.filter(a => a.status === 'offline').length,
-    unknown: data.filter(a => !['online', 'offline'].includes(a.status)).length,
-  }), [data]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   return (
     <section className="view active" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
@@ -251,7 +250,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
             })()
           )}
           {(activeTab === 'web' || activeTab === 'sip') && (
-          <button onClick={() => activeTab === 'web' ? loadData(true) : loadSipData(true)} title="手動重新整理"
+          <button onClick={() => activeTab === 'web' ? loadWebAccounts({ silent: true, live: true }) : loadSipData(true)} title="手動重新整理"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '6px', background: '#1f2937', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px', cursor: 'pointer' }}>
             <RefreshCw size={14} style={{ animation: activeTab === 'web' ? (isRefreshing ? 'spin 1s linear infinite' : 'none') : (isSipRefreshing ? 'spin 1s linear infinite' : 'none') }} />
             刷新
@@ -263,6 +262,11 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       {/* 内容区 */}
       {activeTab === 'web' && (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
+        {webError && (
+          <div style={{ flexShrink: 0, padding: '9px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '12px', background: '#7f1d1d', color: '#fecaca' }}>
+            {webError}
+          </div>
+        )}
         {/* 工具栏 */}
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '0 1 auto', minWidth: 0 }}>
@@ -277,6 +281,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
               <option value="online">在線</option>
               <option value="offline">離線</option>
               <option value="unknown">未知</option>
+              <option value="not_found">不存在</option>
             </select>
             {isTenantView ? (
               <span style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#6b7280', fontSize: '12px', display: 'inline-flex', alignItems: 'center' }}>全部帳號（已分配至本租戶）</span>
@@ -290,10 +295,11 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{stats.total}</strong></span>
-            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{stats.online}</strong></span>
-            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{stats.offline}</strong></span>
-            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{stats.unknown}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>全部 <strong style={{ color: '#e5e7eb' }}>{webStats.total}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#065f46', border: '1px solid #059669', color: '#6ee7b7', fontSize: '12px' }}>在線 <strong>{webStats.online}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1a2332', border: '1px solid #374151', color: '#9ca3af', fontSize: '12px' }}>離線 <strong style={{ color: '#e5e7eb' }}>{webStats.offline}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>未知 <strong>{webStats.unknown}</strong></span>
+            <span style={{ padding: '4px 12px', borderRadius: '999px', background: '#1f2937', border: '1px solid #374151', color: '#6b7280', fontSize: '12px' }}>不存在 <strong>{webStats.notFound}</strong></span>
           </div>
         </div>
 
@@ -302,7 +308,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
           <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent', msOverflowStyle: 'none' }}>
             {isLoading ? (
               <div style={{ textAlign: 'center', padding: '80px 0', color: '#9ca3af' }}>載入中...</div>
-            ) : filtered.length === 0 ? (
+            ) : paginated.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '80px 0', color: '#6b7280' }}>暫無數據</div>
             ) : (
               <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
@@ -311,6 +317,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
                     <th style={{ width: '40px', padding: '12px 0', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}><input type="checkbox" style={{ cursor: 'pointer', accentColor: '#3b82f6' }} /></th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>Web 帳號</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>顯示名稱</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>帳號狀態</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>SIP 帳號</th>
                     <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>租戶名稱</th>
                     <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>狀態</th>
@@ -327,14 +334,18 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
                       </td>
                       <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace', fontWeight: 500 }}>{row.extension}</td>
                       <td style={{ padding: '12px 16px', color: '#d1d5db' }}>{row.displayName}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>{userStatusBadge(row.userStatus)}</td>
                       <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>{row.sipAccount}</td>
-                      <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.tenantName || '未分配'}>
+                      <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.currentOrderNo ? `訂單：${row.currentOrderNo}` : (row.tenantName || '未分配')}>
                         {row.tenantName || '未分配'}
+                        {row.serviceExpiresAt && (
+                          <div style={{ color: '#6b7280', fontSize: '11px', marginTop: '2px' }}>到期 {row.serviceExpiresAt}</div>
+                        )}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>{statusBadge(row.status)}</td>
-                      <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>{row.transport}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }} title={`${row.statusText || ''}（${row.statusSource === 'asterisk' ? 'Asterisk 實時' : 'Presence 輪詢'}）`}>{statusBadge(row.status)}</td>
+                      <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px', fontFamily: 'monospace' }}>{row.transport || '-'}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 500 }}>{row.channelCount}</td>
-                      <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatTime(row.lastSeen)}</td>
+                      <td style={{ padding: '12px 16px', color: '#9ca3af', fontSize: '12px' }}>{formatTime(row.lastSeenAt)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -344,7 +355,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
 
           {/* 分页 */}
           <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
-            <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {filtered.length} 筆記錄</span>
+            <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {webTotal} 筆記錄</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <select value={pageSize} onChange={e => { setPageSize(e.target.value === '全部' ? '全部' : Number(e.target.value)); setCurrentPage(1); }}
                 style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>

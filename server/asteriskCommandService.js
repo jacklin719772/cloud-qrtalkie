@@ -343,8 +343,8 @@ export async function verifyPjsipExtension(extension, expectedWebrtcConfig = nul
 function normalizeContactStatus(value) {
   const normalized = normalizeValue(value);
   if (!normalized) return "";
+  if (normalized.includes("unavail") || normalized.includes("unreach")) return "Unavailable";
   if (normalized.includes("avail") || normalized.includes("reach")) return "Avail";
-  if (normalized.includes("unavail")) return "Unavailable";
   if (normalized.includes("unknown")) return "Unknown";
   if (normalized.includes("lapsed")) return "Lapsed";
   if (normalized.includes("nonqual")) return "NonQual";
@@ -458,16 +458,137 @@ export async function getPjsipEndpointStatus(extension) {
   return result;
 }
 
-export async function getPjsipEndpointStatusBatch(extensions) {
-  const list = Array.isArray(extensions) ? extensions : [];
-  const items = [];
-  for (const extension of list) {
-    items.push(await getPjsipEndpointStatus(extension));
-  }
-  return {
-    count: items.length,
-    items,
+function parsePjsipEndpointsBulkOutput(output) {
+  const endpoints = new Map();
+  let current = null;
+
+  const flush = () => {
+    if (!current) return;
+    if (EXTENSION_PATTERN.test(current.extension)) {
+      const onlineContact = current.contacts.find((contact) => {
+        const normalized = normalizeValue(normalizeContactStatus(contact.status));
+        return normalized === "avail" || normalized === "reachable";
+      });
+      const contact = onlineContact || current.contacts[0] || null;
+      const status = onlineContact ? "online" : "offline";
+      endpoints.set(current.extension, {
+        extension: current.extension,
+        exists: true,
+        status,
+        statusText: status === "online" ? "線上" : "離線",
+        tech: "PJSIP",
+        resource: current.extension,
+        channelCount: current.channelCount,
+        transport: current.transport,
+        contactStatus: contact ? normalizeContactStatus(contact.status) : "",
+        aor: current.aor || current.extension,
+        auth: current.auth || `${current.extension}-auth`,
+        lastSeen: null,
+        rttMs: contact && Number.isFinite(contact.rttMs) ? contact.rttMs : null,
+        source: "asterisk",
+        endpointState: current.state,
+      });
+    }
+    current = null;
   };
+
+  for (const line of String(output || "").split(/\r?\n/)) {
+    const endpointMatch = line.match(/^\s*Endpoint:\s+(.+)$/);
+    if (endpointMatch) {
+      const value = endpointMatch[1].trim();
+      if (value.startsWith("<")) {
+        current = null;
+        continue;
+      }
+      flush();
+      const nameToken = value.split(/\s+/)[0] || "";
+      const stateText = value.slice(nameToken.length).trim();
+      const channelMatch = stateText.match(/\b(\d+)\s+of\s+/i);
+      current = {
+        extension: nameToken.split("/")[0],
+        state: channelMatch ? stateText.slice(0, channelMatch.index).trim() : stateText,
+        channelCount: channelMatch ? Number(channelMatch[1] || 0) : 0,
+        contacts: [],
+        transport: "",
+        aor: "",
+        auth: "",
+      };
+      continue;
+    }
+    if (!current) continue;
+
+    const contactMatch = line.match(/^\s*Contact:\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+))?\s*$/);
+    if (contactMatch) {
+      const [, uri, hash, contactStatus, rtt] = contactMatch;
+      if (!uri.startsWith("<") && hash.length >= 4) {
+        current.contacts.push({ uri, hash, status: contactStatus, rttMs: Number.parseFloat(rtt) });
+      }
+      continue;
+    }
+    const transportMatch = line.match(/^\s*Transport:\s+(\S+)/);
+    if (transportMatch && !transportMatch[1].startsWith("<") && !current.transport) {
+      current.transport = transportMatch[1];
+    }
+    const aorMatch = line.match(/^\s*Aor:\s+(\S+)/);
+    if (aorMatch && !aorMatch[1].startsWith("<") && !current.aor) {
+      current.aor = aorMatch[1];
+    }
+    const authMatch = line.match(/^\s*(?:InAuth|OutAuth):\s+(\S+)/);
+    if (authMatch && !authMatch[1].startsWith("<") && !current.auth) {
+      current.auth = authMatch[1];
+    }
+  }
+  flush();
+  return endpoints;
+}
+
+export async function getAllPjsipEndpointStatuses() {
+  const command = "pjsip show endpoints";
+  try {
+    const { stdout, stderr } = await execFileAsync("asterisk", ["-x", command], {
+      timeout: 15000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    return parsePjsipEndpointsBulkOutput(redactAsteriskOutput(`${stdout || ""}${stderr ? `\n${stderr}` : ""}`));
+  } catch (error) {
+    const output = redactAsteriskOutput(`${error?.stdout || ""}${error?.stderr ? `\n${error.stderr}` : ""}`);
+    throw new AsteriskCommandError(`Asterisk command failed: ${command}`, {
+      command,
+      output,
+      cause: error,
+    });
+  }
+}
+
+export async function getPjsipEndpointStatusBatch(extensions) {
+  const list = (Array.isArray(extensions) ? extensions : []).map((extension) => String(extension));
+  if (!list.length) return { count: 0, items: [] };
+
+  try {
+    const map = await getAllPjsipEndpointStatuses();
+    const items = list.map((extension) => map.get(extension) || {
+      extension,
+      exists: false,
+      status: "not_found",
+      statusText: "帳號不存在",
+      tech: "PJSIP",
+      resource: extension,
+      channelCount: 0,
+      transport: "",
+      contactStatus: "",
+      aor: extension,
+      auth: `${extension}-auth`,
+      lastSeen: null,
+      rttMs: null,
+      source: "asterisk",
+    });
+    return { count: items.length, items };
+  } catch (error) {
+    if (list.length > 20) throw error;
+    const items = [];
+    for (const extension of list) items.push(await getPjsipEndpointStatus(extension));
+    return { count: items.length, items };
+  }
 }
 
 function parseEndpointRuntimeSummary(output, extension) {

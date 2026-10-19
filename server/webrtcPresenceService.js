@@ -3,7 +3,7 @@ import { getPjsipEndpointStatusBatch } from "./asteriskCommandService.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 30000;
 const DEFAULT_INITIAL_DELAY_MS = 10000;
-const DEFAULT_BATCH_LIMIT = 500;
+const DEFAULT_BATCH_LIMIT = 0;
 const EVENT_LIMIT = 20;
 
 let pollTimer = null;
@@ -40,7 +40,7 @@ function configuredExtensionList() {
 
 async function loadPresenceExtensions(connection, domain, limit) {
   const configured = configuredExtensionList();
-  if (configured.length) return configured.slice(0, limit);
+  if (configured.length) return limit > 0 ? configured.slice(0, limit) : configured;
 
   const rows = await connection.query(
     `SELECT DISTINCT username
@@ -49,23 +49,18 @@ async function loadPresenceExtensions(connection, domain, limit) {
        AND username REGEXP '^[0-9]+$'
        AND status NOT IN ('rejected', 'expired')
      ORDER BY username
-     LIMIT ?`,
-    [domain, limit],
+     ${limit > 0 ? "LIMIT ?" : ""}`,
+    limit > 0 ? [domain, limit] : [domain],
   );
   return rows.map((row) => String(row.username || "")).filter(Boolean);
 }
 
-async function recordPresence(connection, item, checkedAt) {
+async function recordPresence(connection, item, checkedAt, previous) {
   const extension = String(item?.extension || "").trim();
   if (!/^\d+$/.test(extension)) return;
 
   const status = normalizeStatus(item?.status);
   const statusText = statusTextFor(status, item?.statusText);
-  const rows = await connection.query(
-    "SELECT extension, status FROM webrtc_account_presence_state WHERE extension = ? LIMIT 1",
-    [extension],
-  );
-  const previous = rows[0] || null;
   const previousStatus = previous ? normalizeStatus(previous.status) : null;
   const changed = !previous || previousStatus !== status;
   const onlineAt = status === "online" && changed ? checkedAt : null;
@@ -129,9 +124,15 @@ export async function pollWebrtcPresence({ domain, batchLimit = DEFAULT_BATCH_LI
       return { skipped: false, count: 0 };
     }
 
+    const stateRows = await connection.query(
+      "SELECT extension, status FROM webrtc_account_presence_state",
+    );
+    const previousMap = new Map(stateRows.map((row) => [String(row.extension), row]));
     const batch = await getPjsipEndpointStatusBatch(extensions);
     for (const item of batch.items || []) {
-      await recordPresence(connection, item, checkedAt);
+      const extension = String(item.extension);
+      await recordPresence(connection, item, checkedAt, previousMap.get(extension) || null);
+      previousMap.set(extension, { extension, status: item.status });
     }
     return { skipped: false, count: extensions.length };
   } finally {

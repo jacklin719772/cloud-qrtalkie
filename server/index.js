@@ -10512,6 +10512,191 @@ app.get("/api/admin/web-accounts", requireAdmin, async (request, response) => {
   }
 });
 
+// GET /api/analytics/web-accounts - Web 帳號狀態聚合（服務端分頁）
+// 歸屬口徑：生效中的 tenant_web_account_entitlements 優先，其次 web_users.tenant_id。
+// 狀態口徑：WebRTC presence 輪詢結果為主；live=1 時僅對當前頁用 Asterisk 實時狀態校驗。
+app.get("/api/analytics/web-accounts", requireAdmin, async (request, response) => {
+  const isPlatform = request.admin.accountType === "platform";
+  const adminTenantId = request.admin.tenantId;
+  if (!isPlatform && !adminTenantId) {
+    return response.status(403).json({ success: false, message: "無許可權查詢 Web 帳號狀態。" });
+  }
+
+  const page = Math.max(1, Number.parseInt(request.query?.page, 10) || 1);
+  const rawPageSize = String(request.query?.pageSize || "20");
+  const fetchAll = rawPageSize === "all";
+  const pageSize = fetchAll ? 0 : Math.min(200, Math.max(1, Number.parseInt(rawPageSize, 10) || 20));
+  const search = String(request.query?.search || "").trim();
+  const statusFilter = String(request.query?.status || "all");
+  const assignFilter = String(request.query?.assign || "all");
+  const includeLive = ["1", "true"].includes(String(request.query?.live || "").toLowerCase());
+
+  const baseFrom = `
+    FROM web_users u
+    LEFT JOIN tenants t ON t.id = u.tenant_id
+    LEFT JOIN tenant_web_account_entitlements e ON e.web_user_id = u.id AND e.status = 'active'
+    LEFT JOIN tenants et ON et.id = e.tenant_id
+    LEFT JOIN sip_users s ON s.id = e.sip_user_id
+    LEFT JOIN billing_orders o ON o.id = e.current_order_id
+    LEFT JOIN webrtc_account_presence_state p ON p.extension = u.username
+  `;
+  const conditions = [];
+  const params = [];
+  if (!isPlatform) {
+    conditions.push("COALESCE(e.tenant_id, u.tenant_id) = ?");
+    params.push(adminTenantId);
+  }
+  if (search) {
+    conditions.push("(u.username LIKE ? OR u.display_name LIKE ?)");
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  if (["online", "offline", "unknown", "not_found"].includes(statusFilter)) {
+    if (statusFilter === "unknown") {
+      conditions.push("(p.status IS NULL OR p.status = 'unknown')");
+    } else {
+      conditions.push("p.status = ?");
+      params.push(statusFilter);
+    }
+  }
+  if (assignFilter === "assigned") {
+    conditions.push("COALESCE(e.tenant_id, u.tenant_id) IS NOT NULL");
+  } else if (assignFilter === "unassigned") {
+    conditions.push("COALESCE(e.tenant_id, u.tenant_id) IS NULL");
+  }
+  const whereClause = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [{ total }] = await connection.query(
+      `SELECT COUNT(*) AS total ${baseFrom} ${whereClause}`,
+      params,
+    );
+
+    const statusRows = await connection.query(
+      `SELECT COALESCE(p.status, 'unknown') AS status, COUNT(*) AS cnt
+       ${baseFrom} ${whereClause}
+       GROUP BY COALESCE(p.status, 'unknown')`,
+      params,
+    );
+    const assignmentRows = await connection.query(
+      `SELECT
+         SUM(CASE WHEN COALESCE(e.tenant_id, u.tenant_id) IS NULL THEN 0 ELSE 1 END) AS assigned,
+         SUM(CASE WHEN COALESCE(e.tenant_id, u.tenant_id) IS NULL THEN 1 ELSE 0 END) AS unassigned
+       ${baseFrom} ${whereClause}`,
+      params,
+    );
+
+    const dataParams = fetchAll ? params : [...params, pageSize, (page - 1) * pageSize];
+    const rows = await connection.query(
+      `SELECT
+         u.id,
+         u.username,
+         u.sip_domain AS domain,
+         u.display_name AS displayName,
+         u.status AS userStatus,
+         u.tenant_id AS legacyTenantId,
+         e.tenant_id AS entitlementTenantId,
+         COALESCE(e.tenant_id, u.tenant_id) AS effectiveTenantId,
+         COALESCE(et.name, t.name) AS tenantName,
+         e.status AS entitlementStatus,
+         COALESCE(DATE_FORMAT(e.service_expires_at, '%Y-%m-%d'), DATE_FORMAT(u.service_expires_at, '%Y-%m-%d')) AS serviceExpiresAt,
+         o.order_no AS currentOrderNo,
+         s.username AS assignedSipUsername,
+         p.status AS presenceStatus,
+         p.status_text AS presenceStatusText,
+         p.last_seen_at AS lastSeenAt,
+         p.online_at AS onlineAt,
+         p.offline_at AS offlineAt,
+         p.last_checked_at AS lastCheckedAt
+       ${baseFrom} ${whereClause}
+       ORDER BY u.created_at DESC, u.id DESC
+       ${fetchAll ? "" : "LIMIT ? OFFSET ?"}`,
+      dataParams,
+    );
+
+    let liveMap = null;
+    if (includeLive && rows.length > 0) {
+      const extensions = rows
+        .map((row) => String(row.username || ""))
+        .filter((extension) => /^\d+$/.test(extension));
+      if (extensions.length > 0) {
+        try {
+          const batch = await getPjsipEndpointStatusBatch(extensions);
+          liveMap = new Map((batch.items || []).map((item) => [String(item.extension), item]));
+        } catch (error) {
+          console.error("Analytics live status query failed:", error?.message || error);
+        }
+      }
+    }
+
+    const items = rows.map((row) => {
+      const extension = String(row.username || "");
+      const live = liveMap ? liveMap.get(extension) : null;
+      const presenceStatus = String(row.presenceStatus || "unknown");
+      const status = live?.status || presenceStatus;
+      const tenantIdValue = row.effectiveTenantId ?? row.legacyTenantId ?? null;
+      return {
+        id: Number(row.id),
+        extension,
+        domain: row.domain || "",
+        displayName: row.displayName || "",
+        sipAccount: row.domain ? `${extension}@${row.domain}` : extension,
+        tenantId: tenantIdValue == null ? null : Number(tenantIdValue),
+        tenantName: row.tenantName || "",
+        assigned: tenantIdValue != null,
+        userStatus: row.userStatus || "pending",
+        entitlementStatus: row.entitlementStatus || "",
+        serviceExpiresAt: row.serviceExpiresAt || "",
+        currentOrderNo: row.currentOrderNo || "",
+        assignedSipUsername: row.assignedSipUsername || "",
+        status,
+        statusText: live ? live.statusText : (row.presenceStatusText || (status === "not_found" ? "帳號不存在" : "狀態未知")),
+        statusSource: live ? "asterisk" : "presence",
+        contactStatus: live?.contactStatus || "",
+        channelCount: live?.channelCount ?? 0,
+        transport: live?.transport || "",
+        rttMs: live?.rttMs ?? null,
+        lastSeenAt: row.lastSeenAt || null,
+        onlineAt: row.onlineAt || null,
+        offlineAt: row.offlineAt || null,
+        lastCheckedAt: row.lastCheckedAt || null,
+      };
+    });
+
+    const stats = { total: Number(total || 0), online: 0, offline: 0, unknown: 0, notFound: 0 };
+    for (const row of statusRows) {
+      const key = String(row.status || "unknown");
+      const count = Number(row.cnt || 0);
+      if (key === "online") stats.online = count;
+      else if (key === "offline") stats.offline = count;
+      else if (key === "not_found") stats.notFound = count;
+      else stats.unknown += count;
+    }
+    const assignment = assignmentRows[0] || {};
+    stats.assigned = Number(assignment.assigned || 0);
+    stats.unassigned = Number(assignment.unassigned || 0);
+
+    return response.json({
+      success: true,
+      data: {
+        items,
+        total: stats.total,
+        page,
+        pageSize: fetchAll ? stats.total : pageSize,
+        stats,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to fetch analytics web accounts:", error?.message || error);
+    return response.status(500).json({ success: false, message: "無法讀取 Web 帳號狀態。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // web 帳號關聯狀態的共用判定（幽靈掃描與單條刪除守衛同源，口徑一致）
 function buildWebAssignmentState(row, today) {
   return {
