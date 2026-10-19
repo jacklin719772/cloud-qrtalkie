@@ -164,8 +164,7 @@ export default function BackupManagement() {
 
       <div className="bkm-toolbar">
         <div className="bkm-note">
-          每日 {settings.scheduleHour ?? 3}:00（{settings.timezone || 'Asia/Hong_Kong'}）自動備份，保留 {settings.retentionDays ?? 7} 天。<br />
-          備份包已加密，下載後需輸入密碼。
+          每日 {settings.scheduleHour ?? 3}:00（{settings.timezone || 'Asia/Hong_Kong'}）自動備份，保留 {settings.retentionDays ?? 7} 天。
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button type="button" className="bkm-secondary" onClick={() => loadData()} disabled={loading}>

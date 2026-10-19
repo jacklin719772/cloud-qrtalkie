@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Archive,
   Building,
   ChevronDown,
   ChevronRight,
@@ -30,7 +31,6 @@ const navItems = [
   { id: 'users', label: '租戶概覽', icon: RadioTower },
   { id: 'analytics', label: '統計分析', icon: BarChart3 },
   { id: 'dashboard', label: '平台概覽', icon: Gauge },
-  { id: 'backup-management', label: '備份管理', icon: Database },
   { id: 'registrations', label: '我的帳號', icon: UserCheck },
   { id: 'domain', label: '我的套餐', icon: CreditCard },
   { id: 'tenant-account-management', label: '訂閱帳號管理', icon: Users },
@@ -63,7 +63,6 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
     if (isSipUser) return item.id === 'registrations';
     if (item.id === 'registrations') return false;
     if (item.id === 'dashboard') return isAdminPlatform;
-    if (item.id === 'backup-management') return isAdminPlatform;
     if (item.id === 'users') return !isAdminPlatform;
     if (isAdminPlatform && tenantOnlyItems.includes(item.id)) return false;
     return true;
@@ -258,6 +257,17 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
                 ))}
               </div>
             )}
+
+            <button
+              className={`nav-item ${currentView === 'backup-management' ? 'active' : ''}`}
+              type="button"
+              title={isCollapsed ? '備份管理' : undefined}
+              aria-label="備份管理"
+              onClick={() => onViewChange('backup-management')}
+            >
+              <Archive className="nav-icon" size={20} aria-hidden="true" />
+              {!isCollapsed && <span>備份管理</span>}
+            </button>
           </>
         )}
 
