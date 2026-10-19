@@ -1094,12 +1094,12 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
         <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
-              <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>日期</th>
+              <th style={{ width: '150px', padding: '12px 10px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>日期</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>主叫號碼</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>被叫號碼</th>
-              <th style={{ width: '80px', padding: '12px 12px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>結果</th>
+              <th style={{ width: '80px', padding: '12px 12px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>結果</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>通話時長</th>
-              <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>詳情</th>
+              <th style={{ width: '90px', padding: '12px 10px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2, whiteSpace: 'nowrap' }}>詳情</th>
             </tr>
           </thead>
           <tbody>
@@ -1112,16 +1112,16 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
             ) : logs.map(row => (
               <React.Fragment key={row.linkedId}>
                 <tr style={{ borderBottom: '1px solid #1f2937' }}>
-                  <td style={{ padding: '12px 16px', color: '#d1d5db', fontSize: '12px' }}>{formatTime(row.eventTime)}</td>
+                  <td style={{ padding: '12px 10px', color: '#d1d5db', fontSize: '12px', whiteSpace: 'nowrap' }}>{formatTime(row.eventTime)}</td>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>
                     {row.cidName ? <span>{row.cidName}<br/><span style={{ fontSize: '11px', color: '#9ca3af' }}>{row.cidNumber}</span></span> : (row.cidNumber || <span style={{ color: '#6b7280' }}>—</span>)}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.extension || '—'}</td>
                   <td style={{ padding: '12px 12px', textAlign: 'center' }}>{callResultBadge(row.result)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  <td style={{ padding: '12px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                     <button onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}
-                      style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px' }}>
+                      style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' }}>
                       {expandedCall === row.linkedId ? '收起' : '詳情'}
                     </button>
                   </td>
