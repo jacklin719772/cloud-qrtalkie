@@ -242,7 +242,9 @@ function parseSipMessageBlock(block) {
   const to = parseSipIdentity(firstHeader(headers, "to"));
   const branch = parseBranch(headers);
   const rawEventHash = buildRawEventHash(startLineText, headers, cseq);
-  const callKeyBasis = callId ? `call:${callId}|from-tag:${from.tag || ""}` : rawEventHash;
+  // 同一通話的所有訊息共用 Call-ID；不可加入 From-tag，否則被叫方送出的 BYE
+  // 會因 From-tag 不同而被拆成另一通電話。
+  const callKeyBasis = callId ? `call:${callId}` : rawEventHash;
   const callKeyHash = sha256(callKeyBasis);
   const eventKeyHash = sha256(buildHashBasis({
     callId,
