@@ -47,6 +47,7 @@ import {
 import {
   ensureFinanceSchema,
   saveFinanceFile,
+  deleteFinanceFile,
   listReceivingAccounts,
   FinanceError,
 } from "./financeManagementService.js";
@@ -19639,6 +19640,9 @@ async function resolveFinancePaymentPayload(request, order) {
   if (invoiceAmount != null && (!Number.isFinite(invoiceAmount) || invoiceAmount < 0)) {
     throw new FinanceError("發票金額不正確。", { code: "INVALID_INVOICE_AMOUNT" });
   }
+  if (invoiced && (invoiceAmount == null || invoiceAmount <= 0)) {
+    throw new FinanceError("已開具發票時，發票金額必須大於 0。", { code: "INVALID_INVOICE_AMOUNT" });
+  }
 
   const voucherFile = payload.voucherDataUrl
     ? await saveFinanceFile(payload.voucherDataUrl, { orderId: order.id, prefix: "voucher" })
@@ -19707,8 +19711,28 @@ app.put("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin
     const order = await loadFinanceOrder(Number(existing.order_id));
     if (!order) return response.status(404).json({ message: "訂單不存在。" });
     const values = await resolveFinancePaymentPayload(request, order);
-    if (!values.voucher_file) values.voucher_file = existing.voucher_file || "";
-    if (!values.invoice_file) values.invoice_file = existing.invoice_file || "";
+    const removeVoucher = request.body?.removeVoucher === true;
+    const removeInvoice = request.body?.removeInvoice === true;
+    if (values.voucher_file) {
+      if (existing.voucher_file && existing.voucher_file !== values.voucher_file) {
+        await deleteFinanceFile(existing.voucher_file);
+      }
+    } else if (removeVoucher) {
+      await deleteFinanceFile(existing.voucher_file);
+      values.voucher_file = "";
+    } else {
+      values.voucher_file = existing.voucher_file || "";
+    }
+    if (values.invoice_file) {
+      if (existing.invoice_file && existing.invoice_file !== values.invoice_file) {
+        await deleteFinanceFile(existing.invoice_file);
+      }
+    } else if (removeInvoice) {
+      await deleteFinanceFile(existing.invoice_file);
+      values.invoice_file = "";
+    } else {
+      values.invoice_file = existing.invoice_file || "";
+    }
     await pool.query(
       `UPDATE order_payment_logs SET
          payment_date = ?, receiving_account_id = ?, receiving_account_name = ?,
@@ -19737,8 +19761,14 @@ app.delete("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAd
   const paymentId = Number(request.params.id);
   if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
   try {
-    const result = await pool.query("DELETE FROM order_payment_logs WHERE id = ?", [paymentId]);
-    if (!result?.affectedRows) return response.status(404).json({ message: "收款記錄不存在。" });
+    const [payment] = await pool.query(
+      "SELECT voucher_file, invoice_file FROM order_payment_logs WHERE id = ? LIMIT 1",
+      [paymentId],
+    );
+    if (!payment) return response.status(404).json({ message: "收款記錄不存在。" });
+    await deleteFinanceFile(payment.voucher_file);
+    await deleteFinanceFile(payment.invoice_file);
+    await pool.query("DELETE FROM order_payment_logs WHERE id = ?", [paymentId]);
     return response.json({ success: true });
   } catch (error) {
     console.error("Failed to delete finance payment:", error);

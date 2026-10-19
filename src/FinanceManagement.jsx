@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import apiClient from './apiClient';
 
 const todayString = () => new Date().toISOString().slice(0, 10);
@@ -16,6 +16,7 @@ const emptyPaymentForm = {
   voucherNo: '',
   voucherDataUrl: '',
   voucherFileName: '',
+  removeVoucher: false,
   invoiced: false,
   invoiceNo: '',
   invoiceCode: '',
@@ -23,6 +24,7 @@ const emptyPaymentForm = {
   invoiceAmount: '',
   invoiceDataUrl: '',
   invoiceFileName: '',
+  removeInvoice: false,
   notes: '',
 };
 
@@ -49,6 +51,12 @@ function fileUrl(url) {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
   return `/api${url.startsWith('/') ? url : `/${url}`}`;
+}
+
+function fileNameFromUrl(url) {
+  if (!url) return '';
+  const name = String(url).split('/').pop() || '';
+  try { return decodeURIComponent(name); } catch { return name; }
 }
 
 function orderTypeLabel(type) {
@@ -285,6 +293,7 @@ export default function FinanceManagement() {
       voucherDataUrl: '',
       voucherFileName: '',
       existingVoucherFile: payment.voucherFile || '',
+      removeVoucher: false,
       invoiced: Boolean(payment.invoiced),
       invoiceNo: payment.invoiceNo || '',
       invoiceCode: payment.invoiceCode || '',
@@ -293,6 +302,7 @@ export default function FinanceManagement() {
       invoiceDataUrl: '',
       invoiceFileName: '',
       existingInvoiceFile: payment.invoiceFile || '',
+      removeInvoice: false,
       notes: payment.notes || '',
     });
     setPaymentFormOpen(true);
@@ -320,11 +330,17 @@ export default function FinanceManagement() {
     reader.onload = () => {
       const dataUrl = String(reader.result || '');
       setPaymentForm((current) => (kind === 'voucher'
-        ? { ...current, voucherDataUrl: dataUrl, voucherFileName: file.name }
-        : { ...current, invoiceDataUrl: dataUrl, invoiceFileName: file.name }));
+        ? { ...current, voucherDataUrl: dataUrl, voucherFileName: file.name, removeVoucher: false }
+        : { ...current, invoiceDataUrl: dataUrl, invoiceFileName: file.name, removeInvoice: false }));
     };
     reader.onerror = () => showMessage('error', '讀取檔案失敗。');
     reader.readAsDataURL(file);
+  };
+
+  const clearFile = (kind) => {
+    setPaymentForm((current) => (kind === 'voucher'
+      ? { ...current, voucherDataUrl: '', voucherFileName: '', removeVoucher: Boolean(current.existingVoucherFile) || current.removeVoucher }
+      : { ...current, invoiceDataUrl: '', invoiceFileName: '', removeInvoice: Boolean(current.existingInvoiceFile) || current.removeInvoice }));
   };
 
   const savePayment = async () => {
@@ -334,8 +350,15 @@ export default function FinanceManagement() {
       return;
     }
     if (!Number.isFinite(Number(paymentForm.amount)) || Number(paymentForm.amount) <= 0) {
-      showMessage('error', '請輸入有效的收款金額。');
+      showMessage('error', '收款金額必須大於 0。');
       return;
+    }
+    if (paymentForm.invoiced) {
+      const invoiceAmount = Number(paymentForm.invoiceAmount);
+      if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+        showMessage('error', '已開具發票時，發票金額必須大於 0。');
+        return;
+      }
     }
     setSavingPayment(true);
     try {
@@ -349,12 +372,14 @@ export default function FinanceManagement() {
         currency: paymentForm.currency,
         voucherNo: paymentForm.voucherNo,
         voucherDataUrl: paymentForm.voucherDataUrl || undefined,
+        removeVoucher: paymentForm.removeVoucher === true,
         invoiced: paymentForm.invoiced,
         invoiceNo: paymentForm.invoiceNo,
         invoiceCode: paymentForm.invoiceCode,
         invoiceDate: paymentForm.invoiceDate,
         invoiceAmount: paymentForm.invoiceAmount,
         invoiceDataUrl: paymentForm.invoiceDataUrl || undefined,
+        removeInvoice: paymentForm.removeInvoice === true,
         notes: paymentForm.notes,
       };
       if (editingPaymentId) {
@@ -392,6 +417,9 @@ export default function FinanceManagement() {
 
   const inputStyle = { width: '100%', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' };
   const labelStyle = { display: 'flex', flexDirection: 'column', gap: '6px', color: '#9ca3af', fontSize: '12px' };
+  const uploadBtnStyle = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #4b5563', background: '#1f2937', color: '#d1d5db', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' };
+  const voucherDisplayName = paymentForm.removeVoucher ? '' : (paymentForm.voucherFileName || fileNameFromUrl(paymentForm.existingVoucherFile));
+  const invoiceDisplayName = paymentForm.removeInvoice ? '' : (paymentForm.invoiceFileName || fileNameFromUrl(paymentForm.existingInvoiceFile));
 
   return (
     <section className="view active" style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px', overflow: 'hidden', background: '#0f172a' }}>
@@ -410,6 +438,8 @@ export default function FinanceManagement() {
         .fin-dropdown-menu { position: fixed; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); min-width: 140px; display: flex; flex-direction: column; padding: 4px 0; }
         .fin-dropdown-item { padding: 8px 16px; font-size: 13px; color: #334155; background: transparent; border: none; text-align: left; width: 100%; cursor: pointer; }
         .fin-dropdown-item:hover { background: #f1f5f9; }
+        .fin-form-date { color-scheme: dark; }
+        .fin-form-date::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
         .fin-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; border: 1px solid #374151; background: #1f2937; color: #93c5fd; font-size: 12px; cursor: pointer; white-space: nowrap; }
         .fin-btn:hover { background: #374151; }
         .fin-btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -703,7 +733,9 @@ export default function FinanceManagement() {
                 <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
                   <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{editingPaymentId ? '編輯收款記錄' : '新增收款記錄'}</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                    <label style={labelStyle}>收款日期 *<input type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm((c) => ({ ...c, paymentDate: e.target.value }))} style={inputStyle} /></label>
+                    <label style={labelStyle}>收款日期 *
+                      <input className="fin-form-date" type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm((c) => ({ ...c, paymentDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
+                    </label>
                     <label style={labelStyle}>收款金額 *<input type="number" min="0" step="0.01" value={paymentForm.amount} onChange={(e) => setPaymentForm((c) => ({ ...c, amount: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>收款帳號（基礎資料）
                       <select value={paymentForm.receivingAccountId} onChange={(e) => handleAccountChange(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
@@ -717,33 +749,53 @@ export default function FinanceManagement() {
                     <label style={labelStyle}>收款銀行<input value={paymentForm.receivingBankName} onChange={(e) => setPaymentForm((c) => ({ ...c, receivingBankName: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>收款帳號<input value={paymentForm.receivingAccountNo} onChange={(e) => setPaymentForm((c) => ({ ...c, receivingAccountNo: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>憑證號<input value={paymentForm.voucherNo} onChange={(e) => setPaymentForm((c) => ({ ...c, voucherNo: e.target.value }))} style={inputStyle} /></label>
-                    <label style={labelStyle}>憑證上傳（PNG/JPG/WEBP/PDF）
-                      <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(e) => handleFile(e.target.files?.[0], 'voucher')} style={{ ...inputStyle, paddingTop: '9px', height: '40px' }} />
-                      {(paymentForm.voucherFileName || paymentForm.existingVoucherFile) && (
-                        <span style={{ color: '#60a5fa', fontSize: '11px' }}>
-                          {paymentForm.voucherFileName || (paymentForm.existingVoucherFile ? <a href={fileUrl(paymentForm.existingVoucherFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>現有憑證</a> : '')}
-                        </span>
+                    <div style={labelStyle}>
+                      憑證（PNG/JPG/WEBP/PDF）
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input readOnly value={voucherDisplayName} placeholder="未上傳檔案" title={voucherDisplayName} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                        <label style={uploadBtnStyle}>
+                          <Upload size={14} /> 上傳
+                          <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" style={{ display: 'none' }} onChange={(e) => handleFile(e.target.files?.[0], 'voucher')} />
+                        </label>
+                        <button type="button" onClick={() => clearFile('voucher')} disabled={!voucherDisplayName}
+                          style={{ ...uploadBtnStyle, color: voucherDisplayName ? '#fca5a5' : '#6b7280', borderColor: voucherDisplayName ? '#7f1d1d' : '#374151', cursor: voucherDisplayName ? 'pointer' : 'not-allowed', opacity: voucherDisplayName ? 1 : 0.5 }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      {paymentForm.existingVoucherFile && !paymentForm.removeVoucher && !paymentForm.voucherFileName && (
+                        <a href={fileUrl(paymentForm.existingVoucherFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', fontSize: '11px' }}>查看現有憑證</a>
                       )}
-                    </label>
-                    <label style={{ ...labelStyle, flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '22px' }}>
+                    </div>
+                    <label style={{ ...labelStyle, gridColumn: '1 / -1', flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '4px' }}>
                       <input type="checkbox" checked={paymentForm.invoiced} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiced: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
                       已開具發票
                     </label>
                     {paymentForm.invoiced && (
-                      <>
-                        <label style={labelStyle}>發票號碼<input value={paymentForm.invoiceNo} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
-                        <label style={labelStyle}>發票代碼<input value={paymentForm.invoiceCode} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>
-                        <label style={labelStyle}>開具日期<input type="date" value={paymentForm.invoiceDate} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceDate: e.target.value }))} style={inputStyle} /></label>
-                        <label style={labelStyle}>發票金額<input type="number" min="0" step="0.01" value={paymentForm.invoiceAmount} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceAmount: e.target.value }))} style={inputStyle} /></label>
-                        <label style={labelStyle}>發票上傳（PNG/JPG/WEBP/PDF）
-                          <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(e) => handleFile(e.target.files?.[0], 'invoice')} style={{ ...inputStyle, paddingTop: '9px', height: '40px' }} />
-                          {(paymentForm.invoiceFileName || paymentForm.existingInvoiceFile) && (
-                            <span style={{ color: '#60a5fa', fontSize: '11px' }}>
-                              {paymentForm.invoiceFileName || (paymentForm.existingInvoiceFile ? <a href={fileUrl(paymentForm.existingInvoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>現有發票</a> : '')}
-                            </span>
-                          )}
+                      <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', borderTop: '1px solid #1f2937', paddingTop: '12px' }}>
+                        <label style={labelStyle}>發票號碼（票面唯一號碼）<input value={paymentForm.invoiceNo} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
+                        <label style={labelStyle}>發票代碼（地區/類型代碼）<input value={paymentForm.invoiceCode} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>
+                        <label style={labelStyle}>開具日期
+                          <input className="fin-form-date" type="date" value={paymentForm.invoiceDate} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
                         </label>
-                      </>
+                        <label style={labelStyle}>發票金額 *<input type="number" min="0" step="0.01" value={paymentForm.invoiceAmount} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceAmount: e.target.value }))} style={inputStyle} /></label>
+                        <div style={labelStyle}>
+                          發票檔案（PNG/JPG/WEBP/PDF）
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input readOnly value={invoiceDisplayName} placeholder="未上傳檔案" title={invoiceDisplayName} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+                            <label style={uploadBtnStyle}>
+                              <Upload size={14} /> 上傳
+                              <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" style={{ display: 'none' }} onChange={(e) => handleFile(e.target.files?.[0], 'invoice')} />
+                            </label>
+                            <button type="button" onClick={() => clearFile('invoice')} disabled={!invoiceDisplayName}
+                              style={{ ...uploadBtnStyle, color: invoiceDisplayName ? '#fca5a5' : '#6b7280', borderColor: invoiceDisplayName ? '#7f1d1d' : '#374151', cursor: invoiceDisplayName ? 'pointer' : 'not-allowed', opacity: invoiceDisplayName ? 1 : 0.5 }}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                          {paymentForm.existingInvoiceFile && !paymentForm.removeInvoice && !paymentForm.invoiceFileName && (
+                            <a href={fileUrl(paymentForm.existingInvoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', fontSize: '11px' }}>查看現有發票</a>
+                          )}
+                        </div>
+                      </div>
                     )}
                     <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>備註<textarea value={paymentForm.notes} onChange={(e) => setPaymentForm((c) => ({ ...c, notes: e.target.value }))} rows={2} style={{ ...inputStyle, height: 'auto', padding: '10px 12px', resize: 'vertical' }} /></label>
                   </div>

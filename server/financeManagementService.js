@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +78,14 @@ export async function saveFinanceFile(dataUrl, { orderId, prefix } = {}) {
   const fileName = `finance-${prefix || "file"}-${orderId || 0}-${Date.now()}-${randomBytes(4).toString("hex")}.${ext}`;
   await writeFile(path.join(financeFilesDir, fileName), buffer, { mode: 0o600 });
   return `/payment-proofs/${fileName}`;
+}
+
+export async function deleteFinanceFile(url) {
+  const text = String(url || "");
+  if (!text.startsWith("/payment-proofs/")) return;
+  const fileName = path.basename(text);
+  if (!fileName.startsWith("finance-")) return;
+  await unlink(path.join(financeFilesDir, fileName)).catch(() => {});
 }
 
 export async function listReceivingAccounts() {
