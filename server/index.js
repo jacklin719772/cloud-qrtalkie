@@ -23,7 +23,7 @@ process.on("uncaughtException", (error) => {
 import express from "express";
 import QRCode from "qrcode";
 import { mkdir, unlink, writeFile, readFile, stat, chmod, chown, rm } from "node:fs/promises";
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -125,7 +125,7 @@ import {
   unassignContactListFromAccount,
   FlexisipContactBookError,
 } from "./flexisipContactBookClient.js";
-import { registerPushGatewayRoutes } from "./pushGatewayService.js";
+import { registerPushGatewayRoutes, getGatewayConfig } from "./pushGatewayService.js";
 import { registerTrialManagementRoutes } from "./trialManagementRoutes.js";
 import { registerAgentRoutes } from "./agentRoutes.js";
 import { registerBillingAddressRoutes } from "./billingAddressRoutes.js";
@@ -158,17 +158,36 @@ const webrtcDomain = process.env.WEBRTC_DOMAIN || process.env.webrtc_domain || "
 const callCenterBaseUrl = process.env.CALL_CENTER_BASE_URL || appUrl;
 const accessBaseUrl = process.env.ACCESS_BASE_URL || appUrl;
 const couponCurrencyCodes = new Set(["TWD", "CNY", "USD", "EUR"]);
+const apacheSitesEnabledDir = process.env.APACHE_SITES_ENABLED_DIR || "/etc/apache2/sites-enabled";
+function discoverApacheSite(prefix) {
+  try {
+    const entries = readdirSync(apacheSitesEnabledDir);
+    const name = entries.find((entry) => entry.startsWith(`${prefix}.`) && entry.endsWith(".conf"));
+    if (!name) return { domain: "", confPath: "" };
+    return { domain: name.slice(0, -5), confPath: path.join(apacheSitesEnabledDir, name) };
+  } catch {
+    return { domain: "", confPath: "" };
+  }
+}
+function hostFromUrl(value) {
+  try { return new URL(String(value || "")).hostname; } catch { return ""; }
+}
+const discoveredLime = discoverApacheSite("lime");
+const discoveredFts = discoverApacheSite("fts");
+const discoveredAccount = discoverApacheSite("account");
+// 僅本地回環位址，不指向任何外部環境
 const healthInternalHost = process.env.HEALTH_INTERNAL_HOST || "127.0.0.1";
 const healthSslPort = Number(process.env.HEALTH_SSL_PORT || 443);
-const limeDomain = process.env.LIME_DOMAIN || "lime.qrtalkie.org";
-const ftsDomain = process.env.FTS_DOMAIN || "fts.qrtalkie.org";
-const accountDomain = process.env.ACCOUNT_DOMAIN || "account.qrtalkie.org";
-const sslCheckDomain = process.env.SSL_CHECK_DOMAIN || "www.qrtalkie.org";
+const limeDomain = process.env.LIME_DOMAIN || discoveredLime.domain;
+const ftsDomain = process.env.FTS_DOMAIN || discoveredFts.domain;
+const accountDomain = process.env.ACCOUNT_DOMAIN || hostFromUrl(process.env.FLEXISIP_ACCOUNT_MANAGER_BASE_URL || "") || discoveredAccount.domain;
+const sslCheckDomain = process.env.SSL_CHECK_DOMAIN || hostFromUrl(appUrl);
+const healthSipDomain = process.env.SIP_DOMAIN || "";
 const asteriskLogDir = process.env.ASTERISK_LOG_DIR || "/var/log/asterisk";
 const flexisipLogDir = process.env.FLEXISIP_LOG_DIR || "/var/opt/belledonne-communications/log/flexisip";
 const aiComposeProject = process.env.AI_COMPOSE_PROJECT || "asterisk-ai-voice-agent";
-const limeApacheConf = process.env.LIME_APACHE_CONF || "/etc/apache2/sites-available/lime.qrtalkie.org.conf";
-const ftsApacheConf = process.env.FTS_APACHE_CONF || "/etc/apache2/sites-available/fts.qrtalkie.org.conf";
+const limeApacheConf = process.env.LIME_APACHE_CONF || discoveredLime.confPath;
+const ftsApacheConf = process.env.FTS_APACHE_CONF || discoveredFts.confPath;
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const paymentProofsDir = path.join(projectRoot, "assets/payment-proofs");
 const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icons");
@@ -18410,6 +18429,37 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       dbStatus = "running";
     } catch { dbStatus = "error"; }
 
+    // 推送網關統計（不影響資料庫健康判定）
+    let pushDeviceRow = null;
+    let pushEventRows = [];
+    let pushLastRow = null;
+    try {
+      const conn = await pool.getConnection();
+      try {
+        [pushDeviceRow] = await conn.query(
+          `SELECT COUNT(*) AS total, SUM(enabled = 1) AS enabled,
+                  SUM(platform = 'android') AS android, SUM(platform = 'ios') AS ios,
+                  SUM(provider = 'jpush') AS jpush, SUM(provider = 'fcm') AS fcm, SUM(provider = 'apns') AS apns,
+                  MAX(last_seen_at) AS last_seen_at
+           FROM push_devices`
+        );
+        pushEventRows = await conn.query(
+          "SELECT status, COUNT(*) AS cnt FROM push_events WHERE created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) GROUP BY status"
+        );
+        [pushLastRow] = await conn.query(
+          "SELECT MAX(created_at) AS last_event_at, MAX(CASE WHEN status = 'failed' OR error_code <> '' THEN created_at END) AS last_failure_at FROM push_events"
+        );
+        const [lastFailure] = await conn.query(
+          "SELECT provider, error_code FROM push_events WHERE status = 'failed' OR error_code <> '' ORDER BY created_at DESC LIMIT 1"
+        );
+        pushLastRow = { ...(pushLastRow || {}), last_failure_provider: lastFailure?.provider || "", last_failure_code: lastFailure?.error_code || "" };
+      } finally {
+        conn.release();
+      }
+    } catch (err) {
+      console.error("[platform-health] push stats failed:", err?.message || err);
+    }
+
     let mongoStatus = "error";
     try {
       const { execSync } = await import("node:child_process");
@@ -18471,60 +18521,120 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { aiServiceStatus = "not_installed"; }
 
-    let limeStatus = "error";
+    let limeStatus = "not_configured";
     try {
-      const confExists = execSync("test -f " + limeApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
-      if (confExists === "yes") {
-        const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
-        if (apacheRunning === "active") {
-          const limeResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k -X POST -H 'From: sip:test@" + sipDomain + ";gr=test' -H 'Content-Type: application/x-lime+xml' -d '<request><getKeys/></request>' https://" + healthInternalHost + "/lime-server.php -H 'Host: " + limeDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
-          limeStatus = limeResp === "401" ? "running" : "error";
+      if (limeApacheConf && limeDomain && healthSipDomain) {
+        const confExists = execSync("test -f " + limeApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+        if (confExists === "yes") {
+          const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+          if (apacheRunning === "active") {
+            const limeResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k -X POST -H 'From: sip:test@" + healthSipDomain + ";gr=test' -H 'Content-Type: application/x-lime+xml' -d '<request><getKeys/></request>' https://" + healthInternalHost + "/lime-server.php -H 'Host: " + limeDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+            limeStatus = limeResp === "401" ? "running" : "error";
+          } else {
+            limeStatus = "stopped";
+          }
         } else {
-          limeStatus = "stopped";
+          limeStatus = "not_installed";
         }
-      } else {
-        limeStatus = "not_installed";
       }
     } catch { limeStatus = "not_installed"; }
 
-    let ftsStatus = "error";
+    let ftsStatus = "not_configured";
     try {
-      const confExists = execSync("test -f " + ftsApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
-      if (confExists === "yes") {
-        const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
-        if (apacheRunning === "active") {
-          const ftsResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/flexisip-http-file-transfer-server/hft.php -H 'Host: " + ftsDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
-          ftsStatus = ftsResp === "200" || ftsResp === "401" ? "running" : "error";
+      if (ftsApacheConf && ftsDomain) {
+        const confExists = execSync("test -f " + ftsApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
+        if (confExists === "yes") {
+          const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+          if (apacheRunning === "active") {
+            const ftsResp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/flexisip-http-file-transfer-server/hft.php -H 'Host: " + ftsDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+            ftsStatus = ftsResp === "200" || ftsResp === "401" ? "running" : "error";
+          } else {
+            ftsStatus = "stopped";
+          }
         } else {
-          ftsStatus = "stopped";
+          ftsStatus = "not_installed";
         }
-      } else {
-        ftsStatus = "not_installed";
       }
     } catch { ftsStatus = "not_installed"; }
 
-    let accountManagerStatus = "error";
+    let accountManagerStatus = "not_configured";
     try {
-      const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
-      if (apacheRunning === "active") {
-        const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/ -H 'Host: " + accountDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
-        accountManagerStatus = (resp === "200" || resp === "401" || resp === "302") ? "running" : "not_installed";
-      } else {
-        accountManagerStatus = "stopped";
+      if (accountDomain) {
+        const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+        if (apacheRunning === "active") {
+          const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/ -H 'Host: " + accountDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
+          accountManagerStatus = (resp === "200" || resp === "401" || resp === "302") ? "running" : "error";
+        } else {
+          accountManagerStatus = "stopped";
+        }
       }
-    } catch { accountManagerStatus = "not_installed"; }
+    } catch { accountManagerStatus = "error"; }
 
     let sslExpiry = null;
     try {
-      const sslDomain = process.env.SSL_CHECK_DOMAIN || "www.qrtalkie.org";
-      const out = execSync(`openssl s_client -servername ${sslDomain} -connect ${healthInternalHost}:${healthSslPort} </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
-      const match = out.match(/notAfter=(.+)/);
-      if (match) {
-        const expDate = new Date(match[1]);
-        const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
-        sslExpiry = { date: expDate.toISOString().slice(0, 10), daysLeft, domain: sslDomain };
+      if (sslCheckDomain) {
+        const out = execSync(`openssl s_client -servername ${sslCheckDomain} -connect ${healthInternalHost}:${healthSslPort} </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
+        const match = out.match(/notAfter=(.+)/);
+        if (match) {
+          const expDate = new Date(match[1]);
+          const daysLeft = Math.ceil((expDate - new Date()) / 86400000);
+          sslExpiry = { date: expDate.toISOString().slice(0, 10), daysLeft, domain: sslCheckDomain };
+        }
       }
     } catch { sslExpiry = null; }
+
+    const pushConfig = getGatewayConfig();
+    const fileExists = (p) => Boolean(p && existsSync(p));
+    const jpushConfigured = Boolean(pushConfig.jpush.enabled && pushConfig.jpush.appKey && pushConfig.jpush.masterSecret && pushConfig.jpush.apiUrl);
+    const apnsConfigured = Boolean(pushConfig.apns.enabled && (pushConfig.apns.authMode === "p8"
+      ? (pushConfig.apns.keyPath && pushConfig.apns.keyId && pushConfig.apns.teamId && fileExists(pushConfig.apns.keyPath))
+      : fileExists(pushConfig.apns.certPath)));
+    const apnsVoipConfigured = Boolean(pushConfig.apns.enabled && (pushConfig.apns.authMode === "p8"
+      ? fileExists(pushConfig.apns.keyPath)
+      : fileExists(pushConfig.apns.voipCertPath)));
+    const fcmConfigured = Boolean(pushConfig.fcm.enabled && pushConfig.fcm.serviceAccountPath && fileExists(pushConfig.fcm.serviceAccountPath));
+    const pushWarnings = [];
+    if (pushConfig.jpush.enabled && !jpushConfigured) pushWarnings.push("JPUSH_NOT_CONFIGURED");
+    if (pushConfig.apns.enabled && !apnsConfigured) pushWarnings.push("APNS_NOT_CONFIGURED");
+    if (pushConfig.fcm.enabled && !fcmConfigured) pushWarnings.push("FCM_NOT_CONFIGURED");
+    const pushProviderConfigured = jpushConfigured || apnsConfigured || fcmConfigured;
+    if (!pushProviderConfigured) pushWarnings.push("NO_PROVIDER_CONFIGURED");
+    const pushRecent = { total: 0, success: 0, processed: 0, received: 0, failed: 0 };
+    for (const row of pushEventRows) {
+      const cnt = Number(row.cnt || 0);
+      pushRecent.total += cnt;
+      if (row.status === "success") pushRecent.success += cnt;
+      else if (row.status === "processed") pushRecent.processed += cnt;
+      else if (row.status === "received") pushRecent.received += cnt;
+      else if (row.status === "failed") pushRecent.failed += cnt;
+    }
+    const pushStatus = !pushProviderConfigured
+      ? "misconfigured"
+      : (pushRecent.failed > 0 ? "warning" : "running");
+    const pushGateway = {
+      enabled: pushProviderConfigured,
+      configFlagEnabled: pushConfig.enabled,
+      status: pushStatus,
+      warnings: pushWarnings,
+      jpush: { enabled: pushConfig.jpush.enabled, configured: jpushConfigured },
+      apns: { enabled: pushConfig.apns.enabled, configured: apnsConfigured, voipConfigured: apnsVoipConfigured, authMode: pushConfig.apns.authMode, environment: pushConfig.apns.environment },
+      fcm: { enabled: pushConfig.fcm.enabled, configured: fcmConfigured },
+      devices: {
+        total: Number(pushDeviceRow?.total || 0),
+        enabled: Number(pushDeviceRow?.enabled || 0),
+        android: Number(pushDeviceRow?.android || 0),
+        ios: Number(pushDeviceRow?.ios || 0),
+        jpush: Number(pushDeviceRow?.jpush || 0),
+        fcm: Number(pushDeviceRow?.fcm || 0),
+        apns: Number(pushDeviceRow?.apns || 0),
+        lastSeenAt: pushDeviceRow?.last_seen_at || null,
+      },
+      last24h: pushRecent,
+      lastEventAt: pushLastRow?.last_event_at || null,
+      lastFailureAt: pushLastRow?.last_failure_at || null,
+      lastFailureProvider: pushLastRow?.last_failure_provider || "",
+      lastFailureCode: pushLastRow?.last_failure_code || "",
+    };
 
     const payload = {
       cpu: { usage: cpu, cores: os.cpus().length, loadAvg: load.load5 },
@@ -18534,6 +18644,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       load: load,
       os: osInfo,
       ntpSynchronized,
+      pushGateway,
       mariadb: dbStatus,
       mongodb: mongoStatus,
       asterisk: asteriskStatus,

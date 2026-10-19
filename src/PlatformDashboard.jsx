@@ -10,6 +10,20 @@ const EMPTY_HEALTH = {
   load: { load1: 0, load5: 0, load15: 0 },
   os: null,
   ntpSynchronized: null,
+  pushGateway: {
+    enabled: false,
+    status: 'unknown',
+    warnings: [],
+    jpush: { enabled: false, configured: false },
+    apns: { enabled: false, configured: false, voipConfigured: false, authMode: '', environment: '' },
+    fcm: { enabled: false, configured: false },
+    devices: { total: 0, enabled: 0, android: 0, ios: 0, jpush: 0, fcm: 0, apns: 0, lastSeenAt: null },
+    last24h: { total: 0, success: 0, processed: 0, received: 0, failed: 0 },
+    lastEventAt: null,
+    lastFailureAt: null,
+    lastFailureProvider: '',
+    lastFailureCode: '',
+  },
   mariadb: 'unknown',
   mongodb: 'unknown',
   asterisk: 'unknown',
@@ -45,11 +59,21 @@ const EMPTY_STATS = {
 
 function normalizeHealth(res) {
   if (!res || typeof res !== 'object') return EMPTY_HEALTH;
+  const pg = res.pushGateway || {};
   return {
     ...EMPTY_HEALTH,
     ...res,
     cpu: { ...EMPTY_HEALTH.cpu, ...(res.cpu || {}) },
     load: { ...EMPTY_HEALTH.load, ...(res.load || {}) },
+    pushGateway: {
+      ...EMPTY_HEALTH.pushGateway,
+      ...pg,
+      jpush: { ...EMPTY_HEALTH.pushGateway.jpush, ...(pg.jpush || {}) },
+      apns: { ...EMPTY_HEALTH.pushGateway.apns, ...(pg.apns || {}) },
+      fcm: { ...EMPTY_HEALTH.pushGateway.fcm, ...(pg.fcm || {}) },
+      devices: { ...EMPTY_HEALTH.pushGateway.devices, ...(pg.devices || {}) },
+      last24h: { ...EMPTY_HEALTH.pushGateway.last24h, ...(pg.last24h || {}) },
+    },
   };
 }
 
@@ -105,6 +129,22 @@ function serviceText(status, runningText = '執行正常') {
   if (status === 'stopped') return '已停止';
   if (status === 'error') return '異常';
   if (status === 'not_installed') return '未安裝';
+  return '未知';
+}
+
+function pushStatusTone(status) {
+  if (status === 'running') return 'green';
+  if (status === 'warning') return 'warn';
+  if (status === 'misconfigured') return 'red';
+  if (status === 'disabled') return 'gray';
+  return 'gray';
+}
+
+function pushStatusText(status) {
+  if (status === 'running') return '運行中';
+  if (status === 'warning') return '有失敗記錄';
+  if (status === 'misconfigured') return '配置不完整';
+  if (status === 'disabled') return '已停用';
   return '未知';
 }
 
@@ -191,6 +231,19 @@ const PlatformDashboard = forwardRef((props, ref) => {
       });
     }
   });
+  const pg = health.pushGateway;
+  if (pg) {
+    if (pg.status === 'disabled') {
+      serviceAlerts.push({ severity: 'warning', text: 'Push Gateway 已停用' });
+    } else if (pg.status === 'misconfigured') {
+      serviceAlerts.push({ severity: 'error', text: 'Push Gateway 配置不完整' });
+    } else if (Number(pg.last24h?.failed || 0) > 0) {
+      serviceAlerts.push({ severity: 'warning', text: `Push Gateway 近 24 小時有 ${Number(pg.last24h.failed)} 次推送失敗` });
+    }
+    if (pg.enabled && Number(pg.devices?.enabled || 0) === 0) {
+      serviceAlerts.push({ severity: 'warning', text: 'Push Gateway 目前沒有已啟用的推播裝置' });
+    }
+  }
   if (health.ssl && Number(health.ssl.daysLeft) <= 30) {
     serviceAlerts.push({ severity: Number(health.ssl.daysLeft) <= 7 ? 'error' : 'warning', text: `SSL 證書剩餘 ${health.ssl.daysLeft} 天（${health.ssl.date}）` });
   }
@@ -360,6 +413,64 @@ const PlatformDashboard = forwardRef((props, ref) => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* 推送服務 */}
+        <div className="pdb-section">
+          <div className="pdb-section-head">
+            <div className="pdb-section-title">推送服務</div>
+            <div className="pdb-section-note">裝置註冊與近 24 小時推送</div>
+          </div>
+          <div className="pdb-grid pdb-grid-5">
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${pushStatusTone(health.pushGateway.status)}`} />
+              <div>
+                <div className="pdb-service-name">Push Gateway</div>
+                <div className="pdb-service-status">{pushStatusText(health.pushGateway.status)}</div>
+                <div className="pdb-metric-sub">裝置 {Number(health.pushGateway.devices.enabled)} / {Number(health.pushGateway.devices.total)}（Android {Number(health.pushGateway.devices.android)} · iOS {Number(health.pushGateway.devices.ios)}）</div>
+              </div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${!health.pushGateway.jpush.enabled ? 'gray' : (health.pushGateway.jpush.configured ? 'green' : 'red')}`} />
+              <div>
+                <div className="pdb-service-name">JPush</div>
+                <div className="pdb-service-status">{!health.pushGateway.jpush.enabled ? '已停用' : health.pushGateway.jpush.configured ? '已配置' : '配置不完整'}</div>
+                <div className="pdb-metric-sub">JPush 裝置 {Number(health.pushGateway.devices.jpush)}</div>
+              </div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${!health.pushGateway.apns.enabled ? 'gray' : (health.pushGateway.apns.configured ? 'green' : 'red')}`} />
+              <div>
+                <div className="pdb-service-name">APNs</div>
+                <div className="pdb-service-status">{!health.pushGateway.apns.enabled ? '已停用' : health.pushGateway.apns.configured ? '已配置' : '配置不完整'}</div>
+                <div className="pdb-metric-sub">iOS 裝置 {Number(health.pushGateway.devices.apns)}{health.pushGateway.apns.environment ? ` · ${health.pushGateway.apns.environment === 'sandbox' ? '沙箱' : '生產'}` : ''}</div>
+              </div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${!health.pushGateway.fcm.enabled ? 'gray' : (health.pushGateway.fcm.configured ? 'green' : 'red')}`} />
+              <div>
+                <div className="pdb-service-name">FCM</div>
+                <div className="pdb-service-status">{!health.pushGateway.fcm.enabled ? '已停用' : health.pushGateway.fcm.configured ? '已配置' : '配置不完整'}</div>
+                <div className="pdb-metric-sub">FCM 裝置 {Number(health.pushGateway.devices.fcm)}</div>
+              </div>
+            </div>
+            <div className="pdb-card pdb-service-card">
+              <span className={`pdb-dot ${Number(health.pushGateway.last24h.failed) > 0 ? 'warn' : 'green'}`} />
+              <div>
+                <div className="pdb-service-name">近 24 小時推送</div>
+                <div className="pdb-service-status">處理 {Number(health.pushGateway.last24h.processed)} · 失敗 {Number(health.pushGateway.last24h.failed)}</div>
+                <div className="pdb-metric-sub">
+                  最近事件 {formatTimeShort(health.pushGateway.lastEventAt)}
+                  {health.pushGateway.lastFailureAt ? ` · 最近失敗 ${health.pushGateway.lastFailureProvider || '-'} ${health.pushGateway.lastFailureCode || ''}` : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          {health.pushGateway.warnings.length > 0 && (
+            <div className="pdb-metric-sub" style={{ marginTop: 6, color: '#f6b25d' }}>
+              配置警告：{health.pushGateway.warnings.join('、')}
+            </div>
+          )}
         </div>
 
         {/* 帳號庫存 */}
