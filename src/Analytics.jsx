@@ -134,7 +134,9 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
   const sipRequestIdRef = useRef(0);
   const sipErrorTimerRef = useRef(null);
 
-  const [accounts, setAccounts] = useState([]);
+  const [callLogAccounts, setCallLogAccounts] = useState([]);
+  const [callAccountDropdownOpen, setCallAccountDropdownOpen] = useState(false);
+  const [callAccountSearch, setCallAccountSearch] = useState('');
   const [webRows, setWebRows] = useState([]);
   const [webTotal, setWebTotal] = useState(0);
   const [webStats, setWebStats] = useState({ total: 0, online: 0, offline: 0, unknown: 0, notFound: 0, assigned: 0, unassigned: 0 });
@@ -163,17 +165,30 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
     if (sipErrorTimerRef.current) clearTimeout(sipErrorTimerRef.current);
   }, []);
 
-  // 「Web 呼叫日誌」分機下拉仍需要完整帳號清單，僅載入一次
-  const fetchAccounts = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/admin/web-accounts');
-      const list = Array.isArray(res.accounts) ? res.accounts : [];
-      setAccounts(list);
-      return list;
-    } catch { return []; }
-  }, []);
-
-  useEffect(() => { fetchAccounts(); }, [fetchAccounts]);
+  // 「Web 呼叫日誌」分機下拉：只載入已分配的 Web 帳號（含對應 SIP 帳號）
+  useEffect(() => {
+    if (!isPlatformAdmin || activeTab !== 'callLog') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get('/analytics/web-accounts?assign=assigned&pageSize=all');
+        const items = Array.isArray(res?.data?.items) ? res.data.items : [];
+        if (cancelled) return;
+        setCallLogAccounts(items
+          .filter((item) => /^\d+$/.test(String(item.username || '')))
+          .map((item) => ({
+            username: String(item.username),
+            sipUsername: item.assignedSipUsername || '',
+            displayName: item.displayName || '',
+            tenantName: item.tenantName || '',
+          }))
+          .sort((a, b) => a.username.localeCompare(b.username, undefined, { numeric: true })));
+      } catch {
+        if (!cancelled) setCallLogAccounts([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isPlatformAdmin, activeTab]);
 
   // 搜尋防抖
   useEffect(() => {
@@ -304,6 +319,14 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+
+  const selectedCallAccount = callLogAccounts.find((item) => item.username === callExtension) || null;
+  const callAccountKeyword = callAccountSearch.trim().toLowerCase();
+  const visibleCallAccounts = callLogAccounts.filter((item) => {
+    if (!callAccountKeyword) return true;
+    return [item.username, item.sipUsername, item.displayName, item.tenantName]
+      .some((value) => String(value || '').toLowerCase().includes(callAccountKeyword));
+  });
 
   return (
     <section className="view active" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
@@ -460,13 +483,42 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       {activeTab === 'callLog' && isPlatformAdmin && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
-            <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
-              style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none', cursor: 'pointer', minWidth: '130px' }}>
-              <option value="">選擇分機號</option>
-              {accounts.filter(a => /^\d+$/.test(a.username)).map(a => (
-                <option key={a.id} value={a.username}>{a.username} {a.displayName ? `(${a.displayName})` : ''}</option>
-              ))}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => { setCallAccountDropdownOpen(open => !open); setCallAccountSearch(''); }}
+                style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: callExtension ? '#e5e7eb' : '#9ca3af', fontSize: '13px', cursor: 'pointer', minWidth: '230px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {callExtension
+                    ? `${callExtension}${selectedCallAccount?.sipUsername ? `（${selectedCallAccount.sipUsername}）` : ''}`
+                    : '選擇 Web 分機（SIP）'}
+                </span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6,9 12,15 18,9"/></svg>
+              </button>
+              {callAccountDropdownOpen && (
+                <>
+                  <div onClick={() => setCallAccountDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+                  <div style={{ position: 'absolute', top: '44px', left: 0, zIndex: 50, background: '#1a2332', border: '1px solid #374151', borderRadius: '8px', width: '320px', maxHeight: '330px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+                    <div style={{ flexShrink: 0, padding: '8px', borderBottom: '1px solid #1f2937' }}>
+                      <input autoFocus type="search" placeholder="搜尋 Web / SIP 帳號、租戶" value={callAccountSearch} onChange={e => setCallAccountSearch(e.target.value)}
+                        style={{ width: '100%', height: '34px', padding: '0 10px', borderRadius: '6px', border: '1px solid #374151', background: '#111827', color: '#e5e7eb', fontSize: '12px', outline: 'none' }} />
+                    </div>
+                    <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                      {visibleCallAccounts.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>{callLogAccounts.length === 0 ? '暫無已分配帳號' : '無匹配帳號'}</div>
+                      ) : visibleCallAccounts.map(item => (
+                        <button key={item.username} type="button"
+                          onClick={() => { setCallExtension(item.username); setCallPage(1); setCallAccountDropdownOpen(false); }}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '2px', width: '100%', padding: '8px 12px', textAlign: 'left', border: 0, borderBottom: '1px solid #1f2937', background: item.username === callExtension ? '#1e3a5f' : 'transparent', cursor: 'pointer' }}
+                          onMouseEnter={e => { if (item.username !== callExtension) e.currentTarget.style.background = '#1e293b'; }}
+                          onMouseLeave={e => { if (item.username !== callExtension) e.currentTarget.style.background = 'transparent'; }}>
+                          <span style={{ fontSize: '13px', color: '#e5e7eb', fontFamily: 'monospace' }}>{item.username}{item.sipUsername ? `（${item.sipUsername}）` : ''}</span>
+                          <span style={{ fontSize: '11px', color: '#9ca3af' }}>{[item.tenantName, item.displayName].filter(Boolean).join(' · ') || '-'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <div style={{ position: 'relative', width: '200px' }}>
               <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input type="search" placeholder="搜尋主叫/被叫號碼" value={callSearch} onChange={e => { setCallSearch(e.target.value); setCallPage(1); }}
