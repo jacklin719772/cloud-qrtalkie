@@ -376,6 +376,8 @@ export default function FinanceManagement() {
         .fin-table td.fin-sticky-action { position: sticky; right: 0; z-index: 3; width: 180px; background: #111827; border-left: 1px solid #374151; box-shadow: -4px 0 8px rgba(0,0,0,0.35); }
         .fin-table th.fin-sticky-action { background: #1e293b; z-index: 4; }
         .fin-table tr:hover td.fin-sticky-action { background: #1e293b; }
+        .fin-table td .ghost-btn { background: #1f2937 !important; border: 1px solid #4b5563 !important; color: #d1d5db !important; }
+        .fin-table td .ghost-btn:hover { background: #374151 !important; color: #f3f4f6 !important; }
         .fin-dropdown-menu { position: fixed; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); min-width: 140px; display: flex; flex-direction: column; padding: 4px 0; }
         .fin-dropdown-item { padding: 8px 16px; font-size: 13px; color: #334155; background: transparent; border: none; text-align: left; width: 100%; cursor: pointer; }
         .fin-dropdown-item:hover { background: #f1f5f9; }
