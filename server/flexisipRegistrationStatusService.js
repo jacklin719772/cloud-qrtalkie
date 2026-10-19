@@ -257,18 +257,10 @@ function parseAccountFromRedisKey(key, defaultDomain) {
   return { username, domain };
 }
 
-export async function discoverAccountsFromRedis(options = {}) {
-  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
-  const includeContacts = Boolean(options.includeContacts);
-  const nowSeconds = Math.floor(Date.now() / 1000);
-
-  const keys = await scanRegistrarKeys("fs:*");
-  const sortedKeys = keys.sort();
-
-  const batchSize = 200;
-  const redisResults = new Map();
-  for (let i = 0; i < sortedKeys.length; i += batchSize) {
-    const batch = sortedKeys.slice(i, i + batchSize);
+async function readRegistrarKeysBatched(keys, batchSize = 200) {
+  const results = new Map();
+  for (let i = 0; i < keys.length; i += batchSize) {
+    const batch = keys.slice(i, i + batchSize);
     let batchResults;
     try {
       batchResults = await readRegistrarKeys(batch);
@@ -280,14 +272,68 @@ export async function discoverAccountsFromRedis(options = {}) {
       });
     }
     for (const [key, value] of batchResults) {
-      redisResults.set(key, value);
+      results.set(key, value);
     }
   }
+  return results;
+}
+
+async function scanRegistrarAccountKeys() {
+  let keys;
+  try {
+    keys = await scanRegistrarKeys("fs:*");
+  } catch (error) {
+    const unavailable = error instanceof RedisReadOnlyError || error?.name === "RedisReadOnlyError";
+    throw new FlexisipRegistrationStatusError("Flexisip Registrar Redis unavailable.", {
+      code: unavailable ? "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE" : "FLEXISIP_REGISTRATION_STATUS_FAILED",
+      cause: error,
+    });
+  }
+  return keys
+    .filter((key) => {
+      const { username } = parseAccountFromRedisKey(key, "");
+      return Boolean(username) && !/^(chatroom|conference|videoconference)-/i.test(username);
+    })
+    .sort();
+}
+
+// 帳號清單以 DB 為準時使用：一次掃描 Redis，回傳 username@domain → 註冊狀態。
+export async function getRegistrarStatusMap(options = {}) {
+  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const accountKeys = await scanRegistrarAccountKeys();
+  const redisResults = await readRegistrarKeysBatched(accountKeys);
+
+  const statusMap = new Map();
+  for (const key of accountKeys) {
+    const { username, domain } = parseAccountFromRedisKey(key, defaultDomain);
+    const account = { id: key, username, domain };
+    const item = accountToStatus(
+      account,
+      redisResults.get(key) || null,
+      { ...options, includeContacts: false, domain: defaultDomain },
+      nowSeconds,
+    );
+    statusMap.set(`${username}@${domain}`, item);
+  }
+
+  return {
+    checkedAt: new Date(nowSeconds * 1000).toISOString(),
+    statusMap,
+  };
+}
+
+export async function discoverAccountsFromRedis(options = {}) {
+  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const includeContacts = Boolean(options.includeContacts);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const sortedKeys = await scanRegistrarAccountKeys();
+  const redisResults = await readRegistrarKeysBatched(sortedKeys);
 
   const allItems = [];
   for (const key of sortedKeys) {
     const { username, domain } = parseAccountFromRedisKey(key, defaultDomain);
-    if (/^(chatroom|conference|videoconference)-/i.test(username)) continue;
     const account = { id: key, username, domain };
     const registrarResult = redisResults.get(key);
     const statusItem = accountToStatus(account, registrarResult || null, { ...options, includeContacts, domain: defaultDomain }, nowSeconds);

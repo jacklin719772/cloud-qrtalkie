@@ -63,6 +63,7 @@ import {
   FlexisipRegistrationStatusError,
   discoverAccountsFromRedis,
   getAccountRegistrationDetail,
+  getRegistrarStatusMap,
 } from "./flexisipRegistrationStatusService.js";
 import { readRegistrarKeys, RedisReadOnlyError } from "./redisClient.js";
 import { SipAccountStatusError, getSipAccountStatus } from "./sipAccountStatusService.js";
@@ -10692,6 +10693,167 @@ app.get("/api/analytics/web-accounts", requireAdmin, async (request, response) =
   } catch (error) {
     console.error("Failed to fetch analytics web accounts:", error?.message || error);
     return response.status(500).json({ success: false, message: "無法讀取 Web 帳號狀態。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// GET /api/analytics/sip-accounts - SIP 帳號狀態聚合（DB 帳號清單 + Flexisip Redis 註冊狀態）
+// 歸屬口徑：生效中的 tenant_sip_account_entitlements 優先，其次 sip_users.tenant_id。
+app.get("/api/analytics/sip-accounts", requireAdmin, async (request, response) => {
+  const isPlatform = request.admin.accountType === "platform";
+  const adminTenantId = request.admin.tenantId;
+  if (!isPlatform && !adminTenantId) {
+    return response.status(403).json({ success: false, message: "無許可權查詢 SIP 帳號狀態。" });
+  }
+
+  const page = Math.max(1, Number.parseInt(request.query?.page, 10) || 1);
+  const rawPageSize = String(request.query?.pageSize || "20");
+  const fetchAll = rawPageSize === "all";
+  const pageSize = fetchAll ? 0 : Math.min(200, Math.max(1, Number.parseInt(rawPageSize, 10) || 20));
+  const search = String(request.query?.search || "").trim();
+  const statusFilter = String(request.query?.status || "all");
+  const assignFilter = String(request.query?.assign || "all");
+  const sortableFields = new Set([
+    "username", "displayName", "domain", "tenantName", "accountStatus",
+    "status", "contactsCount", "lastRegisterAt", "expiresAt", "serviceExpiresAt",
+  ]);
+  const sortField = sortableFields.has(String(request.query?.sort || "")) ? String(request.query.sort) : "username";
+  const sortDir = String(request.query?.dir || "asc").toLowerCase() === "desc" ? -1 : 1;
+
+  const conditions = ["s.recycled_at IS NULL"];
+  const params = [];
+  if (!isPlatform) {
+    conditions.push("COALESCE(e.tenant_id, s.tenant_id) = ?");
+    params.push(adminTenantId);
+  }
+  if (search) {
+    conditions.push("(s.username LIKE ? OR s.display_name LIKE ?)");
+    params.push(`%${search}%`, `%${search}%`);
+  }
+  if (assignFilter === "assigned") {
+    conditions.push("COALESCE(e.tenant_id, s.tenant_id) IS NOT NULL");
+  } else if (assignFilter === "unassigned") {
+    conditions.push("COALESCE(e.tenant_id, s.tenant_id) IS NULL");
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT
+         s.id,
+         s.username,
+         s.sip_domain AS domain,
+         s.display_name AS displayName,
+         s.status AS accountStatus,
+         s.tenant_id AS legacyTenantId,
+         e.tenant_id AS entitlementTenantId,
+         COALESCE(e.tenant_id, s.tenant_id) AS effectiveTenantId,
+         COALESCE(et.name, t.name) AS tenantName,
+         COALESCE(DATE_FORMAT(e.service_expires_at, '%Y-%m-%d'), DATE_FORMAT(s.service_expires_at, '%Y-%m-%d')) AS serviceExpiresAt,
+         s.flexisip_account_id AS flexisipAccountId,
+         s.sync_status AS syncStatus
+       FROM sip_users s
+       LEFT JOIN tenants t ON t.id = s.tenant_id
+       LEFT JOIN tenant_sip_account_entitlements e ON e.sip_user_id = s.id AND e.status = 'active'
+       LEFT JOIN tenants et ON et.id = e.tenant_id
+       WHERE ${conditions.join(" AND ")}
+       ORDER BY s.username`,
+      params,
+    );
+
+    const { checkedAt, statusMap } = await getRegistrarStatusMap({ domain: sipDomain });
+
+    let items = rows.map((row) => {
+      const domain = String(row.domain || sipDomain || "").toLowerCase();
+      const registrar = statusMap.get(`${row.username}@${domain}`) || null;
+      const tenantIdValue = row.effectiveTenantId ?? row.legacyTenantId ?? null;
+      return {
+        id: Number(row.id),
+        username: String(row.username || ""),
+        domain,
+        displayName: row.displayName || "",
+        accountStatus: row.accountStatus || "active",
+        tenantId: tenantIdValue == null ? null : Number(tenantIdValue),
+        tenantName: row.tenantName || "",
+        assigned: tenantIdValue != null,
+        serviceExpiresAt: row.serviceExpiresAt || "",
+        flexisipAccountId: row.flexisipAccountId == null ? null : Number(row.flexisipAccountId),
+        syncStatus: row.syncStatus || "",
+        status: registrar?.status || "offline",
+        registered: registrar?.status === "online",
+        contactsCount: Number(registrar?.contactsCount || 0),
+        lastRegisterAt: registrar?.lastRegisterAt || null,
+        expiresAt: registrar?.expiresAt || null,
+        ttlSeconds: Number(registrar?.ttlSeconds || 0),
+        sipUri: `sip:${row.username}@${domain}`,
+      };
+    });
+
+    if (["online", "offline", "unknown"].includes(statusFilter)) {
+      items = items.filter((item) => item.status === statusFilter);
+    }
+
+    const stats = {
+      total: items.length,
+      online: items.filter((item) => item.status === "online").length,
+      offline: items.filter((item) => item.status === "offline").length,
+      unknown: items.filter((item) => item.status === "unknown").length,
+      assigned: items.filter((item) => item.assigned).length,
+      unassigned: items.filter((item) => !item.assigned).length,
+    };
+
+    const statusOrder = { online: 0, offline: 1, unknown: 2 };
+    const valueForSort = (item) => {
+      switch (sortField) {
+        case "displayName": return item.displayName || "";
+        case "domain": return item.domain || "";
+        case "tenantName": return item.tenantName || "";
+        case "accountStatus": return item.accountStatus || "";
+        case "status": return statusOrder[item.status] ?? 9;
+        case "contactsCount": return item.contactsCount || 0;
+        case "lastRegisterAt": return item.lastRegisterAt || "";
+        case "expiresAt": return item.expiresAt || "";
+        case "serviceExpiresAt": return item.serviceExpiresAt || "";
+        default: return item.username || "";
+      }
+    };
+    items.sort((a, b) => {
+      const va = valueForSort(a);
+      const vb = valueForSort(b);
+      if (va === "" && vb !== "") return 1;
+      if (vb === "" && va !== "") return -1;
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * sortDir;
+      return String(va).localeCompare(String(vb), undefined, { numeric: true }) * sortDir;
+    });
+
+    const total = items.length;
+    const pageItems = fetchAll ? items : items.slice((page - 1) * pageSize, page * pageSize);
+
+    return response.json({
+      success: true,
+      data: {
+        items: pageItems,
+        total,
+        page,
+        pageSize: fetchAll ? total : pageSize,
+        stats,
+        checkedAt,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof FlexisipRegistrationStatusError && error.code === "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE") {
+      console.error("Flexisip Registrar Redis unavailable (analytics):", { message: error.message });
+      return response.status(503).json({
+        success: false,
+        message: "註冊狀態服務暫時不可用。",
+        error: { code: "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE", message: "註冊狀態服務暫時不可用。" },
+      });
+    }
+    console.error("Failed to fetch analytics SIP accounts:", error?.message || error);
+    return response.status(500).json({ success: false, message: "無法讀取 SIP 帳號狀態。" });
   } finally {
     if (connection) connection.release();
   }
@@ -21660,7 +21822,16 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
   if (!isPlatform && tenantId) {
     const dbConn = await pool.getConnection();
     try {
-      const [row] = await dbConn.query("SELECT id FROM sip_users WHERE username = ? AND tenant_id = ? LIMIT 1", [username, tenantId]);
+      const [row] = await dbConn.query(
+        `SELECT s.id
+           FROM sip_users s
+           LEFT JOIN tenant_sip_account_entitlements e
+             ON e.sip_user_id = s.id AND e.status = 'active'
+          WHERE s.username = ?
+            AND COALESCE(e.tenant_id, s.tenant_id) = ?
+          LIMIT 1`,
+        [username, tenantId],
+      );
       if (!row) {
         return response.status(403).json({ success: false, message: "無許可權檢視該帳號詳情" });
       }
