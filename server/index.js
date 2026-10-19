@@ -3269,37 +3269,39 @@ app.get("/api/tenant/sip-accounts/am-status-check", requireAdmin, async (request
   }
 });
 
-async function loadTenantSipAccountForFlexisipEmail(connection, tenantId, accountId) {
-  const [billingAccount] = await connection.query(
-    `SELECT
-       a.id AS account_id,
-       a.sip_user_id,
-       a.service_expires_at,
-       su.id AS sip_user_id_resolved,
-       su.username,
-       su.sip_domain,
-       su.flexisip_account_id,
-       su.sync_status,
-       su.status AS sip_status
-     FROM billing_order_sip_accounts a
-     INNER JOIN sip_users su ON su.id = a.sip_user_id
-     WHERE a.id = ?
-       AND a.tenant_id = ?
-     LIMIT 1`,
-    [accountId, tenantId],
-  );
-  if (billingAccount) {
-    return {
-      source: "billing_order_sip_accounts",
-      accountId: Number(billingAccount.account_id),
-      sipUserId: Number(billingAccount.sip_user_id),
-      serviceExpiresAt: billingAccount.service_expires_at ? String(billingAccount.service_expires_at) : "",
-      username: billingAccount.username || "",
-      domain: billingAccount.sip_domain || "",
-      flexisipAccountId: billingAccount.flexisip_account_id || "",
-      syncStatus: billingAccount.sync_status || "",
-      status: billingAccount.sip_status || "",
-    };
+async function loadTenantSipAccountForFlexisipEmail(connection, tenantId, accountId, options = {}) {
+  if (!options.sipUserOnly) {
+    const [billingAccount] = await connection.query(
+      `SELECT
+         a.id AS account_id,
+         a.sip_user_id,
+         a.service_expires_at,
+         su.id AS sip_user_id_resolved,
+         su.username,
+         su.sip_domain,
+         su.flexisip_account_id,
+         su.sync_status,
+         su.status AS sip_status
+       FROM billing_order_sip_accounts a
+       INNER JOIN sip_users su ON su.id = a.sip_user_id
+       WHERE a.id = ?
+         AND a.tenant_id = ?
+       LIMIT 1`,
+      [accountId, tenantId],
+    );
+    if (billingAccount) {
+      return {
+        source: "billing_order_sip_accounts",
+        accountId: Number(billingAccount.account_id),
+        sipUserId: Number(billingAccount.sip_user_id),
+        serviceExpiresAt: billingAccount.service_expires_at ? String(billingAccount.service_expires_at) : "",
+        username: billingAccount.username || "",
+        domain: billingAccount.sip_domain || "",
+        flexisipAccountId: billingAccount.flexisip_account_id || "",
+        syncStatus: billingAccount.sync_status || "",
+        status: billingAccount.sip_status || "",
+      };
+    }
   }
 
   const [sipUser] = await connection.query(
@@ -3461,13 +3463,25 @@ app.get("/api/tenant/sip-accounts/:id/provisioning-url", requireAdmin, async (re
   if (!Number.isInteger(accountId) || accountId <= 0) {
     return response.status(400).json({ success: false, message: "帳號編號無效。" });
   }
+  const isSelfService = request.admin.accountType === "sip_user";
+  if (isSelfService && accountId !== Number(request.admin.id)) {
+    return response.status(403).json({ success: false, message: "只能取得自己的登錄二維碼。" });
+  }
 
   let connection;
   try {
     connection = await pool.getConnection();
-    const account = await loadTenantSipAccountForFlexisipEmail(connection, request.admin.tenantId, accountId);
+    const account = await loadTenantSipAccountForFlexisipEmail(
+      connection,
+      request.admin.tenantId,
+      accountId,
+      { sipUserOnly: isSelfService },
+    );
     if (!account) {
       return response.status(404).json({ success: false, message: "找不到帳號。" });
+    }
+    if (isSelfService && Number(account.sipUserId) !== Number(request.admin.id)) {
+      return response.status(403).json({ success: false, message: "只能取得自己的登錄二維碼。" });
     }
     if (!account.flexisipAccountId) {
       return response.status(400).json({ success: false, message: "該帳號尚未同步到 Flexisip，無法生成二維碼。" });

@@ -141,7 +141,7 @@ export default function LoginQrDialog({ isOpen, onClose, account, apiBasePath = 
             </div>
           ) : provisionUrl ? (
             <div style={{ background: '#ffffff', borderRadius: '12px', padding: '16px', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
-              <QRCodeSVG id="login-qr-svg" value={provisionUrl} size={200} bgColor="#ffffff" fgColor="#000000" level="M" includeMargin={false} />
+              <QRCodeSVG id="login-qr-svg" value={provisionUrl} size={200} bgColor="#ffffff" fgColor="#000000" level="M" includeMargin={true} />
             </div>
           ) : null}
         </div>
