@@ -21840,7 +21840,58 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
 
   try {
     const detail = await getAccountRegistrationDetail(username, domain, { domain: domain || sipDomain });
-    return response.json({ success: true, message: "帳號註冊詳情已取得", data: detail });
+
+    // 賬號資料卡（與 App 同源）：DB 基本資料 + vCard（工作單位/職務/頭像）
+    let profile = null;
+    let profileConnection;
+    try {
+      profileConnection = await pool.getConnection();
+      const [row] = await profileConnection.query(
+        `SELECT s.id, s.username, s.sip_domain, s.display_name, s.email, s.phone_number, s.avatar_url,
+                s.status AS account_status, s.tenant_id AS legacy_tenant_id,
+                e.tenant_id AS entitlement_tenant_id,
+                COALESCE(et.name, t.name) AS tenant_name,
+                COALESCE(DATE_FORMAT(e.service_expires_at, '%Y-%m-%d'), DATE_FORMAT(s.service_expires_at, '%Y-%m-%d')) AS service_expires_at
+           FROM sip_users s
+           LEFT JOIN tenants t ON t.id = s.tenant_id
+           LEFT JOIN tenant_sip_account_entitlements e ON e.sip_user_id = s.id AND e.status = 'active'
+           LEFT JOIN tenants et ON et.id = e.tenant_id
+          WHERE s.username = ? AND s.sip_domain = ?
+          LIMIT 1`,
+        [username, domain],
+      );
+      if (row) {
+        let vcardData = null;
+        try {
+          const vcard = await readAccountVcard(row.username, row.sip_domain);
+          vcardData = vcard?.data || null;
+        } catch (vcardError) {
+          console.error("[registration-detail] vcard read failed:", vcardError?.message || vcardError);
+        }
+        const tenantIdValue = row.entitlement_tenant_id ?? row.legacy_tenant_id ?? null;
+        profile = {
+          id: Number(row.id),
+          username: row.username,
+          domain: row.sip_domain,
+          displayName: row.display_name || vcardData?.displayName || "",
+          email: row.email || "",
+          phone: row.phone_number || vcardData?.phone || "",
+          company: vcardData?.company || "",
+          jobTitle: vcardData?.jobTitle || "",
+          avatarUrl: row.avatar_url || vcardData?.photoUrl || "",
+          accountStatus: row.account_status || "active",
+          tenantId: tenantIdValue == null ? null : Number(tenantIdValue),
+          tenantName: row.tenant_name || "",
+          serviceExpiresAt: row.service_expires_at || "",
+        };
+      }
+    } catch (profileError) {
+      console.error("[registration-detail] profile read failed:", profileError?.message || profileError);
+    } finally {
+      if (profileConnection) profileConnection.release();
+    }
+
+    return response.json({ success: true, message: "帳號註冊詳情已取得", data: { ...detail, profile } });
   } catch (error) {
     if (error instanceof FlexisipRegistrationStatusError && error.code === "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE") {
       return response.status(503).json({

@@ -423,15 +423,16 @@ export async function getAccountRegistrationDetail(username, domain, options = {
   for (const entry of registrarResult.entries) {
     try {
       const contact = parseFlexisipContact(entry.value, entry.field, nowSeconds);
+      const contactIp = extractIpFromContactUri(contact.contactUri);
       parsedContacts.push({
         ...sanitizeContact(contact, options),
-        updatedAt: contact.updatedAt,
-        expires: contact.expires,
-        expiresAt: contact.expiresAt,
+        updatedAtSeconds: contact.updatedAt,
+        expiresSeconds: contact.expires,
+        expiresAtSeconds: contact.expiresAt,
         valid: contact.valid,
         contactUri: contact.contactUri,
-        ip: extractIpFromContactUri(contact.contactUri),
-        geo: lookupGeo(extractIpFromContactUri(contact.contactUri)),
+        ip: contactIp,
+        geo: lookupGeo(contactIp),
       });
     } catch {
       warnings.push({

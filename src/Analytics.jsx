@@ -713,6 +713,34 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
                 <p style={{ color: '#ef4444', textAlign: 'center', padding: '40px' }}>數據載入失敗</p>
               ) : (
                 <>
+                  {detailData.profile && (
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '24px', padding: '16px', background: '#1a2332', border: '1px solid #1f2937', borderRadius: '12px' }}>
+                      <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', background: '#111827', border: '1px solid #374151', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {detailData.profile.avatarUrl ? (
+                          <img src={detailData.profile.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ color: '#6b7280', fontSize: '22px', fontWeight: 600 }}>{(detailData.profile.displayName || detailData.profile.username || '?').slice(0, 1).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ color: '#e5e7eb', fontSize: '18px', fontWeight: 700 }}>{detailData.profile.displayName || detailData.profile.username}</span>
+                          {userStatusBadge(detailData.profile.accountStatus)}
+                          {detailData.profile.tenantName && (
+                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1e3a5f', color: '#60a5fa', fontSize: '11px' }}>{detailData.profile.tenantName}</span>
+                          )}
+                        </div>
+                        <div style={{ marginTop: '6px', display: 'flex', gap: '16px', flexWrap: 'wrap', color: '#9ca3af', fontSize: '12px' }}>
+                          {(detailData.profile.company || detailData.profile.jobTitle) && (
+                            <span>{[detailData.profile.company, detailData.profile.jobTitle].filter(Boolean).join(' · ')}</span>
+                          )}
+                          {detailData.profile.phone && <span>電話：{detailData.profile.phone}</span>}
+                          {detailData.profile.email && <span>郵箱：{detailData.profile.email}</span>}
+                          {detailData.profile.serviceExpiresAt && <span>服務到期：{detailData.profile.serviceExpiresAt}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div style={{ marginBottom: '24px' }}>
                     <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>基本資訊</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
@@ -723,8 +751,8 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
                         { label: '註冊狀態', value: detailData.status === 'online' ? '🟢 線上' : detailData.status === 'offline' ? '🔴 離線' : '⚪ 未知' },
                         { label: 'Key 型別', value: detailData.keyType },
                         { label: 'TTL (秒)', value: String(detailData.ttl) },
-                        { label: '總 Contact 數', value: String(detailData.totalContacts) },
-                        { label: '有效 Contact 數', value: String(detailData.validContacts) },
+                        { label: '設備總數', value: String(detailData.totalContacts) },
+                        { label: '有效設備數', value: String(detailData.validContacts) },
                         { label: '最後註冊時間', value: detailData.lastRegisterAt ? new Date(detailData.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                         { label: '註冊過期時間', value: detailData.expiresAt ? new Date(detailData.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                       ].map((item, i) => (
@@ -746,9 +774,9 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
                   )}
 
                   <div>
-                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>設備 Contact 列表 ({detailData.parsedContacts?.length || 0})</h3>
+                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>註冊設備列表 ({detailData.parsedContacts?.length || 0})</h3>
                     {!detailData.parsedContacts || detailData.parsedContacts.length === 0 ? (
-                      <p style={{ color: '#6b7280', fontSize: '13px', padding: '20px', textAlign: 'center' }}>暫無 Contact 數據</p>
+                      <p style={{ color: '#6b7280', fontSize: '13px', padding: '20px', textAlign: 'center' }}>暫無註冊設備</p>
                     ) : (
                       detailData.parsedContacts.map((contact, i) => (
                         <div key={i} style={{ marginBottom: '16px', padding: '16px', background: '#1a2332', border: `1px solid ${contact.valid ? '#065f46' : '#374151'}`, borderRadius: '10px' }}>
