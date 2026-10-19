@@ -76,7 +76,9 @@ export default function FinanceManagement() {
   const [receivableModalOrder, setReceivableModalOrder] = useState(null);
   const [receivableValue, setReceivableValue] = useState('');
   const [savingReceivable, setSavingReceivable] = useState(false);
+  const [detailModalOrder, setDetailModalOrder] = useState(null);
   const [paymentModalOrder, setPaymentModalOrder] = useState(null);
+  const [paymentModalMode, setPaymentModalMode] = useState('payments');
   const [payments, setPayments] = useState([]);
   const [paymentStats, setPaymentStats] = useState(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -219,8 +221,9 @@ export default function FinanceManagement() {
     }
   }, [showMessage]);
 
-  const openPayments = async (order) => {
+  const openPayments = async (order, mode = 'payments') => {
     setPaymentModalOrder(order);
+    setPaymentModalMode(mode);
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
     setPaymentForm(emptyPaymentForm);
@@ -230,6 +233,7 @@ export default function FinanceManagement() {
   const closePayments = () => {
     if (savingPayment) return;
     setPaymentModalOrder(null);
+    setPaymentModalMode('payments');
     setPayments([]);
     setPaymentStats(null);
     setPaymentFormOpen(false);
@@ -465,7 +469,6 @@ export default function FinanceManagement() {
                     <td><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', background: badge.bg, color: badge.color }}>{badge.text}</span></td>
                     <td className="fin-sticky-action" style={{ textAlign: 'center' }}>
                       <div className="row-actions fin-dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openPayments(order)}>收款記錄</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openReceivable(order)}>設定應收</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(event) => {
                           event.stopPropagation();
@@ -475,8 +478,9 @@ export default function FinanceManagement() {
                         }}>更多</button>
                         {openMenuOrderId === order.id && createPortal(
                           <div className="fin-dropdown-menu" style={{ top: menuPosition.top, left: menuPosition.left, zIndex: 2147483647 }}>
-                            <button type="button" className="fin-dropdown-item" onClick={() => { openPayments(order); setOpenMenuOrderId(null); }}>收款記錄</button>
-                            <button type="button" className="fin-dropdown-item" onClick={() => { openReceivable(order); setOpenMenuOrderId(null); }}>設定應收</button>
+                            <button type="button" className="fin-dropdown-item" onClick={() => { setDetailModalOrder(order); setOpenMenuOrderId(null); }}>訂單詳情</button>
+                            <button type="button" className="fin-dropdown-item" onClick={() => { openPayments(order); setOpenMenuOrderId(null); }}>收款日誌</button>
+                            <button type="button" className="fin-dropdown-item" onClick={() => { openPayments(order, 'invoices'); setOpenMenuOrderId(null); }}>開票日誌</button>
                           </div>,
                           document.body,
                         )}
@@ -532,33 +536,112 @@ export default function FinanceManagement() {
         document.body,
       )}
 
+      {detailModalOrder && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={() => setDetailModalOrder(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)' }} />
+          <div style={{ position: 'relative', width: 'min(620px, 94vw)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #374151', borderRadius: '14px', overflow: 'hidden' }}>
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, color: '#e5e7eb', fontSize: '16px' }}>訂單詳情</h3>
+              <button type="button" onClick={() => setDetailModalOrder(null)} style={{ width: '30px', height: '30px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: '18px 22px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 18px', marginBottom: '16px', fontSize: '12px' }}>
+                {[
+                  ['訂單號', detailModalOrder.orderNo],
+                  ['租戶', detailModalOrder.tenantName || '-'],
+                  ['訂單類型', detailModalOrder.orderType],
+                  ['訂單狀態', detailModalOrder.orderStatus],
+                  ['創建時間', formatDateTime(detailModalOrder.createdAt)],
+                  ['幣種', detailModalOrder.currency || '-'],
+                  ['生效日期', detailModalOrder.effectiveAt ? formatDateTime(detailModalOrder.effectiveAt) : '-'],
+                  ['到期日期', detailModalOrder.expiresAt ? formatDateTime(detailModalOrder.expiresAt) : '-'],
+                ].map(([label, value]) => (
+                  <div key={label} style={{ background: '#1a2332', border: '1px solid #1f2937', borderRadius: '8px', padding: '9px 12px' }}>
+                    <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '3px' }}>{label}</div>
+                    <div style={{ color: '#e5e7eb', wordBreak: 'break-all' }}>{value || '-'}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                {[
+                  { label: '訂單金額', value: formatMoney(detailModalOrder.orderAmount, detailModalOrder.currency), color: '#e5e7eb' },
+                  { label: '應收金額', value: formatMoney(detailModalOrder.receivableAmount, detailModalOrder.currency), color: '#93c5fd' },
+                  { label: '實收金額', value: formatMoney(detailModalOrder.receivedAmount, detailModalOrder.currency), color: '#6ee7b7' },
+                  { label: '欠款金額', value: formatMoney(detailModalOrder.outstandingAmount, detailModalOrder.currency), color: detailModalOrder.outstandingAmount > 0 ? '#fca5a5' : '#9ca3af' },
+                  { label: '發票金額', value: formatMoney(detailModalOrder.invoicedAmount, detailModalOrder.currency), color: '#fcd34d' },
+                  { label: '付款筆數', value: String(detailModalOrder.paymentCount || 0), color: '#e5e7eb' },
+                ].map((item) => (
+                  <div key={item.label} style={{ background: '#1a2332', border: '1px solid #1f2937', borderRadius: '8px', padding: '10px 12px' }}>
+                    <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>{item.label}</div>
+                    <div style={{ color: item.color, fontSize: '15px', fontWeight: 600 }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+
       {paymentModalOrder && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div onClick={closePayments} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{ position: 'relative', width: 'min(980px, 95vw)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #374151', borderRadius: '14px', overflow: 'hidden' }}>
             <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 22px', borderBottom: '1px solid #1f2937' }}>
               <div>
-                <h3 style={{ margin: 0, color: '#e5e7eb', fontSize: '16px' }}>收款記錄 · {paymentModalOrder.orderNo}</h3>
+                <h3 style={{ margin: 0, color: '#e5e7eb', fontSize: '16px' }}>{paymentModalMode === 'invoices' ? '開票日誌' : '收款日誌'} · {paymentModalOrder.orderNo}</h3>
                 <p style={{ margin: '4px 0 0', color: '#9ca3af', fontSize: '12px' }}>
                   {paymentModalOrder.tenantName} · 訂單金額 {formatMoney(paymentModalOrder.orderAmount, paymentModalOrder.currency)} · 應收 {formatMoney(paymentModalOrder.receivableAmount, paymentModalOrder.currency)}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" className="fin-btn" onClick={startCreatePayment}><Plus size={13} /> 新增收款</button>
+                {paymentModalMode === 'payments' && (
+                  <button type="button" className="fin-btn" onClick={startCreatePayment}><Plus size={13} /> 新增收款</button>
+                )}
                 <button type="button" className="fin-btn" onClick={closePayments} disabled={savingPayment}>關閉</button>
               </div>
             </div>
             <div style={{ flex: 1, overflow: 'auto', padding: '16px 22px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
-              {paymentStats && (
+              {paymentStats && paymentModalMode === 'payments' && (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', color: '#9ca3af', fontSize: '12px' }}>
                   <span>實收：<strong style={{ color: '#6ee7b7' }}>{formatMoney(paymentStats.receivedAmount, paymentModalOrder.currency)}</strong></span>
                   <span>欠款：<strong style={{ color: Number(paymentStats.outstandingAmount) > 0 ? '#fca5a5' : '#9ca3af' }}>{formatMoney(paymentStats.outstandingAmount, paymentModalOrder.currency)}</strong></span>
                   <span>已開發票：<strong style={{ color: '#fcd34d' }}>{formatMoney(paymentStats.invoicedAmount, paymentModalOrder.currency)}</strong></span>
                 </div>
               )}
+              {paymentStats && paymentModalMode === 'invoices' && (
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', color: '#9ca3af', fontSize: '12px' }}>
+                  <span>開票筆數：<strong style={{ color: '#e5e7eb' }}>{payments.filter((payment) => payment.invoiced).length}</strong></span>
+                  <span>開票金額：<strong style={{ color: '#fcd34d' }}>{formatMoney(paymentStats.invoicedAmount, paymentModalOrder.currency)}</strong></span>
+                </div>
+              )}
 
               {paymentLoading ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
+              ) : paymentModalMode === 'invoices' ? (
+                payments.filter((payment) => payment.invoiced).length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>暫無開票記錄</div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="fin-table" style={{ minWidth: '820px' }}>
+                      <thead>
+                        <tr>{['發票開具日期', '發票號碼', '發票代碼', '發票金額', '發票檔案', '關聯收款'].map((label) => <th key={label}>{label}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {payments.filter((payment) => payment.invoiced).map((payment) => (
+                          <tr key={payment.id}>
+                            <td>{payment.invoiceDate || '-'}</td>
+                            <td>{payment.invoiceNo || '-'}</td>
+                            <td>{payment.invoiceCode || '-'}</td>
+                            <td style={{ color: '#fcd34d' }}>{formatMoney(payment.invoiceAmount || 0, payment.currency)}</td>
+                            <td>{payment.invoiceFile ? <a href={fileUrl(payment.invoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>查看</a> : '-'}</td>
+                            <td style={{ color: '#9ca3af', fontSize: '12px' }}>{payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
               ) : payments.length === 0 ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>暫無收款記錄</div>
               ) : (
@@ -590,7 +673,7 @@ export default function FinanceManagement() {
                 </div>
               )}
 
-              {paymentFormOpen && (
+              {paymentFormOpen && paymentModalMode === 'payments' && (
                 <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
                   <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{editingPaymentId ? '編輯收款記錄' : '新增收款記錄'}</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
