@@ -175,9 +175,9 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
         const items = Array.isArray(res?.data?.items) ? res.data.items : [];
         if (cancelled) return;
         setCallLogAccounts(items
-          .filter((item) => /^\d+$/.test(String(item.username || '')))
+          .filter((item) => /^\d+$/.test(String(item.extension || item.username || '')))
           .map((item) => ({
-            username: String(item.username),
+            username: String(item.extension || item.username || ''),
             sipUsername: item.assignedSipUsername || '',
             displayName: item.displayName || '',
             tenantName: item.tenantName || '',
