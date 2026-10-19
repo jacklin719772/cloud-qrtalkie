@@ -10,6 +10,7 @@ const EMPTY_HEALTH = {
   load: { load1: 0, load5: 0, load15: 0 },
   os: null,
   ntpSynchronized: null,
+  asteriskCerts: { sipTls: null, wss: null },
   pushGateway: {
     enabled: false,
     status: 'unknown',
@@ -65,6 +66,7 @@ function normalizeHealth(res) {
     ...res,
     cpu: { ...EMPTY_HEALTH.cpu, ...(res.cpu || {}) },
     load: { ...EMPTY_HEALTH.load, ...(res.load || {}) },
+    asteriskCerts: { ...EMPTY_HEALTH.asteriskCerts, ...(res.asteriskCerts || {}) },
     pushGateway: {
       ...EMPTY_HEALTH.pushGateway,
       ...pg,
@@ -148,6 +150,20 @@ function pushStatusText(status) {
   return '未知';
 }
 
+function certDaysText(cert) {
+  if (!cert || cert.daysLeft == null) return '未取得';
+  const days = Number(cert.daysLeft);
+  return days < 0 ? `已過期 ${Math.abs(days)} 天` : `${days} 天`;
+}
+
+function certTone(cert) {
+  if (!cert || cert.daysLeft == null) return 'gray';
+  const days = Number(cert.daysLeft);
+  if (days <= 7) return 'red';
+  if (days <= 30) return 'warn';
+  return 'green';
+}
+
 function buildChartBars(trend, valueKey) {
   if (!trend || trend.length === 0) return { bars: [], labels: [], max: 1 };
   const max = Math.max(1, ...trend.map(d => d[valueKey]));
@@ -217,6 +233,21 @@ const PlatformDashboard = forwardRef((props, ref) => {
     : '-';
 
   const serviceAlerts = [];
+  const certEntries = [
+    ['Apache SSL', health.ssl],
+    ['Asterisk SIP TLS', health.asteriskCerts?.sipTls],
+    ['Asterisk WebRTC WSS', health.asteriskCerts?.wss],
+  ];
+  certEntries.forEach(([label, cert]) => {
+    if (!cert || cert.daysLeft == null) return;
+    const days = Number(cert.daysLeft);
+    if (days <= 30) {
+      serviceAlerts.push({
+        severity: days <= 7 ? 'error' : 'warning',
+        text: `${label} 證書${days < 0 ? `已過期 ${Math.abs(days)} 天` : `剩餘 ${days} 天`}（${cert.date}）`,
+      });
+    }
+  });
   const serviceDefs = [
     ['flexisip', 'SIP 呼叫服務'], ['asterisk', 'Web 呼叫服務'], ['mariadb', 'MariaDB'],
     ['mongodb', 'MongoDB'], ['redis', 'Redis'], ['apache', 'Apache'],
@@ -243,9 +274,6 @@ const PlatformDashboard = forwardRef((props, ref) => {
     if (pg.enabled && Number(pg.devices?.enabled || 0) === 0) {
       serviceAlerts.push({ severity: 'warning', text: 'Push Gateway 目前沒有已啟用的推播裝置' });
     }
-  }
-  if (health.ssl && Number(health.ssl.daysLeft) <= 30) {
-    serviceAlerts.push({ severity: Number(health.ssl.daysLeft) <= 7 ? 'error' : 'warning', text: `SSL 證書剩餘 ${health.ssl.daysLeft} 天（${health.ssl.date}）` });
   }
   if (health.disk && Number(health.disk.usage) >= 80) {
     serviceAlerts.push({ severity: Number(health.disk.usage) >= 90 ? 'error' : 'warning', text: `磁盤使用率 ${health.disk.usage}%` });
@@ -373,6 +401,33 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
               <div className="pdb-metric-sub">{health.os?.version || '-'} · NTP {health.ntpSynchronized === true ? '正常' : health.ntpSynchronized === false ? '未同步' : '未知'}</div>
             </div>
+          </div>
+        </div>
+
+        {/* 證書狀態 */}
+        <div className="pdb-section">
+          <div className="pdb-section-head">
+            <div className="pdb-section-title">證書狀態</div>
+            <div className="pdb-section-note">Apache / Asterisk SIP TLS / Asterisk WebRTC WSS</div>
+          </div>
+          <div className="pdb-grid pdb-grid-3">
+            {certEntries.map(([label, cert]) => {
+              const tone = certTone(cert);
+              return (
+                <div className="pdb-card pdb-metric" key={label}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="pdb-metric-label">{label}</div>
+                    <span className={`pdb-dot ${tone}`} />
+                  </div>
+                  <div className="pdb-metric-value" style={{ color: tone === 'red' ? '#ef4444' : tone === 'warn' ? '#f59e0b' : '#f3f4f6' }}>
+                    {certDaysText(cert)}
+                  </div>
+                  <div className="pdb-metric-sub">
+                    {cert ? `到期 ${cert.date} · ${cert.commonName || '-'}` : '未取得證書資訊'}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -26,7 +26,7 @@ import { mkdir, unlink, writeFile, readFile, stat, chmod, chown, rm } from "node
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import path from "node:path";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, X509Certificate } from "node:crypto";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { pool, limePool } from "./db.js";
@@ -18405,6 +18405,81 @@ let healthCacheAt = 0;
 let healthCacheData = null;
 const HEALTH_CACHE_TTL_MS = 8000;
 
+const asteriskConfigDir = process.env.ASTERISK_CONFIG_DIR || "/etc/asterisk";
+const asteriskTransportsConf = process.env.ASTERISK_PJSIP_TRANSPORTS_CONF || path.join(asteriskConfigDir, "pjsip.transports.conf");
+const asteriskHttpConfCandidates = [
+  process.env.ASTERISK_HTTP_CUSTOM_CONF || path.join(asteriskConfigDir, "http_custom.conf"),
+  process.env.ASTERISK_HTTP_ADDITIONAL_CONF || path.join(asteriskConfigDir, "http_additional.conf"),
+  path.join(asteriskConfigDir, "http.conf"),
+];
+
+function parseAsteriskIni(filePath) {
+  try {
+    const text = readFileSync(filePath, "utf8");
+    const sections = {};
+    let current = "general";
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith(";") || line.startsWith("#")) continue;
+      const sectionMatch = line.match(/^\[(.+)\]$/);
+      if (sectionMatch) {
+        current = sectionMatch[1].trim();
+        sections[current] = sections[current] || {};
+        continue;
+      }
+      const eq = line.indexOf("=");
+      if (eq < 0) continue;
+      const key = line.slice(0, eq).trim();
+      const value = line.slice(eq + 1).trim();
+      sections[current] = sections[current] || {};
+      sections[current][key] = value;
+    }
+    return sections;
+  } catch {
+    return {};
+  }
+}
+
+function getAsteriskSipTlsCertPath() {
+  const sections = parseAsteriskIni(asteriskTransportsConf);
+  for (const values of Object.values(sections)) {
+    if (String(values.protocol || "").toLowerCase() === "tls" && values.cert_file) return values.cert_file;
+  }
+  return "";
+}
+
+function getAsteriskWssCertPath() {
+  for (const filePath of asteriskHttpConfCandidates) {
+    const sections = parseAsteriskIni(filePath);
+    const general = sections.general || {};
+    if (String(general.tlsenable || "").toLowerCase() === "yes" && general.tlscertfile) return general.tlscertfile;
+  }
+  return "";
+}
+
+function readCertificateExpiry(filePath) {
+  if (!filePath) return null;
+  try {
+    const pem = readFileSync(filePath, "utf8");
+    const cert = new X509Certificate(pem);
+    const validTo = new Date(cert.validTo);
+    const validFrom = new Date(cert.validFrom);
+    const daysLeft = Math.ceil((validTo.getTime() - Date.now()) / 86400000);
+    const cnMatch = String(cert.subject || "").match(/CN=([^\n,]+)/);
+    return {
+      commonName: cnMatch ? cnMatch[1].trim() : "",
+      subject: String(cert.subject || "").replace(/\n/g, ", "),
+      issuer: String(cert.issuer || "").replace(/\n/g, ", "),
+      validFrom: validFrom.toISOString(),
+      validTo: validTo.toISOString(),
+      date: validTo.toISOString().slice(0, 10),
+      daysLeft,
+    };
+  } catch {
+    return null;
+  }
+}
+
 app.get("/api/platform/health", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以檢視平臺健康狀態。" });
@@ -18420,6 +18495,10 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
     const load = getLoadAvg();
     const osInfo = getOsInfo();
     const ntpSynchronized = getNtpSynchronized();
+    const asteriskCerts = {
+      sipTls: readCertificateExpiry(getAsteriskSipTlsCertPath()),
+      wss: readCertificateExpiry(getAsteriskWssCertPath()),
+    };
 
     let dbStatus = "error";
     try {
@@ -18644,6 +18723,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       load: load,
       os: osInfo,
       ntpSynchronized,
+      asteriskCerts,
       pushGateway,
       mariadb: dbStatus,
       mongodb: mongoStatus,
