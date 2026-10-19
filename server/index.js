@@ -836,6 +836,108 @@ function isTenantSubAdminAllowedPath(pathname) {
   );
 }
 
+async function isSubAdminStructureAllowed(connection, request) {
+  if (!request.admin?.isTenantSubAdmin) return true;
+  const path = String(request.path || "");
+  const params = request.params || {};
+  const tenantId = request.admin.tenantId;
+  const adminId = request.admin.id;
+
+  if (path === "/api/call-centers" || path.startsWith("/api/call-centers/")) {
+    const centerId = Number(params.id || params.callCenterId || 0);
+    if (!centerId) return true;
+    const [row] = await connection.query(
+      "SELECT id FROM call_centers WHERE id = ? AND tenant_id = ? AND created_by = ? LIMIT 1",
+      [centerId, tenantId, adminId],
+    );
+    return Boolean(row);
+  }
+
+  if (path.startsWith("/api/access-communities")) {
+    const id = Number(params.id || 0);
+    if (!id) return true;
+    const [row] = await connection.query(
+      "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ? AND created_by_admin_id = ? LIMIT 1",
+      [id, tenantId, adminId],
+    );
+    return Boolean(row);
+  }
+
+  if (path.startsWith("/api/access-buildings")) {
+    const id = Number(params.id || 0);
+    if (!id) return true;
+    const [row] = await connection.query(
+      `SELECT b.id FROM access_buildings b
+        JOIN access_communities c ON c.id = b.community_id
+       WHERE b.id = ? AND b.tenant_id = ? AND c.created_by_admin_id = ?
+       LIMIT 1`,
+      [id, tenantId, adminId],
+    );
+    return Boolean(row);
+  }
+
+  if (path.startsWith("/api/access-rooms")) {
+    const id = Number(params.id || 0);
+    if (!id) return true;
+    const [row] = await connection.query(
+      `SELECT r.id FROM access_rooms r
+        JOIN access_buildings b ON b.id = r.building_id
+        JOIN access_communities c ON c.id = b.community_id
+       WHERE r.id = ? AND r.tenant_id = ? AND c.created_by_admin_id = ?
+       LIMIT 1`,
+      [id, tenantId, adminId],
+    );
+    return Boolean(row);
+  }
+
+  if (path.startsWith("/api/access-entrances")) {
+    const entranceId = Number(params.id || params.entranceId || 0);
+    if (!entranceId) return true;
+    const [row] = await connection.query(
+      `SELECT e.id, e.community_id FROM access_entrances e
+        JOIN access_communities c ON c.id = e.community_id
+       WHERE e.id = ? AND e.tenant_id = ? AND c.created_by_admin_id = ?
+       LIMIT 1`,
+      [entranceId, tenantId, adminId],
+    );
+    if (!row) return false;
+    const communityId = Number(row.community_id);
+    if (params.buildingId) {
+      const [building] = await connection.query(
+        "SELECT id FROM access_buildings WHERE id = ? AND community_id = ? AND tenant_id = ? LIMIT 1",
+        [Number(params.buildingId), communityId, tenantId],
+      );
+      if (!building) return false;
+    }
+    if (params.roomId) {
+      const [room] = await connection.query(
+        `SELECT r.id FROM access_rooms r
+          JOIN access_buildings b ON b.id = r.building_id
+         WHERE r.id = ? AND b.community_id = ? AND r.tenant_id = ? LIMIT 1`,
+        [Number(params.roomId), communityId, tenantId],
+      );
+      if (!room) return false;
+    }
+    if (path.endsWith("/auth/rooms") && request.method === "POST") {
+      const roomIds = Array.isArray(request.body?.roomIds)
+        ? request.body.roomIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+        : [];
+      if (roomIds.length) {
+        const [countRow] = await connection.query(
+          `SELECT COUNT(*) AS cnt FROM access_rooms r
+            JOIN access_buildings b ON b.id = r.building_id
+           WHERE r.id IN (?) AND b.community_id = ? AND r.tenant_id = ?`,
+          [roomIds, communityId, tenantId],
+        );
+        if (Number(countRow?.cnt || 0) !== roomIds.length) return false;
+      }
+    }
+    return true;
+  }
+
+  return true;
+}
+
 async function isSubAdminSipParamAllowed(connection, request, managedSipUserIds) {
   const path = String(request.path || "");
   const rawParam = request.params?.sipUserId ?? request.params?.id;
@@ -965,6 +1067,9 @@ async function requireAdmin(request, response, next) {
       }
       if (!(await isSubAdminSipParamAllowed(connection, request, managedSipUserIds))) {
         return response.status(403).json({ message: "無許可權操作該帳號。", code: "TENANT_SUB_ADMIN_ACCOUNT_FORBIDDEN" });
+      }
+      if (!(await isSubAdminStructureAllowed(connection, request))) {
+        return response.status(403).json({ message: "只能操作自己建立的呼叫中心或門禁系統。", code: "TENANT_SUB_ADMIN_STRUCTURE_FORBIDDEN" });
       }
     }
 
@@ -15165,6 +15270,11 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
   const whereClauses = ["tenant_id = ?"];
   const params = [request.admin.tenantId];
 
+  if (request.admin.isTenantSubAdmin) {
+    whereClauses.push("created_by = ?");
+    params.push(request.admin.id);
+  }
+
   if (statusFilter && statusFilter !== "all") {
     whereClauses.push("status = ?");
     params.push(statusFilter);
@@ -15583,6 +15693,18 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
 
     const validIds = rows.map(r => Number(r.id));
     const validPlaceholders = validIds.map(() => "?").join(",");
+
+    if (request.admin.isTenantSubAdmin) {
+      const ownedRows = await connection.query(
+        `SELECT id FROM call_centers
+          WHERE id IN (${validPlaceholders}) AND tenant_id = ? AND created_by = ?`,
+        [...validIds, request.admin.tenantId, request.admin.id],
+      );
+      if (ownedRows.length !== validIds.length) {
+        await connection.rollback();
+        return response.status(403).json({ code: -1, message: "只能刪除自己建立的呼叫中心。" });
+      }
+    }
 
     if (Array.isArray(request.admin.managedSipUserIds)) {
       const agentRows = await connection.query(
@@ -16479,6 +16601,10 @@ app.get("/api/access-communities", requireAdmin, async (request, response) => {
 
   const whereClauses = ["tenant_id = ?"];
   const params = [request.admin.tenantId];
+  if (request.admin.isTenantSubAdmin) {
+    whereClauses.push("created_by_admin_id = ?");
+    params.push(request.admin.id);
+  }
   if (keyword) {
     whereClauses.push("(name LIKE ? OR address LIKE ?)");
     params.push(`%${keyword}%`, `%${keyword}%`);
@@ -16756,10 +16882,10 @@ app.post("/api/access-communities", requireAdmin, async (request, response) => {
 
     const result = await connection.query(
       `INSERT INTO access_communities
-         (tenant_id, name, slug, address, latitude, longitude, service_scope, contact_person, contact_phone, contact_email, access_url,
+         (tenant_id, created_by_admin_id, name, slug, address, latitude, longitude, service_scope, contact_person, contact_phone, contact_email, access_url,
           logo_url, banner_url, visitor_title, show_tips, tips_text)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [request.admin.tenantId, name, slug, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, accessUrl,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [request.admin.tenantId, request.admin.id, name, slug, address, latitude, longitude, serviceScope, contactPerson, contactPhone, contactEmail, accessUrl,
        logoUrl, bannerUrl, visitorTitle, showTips, tipsText]
     );
     response.status(201).json({
@@ -17046,10 +17172,13 @@ app.post("/api/access-buildings", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
 
-    // 確認社區屬於該租戶
+    // 確認社區屬於該租戶（子管理員只能在自己建立的社區下新增樓宇）
     const [community] = await connection.query(
-      "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
-      [communityId, request.admin.tenantId]
+      `SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?
+         ${request.admin.isTenantSubAdmin ? "AND created_by_admin_id = ?" : ""}`,
+      request.admin.isTenantSubAdmin
+        ? [communityId, request.admin.tenantId, request.admin.id]
+        : [communityId, request.admin.tenantId]
     );
     if (!community) return response.status(404).json({ message: "社群不存在。" });
 
@@ -17452,8 +17581,13 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
     await connection.beginTransaction();
 
     const [building] = await connection.query(
-      "SELECT id FROM access_buildings WHERE id = ? AND tenant_id = ?",
-      [buildingId, request.admin.tenantId]
+      `SELECT b.id FROM access_buildings b
+         ${request.admin.isTenantSubAdmin ? "JOIN access_communities c ON c.id = b.community_id" : ""}
+        WHERE b.id = ? AND b.tenant_id = ?
+          ${request.admin.isTenantSubAdmin ? "AND c.created_by_admin_id = ?" : ""}`,
+      request.admin.isTenantSubAdmin
+        ? [buildingId, request.admin.tenantId, request.admin.id]
+        : [buildingId, request.admin.tenantId]
     );
     if (!building) {
       await connection.rollback();
@@ -17812,16 +17946,24 @@ app.post("/api/access-entrances", requireAdmin, async (request, response) => {
 
     if (communityId) {
       const [community] = await connection.query(
-        "SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?",
-        [communityId, request.admin.tenantId]
+        `SELECT id FROM access_communities WHERE id = ? AND tenant_id = ?
+           ${request.admin.isTenantSubAdmin ? "AND created_by_admin_id = ?" : ""}`,
+        request.admin.isTenantSubAdmin
+          ? [communityId, request.admin.tenantId, request.admin.id]
+          : [communityId, request.admin.tenantId]
       );
       if (!community) return response.status(404).json({ message: "社群不存在。" });
     }
 
     if (buildingId) {
       const [building] = await connection.query(
-        "SELECT id FROM access_buildings WHERE id = ? AND tenant_id = ?",
-        [buildingId, request.admin.tenantId]
+        `SELECT b.id FROM access_buildings b
+           ${request.admin.isTenantSubAdmin ? "JOIN access_communities c ON c.id = b.community_id" : ""}
+          WHERE b.id = ? AND b.tenant_id = ?
+            ${request.admin.isTenantSubAdmin ? "AND c.created_by_admin_id = ?" : ""}`,
+        request.admin.isTenantSubAdmin
+          ? [buildingId, request.admin.tenantId, request.admin.id]
+          : [buildingId, request.admin.tenantId]
       );
       if (!building) return response.status(404).json({ message: "樓宇不存在。" });
     }

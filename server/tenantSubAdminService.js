@@ -34,6 +34,9 @@ export async function ensureTenantSubAdminSchema() {
   await pool.query(
     "ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS organization VARCHAR(120) NULL AFTER display_name",
   );
+  await pool.query(
+    "ALTER TABLE access_communities ADD COLUMN IF NOT EXISTS created_by_admin_id BIGINT UNSIGNED NULL AFTER tenant_id",
+  );
 }
 
 export function tenantSubAdminPermissions() {
