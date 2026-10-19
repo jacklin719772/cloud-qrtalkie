@@ -234,9 +234,8 @@ const PlatformDashboard = forwardRef((props, ref) => {
 
   const serviceAlerts = [];
   const certEntries = [
-    ['Apache SSL', health.ssl],
-    ['Asterisk SIP TLS', health.asteriskCerts?.sipTls],
-    ['Asterisk WebRTC WSS', health.asteriskCerts?.wss],
+    ['Web SIP TLS', health.asteriskCerts?.sipTls],
+    ['WebRTC WSS', health.asteriskCerts?.wss],
   ];
   certEntries.forEach(([label, cert]) => {
     if (!cert || cert.daysLeft == null) return;
@@ -408,9 +407,9 @@ const PlatformDashboard = forwardRef((props, ref) => {
         <div className="pdb-section">
           <div className="pdb-section-head">
             <div className="pdb-section-title">證書狀態</div>
-            <div className="pdb-section-note">Apache / Asterisk SIP TLS / Asterisk WebRTC WSS</div>
+            <div className="pdb-section-note">Web SIP TLS / WebRTC WSS</div>
           </div>
-          <div className="pdb-grid pdb-grid-3">
+          <div className="pdb-grid pdb-grid-2">
             {certEntries.map(([label, cert]) => {
               const tone = certTone(cert);
               return (
