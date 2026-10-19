@@ -466,6 +466,7 @@ export default function FinanceManagement() {
                     <td className="fin-sticky-action" style={{ textAlign: 'center' }}>
                       <div className="row-actions fin-dropdown-container" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openPayments(order)}>收款記錄</button>
+                        <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={() => openReceivable(order)}>設定應收</button>
                         <button className="ghost-btn" type="button" style={{ fontSize: '13px', padding: '4px 8px' }} onClick={(event) => {
                           event.stopPropagation();
                           const rect = event.currentTarget.getBoundingClientRect();
@@ -505,9 +506,19 @@ export default function FinanceManagement() {
           <div onClick={() => setReceivableModalOrder(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)' }} />
           <div style={{ position: 'relative', width: 'min(440px, 92vw)', background: '#111827', border: '1px solid #374151', borderRadius: '14px', padding: '20px 22px' }}>
             <h3 style={{ margin: '0 0 6px', color: '#e5e7eb', fontSize: '16px' }}>設定應收金額</h3>
-            <p style={{ margin: '0 0 14px', color: '#9ca3af', fontSize: '12px' }}>
-              {receivableModalOrder.orderNo} · {receivableModalOrder.tenantName} · 訂單金額 {formatMoney(receivableModalOrder.orderAmount, receivableModalOrder.currency)}
+            <p style={{ margin: '0 0 12px', color: '#9ca3af', fontSize: '12px' }}>
+              {receivableModalOrder.orderNo} · {receivableModalOrder.tenantName}
             </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ background: '#1a2332', border: '1px solid #1f2937', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>訂單金額</div>
+                <div style={{ color: '#e5e7eb', fontSize: '16px', fontWeight: 600 }}>{formatMoney(receivableModalOrder.orderAmount, receivableModalOrder.currency)}</div>
+              </div>
+              <div style={{ background: '#1a2332', border: '1px solid #1f2937', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}>目前應收</div>
+                <div style={{ color: '#93c5fd', fontSize: '16px', fontWeight: 600 }}>{formatMoney(receivableModalOrder.receivableAmount, receivableModalOrder.currency)}</div>
+              </div>
+            </div>
             <label style={labelStyle}>
               應收金額
               <input type="number" min="0" step="0.01" value={receivableValue} onChange={(e) => setReceivableValue(e.target.value)} style={inputStyle} />
