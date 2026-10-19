@@ -33,6 +33,7 @@ import { pool, limePool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail, sendTrialNotificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
+import { ensureBackupSchema, startBackup, listBackups, getBackupById, getBackupFilePath, deleteBackup, getBackupSettings } from "./backupService.js";
 import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombstoneClient.js";
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
@@ -18850,6 +18851,70 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
   }
 });
 
+// GET /api/platform/backups - list backup archives (platform admin only)
+app.get("/api/platform/backups", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以檢視備份。" });
+  }
+  try {
+    const backups = await listBackups();
+    return response.json({ success: true, data: { backups, settings: getBackupSettings() } });
+  } catch (error) {
+    console.error("[backup] list failed:", error?.message || error);
+    return response.status(500).json({ success: false, message: "讀取備份列表失敗。" });
+  }
+});
+
+// POST /api/platform/backups - force a backup now (platform admin only)
+app.post("/api/platform/backups", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以建立備份。" });
+  }
+  try {
+    const record = await startBackup({ type: "manual", adminId: request.admin.id });
+    return response.status(202).json({ success: true, data: record, message: "備份已開始。" });
+  } catch (error) {
+    return response.status(error?.statusCode || 500).json({
+      success: false,
+      code: error?.code || "BACKUP_START_FAILED",
+      message: error?.message || "建立備份失敗。",
+    });
+  }
+});
+
+// GET /api/platform/backups/:id/download - download a backup archive
+app.get("/api/platform/backups/:id/download", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以下載備份。" });
+  }
+  try {
+    const record = await getBackupById(Number(request.params.id));
+    if (!record) return response.status(404).json({ success: false, message: "備份不存在。" });
+    const filePath = getBackupFilePath(record);
+    if (!filePath || !existsSync(filePath)) {
+      return response.status(404).json({ success: false, message: "備份檔案不存在或尚未完成。" });
+    }
+    response.setHeader("Cache-Control", "no-store");
+    return response.download(filePath, record.filename);
+  } catch (error) {
+    console.error("[backup] download failed:", error?.message || error);
+    return response.status(500).json({ success: false, message: "下載備份失敗。" });
+  }
+});
+
+// DELETE /api/platform/backups/:id - delete a backup record and archive
+app.delete("/api/platform/backups/:id", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以刪除備份。" });
+  }
+  try {
+    await deleteBackup(Number(request.params.id));
+    return response.json({ success: true, message: "備份已刪除。" });
+  } catch (error) {
+    return response.status(error?.statusCode || 500).json({ success: false, message: error?.message || "刪除備份失敗。" });
+  }
+});
+
 // POST /api/pbx/webrtc-accounts - phase-1 standalone FreePBX/Incredible PBX basic PJSIP account test.
 async function resolveWebrtcAccountQuery(extension) {
   const matched = await freepbxFetchExtension(extension);
@@ -24852,6 +24917,7 @@ async function ensureVisitorInquiryNoteColumn() {
   }
 }
 await ensureVisitorInquiryNoteColumn();
+await ensureBackupSchema();
 
 const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);

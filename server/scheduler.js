@@ -7,6 +7,7 @@ import { cleanupCustomerAssistantData } from "./customerAssistant/cleanupService
 import { retryPendingSipAccountDeletes } from "./sipDeleteRetryService.js";
 import { notifyTrialContactOnce, reclaimTrialAssignment, setFlexisipActivated } from "./trialService.js";
 import { sendTrialNotificationEmail } from "./email.js";
+import { startBackupScheduler, stopBackupScheduler } from "./backupService.js";
 
 let timers = [];
 
@@ -26,6 +27,8 @@ export function startScheduler() {
   timers.push(setTimeout(retryPendingSipAccountDeletes, 90 * 1000));
   // Run initial cleanup after 60 seconds
   timers.push(setTimeout(cleanupFlexisipCallLogs, 60 * 1000));
+  // Daily encrypted backup (default 03:00 Asia/Hong_Kong, retention 7 days)
+  startBackupScheduler();
 
   console.log("[Scheduler] Background tasks started");
 }
@@ -33,6 +36,7 @@ export function startScheduler() {
 export function stopScheduler() {
   timers.forEach(t => clearInterval(t));
   timers = [];
+  stopBackupScheduler();
 }
 
 async function scanExpiringResources() {
