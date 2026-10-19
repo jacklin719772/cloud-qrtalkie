@@ -81,11 +81,19 @@ export async function saveFinanceFile(dataUrl, { orderId, prefix } = {}) {
 }
 
 export async function listReceivingAccounts() {
-  return pool.query(
+  const rows = await pool.query(
     `SELECT id, display_name AS displayName, payee_name AS payeeName,
             bank_name AS bankName, bank_account_no AS bankAccountNo, currency
        FROM billing_offline_payment_accounts
       WHERE status = 'active'
       ORDER BY is_default DESC, sort_order ASC, id ASC`,
   );
+  return rows.map((row) => ({
+    id: Number(row.id),
+    displayName: row.displayName || "",
+    payeeName: row.payeeName || "",
+    bankName: row.bankName || "",
+    bankAccountNo: row.bankAccountNo || "",
+    currency: row.currency || "",
+  }));
 }

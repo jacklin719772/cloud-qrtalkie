@@ -103,14 +103,16 @@ export default function FinanceManagement() {
   useEffect(() => {
     (async () => {
       try {
-        const [tenantRes, accountRes] = await Promise.all([
-          apiClient.get('/admin/tenants'),
-          apiClient.get('/platform/finance/receiving-accounts'),
-        ]);
+        const tenantRes = await apiClient.get('/admin/tenants');
         setTenants(Array.isArray(tenantRes?.tenants) ? tenantRes.tenants : []);
+      } catch {
+        /* 租戶列表失敗不影響其他功能 */
+      }
+      try {
+        const accountRes = await apiClient.get('/platform/finance/receiving-accounts');
         setAccounts(Array.isArray(accountRes?.accounts) ? accountRes.accounts : []);
       } catch {
-        /* 非關鍵資料，載入失敗時留空 */
+        /* 收款帳號失敗不影響訂單列表 */
       }
     })();
   }, []);
