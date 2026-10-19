@@ -57,6 +57,25 @@ export async function ensureFinanceSchema() {
        KEY idx_opl_date (payment_date)
      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
   );
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS order_invoice_logs (
+       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+       order_id BIGINT UNSIGNED NOT NULL,
+       tenant_id BIGINT UNSIGNED NOT NULL,
+       invoice_no VARCHAR(120) NOT NULL DEFAULT '',
+       invoice_code VARCHAR(120) NOT NULL DEFAULT '',
+       invoice_date DATE NULL,
+       invoice_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+       invoice_file VARCHAR(500) NOT NULL DEFAULT '',
+       notes TEXT NULL,
+       created_by_admin_id BIGINT UNSIGNED NULL,
+       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       KEY idx_oil_order (order_id),
+       KEY idx_oil_tenant (tenant_id),
+       KEY idx_oil_date (invoice_date)
+     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+  );
 }
 
 export async function saveFinanceFile(dataUrl, { orderId, prefix } = {}) {

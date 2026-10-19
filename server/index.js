@@ -19446,7 +19446,7 @@ app.get("/api/platform/finance/orders", requireAdmin, requirePlatformAdmin, asyn
            COALESCE(o.receivable_amount, o.payable_amount) AS receivable_amount,
            o.created_at, o.effective_at, o.expires_at,
            COALESCE(p.received_amount, 0) AS received_amount,
-           COALESCE(p.invoiced_amount, 0) AS invoiced_amount,
+           COALESCE(inv.invoiced_amount, 0) AS invoiced_amount,
            COALESCE(p.payment_count, 0) AS payment_count,
            COALESCE(o.receivable_amount, o.payable_amount) - COALESCE(p.received_amount, 0) AS outstanding_amount
       FROM billing_orders o
@@ -19454,11 +19454,15 @@ app.get("/api/platform/finance/orders", requireAdmin, requirePlatformAdmin, asyn
       LEFT JOIN (
         SELECT order_id,
                SUM(amount) AS received_amount,
-               SUM(CASE WHEN invoiced = 1 THEN COALESCE(invoice_amount, 0) ELSE 0 END) AS invoiced_amount,
                COUNT(*) AS payment_count
           FROM order_payment_logs
          GROUP BY order_id
       ) p ON p.order_id = o.id
+      LEFT JOIN (
+        SELECT order_id, SUM(COALESCE(invoice_amount, 0)) AS invoiced_amount
+          FROM order_invoice_logs
+         GROUP BY order_id
+      ) inv ON inv.order_id = o.id
       ${innerWhere.length ? `WHERE ${innerWhere.join(" AND ")}` : ""}
   `;
 
@@ -19839,6 +19843,157 @@ app.delete("/api/platform/finance/payments/:id/invoice", requireAdmin, requirePl
         WHERE id = ?`,
       [paymentId],
     );
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete finance invoice:", error);
+    return response.status(500).json({ message: "刪除開票記錄失敗。" });
+  }
+});
+
+function mapFinanceInvoice(row) {
+  return {
+    id: Number(row.id),
+    orderId: Number(row.order_id),
+    tenantId: Number(row.tenant_id),
+    invoiceNo: row.invoice_no || "",
+    invoiceCode: row.invoice_code || "",
+    invoiceDate: financeDateOnly(row.invoice_date),
+    invoiceAmount: Number(row.invoice_amount || 0),
+    invoiceFile: row.invoice_file || "",
+    notes: row.notes || "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+app.get("/api/platform/finance/orders/:id/invoices", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const orderId = Number(request.params.id);
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "無效的訂單編號。" });
+  try {
+    const order = await loadFinanceOrder(orderId);
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const rows = await pool.query(
+      "SELECT * FROM order_invoice_logs WHERE order_id = ? ORDER BY invoice_date ASC, id ASC",
+      [orderId],
+    );
+    const invoices = rows.map(mapFinanceInvoice);
+    const invoicedAmount = invoices.reduce((sum, item) => sum + item.invoiceAmount, 0);
+    return response.json({
+      success: true,
+      data: {
+        order: {
+          id: Number(order.id),
+          orderNo: order.order_no || "",
+          tenantId: Number(order.tenant_id),
+          tenantName: order.tenant_name || "",
+          currency: order.currency || "",
+          orderAmount: Number(order.payable_amount || 0),
+          receivableAmount: Number(order.receivable_amount || 0),
+        },
+        invoices,
+        stats: { count: invoices.length, invoicedAmount },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to query finance invoices:", error);
+    return response.status(500).json({ message: "讀取開票記錄失敗。" });
+  }
+});
+
+async function resolveFinanceInvoicePayload(request, order) {
+  const payload = request.body || {};
+  const invoiceAmount = Number(payload.invoiceAmount);
+  if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
+    throw new FinanceError("發票金額必須大於 0。", { code: "INVALID_INVOICE_AMOUNT" });
+  }
+  const invoiceDate = String(payload.invoiceDate || "").trim();
+  if (invoiceDate && !isValidDateOnly(invoiceDate)) {
+    throw new FinanceError("發票開具日期格式不正確。", { code: "INVALID_INVOICE_DATE" });
+  }
+  const invoiceFile = payload.invoiceDataUrl
+    ? await saveFinanceFile(payload.invoiceDataUrl, { orderId: order.id, prefix: "invoice" })
+    : "";
+  return {
+    invoice_no: sanitizeString(payload.invoiceNo, 120),
+    invoice_code: sanitizeString(payload.invoiceCode, 120),
+    invoice_date: invoiceDate || null,
+    invoice_amount: invoiceAmount.toFixed(2),
+    invoice_file: invoiceFile,
+    notes: sanitizeString(payload.notes, 2000) || null,
+  };
+}
+
+app.post("/api/platform/finance/orders/:id/invoices", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const orderId = Number(request.params.id);
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "無效的訂單編號。" });
+  try {
+    const order = await loadFinanceOrder(orderId);
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const values = await resolveFinanceInvoicePayload(request, order);
+    const result = await pool.query(
+      `INSERT INTO order_invoice_logs
+        (order_id, tenant_id, invoice_no, invoice_code, invoice_date, invoice_amount, invoice_file, notes, created_by_admin_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        orderId, order.tenant_id, values.invoice_no, values.invoice_code,
+        values.invoice_date, values.invoice_amount, values.invoice_file,
+        values.notes, request.admin.id,
+      ],
+    );
+    const [row] = await pool.query("SELECT * FROM order_invoice_logs WHERE id = ?", [Number(result.insertId)]);
+    return response.status(201).json({ success: true, invoice: mapFinanceInvoice(row) });
+  } catch (error) {
+    const status = error instanceof FinanceError ? error.statusCode : 500;
+    if (!(error instanceof FinanceError)) console.error("Failed to create finance invoice:", error);
+    return response.status(status).json({ message: error?.message || "新增開票記錄失敗。" });
+  }
+});
+
+app.put("/api/platform/finance/invoices/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const invoiceId = Number(request.params.id);
+  if (!Number.isInteger(invoiceId) || invoiceId <= 0) return response.status(400).json({ message: "無效的開票記錄編號。" });
+  try {
+    const [existing] = await pool.query("SELECT * FROM order_invoice_logs WHERE id = ? LIMIT 1", [invoiceId]);
+    if (!existing) return response.status(404).json({ message: "開票記錄不存在。" });
+    const order = await loadFinanceOrder(Number(existing.order_id));
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const values = await resolveFinanceInvoicePayload(request, order);
+    if (values.invoice_file) {
+      if (existing.invoice_file && existing.invoice_file !== values.invoice_file) {
+        await deleteFinanceFile(existing.invoice_file);
+      }
+    } else if (request.body?.removeInvoice === true) {
+      await deleteFinanceFile(existing.invoice_file);
+      values.invoice_file = "";
+    } else {
+      values.invoice_file = existing.invoice_file || "";
+    }
+    await pool.query(
+      `UPDATE order_invoice_logs
+          SET invoice_no = ?, invoice_code = ?, invoice_date = ?, invoice_amount = ?, invoice_file = ?, notes = ?
+        WHERE id = ?`,
+      [
+        values.invoice_no, values.invoice_code, values.invoice_date,
+        values.invoice_amount, values.invoice_file, values.notes, invoiceId,
+      ],
+    );
+    const [row] = await pool.query("SELECT * FROM order_invoice_logs WHERE id = ?", [invoiceId]);
+    return response.json({ success: true, invoice: mapFinanceInvoice(row) });
+  } catch (error) {
+    const status = error instanceof FinanceError ? error.statusCode : 500;
+    if (!(error instanceof FinanceError)) console.error("Failed to update finance invoice:", error);
+    return response.status(status).json({ message: error?.message || "更新開票記錄失敗。" });
+  }
+});
+
+app.delete("/api/platform/finance/invoices/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const invoiceId = Number(request.params.id);
+  if (!Number.isInteger(invoiceId) || invoiceId <= 0) return response.status(400).json({ message: "無效的開票記錄編號。" });
+  try {
+    const [existing] = await pool.query("SELECT * FROM order_invoice_logs WHERE id = ? LIMIT 1", [invoiceId]);
+    if (!existing) return response.status(404).json({ message: "開票記錄不存在。" });
+    await deleteFinanceFile(existing.invoice_file);
+    await pool.query("DELETE FROM order_invoice_logs WHERE id = ?", [invoiceId]);
     return response.json({ success: true });
   } catch (error) {
     console.error("Failed to delete finance invoice:", error);

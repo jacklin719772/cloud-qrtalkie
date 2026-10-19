@@ -29,7 +29,6 @@ const emptyPaymentForm = {
 };
 
 const emptyInvoiceForm = {
-  paymentId: '',
   invoiceNo: '',
   invoiceCode: '',
   invoiceDate: '',
@@ -38,6 +37,7 @@ const emptyInvoiceForm = {
   invoiceFileName: '',
   existingInvoiceFile: '',
   removeInvoice: false,
+  notes: '',
 };
 
 const emptyFilters = {
@@ -133,10 +133,13 @@ export default function FinanceManagement() {
   const [savingPayment, setSavingPayment] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState(null);
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
-  const [invoiceEditing, setInvoiceEditing] = useState(false);
+  const [editingInvoiceId, setEditingInvoiceId] = useState(null);
   const [invoiceForm, setInvoiceForm] = useState(emptyInvoiceForm);
   const [savingInvoice, setSavingInvoice] = useState(false);
   const [deletingInvoiceId, setDeletingInvoiceId] = useState(null);
+  const [invoices, setInvoices] = useState([]);
+  const [invoiceStats, setInvoiceStats] = useState(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
   const [openMenuOrderId, setOpenMenuOrderId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const requestIdRef = useRef(0);
@@ -271,6 +274,22 @@ export default function FinanceManagement() {
     }
   }, [showMessage]);
 
+  const loadInvoices = useCallback(async (orderId) => {
+    setInvoiceLoading(true);
+    try {
+      const res = await apiClient.get(`/platform/finance/orders/${orderId}/invoices`);
+      const data = res?.data || {};
+      setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      setInvoiceStats(data.stats || null);
+      return data;
+    } catch (error) {
+      showMessage('error', error?.message || '讀取開票記錄失敗。');
+      return null;
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }, [showMessage]);
+
   const openPayments = async (order, mode = 'payments') => {
     setPaymentModalOrder(order);
     setPaymentModalMode(mode);
@@ -278,9 +297,12 @@ export default function FinanceManagement() {
     setEditingPaymentId(null);
     setPaymentForm(emptyPaymentForm);
     setInvoiceFormOpen(false);
-    setInvoiceEditing(false);
+    setEditingInvoiceId(null);
     setInvoiceForm(emptyInvoiceForm);
-    await loadPayments(order.id);
+    setInvoices([]);
+    setInvoiceStats(null);
+    if (mode === 'invoices') await loadInvoices(order.id);
+    else await loadPayments(order.id);
   };
 
   const closePayments = () => {
@@ -292,8 +314,10 @@ export default function FinanceManagement() {
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
     setInvoiceFormOpen(false);
-    setInvoiceEditing(false);
+    setEditingInvoiceId(null);
     setInvoiceForm(emptyInvoiceForm);
+    setInvoices([]);
+    setInvoiceStats(null);
   };
 
   const startCreatePayment = () => {
@@ -303,36 +327,30 @@ export default function FinanceManagement() {
   };
 
   const openInvoiceCreate = () => {
-    const eligible = payments.filter((payment) => !payment.invoiced);
-    if (!eligible.length) {
-      showMessage('error', '請先在收款日誌新增收款記錄。');
-      return;
-    }
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
-    setInvoiceEditing(false);
+    setEditingInvoiceId(null);
     setInvoiceForm({
       ...emptyInvoiceForm,
-      paymentId: String(eligible[0].id),
       invoiceDate: todayString(),
     });
     setInvoiceFormOpen(true);
   };
 
-  const openInvoiceEdit = (payment) => {
+  const openInvoiceEdit = (invoice) => {
     setPaymentFormOpen(false);
     setEditingPaymentId(null);
-    setInvoiceEditing(true);
+    setEditingInvoiceId(invoice.id);
     setInvoiceForm({
-      paymentId: String(payment.id),
-      invoiceNo: payment.invoiceNo || '',
-      invoiceCode: payment.invoiceCode || '',
-      invoiceDate: payment.invoiceDate || '',
-      invoiceAmount: payment.invoiceAmount == null ? '' : String(payment.invoiceAmount),
+      invoiceNo: invoice.invoiceNo || '',
+      invoiceCode: invoice.invoiceCode || '',
+      invoiceDate: invoice.invoiceDate || '',
+      invoiceAmount: invoice.invoiceAmount == null ? '' : String(invoice.invoiceAmount),
       invoiceDataUrl: '',
       invoiceFileName: '',
-      existingInvoiceFile: payment.invoiceFile || '',
+      existingInvoiceFile: invoice.invoiceFile || '',
       removeInvoice: false,
+      notes: invoice.notes || '',
     });
     setInvoiceFormOpen(true);
   };
@@ -340,7 +358,7 @@ export default function FinanceManagement() {
   const closeInvoiceForm = () => {
     if (savingInvoice) return;
     setInvoiceFormOpen(false);
-    setInvoiceEditing(false);
+    setEditingInvoiceId(null);
     setInvoiceForm(emptyInvoiceForm);
   };
 
@@ -374,11 +392,6 @@ export default function FinanceManagement() {
 
   const saveInvoice = async () => {
     if (!paymentModalOrder) return;
-    const paymentId = Number(invoiceForm.paymentId);
-    if (!paymentId) {
-      showMessage('error', '請選擇收款記錄。');
-      return;
-    }
     const invoiceAmount = Number(invoiceForm.invoiceAmount);
     if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
       showMessage('error', '發票金額必須大於 0。');
@@ -386,19 +399,26 @@ export default function FinanceManagement() {
     }
     setSavingInvoice(true);
     try {
-      await apiClient.put(`/platform/finance/payments/${paymentId}/invoice`, {
+      const payload = {
         invoiceNo: invoiceForm.invoiceNo,
         invoiceCode: invoiceForm.invoiceCode,
         invoiceDate: invoiceForm.invoiceDate,
         invoiceAmount,
         invoiceDataUrl: invoiceForm.invoiceDataUrl || undefined,
         removeInvoice: invoiceForm.removeInvoice === true,
-      });
-      showMessage('success', '開票記錄已儲存。');
+        notes: invoiceForm.notes,
+      };
+      if (editingInvoiceId) {
+        await apiClient.put(`/platform/finance/invoices/${editingInvoiceId}`, payload);
+        showMessage('success', '開票記錄已更新。');
+      } else {
+        await apiClient.post(`/platform/finance/orders/${paymentModalOrder.id}/invoices`, payload);
+        showMessage('success', '開票記錄已新增。');
+      }
       setInvoiceFormOpen(false);
-      setInvoiceEditing(false);
+      setEditingInvoiceId(null);
       setInvoiceForm(emptyInvoiceForm);
-      await loadPayments(paymentModalOrder.id);
+      await loadInvoices(paymentModalOrder.id);
       await loadOrders({ silent: true });
     } catch (error) {
       showMessage('error', error?.message || '儲存開票記錄失敗。');
@@ -407,13 +427,13 @@ export default function FinanceManagement() {
     }
   };
 
-  const deleteInvoice = async (payment) => {
-    if (!window.confirm(`確定刪除 ${payment.invoiceDate || ''} 的開票記錄（${payment.invoiceNo || '-'}）？收款記錄會保留。`)) return;
-    setDeletingInvoiceId(payment.id);
+  const deleteInvoice = async (invoice) => {
+    if (!window.confirm(`確定刪除 ${invoice.invoiceDate || ''} 的開票記錄（${invoice.invoiceNo || '-'}）？`)) return;
+    setDeletingInvoiceId(invoice.id);
     try {
-      await apiClient.delete(`/platform/finance/payments/${payment.id}/invoice`);
+      await apiClient.delete(`/platform/finance/invoices/${invoice.id}`);
       showMessage('success', '開票記錄已刪除。');
-      await loadPayments(paymentModalOrder.id);
+      await loadInvoices(paymentModalOrder.id);
       await loadOrders({ silent: true });
     } catch (error) {
       showMessage('error', error?.message || '刪除開票記錄失敗。');
@@ -810,37 +830,37 @@ export default function FinanceManagement() {
                   <span>已開發票：<strong style={{ color: '#fcd34d' }}>{formatMoney(paymentStats.invoicedAmount, paymentModalOrder.currency)}</strong></span>
                 </div>
               )}
-              {paymentStats && paymentModalMode === 'invoices' && (
+              {invoiceStats && paymentModalMode === 'invoices' && (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px', color: '#9ca3af', fontSize: '12px' }}>
-                  <span>開票筆數：<strong style={{ color: '#e5e7eb' }}>{payments.filter((payment) => payment.invoiced).length}</strong></span>
-                  <span>開票金額：<strong style={{ color: '#fcd34d' }}>{formatMoney(paymentStats.invoicedAmount, paymentModalOrder.currency)}</strong></span>
+                  <span>開票筆數：<strong style={{ color: '#e5e7eb' }}>{invoiceStats.count}</strong></span>
+                  <span>開票金額：<strong style={{ color: '#fcd34d' }}>{formatMoney(invoiceStats.invoicedAmount, paymentModalOrder.currency)}</strong></span>
                 </div>
               )}
 
-              {paymentLoading ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
-              ) : paymentModalMode === 'invoices' ? (
-                payments.filter((payment) => payment.invoiced).length === 0 ? (
+              {paymentModalMode === 'invoices' ? (
+                invoiceLoading ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
+                ) : invoices.length === 0 ? (
                   <div style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>暫無開票記錄</div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table className="fin-table" style={{ minWidth: '820px' }}>
                       <thead>
-                        <tr>{['發票開具日期', '發票號碼', '發票代碼', '發票金額', '發票檔案', '關聯收款', '操作'].map((label) => <th key={label}>{label}</th>)}</tr>
+                        <tr>{['發票開具日期', '發票號碼', '發票代碼', '發票金額', '發票檔案', '備註', '操作'].map((label) => <th key={label}>{label}</th>)}</tr>
                       </thead>
                       <tbody>
-                        {payments.filter((payment) => payment.invoiced).map((payment) => (
-                          <tr key={payment.id}>
-                            <td>{payment.invoiceDate || '-'}</td>
-                            <td>{payment.invoiceNo || '-'}</td>
-                            <td>{payment.invoiceCode || '-'}</td>
-                            <td style={{ color: '#fcd34d' }}>{formatMoney(payment.invoiceAmount || 0, payment.currency)}</td>
-                            <td>{payment.invoiceFile ? <a href={fileUrl(payment.invoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>查看</a> : '-'}</td>
-                            <td style={{ color: '#9ca3af', fontSize: '12px' }}>{payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}</td>
+                        {invoices.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td>{invoice.invoiceDate || '-'}</td>
+                            <td>{invoice.invoiceNo || '-'}</td>
+                            <td>{invoice.invoiceCode || '-'}</td>
+                            <td style={{ color: '#fcd34d' }}>{formatMoney(invoice.invoiceAmount || 0, paymentModalOrder.currency)}</td>
+                            <td>{invoice.invoiceFile ? <a href={fileUrl(invoice.invoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>查看</a> : '-'}</td>
+                            <td style={{ color: '#9ca3af', fontSize: '12px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={invoice.notes || ''}>{invoice.notes || '-'}</td>
                             <td>
-                              <button type="button" className="fin-btn" onClick={() => openInvoiceEdit(payment)}><Pencil size={12} /> 編輯</button>
-                              <button type="button" className="fin-btn danger" onClick={() => deleteInvoice(payment)} disabled={deletingInvoiceId === payment.id} style={{ marginLeft: '6px' }}>
-                                <Trash2 size={12} /> {deletingInvoiceId === payment.id ? '刪除中...' : '刪除'}
+                              <button type="button" className="fin-btn" onClick={() => openInvoiceEdit(invoice)}><Pencil size={12} /> 編輯</button>
+                              <button type="button" className="fin-btn danger" onClick={() => deleteInvoice(invoice)} disabled={deletingInvoiceId === invoice.id} style={{ marginLeft: '6px' }}>
+                                <Trash2 size={12} /> {deletingInvoiceId === invoice.id ? '刪除中...' : '刪除'}
                               </button>
                             </td>
                           </tr>
@@ -849,6 +869,8 @@ export default function FinanceManagement() {
                     </table>
                   </div>
                 )
+              ) : paymentLoading ? (
+                <div style={{ padding: '30px', textAlign: 'center', color: '#9ca3af' }}>載入中...</div>
               ) : payments.length === 0 ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#6b7280', fontSize: '13px' }}>暫無收款記錄</div>
               ) : (
@@ -882,20 +904,8 @@ export default function FinanceManagement() {
 
               {paymentModalMode === 'invoices' && invoiceFormOpen && (
                 <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{invoiceEditing ? '編輯開票記錄' : '新增開票記錄'}</h4>
+                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{editingInvoiceId ? '編輯開票記錄' : '新增開票記錄'}</h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                    <label style={labelStyle}>收款記錄 *
-                      <select value={invoiceForm.paymentId} disabled={invoiceEditing}
-                        onChange={(e) => setInvoiceForm((c) => ({ ...c, paymentId: e.target.value }))}
-                        style={{ ...inputStyle, cursor: invoiceEditing ? 'default' : 'pointer' }}>
-                        <option value="">選擇收款記錄</option>
-                        {payments.map((payment) => (
-                          <option key={payment.id} value={payment.id} disabled={!invoiceEditing && payment.invoiced}>
-                            {payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}{payment.invoiced ? '（已開票）' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                     <label style={labelStyle}>發票號碼（票面唯一號碼）<input value={invoiceForm.invoiceNo} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>發票代碼（地區/類型代碼）<input value={invoiceForm.invoiceCode} onChange={(e) => setInvoiceForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>開具日期
@@ -919,6 +929,7 @@ export default function FinanceManagement() {
                         <a href={fileUrl(invoiceForm.existingInvoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', fontSize: '11px' }}>查看現有發票</a>
                       )}
                     </div>
+                    <label style={{ ...labelStyle, gridColumn: '1 / -1' }}>備註<textarea value={invoiceForm.notes} onChange={(e) => setInvoiceForm((c) => ({ ...c, notes: e.target.value }))} rows={2} style={{ ...inputStyle, height: 'auto', padding: '10px 12px', resize: 'vertical' }} /></label>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px' }}>
                     <button type="button" className="fin-btn" onClick={closeInvoiceForm} disabled={savingInvoice}>取消</button>
