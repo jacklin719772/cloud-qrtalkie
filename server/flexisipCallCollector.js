@@ -1,9 +1,10 @@
 import "dotenv/config";
-import { readFileSync, statSync } from "node:fs";
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import { pool as dbPool } from "./db.js";
 import { hasSensitiveLeak, parseFlexisipCallLog, summarizeEvents } from "./flexisipCallLogParser.js";
 
 const DEFAULT_TAIL_LINES = 100000;
+const DEFAULT_MAX_TAIL_BYTES = 32 * 1024 * 1024;
 const SOURCE = "flexisip-proxy-log";
 
 function clampInteger(value, fallback, min, max) {
@@ -16,15 +17,39 @@ function normalizeLine(line) {
   return String(line || "").replace(/\r$/, "");
 }
 
-function readTailText(path, tailLines) {
-  const text = readFileSync(path, "utf8");
+function readTailText(path, tailLines, maxTailBytes = DEFAULT_MAX_TAIL_BYTES) {
+  const fileSize = statSync(path).size;
+  const bytesToRead = Math.min(fileSize, maxTailBytes);
+  const startOffset = fileSize - bytesToRead;
+  const buffer = Buffer.allocUnsafe(bytesToRead);
+  const fd = openSync(path, "r");
+  let bytesRead = 0;
+  try {
+    while (bytesRead < bytesToRead) {
+      const read = readSync(fd, buffer, bytesRead, bytesToRead - bytesRead, startOffset + bytesRead);
+      if (read <= 0) break;
+      bytesRead += read;
+    }
+  } finally {
+    closeSync(fd);
+  }
+
+  let text = buffer.subarray(0, bytesRead).toString("utf8");
+  // 從檔案中間開始讀時，丟掉第一條可能不完整的行
+  if (startOffset > 0) {
+    const firstNewline = text.indexOf("\n");
+    text = firstNewline >= 0 ? text.slice(firstNewline + 1) : "";
+  }
   const lines = text.split("\n").map(normalizeLine);
   const start = Math.max(0, lines.length - tailLines);
+  const used = lines.slice(start);
   return {
-    text: lines.slice(start).join("\n"),
-    totalLines: lines.length,
-    readLines: lines.length - start,
-    fileSize: statSync(path).size,
+    text: used.join("\n"),
+    totalLines: null,
+    readLines: used.length,
+    fileSize,
+    tailBytes: bytesRead,
+    truncated: startOffset > 0,
   };
 }
 
@@ -203,10 +228,16 @@ export async function collectFlexisipCallEventsOnce(options = {}) {
     options.tailLines ?? process.env.FLEXISIP_CALL_TAIL_LINES ?? process.env.FLEXISIP_CALL_LOG_TAIL_LINES,
     DEFAULT_TAIL_LINES,
     100,
-    200000,
+    2000000,
+  );
+  const maxTailBytes = clampInteger(
+    options.maxTailBytes ?? process.env.FLEXISIP_CALL_TAIL_MAX_BYTES,
+    DEFAULT_MAX_TAIL_BYTES,
+    1024 * 1024,
+    256 * 1024 * 1024,
   );
   const dryRun = options.dryRun ?? String(process.env.FLEXISIP_CALL_COLLECTOR_DRY_RUN || "true").toLowerCase() !== "false";
-  const input = readTailText(logPath, tailLines);
+  const input = readTailText(logPath, tailLines, maxTailBytes);
   const parsed = parseFlexisipCallLog(input.text);
   const stats = summarizeEvents(parsed.events);
 
@@ -238,6 +269,9 @@ export async function collectFlexisipCallEventsOnce(options = {}) {
     logPath,
     fileSize: input.fileSize,
     requestedTailLines: tailLines,
+    maxTailBytes,
+    tailBytes: input.tailBytes,
+    truncated: input.truncated,
     readLines: input.readLines,
     parserEvents: parsed.events.length,
     eventTypeCounts: stats,

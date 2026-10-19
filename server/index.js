@@ -21987,7 +21987,15 @@ app.get("/api/flexisip/call-logs/date-range", requireAdmin, async (request, resp
       let params = [];
 
       if (!isPlatform && tenantId) {
-        const tenantSips = await connection.query("SELECT username FROM sip_users WHERE tenant_id = ?", [tenantId]);
+        const tenantSips = await connection.query(
+          `SELECT s.username
+             FROM sip_users s
+             LEFT JOIN tenant_sip_account_entitlements e
+               ON e.sip_user_id = s.id AND e.status = 'active'
+            WHERE COALESCE(e.tenant_id, s.tenant_id) = ?
+              AND s.recycled_at IS NULL`,
+          [tenantId],
+        );
         const usernames = tenantSips.map(r => r.username);
         if (usernames.length === 0) {
           return response.json({ success: true, data: { earliest: null, latest: null } });
@@ -22033,7 +22041,7 @@ app.get("/api/flexisip/call-logs/accounts", requireAdmin, async (request, respon
         const rows = await connection.query(
           "SELECT DISTINCT u.user FROM (SELECT from_user AS user FROM flexisip_call_logs WHERE from_user != '' UNION SELECT to_user AS user FROM flexisip_call_logs WHERE to_user != '') u ORDER BY u.user ASC",
         );
-        const accounts = (rows || []).map((r) => String(r.user || "")).filter(Boolean);
+        const accounts = (rows || []).map((r) => String(r.user || "")).filter((user) => /^\d+$/.test(user));
         return response.json({ success: true, data: accounts });
       }
 
@@ -22041,12 +22049,20 @@ app.get("/api/flexisip/call-logs/accounts", requireAdmin, async (request, respon
         return response.json({ success: true, data: [] });
       }
 
-      // Tenant admin: only return accounts belonging to their tenant's SIP users
+      // Tenant admin: only return accounts belonging to their tenant (entitlement-aware)
       const sipRows = await connection.query(
-        "SELECT username FROM sip_users WHERE tenant_id = ? AND status = 'active'",
-        [tenantId]
+        `SELECT s.username
+           FROM sip_users s
+           LEFT JOIN tenant_sip_account_entitlements e
+             ON e.sip_user_id = s.id AND e.status = 'active'
+          WHERE COALESCE(e.tenant_id, s.tenant_id) = ?
+            AND s.recycled_at IS NULL
+            AND s.status = 'active'`,
+        [tenantId],
       );
-      const tenantAccounts = (sipRows || []).map(r => r.username).filter(Boolean);
+      const tenantAccounts = (sipRows || [])
+        .map((r) => String(r.username || ""))
+        .filter((user) => /^\d+$/.test(user));
       return response.json({ success: true, data: tenantAccounts });
     } finally {
       connection.release();
@@ -22122,7 +22138,15 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
     if (!isPlatform && tenantId) {
       const dbConn = await pool.getConnection();
       try {
-        const tenantSips = await dbConn.query("SELECT username FROM sip_users WHERE tenant_id = ?", [tenantId]);
+        const tenantSips = await dbConn.query(
+          `SELECT s.username
+             FROM sip_users s
+             LEFT JOIN tenant_sip_account_entitlements e
+               ON e.sip_user_id = s.id AND e.status = 'active'
+            WHERE COALESCE(e.tenant_id, s.tenant_id) = ?
+              AND s.recycled_at IS NULL`,
+          [tenantId],
+        );
         queryAccounts = tenantSips.map(r => r.username).join(',');
         if (!queryAccounts) {
           return response.json({ success: true, message: "Flexisip 通話記錄已取得", data: { total: 0, items: [] } });
@@ -22141,6 +22165,7 @@ app.get("/api/flexisip/call-logs", requireAdmin, async (request, response) => {
       offset,
       from,
       to,
+      tzOffsetMinutes: request.query?.tzOffsetMinutes,
     });
 
     return response.json({

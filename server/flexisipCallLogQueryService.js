@@ -123,7 +123,22 @@ function sanitizeCallRow(row, devicesCount = 0, devices = null) {
   return item;
 }
 
-function buildWhereClause({ accounts, direction, result, domain, from, to }) {
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "").trim());
+}
+
+function dateBoundaryToUtc(value, endOfDay, tzOffsetMinutes) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (!isDateOnly(text)) {
+    return toMysqlDatetime(text);
+  }
+  const [year, month, day] = text.split("-").map(Number);
+  const localMs = Date.UTC(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+  return toMysqlDatetime(new Date(localMs - tzOffsetMinutes * 60000));
+}
+
+function buildWhereClause({ accounts, direction, result, domain, from, to, tzOffsetMinutes = 0 }) {
   const clauses = ["1=1"];
   const params = [];
 
@@ -158,12 +173,12 @@ function buildWhereClause({ accounts, direction, result, domain, from, to }) {
 
   if (from) {
     clauses.push("cl.initiated_at >= ?");
-    params.push(toMysqlDatetime(from));
+    params.push(dateBoundaryToUtc(from, false, tzOffsetMinutes));
   }
 
   if (to) {
     clauses.push("cl.initiated_at <= ?");
-    params.push(toMysqlDatetime(to));
+    params.push(dateBoundaryToUtc(to, true, tzOffsetMinutes));
   }
 
   return {
@@ -182,6 +197,8 @@ export async function queryFlexisipCallLogs(filters = {}) {
   const offset = parseOffset(filters.offset);
   const from = String(filters.from || "").trim();
   const to = String(filters.to || "").trim();
+  const parsedOffset = Number(filters.tzOffsetMinutes);
+  const tzOffsetMinutes = Number.isFinite(parsedOffset) ? Math.min(840, Math.max(-840, parsedOffset)) : 0;
 
   if (!VALID_DIRECTIONS.has(direction) || !VALID_RESULTS.has(result)) {
     throw new FlexisipCallLogQueryError("Invalid Flexisip call log query.", {
@@ -201,7 +218,7 @@ export async function queryFlexisipCallLogs(filters = {}) {
     });
   }
 
-  const { whereSql, params } = buildWhereClause({ accounts, direction, result, domain, from, to });
+  const { whereSql, params } = buildWhereClause({ accounts, direction, result, domain, from, to, tzOffsetMinutes });
   const pool = dbPool;
   let connection;
 

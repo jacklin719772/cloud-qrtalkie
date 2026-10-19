@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Flexisip call log pipeline every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=10s
+Unit=flexisip-call-log-pipeline.service
+
+[Install]
+WantedBy=timers.target

@@ -27,14 +27,14 @@ export async function cleanupFlexisipCallLogs() {
     const deviceResult = await connection.query(
       `DELETE fd FROM flexisip_call_devices fd
        INNER JOIN flexisip_call_logs fl ON fd.call_key_hash = fl.call_key_hash
-       WHERE fl.initiated_at < ?`,
+       WHERE COALESCE(fl.initiated_at, fl.ended_at, fl.created_at) < ?`,
       [cutoffStr],
     );
     const devicesDeleted = deviceResult?.affectedRows || 0;
 
-    // 3. 删除旧通话记录
+    // 3. 删除旧通话记录（含 initiated_at 为空的残缺记录）
     const logResult = await connection.query(
-      "DELETE FROM flexisip_call_logs WHERE initiated_at < ?",
+      "DELETE FROM flexisip_call_logs WHERE COALESCE(initiated_at, ended_at, created_at) < ?",
       [cutoffStr],
     );
     const logsDeleted = logResult?.affectedRows || 0;

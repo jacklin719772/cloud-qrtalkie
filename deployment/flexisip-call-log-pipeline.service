@@ -1,0 +1,11 @@
+[Unit]
+Description=Flexisip Call Log Collector
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/saas
+ExecStart=/usr/bin/node scripts/run-flexisip-call-log-pipeline.js
+EnvironmentFile=/opt/saas/.env
+Nice=10

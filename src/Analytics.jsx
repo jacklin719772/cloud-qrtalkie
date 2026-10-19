@@ -107,6 +107,9 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
   const [sipCallAccounts, setSipCallAccounts] = useState([]);
   const [sipCallAccountList, setSipCallAccountList] = useState([]);
   const [sipCallAccountDropdownOpen, setSipCallAccountDropdownOpen] = useState(false);
+  const [sipCallAccountSearch, setSipCallAccountSearch] = useState('');
+  const [sipCallLogError, setSipCallLogError] = useState('');
+  const sipCallLogErrorTimerRef = useRef(null);
   const [sipCallDirection, setSipCallDirection] = useState('all');
   const [sipCallResult, setSipCallResult] = useState('all');
   const [sipCallDateFrom, setSipCallDateFrom] = useState('');
@@ -160,9 +163,17 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
     sipErrorTimerRef.current = setTimeout(() => setSipError(''), 6000);
   }, []);
 
+  const showSipCallLogError = useCallback((text) => {
+    setSipCallLogError(text);
+    if (sipCallLogErrorTimerRef.current) clearTimeout(sipCallLogErrorTimerRef.current);
+    sipCallLogErrorTimerRef.current = setTimeout(() => setSipCallLogError(''), 6000);
+  }, []);
+
   useEffect(() => () => {
     if (webErrorTimerRef.current) clearTimeout(webErrorTimerRef.current);
     if (sipErrorTimerRef.current) clearTimeout(sipErrorTimerRef.current);
+    if (callLogErrorTimerRef.current) clearTimeout(callLogErrorTimerRef.current);
+    if (sipCallLogErrorTimerRef.current) clearTimeout(sipCallLogErrorTimerRef.current);
   }, []);
 
   // 「Web 呼叫日誌」分機下拉：只載入已分配的 Web 帳號（含對應 SIP 帳號）
@@ -297,7 +308,8 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       } catch { setSipCallDateRange(null); }
       try {
         const accRes = await apiClient.get('/flexisip/call-logs/accounts');
-        setSipCallAccountList(Array.isArray(accRes?.data) ? accRes.data : []);
+        const accountList = Array.isArray(accRes?.data) ? accRes.data : [];
+        setSipCallAccountList(accountList.map((item) => String(item || '')).filter((item) => /^\d+$/.test(item)));
       } catch { setSipCallAccountList([]); }
     })();
   }, [activeTab]);
@@ -327,6 +339,10 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
     return [item.username, item.sipUsername, item.displayName, item.tenantName]
       .some((value) => String(value || '').toLowerCase().includes(callAccountKeyword));
   });
+  const sipCallAccountKeyword = sipCallAccountSearch.trim().toLowerCase();
+  const visibleSipCallAccounts = sipCallAccountList.filter((account) => (
+    !sipCallAccountKeyword || account.toLowerCase().includes(sipCallAccountKeyword)
+  ));
 
   return (
     <section className="view active" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#0f172a' }}>
@@ -563,28 +579,34 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
               {sipCallAccountDropdownOpen && (
                 <>
                   <div onClick={() => setSipCallAccountDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
-                  <div style={{ position: 'absolute', top: '44px', left: 0, zIndex: 50, background: '#1a2332', border: '1px solid #374151', borderRadius: '8px', minWidth: '200px', maxHeight: '260px', overflow: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
-                    <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderBottom: '1px solid #1f2937' }}>
-                      <button onClick={() => { setSipCallAccounts([...sipCallAccountList]); setSipCallPage(1); }}
+                  <div style={{ position: 'absolute', top: '44px', left: 0, zIndex: 50, background: '#1a2332', border: '1px solid #374151', borderRadius: '8px', minWidth: '240px', maxHeight: '320px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+                    <div style={{ flexShrink: 0, padding: '8px 10px', borderBottom: '1px solid #1f2937' }}>
+                      <input autoFocus type="search" placeholder="搜尋 SIP 帳號" value={sipCallAccountSearch} onChange={e => setSipCallAccountSearch(e.target.value)}
+                        style={{ width: '100%', height: '32px', padding: '0 10px', borderRadius: '6px', border: '1px solid #374151', background: '#111827', color: '#e5e7eb', fontSize: '12px', outline: 'none' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', padding: '8px 10px', borderBottom: '1px solid #1f2937', flexShrink: 0 }}>
+                      <button onClick={() => { setSipCallAccounts(prev => Array.from(new Set([...prev, ...visibleSipCallAccounts]))); setSipCallPage(1); }}
                         style={{ flex: 1, padding: '4px 0', borderRadius: '4px', border: '1px solid #374151', background: '#111827', color: '#60a5fa', fontSize: '11px', cursor: 'pointer' }}>全選</button>
                       <button onClick={() => { setSipCallAccounts([]); setSipCallPage(1); }}
                         style={{ flex: 1, padding: '4px 0', borderRadius: '4px', border: '1px solid #374151', background: '#111827', color: '#9ca3af', fontSize: '11px', cursor: 'pointer' }}>清除</button>
                     </div>
-                    {sipCallAccountList.length === 0 ? (
-                      <div style={{ padding: '16px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>無可用帳號</div>
-                    ) : sipCallAccountList.map(acc => (
-                      <label key={acc} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: '#e5e7eb', borderBottom: '1px solid #1f2937' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <input type="checkbox" checked={sipCallAccounts.includes(acc)}
-                          onChange={() => {
-                            setSipCallAccounts(prev => prev.includes(acc) ? prev.filter(a => a !== acc) : [...prev, acc]);
-                            setSipCallPage(1);
-                          }}
-                          style={{ accentColor: '#3b82f6' }} />
-                        {acc}
-                      </label>
-                    ))}
+                    <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
+                      {visibleSipCallAccounts.length === 0 ? (
+                        <div style={{ padding: '16px', textAlign: 'center', color: '#6b7280', fontSize: '12px' }}>{sipCallAccountList.length === 0 ? '無可用帳號' : '無匹配帳號'}</div>
+                      ) : visibleSipCallAccounts.map(acc => (
+                        <label key={acc} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '13px', color: '#e5e7eb', borderBottom: '1px solid #1f2937' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#1e293b'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                          <input type="checkbox" checked={sipCallAccounts.includes(acc)}
+                            onChange={() => {
+                              setSipCallAccounts(prev => prev.includes(acc) ? prev.filter(a => a !== acc) : [...prev, acc]);
+                              setSipCallPage(1);
+                            }}
+                            style={{ accentColor: '#3b82f6' }} />
+                          {acc}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
@@ -614,7 +636,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
           <FlexisipCallLogTable logs={sipCallLogs} total={sipCallLogTotal} accounts={sipCallAccounts} direction={sipCallDirection}
-            result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo}
+            result={sipCallResult} dateFrom={sipCallDateFrom} dateTo={sipCallDateTo} error={sipCallLogError}
             page={sipCallPage} pageSize={sipCallPageSize} onPageChange={setSipCallPage} onPageSizeChange={v => { setSipCallPageSize(v); setSipCallPage(1); }}
             expandedCall={sipCallExpanded} onToggleExpand={setSipCallExpanded} isLoading={isSipCallLogLoading}
             onFetch={async (params) => {
@@ -624,7 +646,10 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
                 const res = await apiClient.get(`/flexisip/call-logs?${qs}`);
                 setSipCallLogs(res.data?.items || []);
                 setSipCallLogTotal(res.data?.total || 0);
-              } catch { setSipCallLogs([]); setSipCallLogTotal(0); }
+                setSipCallLogError('');
+              } catch (err) {
+                showSipCallLogError(err?.data?.message || err?.message || 'SIP 呼叫日誌查詢失敗。');
+              }
               finally { setIsSipCallLogLoading(false); }
             }} />
         </div>
@@ -957,7 +982,7 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
 }
 
 // Flexisip SIP Call Log sub-component
-function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, onFetch }) {
+function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, error, onFetch }) {
   useEffect(() => {
     const params = { includeDevices: 'true', limit: String(pageSize), offset: String((page - 1) * pageSize) };
     if (accounts.length) params.accounts = accounts.join(',');
@@ -965,6 +990,7 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
     if (result !== 'all') params.result = result;
     if (dateFrom) params.from = dateFrom;
     if (dateTo) params.to = dateTo;
+    params.tzOffsetMinutes = String(-new Date().getTimezoneOffset());
     onFetch(params);
   }, [accounts, direction, result, dateFrom, dateTo, page, pageSize]);
 
@@ -991,11 +1017,18 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
     return map[d] || d;
   };
 
-  const formatTime = (iso) => { try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+  const formatTime = (iso) => {
+    if (!iso) return '-';
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+  };
   const formatDuration = (s) => { if (!s && s !== 0) return '-'; const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+      {error && (
+        <div style={{ flexShrink: 0, margin: '12px 12px 0', padding: '9px 14px', borderRadius: '8px', background: '#7f1d1d', color: '#fecaca', fontSize: '13px' }}>{error}</div>
+      )}
       <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
         <table style={{ width: '100%', minWidth: '800px', tableLayout: 'fixed', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
@@ -1037,9 +1070,39 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
                       <span>被叫域：<span style={{ color: '#d1d5db' }}>{row.toDomain || '—'}</span></span>
                       <span>信令碼：<span style={{ color: row.finalCode ? '#fca5a5' : '#d1d5db' }}>{row.finalCode || '—'}</span></span>
                       <span>原因：<span style={{ color: '#d1d5db' }}>{row.finalReason || '—'}</span></span>
+                      <span>響鈴時間：<span style={{ color: '#d1d5db' }}>{formatTime(row.ringingAt)}</span></span>
+                      <span>接聽時間：<span style={{ color: '#d1d5db' }}>{formatTime(row.answeredAt)}</span></span>
                       <span>結束時間：<span style={{ color: '#d1d5db' }}>{formatTime(row.endedAt)}</span></span>
                       <span>設備數：<span style={{ color: '#d1d5db' }}>{row.devicesCount}</span></span>
                     </div>
+                    {row.devices && row.devices.length > 0 && (
+                      <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937' }}>
+                        <div style={{ color: '#9ca3af', fontSize: '11px', marginBottom: '8px' }}>設備明細（{row.devices.length}）</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {row.devices.map((device, deviceIndex) => (
+                            <div key={deviceIndex} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px', background: '#111827', border: '1px solid #1f2937', borderRadius: '8px', padding: '10px 12px' }}>
+                              {[
+                                { label: '角色', value: device.role === 'caller' ? '主叫' : device.role === 'callee' ? '被叫' : (device.role || '-') },
+                                { label: '帳號', value: device.account || '-' },
+                                { label: 'User-Agent', value: device.userAgent || '-' },
+                                { label: '傳輸協議', value: device.transport || '-' },
+                                { label: '結果', value: device.result || '-' },
+                                { label: '邀請時間', value: formatTime(device.invitedAt) },
+                                { label: '接聽時間', value: formatTime(device.answeredAt) },
+                                { label: '結束時間', value: formatTime(device.endedAt) },
+                                { label: '信令碼', value: device.finalCode ? String(device.finalCode) : '-' },
+                                { label: '原因', value: device.finalReason || '-' },
+                              ].map((item, itemIndex) => (
+                                <div key={itemIndex}>
+                                  <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
+                                  <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </td></tr>
                 )}
               </React.Fragment>
@@ -1082,7 +1145,11 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages);
 
-  const formatTime = (iso) => { try { return new Date(iso).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-'); } catch { return '-'; } };
+  const formatTime = (iso) => {
+    if (!iso) return '-';
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+  };
   const formatDuration = (s) => { if (!s && s !== 0) return '-'; const m = Math.floor(s / 60); const sec = s % 60; return `${m}:${String(sec).padStart(2, '0')}`; };
 
   return (

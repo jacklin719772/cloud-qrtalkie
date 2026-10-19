@@ -108,10 +108,18 @@ function getInitialInvite(events) {
   return events.find((event) => event.event_type === "invite") || events[0] || null;
 }
 
-function inferDirection(summary) {
+function inferDirection(summary, localUsers = null) {
   if (!summary.from_user || !summary.to_user) return DIRECTION_UNKNOWN;
+  if (localUsers && localUsers.size > 0) {
+    const fromLocal = localUsers.has(summary.from_user);
+    const toLocal = localUsers.has(summary.to_user);
+    if (fromLocal && toLocal) return "internal";
+    if (fromLocal) return "outbound";
+    if (toLocal) return "inbound";
+    return DIRECTION_UNKNOWN;
+  }
   if (summary.from_domain && summary.to_domain && summary.from_domain === summary.to_domain) {
-    return summary.from_user === summary.to_user ? "internal" : "internal";
+    return "internal";
   }
   return DIRECTION_UNKNOWN;
 }
@@ -127,7 +135,7 @@ function inferTerminalResultFromEvent(event) {
   return null;
 }
 
-function aggregateCall(events) {
+function aggregateCall(events, localUsers = null) {
   const warnings = new Set();
   const invite = getInitialInvite(events);
   if (!invite) warnings.add("MISSING_INVITE");
@@ -260,7 +268,7 @@ function aggregateCall(events) {
     }
   }
 
-  summary.direction = inferDirection(summary);
+  summary.direction = inferDirection(summary, localUsers);
   summary.warnings = Array.from(warnings);
   return summary;
 }
@@ -692,11 +700,13 @@ export async function rebuildFlexisipCallStatisticsOnce(options = {}) {
   try {
     const events = await readAllEvents(connection);
     const grouped = groupEventsByCallKey(events);
+    const localUserRows = await connection.query("SELECT username FROM sip_users");
+    const localUsers = new Set(localUserRows.map((row) => String(row.username || "")).filter(Boolean));
     const callSummaries = [];
     const deviceRows = [];
 
     for (const groupEvents of grouped.values()) {
-      const summary = aggregateCall(groupEvents);
+      const summary = aggregateCall(groupEvents, localUsers);
       callSummaries.push(summary);
       deviceRows.push(...buildDeviceRows(summary, groupEvents));
     }
