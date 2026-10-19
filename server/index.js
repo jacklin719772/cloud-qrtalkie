@@ -2808,13 +2808,25 @@ app.get("/api/tenant/sip-accounts/:id/account-profile", requireAdmin, async (req
   let connection;
   try {
     connection = await pool.getConnection();
-    const rows = await connection.query(
-      `SELECT u.username, u.sip_domain, u.avatar_url
-       FROM billing_order_sip_accounts b
-       JOIN sip_users u ON u.id = b.sip_user_id
-       WHERE b.id = ? AND b.tenant_id = ? LIMIT 1`,
-      [paramId, request.admin.tenantId],
-    );
+    const isSelfService = request.admin.accountType === "sip_user";
+    if (isSelfService && paramId !== Number(request.admin.id)) {
+      return response.status(403).json({ message: "只能查看自己的帳號資料。" });
+    }
+    const rows = isSelfService
+      ? await connection.query(
+          `SELECT username, sip_domain, avatar_url
+             FROM sip_users
+            WHERE id = ? AND tenant_id = ?
+            LIMIT 1`,
+          [paramId, request.admin.tenantId],
+        )
+      : await connection.query(
+          `SELECT u.username, u.sip_domain, u.avatar_url
+             FROM billing_order_sip_accounts b
+             JOIN sip_users u ON u.id = b.sip_user_id
+             WHERE b.id = ? AND b.tenant_id = ? LIMIT 1`,
+          [paramId, request.admin.tenantId],
+        );
     if (!rows[0]) return response.status(404).json({ message: "找不到帳號。" });
     const account = rows[0];
     let vcardData = null;

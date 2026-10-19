@@ -20,7 +20,7 @@ export default function MyAccount({ identity }) {
   const [showQrDialog, setShowQrDialog] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionDialog, setActionDialog] = useState(null); // 'displayName' | 'email' | 'phone' | 'password' | 'ecard' | null
-  const [form, setForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '', company: '', jobTitle: '', avatarDataUrl: '', avatarPreview: '', savedAvatarUrl: '', removeAvatar: false });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [isMobile, setIsMobile] = useState(false);
@@ -37,6 +37,10 @@ export default function MyAccount({ identity }) {
     try {
       const data = await apiClient.get('/me');
       setProfile(data);
+      let accountProfile = null;
+      try {
+        accountProfile = await apiClient.get(`/tenant/sip-accounts/${data.admin?.id}/account-profile`);
+      } catch { /* 無資料卡時留空 */ }
       const initialEmail = data.admin?.email || '';
       const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
       setForm(prev => ({
@@ -44,6 +48,12 @@ export default function MyAccount({ identity }) {
         displayName: data.admin?.displayName || '',
         email: isValidEmail(initialEmail) ? initialEmail : '',
         phone: data.admin?.phoneNumber || '',
+        company: accountProfile?.company || '',
+        jobTitle: accountProfile?.jobTitle || '',
+        avatarPreview: accountProfile?.avatarUrl || '',
+        savedAvatarUrl: accountProfile?.avatarUrl || '',
+        avatarDataUrl: '',
+        removeAvatar: false,
       }));
       // Check ecard availability
       try {
@@ -66,13 +76,46 @@ export default function MyAccount({ identity }) {
   const openDialog = (type) => {
     setMessage({ type: '', text: '' });
     if (type === 'password') setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
+    if (type === 'profile') setForm(prev => ({ ...prev, avatarDataUrl: '', avatarPreview: prev.savedAvatarUrl || '', removeAvatar: false }));
     setActionDialog(type);
   };
 
   const closeDialog = () => {
     if (saving) return;
+    if (actionDialog === 'profile') {
+      setForm(prev => ({ ...prev, avatarDataUrl: '', avatarPreview: prev.savedAvatarUrl || '', removeAvatar: false }));
+    }
     setActionDialog(null);
     setMessage({ type: '', text: '' });
+  };
+
+  const handleAvatarFile = (file) => {
+    if (!file) return;
+    if (!String(file.type || '').startsWith('image/')) {
+      setMessage({ type: 'error', text: '請選擇圖片檔案。' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setMessage({ type: 'error', text: '圖片大小需小於 10MB。' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      setForm(prev => ({ ...prev, avatarDataUrl: dataUrl, avatarPreview: dataUrl, removeAvatar: false }));
+    };
+    reader.onerror = () => setMessage({ type: 'error', text: '讀取圖片失敗。' });
+    reader.readAsDataURL(file);
+  };
+
+  const removeAvatar = () => {
+    setForm(prev => ({ ...prev, avatarDataUrl: '', avatarPreview: '', removeAvatar: true }));
+  };
+
+  const avatarSrc = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+    return url.startsWith('/api/') ? url : `/api${url.startsWith('/') ? url : `/${url}`}`;
   };
 
   const handleSave = async (e) => {
@@ -91,6 +134,12 @@ export default function MyAccount({ identity }) {
       if (actionDialog === 'password') {
         payload.password = form.password;
         payload.confirmPassword = form.confirmPassword;
+      }
+      if (actionDialog === 'profile') {
+        payload.company = form.company || '';
+        payload.jobTitle = form.jobTitle || '';
+        if (form.avatarDataUrl) payload.avatarDataUrl = form.avatarDataUrl;
+        if (form.removeAvatar) payload.removeAvatar = true;
       }
       await apiClient.put(`/tenant/sip-accounts/${profile.admin.id}`, payload);
       setMessage({ type: 'success', text: '儲存成功。' });
@@ -315,6 +364,12 @@ export default function MyAccount({ identity }) {
                 </button>
               </div>
               <div className="ma-action-row">
+                <button className="ma-action-btn ma-action-full" onClick={() => openDialog('profile')}>
+                  <span className="ma-action-icon" style={{ background: '#eef2ff', color: '#4f46e5' }}>&#128100;</span>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>账号资料卡</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[form.company, form.jobTitle].filter(Boolean).join(' · ') || '设置头像、工作单位、职务'}</div></div>
+                </button>
+              </div>
+              <div className="ma-action-row">
                 <button className="ma-action-btn" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>
                   <span className="ma-action-icon" style={{ background: '#1e293b', color: '#6b7280' }}>&#9881;</span>
                   <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500, color: '#9ca3af' }}>设备管理</div><div style={{ fontSize: '12px', color: '#6b7280' }}>即将推出</div></div>
@@ -362,10 +417,25 @@ export default function MyAccount({ identity }) {
         <div style={{ height: '100%' }}>
           <div className="ma-card">
             <h3>基本信息</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', background: '#1f2937', border: '1px solid #374151', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {form.avatarPreview ? (
+                  <img src={avatarSrc(form.avatarPreview)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ color: '#9ca3af', fontSize: '22px', fontWeight: 600 }}>{(form.displayName || admin.username || '?').slice(0, 1)}</span>
+                )}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: '#f3f4f6', fontSize: '16px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{form.displayName || admin.username || '-'}</div>
+                <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[form.company, form.jobTitle].filter(Boolean).join(' · ') || '未設定工作單位/職務'}</div>
+              </div>
+            </div>
             <div className="ma-info-row"><span className="ma-info-label">账号</span><span className="ma-info-value">{admin.username || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">同步状态</span><span className="ma-info-value" style={{ color: admin.flexisipSyncStatus === 'active' ? '#22c55e' : admin.flexisipSyncStatus === 'local_only' ? '#f59e0b' : '#ef4444' }}>{admin.flexisipSyncStatus === 'active' ? '已同步' : admin.flexisipSyncStatus === 'local_only' ? '僅本地' : admin.flexisipSyncStatus || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">激活状态</span><span className="ma-info-value" style={{ color: admin.flexisipActivated === true ? '#22c55e' : admin.flexisipActivated === false ? '#ef4444' : '#9ca3af' }}>{admin.flexisipActivated === true ? '已啟用' : admin.flexisipActivated === false ? '未啟用' : '未知'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">显示名</span><span className="ma-info-value">{admin.displayName || '-'}</span></div>
+            <div className="ma-info-row"><span className="ma-info-label">工作单位</span><span className="ma-info-value">{form.company || '-'}</span></div>
+            <div className="ma-info-row"><span className="ma-info-label">职务</span><span className="ma-info-value">{form.jobTitle || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">邮箱</span><span className="ma-info-value">{admin.email || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">电话</span><span className="ma-info-value">{admin.phoneNumber || '-'}</span></div>
             <div className="ma-info-row"><span className="ma-info-label">租户</span><span className="ma-info-value">{tenant.companyName || '-'}</span></div>
@@ -378,7 +448,7 @@ export default function MyAccount({ identity }) {
         <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) closeDialog(); }}>
           <form className="ma-dialog" onSubmit={handleSave}>
             <div className="ma-dialog-header">
-              <h3>{actionDialog === 'displayName' ? '設定顯示名' : actionDialog === 'email' ? '設定郵箱' : actionDialog === 'phone' ? '設定電話' : actionDialog === 'password' ? '設定密碼' : '電子名片'}</h3>
+              <h3>{actionDialog === 'displayName' ? '設定顯示名' : actionDialog === 'email' ? '設定郵箱' : actionDialog === 'phone' ? '設定電話' : actionDialog === 'password' ? '設定密碼' : actionDialog === 'profile' ? '帳號資料卡' : '電子名片'}</h3>
               <button type="button" onClick={closeDialog} disabled={saving} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>&#10005;</button>
             </div>
             <div className="ma-dialog-body">
@@ -395,6 +465,30 @@ export default function MyAccount({ identity }) {
                 <>
                   <label>新密码<input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="至少 6 位字元" autoComplete="new-password" /></label>
                   <label>确认密码<input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} placeholder="再次輸入密碼" autoComplete="new-password" /></label>
+                </>
+              )}
+              {actionDialog === 'profile' && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{ width: '72px', height: '72px', borderRadius: '50%', overflow: 'hidden', background: '#1f2937', border: '1px solid #374151', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {form.avatarPreview ? (
+                        <img src={avatarSrc(form.avatarPreview)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ color: '#9ca3af', fontSize: '24px', fontWeight: 600 }}>{(form.displayName || admin.username || '?').slice(0, 1)}</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '8px 14px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#d1d5db', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
+                        上傳頭像
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
+                      </label>
+                      {form.avatarPreview && (
+                        <button type="button" onClick={removeAvatar} style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #7f1d1d', background: '#111827', color: '#fca5a5', fontSize: '12px', cursor: 'pointer' }}>移除頭像</button>
+                      )}
+                    </div>
+                  </div>
+                  <label>工作单位<input type="text" value={form.company} onChange={e => setForm(f => ({ ...f, company: e.target.value }))} placeholder="輸入工作單位" maxLength={120} /></label>
+                  <label>职务<input type="text" value={form.jobTitle} onChange={e => setForm(f => ({ ...f, jobTitle: e.target.value }))} placeholder="輸入職務" maxLength={120} /></label>
                 </>
               )}
               {message.text && <p style={{ margin: 0, fontSize: '13px', color: message.type === 'error' ? '#dc2626' : '#16a34a' }}>{message.text}</p>}
