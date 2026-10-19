@@ -2,44 +2,111 @@ import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'rea
 import { RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
 
-function formatTime() {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+const EMPTY_HEALTH = {
+  cpu: { usage: null, cores: null, loadAvg: null },
+  memory: null,
+  disk: null,
+  uptime: null,
+  load: { load1: 0, load5: 0, load15: 0 },
+  os: null,
+  ntpSynchronized: null,
+  mariadb: 'unknown',
+  mongodb: 'unknown',
+  asterisk: 'unknown',
+  flexisip: 'unknown',
+  redis: 'unknown',
+  apache: 'unknown',
+  coturn: 'unknown',
+  mqtt: 'unknown',
+  aiservice: 'unknown',
+  lime: 'unknown',
+  fts: 'unknown',
+  accountManager: 'unknown',
+  ssl: null,
+  checkedAt: null,
+};
+
+const EMPTY_STATS = {
+  sipTotal: 0, sipAssigned: 0, sipTrialActive: 0, sipAvailable: 0, sipRecycled: 0,
+  webTotal: 0, webAssigned: 0, webActive: 0,
+  tenantCount: 0, tenantTotal: 0,
+  orderCount: 0, orderNewCount: 0, orderRenewalCount: 0, trialOrderCount: 0,
+  pendingReviewCount: 0, pendingPaymentCount: 0,
+  paidTotal: 0, paidThisMonth: 0,
+  ecardCount: 0, ecardTotal: 0, ecardExpiring: 0,
+  deviceCount: 0, deviceTotal: 0, deviceOnline: 0, deviceOffline: 0, deviceUnknown: 0, deviceAssignmentExpired: 0,
+  communityCount: 0, communityTotal: 0, roomCount: 0,
+  topPlan: '-', topPlanCount: 0, bottomPlan: '-', bottomPlanCount: 0,
+  syncAnomaly: 0, accountsExpired: 0, accountsExpiring: 0, plansExpiring: 0,
+  trial: { total: 0, active: 0, expiring: 0, grace: 0, paused: 0, converted: 0, reclaimed: 0 },
+  tenantTrend: [], paymentTrend: [],
+  recentTenants: [], recentOrders: [], recentPayments: [], alerts: [],
+};
+
+function normalizeHealth(res) {
+  if (!res || typeof res !== 'object') return EMPTY_HEALTH;
+  return {
+    ...EMPTY_HEALTH,
+    ...res,
+    cpu: { ...EMPTY_HEALTH.cpu, ...(res.cpu || {}) },
+    load: { ...EMPTY_HEALTH.load, ...(res.load || {}) },
+  };
 }
 
-const MOCK_HEALTH = {
-  cpu: { usage: 23, loadAvg: 0.42 },
-  memory: { usage: 46 },
-  disk: { usage: 62 },
-  uptime: { days: 35, text: '35 天' },
-  mariadb: 'running',
-  mongodb: 'running',
-  asterisk: 'running',
-  flexisip: 'running',
-  redis: 'running',
-  coturn: 'running',
-  mqtt: 'running',
-  aiservice: 'running',
-  lime: 'running',
-  fts: 'running',
-  accountManager: 'running',
-  ssl: { daysLeft: 83, date: '2026-08-25' },
-  load: { load1: 0.38, load5: 0.42, load15: 0.35 },
-};
+function normalizeStats(res) {
+  if (!res || typeof res !== 'object') return EMPTY_STATS;
+  return {
+    ...EMPTY_STATS,
+    ...res,
+    trial: { ...EMPTY_STATS.trial, ...(res.trial || {}) },
+    tenantTrend: Array.isArray(res.tenantTrend) ? res.tenantTrend : [],
+    paymentTrend: Array.isArray(res.paymentTrend) ? res.paymentTrend : [],
+    recentTenants: Array.isArray(res.recentTenants) ? res.recentTenants : [],
+    recentOrders: Array.isArray(res.recentOrders) ? res.recentOrders : [],
+    recentPayments: Array.isArray(res.recentPayments) ? res.recentPayments : [],
+    alerts: Array.isArray(res.alerts) ? res.alerts : [],
+  };
+}
 
-const MOCK_STATS = {
-  sipCreated: 18367, sipAssigned: 12845, webCreated: 8521, webAssigned: 5932,
-  tenantCount: 286, orderCount: 1248, pendingReviewCount: 15, pendingPaymentCount: 8, paidTotal: 186520,
-  ecardCount: 3847, deviceCount: 2156, communityCount: 328, roomCount: 4920,
-  topPlan: "企業旗艦版", bottomPlan: "基礎版",
-  tenantTrend: [
-    { date: 'Mon', count: 12 }, { date: 'Tue', count: 15 }, { date: 'Wed', count: 11 }, { date: 'Thu', count: 17 }, { date: 'Fri', count: 16 }, { date: 'Sat', count: 19 }, { date: 'Sun', count: 22 },
-  ],
-  paymentTrend: [
-    { date: 'Mon', amount: 40 }, { date: 'Tue', amount: 55 }, { date: 'Wed', amount: 68 }, { date: 'Thu', amount: 50 }, { date: 'Fri', amount: 72 }, { date: 'Sat', amount: 60 }, { date: 'Sun', amount: 85 },
-  ],
-};
+function formatTime(v) {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16).replace('T', ' ');
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatTimeShort(v) {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v).slice(5, 16);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatBytes(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return '-';
+  const gb = n / 1024 / 1024 / 1024;
+  if (gb >= 1024) return `${(gb / 1024).toFixed(1)}TB`;
+  return `${gb.toFixed(gb >= 10 ? 0 : 1)}GB`;
+}
+
+function serviceTone(status) {
+  if (status === 'running') return 'green';
+  if (status === 'partial') return 'warn';
+  if (status === 'stopped' || status === 'error') return 'red';
+  return 'gray';
+}
+
+function serviceText(status, runningText = '執行正常') {
+  if (status === 'running') return runningText;
+  if (status === 'partial') return '部分執行';
+  if (status === 'stopped') return '已停止';
+  if (status === 'error') return '異常';
+  if (status === 'not_installed') return '未安裝';
+  return '未知';
+}
 
 function buildChartBars(trend, valueKey) {
   if (!trend || trend.length === 0) return { bars: [], labels: [], max: 1 };
@@ -50,27 +117,34 @@ function buildChartBars(trend, valueKey) {
 }
 
 const PlatformDashboard = forwardRef((props, ref) => {
-  const [, setTick] = useState(0);
-  const [health, setHealth] = useState(MOCK_HEALTH);
-  const [stats, setStats] = useState(MOCK_STATS);
+  const [health, setHealth] = useState(EMPTY_HEALTH);
+  const [stats, setStats] = useState(EMPTY_STATS);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(null);
 
-  const fetchHealth = async () => {
-    try {
-      const res = await apiClient.get('/platform/health');
-      setHealth(res);
-    } catch { /* keep mock */ }
+  const loadAll = async ({ silent = false } = {}) => {
+    if (silent) setRefreshing(true); else setLoading(true);
+    const results = await Promise.allSettled([
+      apiClient.get('/platform/health'),
+      apiClient.get('/platform/stats'),
+    ]);
+    const failures = [];
+    if (results[0].status === 'fulfilled') setHealth(normalizeHealth(results[0].value));
+    else failures.push('健康狀態');
+    if (results[1].status === 'fulfilled') setStats(normalizeStats(results[1].value));
+    else failures.push('平台統計');
+    setError(failures.length > 0 ? `無法讀取${failures.join('、')}，請稍後重試。` : '');
+    if (results.some(r => r.status === 'fulfilled')) setUpdatedAt(new Date());
+    setLoading(false);
+    setRefreshing(false);
   };
 
-  const fetchStats = async () => {
-    try {
-      const res = await apiClient.get('/platform/stats');
-      setStats(res);
-    } catch { /* keep mock */ }
-  };
+  useEffect(() => { loadAll(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    useEffect(() => { fetchHealth(); fetchStats(); }, []);
-
-  const refresh = () => { setTick(t => t + 1); fetchHealth(); fetchStats(); };
+  const refresh = () => loadAll({ silent: true });
   useImperativeHandle(ref, () => ({ refresh }));
 
   const handleRestartAi = async () => {
@@ -78,7 +152,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
     try {
       await apiClient.post('/platform/health/restart-ai');
       alert('Web AI 服務已重啟');
-      fetchHealth();
+      loadAll({ silent: true });
     } catch (e) {
       alert('重啟失敗：' + (e.message || '未知錯誤'));
     }
@@ -89,11 +163,45 @@ const PlatformDashboard = forwardRef((props, ref) => {
     try {
       const res = await apiClient.post('/platform/health/clean-logs');
       alert(res.message || '日誌清理完成');
-      fetchHealth();
+      loadAll({ silent: true });
     } catch (e) {
       alert('清理失敗：' + (e.message || '未知錯誤'));
     }
   };
+
+  const memoryText = health.memory
+    ? `${formatBytes(health.memory.usedBytes)} / ${formatBytes(health.memory.totalBytes)}`
+    : '-';
+  const diskText = health.disk
+    ? `已用 ${formatBytes(health.disk.usedBytes)} / ${formatBytes(health.disk.totalBytes)}`
+    : '-';
+
+  const serviceAlerts = [];
+  const serviceDefs = [
+    ['flexisip', 'SIP 呼叫服務'], ['asterisk', 'Web 呼叫服務'], ['mariadb', 'MariaDB'],
+    ['mongodb', 'MongoDB'], ['redis', 'Redis'], ['apache', 'Apache'],
+    ['coturn', 'Coturn'], ['mqtt', 'MQTT'], ['aiservice', 'Web AI 服務'],
+    ['lime', '加密服務'], ['fts', '檔案傳輸服務'], ['accountManager', '帳號管理 API'],
+  ];
+  serviceDefs.forEach(([key, label]) => {
+    if (health[key] && health[key] !== 'running' && health[key] !== 'unknown') {
+      serviceAlerts.push({
+        severity: health[key] === 'stopped' || health[key] === 'error' ? 'error' : 'warning',
+        text: `${label}：${serviceText(health[key], '')}`,
+      });
+    }
+  });
+  if (health.ssl && Number(health.ssl.daysLeft) <= 30) {
+    serviceAlerts.push({ severity: Number(health.ssl.daysLeft) <= 7 ? 'error' : 'warning', text: `SSL 證書剩餘 ${health.ssl.daysLeft} 天（${health.ssl.date}）` });
+  }
+  if (health.disk && Number(health.disk.usage) >= 80) {
+    serviceAlerts.push({ severity: Number(health.disk.usage) >= 90 ? 'error' : 'warning', text: `磁盤使用率 ${health.disk.usage}%` });
+  }
+  if (health.memory && Number(health.memory.usage) >= 85) {
+    serviceAlerts.push({ severity: 'warning', text: `內存使用率 ${health.memory.usage}%` });
+  }
+  const allAlerts = [...serviceAlerts, ...stats.alerts];
+
   return (
     <section className="view active" id="platform-dashboard" style={{ overflow: 'auto', height: '100%', scrollbarWidth: 'none' }}>
       <style>{`
@@ -101,17 +209,16 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-title-row { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; }
         .pdb-title h1 { margin: 0; font-size: 20px; font-weight: 500; letter-spacing: .2px; color: #f3f4f6; }
         .pdb-title p { margin: 5px 0 0; color: #9ca3af; font-size: 12px; }
-        .pdb-time { color: #9ca3af; font-size: 12px; }
+        .pdb-time { color: #9ca3af; font-size: 12px; display: flex; align-items: center; gap: 10px; }
         .pdb-section { margin-top: 14px; }
         .pdb-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-        .pdb-section-title { font-size: 14px; font-weight: 500; color: #0f172a; }
+        .pdb-section-title { font-size: 14px; font-weight: 600; color: #f3f4f6; }
         .pdb-section-note { font-size: 11px; color: #9ca3af; }
         .pdb-grid { display: grid; gap: 12px; }
         .pdb-grid-4 { grid-template-columns: repeat(4, 1fr); }
         .pdb-grid-5 { grid-template-columns: repeat(5, 1fr); }
         .pdb-grid-3 { grid-template-columns: repeat(3, 1fr); }
         .pdb-grid-2 { grid-template-columns: 1.05fr .95fr; }
-        .pdb-grid-2-eq { grid-template-columns: 1fr 1fr; }
         .pdb-card { background: #111827; border: 1px solid #1f2937; border-radius: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.2); padding: 14px; }
         .pdb-metric { min-height: 76px; }
         .pdb-metric-label { color: #9ca3af; font-size: 12px; margin-bottom: 6px; }
@@ -122,52 +229,60 @@ const PlatformDashboard = forwardRef((props, ref) => {
         .pdb-bar.green { background: #5fc89f; }
         .pdb-bar.orange { background: #f6b25d; }
         .pdb-bar.red { background: #ee7070; }
-        .pdb-bar.blue { background: #6aa6ff; }
         .pdb-service-card { display: flex; align-items: center; gap: 12px; min-height: 74px; }
         .pdb-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
         .pdb-dot.green { background: #59c98d; box-shadow: 0 0 0 4px rgba(89,201,141,.12); }
         .pdb-dot.warn { background: #f6b25d; box-shadow: 0 0 0 4px rgba(246,178,93,.15); }
+        .pdb-dot.red { background: #ee7070; box-shadow: 0 0 0 4px rgba(238,112,112,.15); }
+        .pdb-dot.gray { background: #6b7280; box-shadow: 0 0 0 4px rgba(107,114,128,.15); }
         .pdb-service-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #f3f4f6; }
         .pdb-service-status { font-size: 12px; color: #9ca3af; }
-        .pdb-biz-card { text-align: left; }
         .pdb-biz-value { font-size: 18px; font-weight: 400; margin-top: 6px; color: #f3f4f6; }
         .pdb-biz-label { font-size: 12px; color: #9ca3af; }
-        .pdb-alert-card { padding: 0; overflow: hidden; }
-        .pdb-alert-header { padding: 13px 14px; border-bottom: 1px solid #1f2937; display: flex; justify-content: space-between; align-items: center; }
-        .pdb-alert-count { font-size: 11px; color: #9ca3af; }
-        .pdb-alert-list { padding: 4px 0; }
-        .pdb-alert-item { display: grid; grid-template-columns: 82px 1fr 80px; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1f2937; }
+        .pdb-alert-list { padding: 4px 0; max-height: 220px; overflow: auto; scrollbar-width: thin; scrollbar-color: #4b5563 #111827; }
+        .pdb-alert-item { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: center; padding: 9px 4px; border-bottom: 1px solid #1f2937; }
         .pdb-alert-item:last-child { border-bottom: none; }
-        .pdb-tag { display: inline-flex; align-items: center; justify-content: center; height: 22px; border-radius: 99px; font-size: 11px; padding: 0 10px; }
-        .pdb-tag.critical { background: #1118270f0; color: #d94a4a; }
-        .pdb-tag.warning { background: #1118278e8; color: #b97710; }
-        .pdb-tag.info { background: #eff6ff; color: #4178c0; }
         .pdb-alert-text { font-size: 12px; color: #e5e7eb; }
-        .pdb-alert-time { text-align: right; font-size: 11px; color: #9ca3af; }
-        .pdb-chart { height: 190px; position: relative; padding: 12px 10px 0; }
-        .pdb-chart-bars { height: 135px; display: flex; align-items: end; gap: 12px; border-left: 1px solid #374151; border-bottom: 1px solid #374151; padding-left: 10px; }
+        .pdb-chart { height: 160px; position: relative; padding: 12px 10px 0; }
+        .pdb-chart-bars { height: 105px; display: flex; align-items: end; gap: 12px; border-left: 1px solid #374151; border-bottom: 1px solid #374151; padding-left: 10px; }
         .pdb-chart-bars span { width: 100%; max-width: 34px; background: linear-gradient(180deg, #8bbcff, #dbeaff); border-radius: 8px 8px 0 0; }
         .pdb-chart-labels { display: flex; gap: 12px; padding-left: 11px; margin-top: 8px; color: #9ca3af; font-size: 10px; }
         .pdb-chart-labels span { width: 34px; text-align: center; }
-        .pdb-activity { padding: 2px 0; }
-        .pdb-activity-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #1f2937; }
-        .pdb-activity-item:last-child { border-bottom: none; }
-        .pdb-activity-time { width: 44px; color: #9ca3af; font-size: 11px; flex-shrink: 0; }
-        .pdb-activity-text { font-size: 12px; color: #e5e7eb; }
-        .pdb-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .pdb-pill { background: #f4f7fb; border: 1px solid #1f2937; border-radius: 999px; padding: 6px 10px; font-size: 11px; color: #667085; }
-        .pdb-overview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .pdb-mini-list { margin: 0; padding: 0; list-style: none; }
+        .pdb-mini-list li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid #1f2937; font-size: 12px; color: #d1d5db; }
+        .pdb-mini-list li:last-child { border-bottom: 0; }
+        .pdb-mini-sub { color: #9ca3af; font-size: 11px; }
+        @media (max-width: 1100px) {
+          .pdb-grid-5, .pdb-grid-4 { grid-template-columns: repeat(3, 1fr); }
+          .pdb-grid-3, .pdb-grid-2 { grid-template-columns: 1fr; }
+        }
         #platform-dashboard::-webkit-scrollbar { display: none; }
       `}</style>
 
       <div className="pdb-page">
-        <div className="pdb-title-row" style={{ marginBottom: '14px' }}>
+        <div className="pdb-title-row">
+          <div className="pdb-title">
+            <h1>平台概覽</h1>
+            <p>Ubuntu / 核心服務 / 通訊業務</p>
+          </div>
+          <div className="pdb-time">
+            {updatedAt && <span>更新於 {formatTime(updatedAt)}</span>}
+            <button onClick={refresh} disabled={loading || refreshing} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid #374151', background: '#1f2937', color: '#93c5fd', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: refreshing ? 'wait' : 'pointer' }}>
+              <RefreshCw size={13} />{refreshing ? '更新中...' : '刷新'}
+            </button>
+          </div>
         </div>
+
+        {error && (
+          <div style={{ background: '#7f1d1d', border: '1px solid #b91c1c', borderRadius: '8px', padding: '8px 14px', marginBottom: '14px', fontSize: '13px', color: '#fecaca' }}>
+            {error}
+          </div>
+        )}
 
         {/* 平台健康狀態 */}
         <div className="pdb-section">
           <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>平台健康狀態</div>
+            <div className="pdb-section-title">平台健康狀態</div>
             <div className="pdb-section-note">Ubuntu / 核心服務 / 通訊業務</div>
           </div>
           <div className="pdb-grid pdb-grid-5">
@@ -175,13 +290,13 @@ const PlatformDashboard = forwardRef((props, ref) => {
               <div className="pdb-metric-label">CPU 使用率</div>
               <div className="pdb-metric-value">{health.cpu?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.cpu?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">5分鐘平均負載：{health.load?.load5 ?? '-'}</div>
+              <div className="pdb-metric-sub">{health.cpu?.cores || '-'} 核 · 5 分鐘負載 {health.load?.load5 ?? '-'}</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">內存使用率</div>
               <div className="pdb-metric-value">{health.memory?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className="pdb-bar green" style={{ width: `${health.memory?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">已用 14.7GB / 32GB</div>
+              <div className="pdb-metric-sub">{memoryText}</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -190,7 +305,7 @@ const PlatformDashboard = forwardRef((props, ref) => {
               </div>
               <div className="pdb-metric-value">{health.disk?.usage ?? '-'}%</div>
               <div className="pdb-progress"><div className={`pdb-bar ${(health.disk?.usage || 0) > 80 ? 'red' : (health.disk?.usage || 0) > 60 ? 'orange' : 'green'}`} style={{ width: `${health.disk?.usage || 0}%` }} /></div>
-              <div className="pdb-metric-sub">/ 剩餘 {(health.disk?.usage != null) ? `${((100 - health.disk.usage) * 1.0).toFixed(0)}%` : '-'}</div>
+              <div className="pdb-metric-sub">{diskText}{health.disk?.freeBytes ? ` · 剩餘 ${formatBytes(health.disk.freeBytes)}` : ''}</div>
             </div>
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">SSL 證書到期</div>
@@ -203,140 +318,108 @@ const PlatformDashboard = forwardRef((props, ref) => {
             <div className="pdb-card pdb-metric">
               <div className="pdb-metric-label">系統運行時間</div>
               <div className="pdb-metric-value">{health.uptime?.text ?? '-'}</div>
-              <div className="pdb-metric-sub">Ubuntu 24.04 · NTP 正常</div>
+              <div className="pdb-metric-sub">{health.os?.version || '-'} · NTP {health.ntpSynchronized === true ? '正常' : health.ntpSynchronized === false ? '未同步' : '未知'}</div>
             </div>
           </div>
         </div>
 
-        {/* 核心服務狀態 */}
+        {/* 核心服務 */}
         <div className="pdb-section">
+          <div className="pdb-section-head"><div className="pdb-section-title">核心服務</div></div>
           <div className="pdb-grid pdb-grid-5">
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.flexisip === 'running' ? 'green' : health.flexisip === 'partial' ? 'warn' : 'warn'}`} />
-              <div><div className="pdb-service-name">SIP 呼叫服務</div><div className="pdb-service-status">{health.flexisip === 'running' ? '執行正常' : health.flexisip === 'partial' ? '部分執行' : '已停止'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.asterisk === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Web 呼叫服務</div><div className="pdb-service-status">{health.asterisk === 'running' ? '執行正常' : health.asterisk === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.mariadb === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MariaDB</div><div className="pdb-service-status">{health.mariadb === 'running' ? '連線正常' : '連線異常'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.mongodb === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MongoDB</div><div className="pdb-service-status">{health.mongodb === 'running' ? '執行正常' : health.mongodb === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '執行正常' : health.redis === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
+            {[
+              ['flexisip', 'SIP 呼叫服務'], ['asterisk', 'Web 呼叫服務'], ['mariadb', 'MariaDB'], ['mongodb', 'MongoDB'], ['redis', 'Redis'],
+            ].map(([key, label]) => (
+              <div className="pdb-card pdb-service-card" key={key}>
+                <span className={`pdb-dot ${serviceTone(health[key])}`} />
+                <div><div className="pdb-service-name">{label}</div><div className="pdb-service-status">{serviceText(health[key], key === 'mariadb' ? '連線正常' : '執行正常')}</div></div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* API 服務狀態 */}
+        {/* API / 其他服務 */}
         <div className="pdb-section">
+          <div className="pdb-section-head"><div className="pdb-section-title">API / 其他服務</div></div>
           <div className="pdb-grid pdb-grid-5">
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.accountManager === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">帳號管理 API</div><div className="pdb-service-status">{health.accountManager === 'running' ? '執行正常' : health.accountManager === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.lime === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">加密服務</div><div className="pdb-service-status">{health.lime === 'running' ? '執行正常' : health.lime === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.fts === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">檔案傳輸服務</div><div className="pdb-service-status">{health.fts === 'running' ? '執行正常' : health.fts === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.aiservice === 'running' ? 'green' : 'warn'}`} />
-              <div style={{ flex: 1 }}>
-                <div className="pdb-service-name">Web AI 服務</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div className="pdb-service-status">{health.aiservice === 'running' ? '執行正常' : health.aiservice === 'stopped' ? '已停止' : '未安裝'}</div>
-                  {health.aiservice !== 'running' && (
-                    <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重啟</span>
-                  )}
+            {[
+              ['accountManager', '帳號管理 API'], ['lime', '加密服務'], ['fts', '檔案傳輸服務'],
+              ['aiservice', 'Web AI 服務'], ['apache', 'Apache'], ['coturn', 'Coturn'], ['mqtt', 'MQTT'],
+            ].map(([key, label]) => (
+              <div className="pdb-card pdb-service-card" key={key}>
+                <span className={`pdb-dot ${serviceTone(health[key])}`} />
+                <div style={{ flex: 1 }}>
+                  <div className="pdb-service-name">{label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="pdb-service-status">{serviceText(health[key])}</div>
+                    {key === 'aiservice' && health[key] !== 'running' && (
+                      <span onClick={handleRestartAi} style={{ fontSize: '10px', color: '#2563eb', cursor: 'pointer', padding: '1px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', background: '#eff6ff', whiteSpace: 'nowrap' }}>重啟</span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.redis === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Redis</div><div className="pdb-service-status">{health.redis === 'running' ? '執行正常' : health.redis === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.coturn === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">Coturn</div><div className="pdb-service-status">{health.coturn === 'running' ? '執行正常' : health.coturn === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
-            <div className="pdb-card pdb-service-card">
-              <span className={`pdb-dot ${health.mqtt === 'running' ? 'green' : 'warn'}`} />
-              <div><div className="pdb-service-name">MQTT</div><div className="pdb-service-status">{health.mqtt === 'running' ? '執行正常' : health.mqtt === 'stopped' ? '已停止' : '未安裝'}</div></div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* 通訊業務狀態 */}
+        {/* 帳號庫存 */}
         <div className="pdb-section">
-          <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>通訊業務狀態</div>
-          </div>
+          <div className="pdb-section-head"><div className="pdb-section-title">帳號庫存</div></div>
           <div className="pdb-grid pdb-grid-5">
-            <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已創建 SIP 帳號</div>
-              <div className="pdb-biz-value">{stats.sipCreated?.toLocaleString()}</div>
-            </div>
-            <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已分配 SIP 帳號</div>
-              <div className="pdb-biz-value">{stats.sipAssigned?.toLocaleString()}</div>
-            </div>
-            <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已創建 Web 帳號</div>
-              <div className="pdb-biz-value">{stats.webCreated?.toLocaleString()}</div>
-            </div>
-            <div className="pdb-card pdb-biz-card">
-              <div className="pdb-biz-label">已分配 Web 帳號</div>
-              <div className="pdb-biz-value">{stats.webAssigned?.toLocaleString()}</div>
-            </div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已創建 SIP 帳號</div><div className="pdb-metric-value">{Number(stats.sipTotal).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已分配 SIP 帳號</div><div className="pdb-metric-value">{Number(stats.sipAssigned).toLocaleString()}</div><div className="pdb-metric-sub">訂閱帳號（不含試用）</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">試用中 SIP 帳號</div><div className="pdb-metric-value">{Number(stats.sipTrialActive).toLocaleString()}</div><div className="pdb-metric-sub">7 天內到期 {Number(stats.trial.expiring)} · 寬限 {Number(stats.trial.grace)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">可用 SIP 庫存</div><div className="pdb-metric-value">{Number(stats.sipAvailable).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已回收 SIP 帳號</div><div className="pdb-metric-value">{Number(stats.sipRecycled).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已創建 Web 帳號</div><div className="pdb-metric-value">{Number(stats.webTotal).toLocaleString()}</div><div className="pdb-metric-sub">有效 {Number(stats.webActive)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已分配 Web 帳號</div><div className="pdb-metric-value">{Number(stats.webAssigned).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">同步異常帳號</div><div className="pdb-metric-value">{Number(stats.syncAnomaly).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">試用帳號總數</div><div className="pdb-metric-value">{Number(stats.trial.total).toLocaleString()}</div><div className="pdb-metric-sub">轉正 {Number(stats.trial.converted)} · 回收 {Number(stats.trial.reclaimed)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">到期帳號</div><div className="pdb-metric-value">{Number(stats.accountsExpiring).toLocaleString()}</div><div className="pdb-metric-sub">已過期 {Number(stats.accountsExpired)} · 套餐到期 {Number(stats.plansExpiring)}</div></div>
           </div>
         </div>
 
-        {/* 告警中心 + 平台核心指标 */}
+        {/* 運營指標 */}
         <div className="pdb-section">
-          <div className="pdb-section-head">
-            <div className="pdb-section-title" style={{ fontWeight: 800, color: "#f3f4f6" }}>运营情况</div>
+          <div className="pdb-section-head"><div className="pdb-section-title">運營指標</div></div>
+          <div className="pdb-grid pdb-grid-4">
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已註冊租戶</div><div className="pdb-metric-value">{Number(stats.tenantCount).toLocaleString()}</div><div className="pdb-metric-sub">全部 {Number(stats.tenantTotal)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已銷售套餐</div><div className="pdb-metric-value">{Number(stats.orderCount).toLocaleString()}</div><div className="pdb-metric-sub">新購 {Number(stats.orderNewCount)} · 續費 {Number(stats.orderRenewalCount)} · 試用批次 {Number(stats.trialOrderCount)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">待稽核訂單</div><div className="pdb-metric-value" style={{ color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' }}>{Number(stats.pendingReviewCount).toLocaleString()}</div><div className="pdb-metric-sub">含已提交付款</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">待付款訂單</div><div className="pdb-metric-value" style={{ color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' }}>{Number(stats.pendingPaymentCount).toLocaleString()}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">已收款總額</div><div className="pdb-metric-value">${Number(stats.paidTotal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div><div className="pdb-metric-sub">本月 ${Number(stats.paidThisMonth).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">電子名片</div><div className="pdb-metric-value">{Number(stats.ecardCount).toLocaleString()} / {Number(stats.ecardTotal).toLocaleString()}</div><div className="pdb-metric-sub">啟用 / 總量 · 7 天內到期 {Number(stats.ecardExpiring)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">門控設備</div><div className="pdb-metric-value">{Number(stats.deviceOnline).toLocaleString()} / {Number(stats.deviceCount).toLocaleString()}</div><div className="pdb-metric-sub">在線 / 已分配 · 離線 {Number(stats.deviceOffline)} · 未知 {Number(stats.deviceUnknown)} · 總庫存 {Number(stats.deviceTotal)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">管控社群 / 房間</div><div className="pdb-metric-value">{Number(stats.communityCount).toLocaleString()} / {Number(stats.roomCount).toLocaleString()}</div><div className="pdb-metric-sub">社群啟用 {Number(stats.communityCount)} · 總量 {Number(stats.communityTotal)}</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">銷量最高套餐</div><div className="pdb-metric-value" style={{ fontSize: 15 }}>{stats.topPlan || '-'}</div><div className="pdb-metric-sub">{Number(stats.topPlanCount).toLocaleString()} 筆</div></div>
+            <div className="pdb-card pdb-metric"><div className="pdb-metric-label">銷量最低套餐</div><div className="pdb-metric-value" style={{ fontSize: 15 }}>{stats.bottomPlan || '-'}</div><div className="pdb-metric-sub">{Number(stats.bottomPlanCount).toLocaleString()} 筆</div></div>
           </div>
+        </div>
+
+        {/* 告警中心 + 趨勢 */}
+        <div className="pdb-section">
           <div className="pdb-grid pdb-grid-2">
-            <div className="pdb-card" style={{ padding: '18px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {[
-                  { label: '已註冊租戶', value: stats.tenantCount?.toLocaleString() },
-                  { label: '已銷售套餐', value: stats.orderCount?.toLocaleString() },
-                  { label: '待稽核訂單', value: stats.pendingReviewCount?.toLocaleString(), color: stats.pendingReviewCount > 0 ? '#f87171' : '#f3f4f6' },
-                  { label: '待付款訂單', value: stats.pendingPaymentCount?.toLocaleString(), color: stats.pendingPaymentCount > 0 ? '#fbbf24' : '#f3f4f6' },
-                  { label: '已收款總額', value: '$' + (stats.paidTotal?.toLocaleString()) },
-                  { label: '已分配 SIP 帳號', value: stats.sipAssigned?.toLocaleString() },
-                  { label: '已分配 Web 帳號', value: stats.webAssigned?.toLocaleString() },
-                  { label: '電子名片數量', value: stats.ecardCount?.toLocaleString() },
-                  { label: '門控裝置數量', value: stats.deviceCount?.toLocaleString() },
-                  { label: '管控社群數量', value: stats.communityCount?.toLocaleString() },
-                  { label: '管控房間數量', value: stats.roomCount?.toLocaleString() },
-                  { label: '銷量最高套餐', value: stats.topPlan },
-                  { label: '銷量最低套餐', value: stats.bottomPlan },
-                ].map((item, i) => (
-                  <div key={i} style={{ background: '#1a2332', borderRadius: '8px', padding: '12px 14px', border: '1px solid #1f2937' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px' }}>{item.label}</div>
-                    <div style={{ fontSize: '16px', fontWeight: 500, color: item.color || '#f3f4f6', whiteSpace: 'nowrap' }}>{item.value}</div>
+            <div className="pdb-card" style={{ padding: 16 }}>
+              <div className="pdb-section-head" style={{ marginBottom: 6 }}>
+                <div className="pdb-section-title">告警中心</div>
+                <div className="pdb-section-note">{allAlerts.length} 項</div>
+              </div>
+              <div className="pdb-alert-list">
+                {allAlerts.length === 0 ? (
+                  <div className="pdb-metric-sub" style={{ padding: '14px 4px' }}>暫無告警</div>
+                ) : allAlerts.map((item, i) => (
+                  <div className="pdb-alert-item" key={`${item.text}-${i}`}>
+                    <span className={`pdb-dot ${item.severity === 'error' ? 'red' : 'warn'}`} />
+                    <div className="pdb-alert-text">{item.text}</div>
                   </div>
                 ))}
               </div>
             </div>
-
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日租戶註冊數量</div>
-                <div className="pdb-chart" style={{ height: '140px' }}>
-                  <div className="pdb-chart-bars" style={{ height: '100px' }}>
+              <div className="pdb-card" style={{ padding: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', marginBottom: 8 }}>近 7 日租戶註冊數量</div>
+                <div className="pdb-chart">
+                  <div className="pdb-chart-bars">
                     {buildChartBars(stats.tenantTrend, 'count').bars.map((b, i) => (
                       <span key={i} style={{ height: b.pct + '%' }} title={b.label + ': ' + (stats.tenantTrend[i]?.count || 0)} />
                     ))}
@@ -346,12 +429,12 @@ const PlatformDashboard = forwardRef((props, ref) => {
                   </div>
                 </div>
               </div>
-              <div className="pdb-card" style={{ flex: 1, padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#f3f4f6', marginBottom: '12px' }}>近7日用戶付款金額</div>
-                <div className="pdb-chart" style={{ height: '140px' }}>
-                  <div className="pdb-chart-bars" style={{ height: '100px' }}>
+              <div className="pdb-card" style={{ padding: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', marginBottom: 8 }}>近 7 日付款金額</div>
+                <div className="pdb-chart">
+                  <div className="pdb-chart-bars">
                     {buildChartBars(stats.paymentTrend, 'amount').bars.map((b, i) => (
-                      <span key={i} style={{ height: b.pct + '%', background: 'linear-gradient(180deg, #5fc89f, #b7ebd0)' }} title={b.label + ': $' + (stats.paymentTrend[i]?.amount || 0).toFixed(2)} />
+                      <span key={i} style={{ height: b.pct + '%', background: 'linear-gradient(180deg, #5fc89f, #b7ebd0)' }} title={b.label + ': $' + Number(stats.paymentTrend[i]?.amount || 0).toFixed(2)} />
                     ))}
                   </div>
                   <div className="pdb-chart-labels">
@@ -361,7 +444,38 @@ const PlatformDashboard = forwardRef((props, ref) => {
               </div>
             </div>
           </div>
-      </div>
+        </div>
+
+        {/* 最近活動 */}
+        <div className="pdb-section">
+          <div className="pdb-section-head"><div className="pdb-section-title">最近活動</div></div>
+          <div className="pdb-grid pdb-grid-3">
+            <div className="pdb-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', marginBottom: 8 }}>最近註冊租戶</div>
+              <ul className="pdb-mini-list">
+                {stats.recentTenants.length === 0 ? <li><span className="pdb-mini-sub">暫無記錄</span></li> : stats.recentTenants.map(t => (
+                  <li key={t.id}><span>{t.name || '-'}</span><span className="pdb-mini-sub">{t.tenantNumber} · {formatTimeShort(t.createdAt)}</span></li>
+                ))}
+              </ul>
+            </div>
+            <div className="pdb-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', marginBottom: 8 }}>最近訂單</div>
+              <ul className="pdb-mini-list">
+                {stats.recentOrders.length === 0 ? <li><span className="pdb-mini-sub">暫無記錄</span></li> : stats.recentOrders.map(o => (
+                  <li key={o.orderNo}><span>{o.tenantName} · {o.planName}</span><span className="pdb-mini-sub">${Number(o.payableAmount).toFixed(2)} · {formatTimeShort(o.createdAt)}</span></li>
+                ))}
+              </ul>
+            </div>
+            <div className="pdb-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#f3f4f6', marginBottom: 8 }}>最近付款</div>
+              <ul className="pdb-mini-list">
+                {stats.recentPayments.length === 0 ? <li><span className="pdb-mini-sub">暫無記錄</span></li> : stats.recentPayments.map(p => (
+                  <li key={`${p.orderNo}-${p.paidAt}`}><span>{p.tenantName} · {p.orderNo}</span><span className="pdb-mini-sub">${Number(p.amount).toFixed(2)} · {formatTimeShort(p.paidAt)}</span></li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

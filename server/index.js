@@ -27,6 +27,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { pool, limePool } from "./db.js";
 import { createEmailToken, createNumericCode, createSessionToken, hashPassword, hashToken, verifyPassword } from "./security.js";
@@ -18297,39 +18298,72 @@ function parseCpuUsage() {
   return { idle, total };
 }
 
-let cpuSnapshot = null;
-// Initialize snapshot immediately, then refresh every second
-cpuSnapshot = parseCpuUsage();
-setInterval(() => { cpuSnapshot = parseCpuUsage(); }, 1000);
+let cpuPrev = parseCpuUsage();
+let cpuUsage = null;
+// 固定 1 秒採樣窗口，避免請求時瞬時差值造成抖動
+setInterval(() => {
+  const curr = parseCpuUsage();
+  if (cpuPrev && curr) {
+    const totalDiff = curr.total - cpuPrev.total;
+    const idleDiff = curr.idle - cpuPrev.idle;
+    if (totalDiff > 0) cpuUsage = Math.round((1 - idleDiff / totalDiff) * 100);
+  }
+  cpuPrev = curr;
+}, 1000);
 
 function getCpuUsage() {
-  const prev = cpuSnapshot;
-  if (!prev) return null;
-  const curr = parseCpuUsage();
-  if (!curr) return null;
-  const totalDiff = curr.total - prev.total;
-  const idleDiff = curr.idle - prev.idle;
-  if (totalDiff <= 0) return null;
-  return Math.round((1 - idleDiff / totalDiff) * 100);
+  return cpuUsage;
 }
 
-function getMemoryUsage() {
+function getMemoryInfo() {
   const content = readProcFile("/proc/meminfo");
   const get = (key) => { const m = content.match(new RegExp(key + ":\\s+(\\d+)")); return m ? Number(m[1]) : 0; };
-  const total = get("MemTotal");
-  const available = get("MemAvailable");
-  if (!total) return null;
-  return Math.round(((total - available) / total) * 100);
+  const totalKb = get("MemTotal");
+  const availableKb = get("MemAvailable");
+  if (!totalKb) return null;
+  const usedKb = Math.max(0, totalKb - availableKb);
+  return {
+    usage: Math.round((usedKb / totalKb) * 100),
+    totalBytes: totalKb * 1024,
+    usedBytes: usedKb * 1024,
+    freeBytes: availableKb * 1024,
+  };
 }
 
-function getDiskUsage() {
+function getDiskInfo() {
   try {
-    // Try df --output=pcent first (GNU), fall back to parsing standard df output
-    let out = "";
-    try { out = execSync("df / --output=pcent 2>/dev/null | tail -1", { encoding: "utf8", timeout: 3000 }).trim(); }
-    catch { out = execSync("df / | tail -1 | awk '{print $5}'", { encoding: "utf8", timeout: 3000, shell: true }).trim(); }
-    const pct = parseInt(out.replace(/%/g, ""), 10);
-    return isNaN(pct) ? null : pct;
+    const out = execSync("df -B1 / --output=size,used,avail,pcent 2>/dev/null | tail -1", { encoding: "utf8", timeout: 3000 }).trim();
+    const parts = out.split(/\s+/);
+    if (parts.length >= 4) {
+      const totalBytes = Number(parts[0]);
+      const usedBytes = Number(parts[1]);
+      const freeBytes = Number(parts[2]);
+      const usage = parseInt(String(parts[3]).replace(/%/g, ""), 10);
+      if (totalBytes > 0 && !isNaN(usage)) return { usage, totalBytes, usedBytes, freeBytes };
+    }
+  } catch {}
+  try {
+    const pct = parseInt(execSync("df / | tail -1 | awk '{print $5}'", { encoding: "utf8", timeout: 3000, shell: true }).trim().replace(/%/g, ""), 10);
+    return isNaN(pct) ? null : { usage: pct };
+  } catch { return null; }
+}
+
+function getOsInfo() {
+  let version = "Linux";
+  try {
+    const content = readProcFile("/etc/os-release");
+    const m = content.match(/^PRETTY_NAME="?([^"\n]+)"?$/m);
+    if (m) version = m[1];
+  } catch {}
+  return { version, kernel: os.release(), platform: os.platform(), arch: os.arch() };
+}
+
+function getNtpSynchronized() {
+  try {
+    const out = execSync("timedatectl show -p NTPSynchronized --value 2>/dev/null", { encoding: "utf8", timeout: 3000 }).trim();
+    if (out === "yes") return true;
+    if (out === "no") return false;
+    return null;
   } catch { return null; }
 }
 
@@ -18347,16 +18381,26 @@ function getLoadAvg() {
   return { load1: parseFloat(fields[0]) || 0, load5: parseFloat(fields[1]) || 0, load15: parseFloat(fields[2]) || 0 };
 }
 
+// 健康檢查會執行多個同步命令，短時間緩存避免每次刷新都阻塞事件循環
+let healthCacheAt = 0;
+let healthCacheData = null;
+const HEALTH_CACHE_TTL_MS = 8000;
+
 app.get("/api/platform/health", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以檢視平臺健康狀態。" });
   }
+  if (healthCacheData && Date.now() - healthCacheAt < HEALTH_CACHE_TTL_MS) {
+    return response.json(healthCacheData);
+  }
   try {
     const cpu = getCpuUsage();
-    const memory = getMemoryUsage();
-    const disk = getDiskUsage();
+    const memory = getMemoryInfo();
+    const disk = getDiskInfo();
     const uptime = getUptime();
     const load = getLoadAvg();
+    const osInfo = getOsInfo();
+    const ntpSynchronized = getNtpSynchronized();
 
     let dbStatus = "error";
     try {
@@ -18396,6 +18440,12 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       const out = execSync("systemctl is-active redis-server 2>/dev/null || systemctl is-active redis 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
       redisStatus = out === "active" ? "running" : "stopped";
     } catch { redisStatus = "not_installed"; }
+
+    let apacheStatus = "error";
+    try {
+      const out = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
+      apacheStatus = out === "active" ? "running" : "stopped";
+    } catch { apacheStatus = "not_installed"; }
 
     let coturnStatus = "error";
     try {
@@ -18476,17 +18526,20 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       }
     } catch { sslExpiry = null; }
 
-    return response.json({
-      cpu: { usage: cpu, loadAvg: load.load5 },
-      memory: { usage: memory },
-      disk: { usage: disk },
+    const payload = {
+      cpu: { usage: cpu, cores: os.cpus().length, loadAvg: load.load5 },
+      memory,
+      disk,
       uptime: uptime,
       load: load,
+      os: osInfo,
+      ntpSynchronized,
       mariadb: dbStatus,
       mongodb: mongoStatus,
       asterisk: asteriskStatus,
       flexisip: flexisipStatus,
       redis: redisStatus,
+      apache: apacheStatus,
       coturn: coturnStatus,
       mqtt: mqttStatus,
       aiservice: aiServiceStatus,
@@ -18494,7 +18547,11 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
       fts: ftsStatus,
       accountManager: accountManagerStatus,
       ssl: sslExpiry,
-    });
+      checkedAt: new Date().toISOString(),
+    };
+    healthCacheAt = Date.now();
+    healthCacheData = payload;
+    return response.json(payload);
   } catch (error) {
     console.error("Failed to read system health:", error);
     return response.status(500).json({ message: "讀取平臺健康狀態失敗。" });
@@ -18509,6 +18566,8 @@ app.post("/api/platform/health/restart-ai", requireAdmin, async (request, respon
   try {
     const { execSync } = await import("node:child_process");
     execSync("docker compose -p " + aiComposeProject + " restart admin_ui 2>&1", { encoding: "utf8", timeout: 15000 });
+    healthCacheAt = 0;
+    healthCacheData = null;
     return response.json({ message: "Web AI 服務已重啟。" });
   } catch (error) {
     console.error("Failed to restart AI service:", error);
@@ -18590,6 +18649,8 @@ app.post("/api/platform/health/clean-logs", requireAdmin, async (request, respon
 
     const afterMB = mbOf(asteriskLogDir) + mbOf(flexisipLogDir) + mbOf("/var/log");
     results.freedMB = Math.max(0, Math.round(beforeMB - afterMB));
+    healthCacheAt = 0;
+    healthCacheData = null;
 
     return response.json({ message: "日誌清理完成。當前日誌已清空，輪轉與歸檔檔案已刪除。", ...results });
   } catch (error) {
@@ -21844,53 +21905,263 @@ app.get("/api/platform/stats", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
     const reservedTrialTenantId = await getReservedTrialTenantId(connection);
-    const [sipCreated] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE status = 'active'");
-    // 試用帳號的權益行掛在保留租戶下，不計入「正式已分配」
-    const [sipAssigned] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_sip_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE() AND tenant_id <> ?", [reservedTrialTenantId || 0]);
-    const [webCreated] = await connection.query("SELECT COUNT(*) AS cnt FROM web_users WHERE status = 'active'");
-    const [webAssigned] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_web_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE()");
-    const [tenantCount] = await connection.query("SELECT COUNT(*) AS cnt FROM tenants WHERE status = 'active' AND is_system = 0");
-    const [orderCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved'");
-    const [pendingReviewCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'pending_review'");
-    const [pendingPaymentCount] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE payment_status = 'unpaid' AND order_status = 'review_approved'");
-    const [paidTotal] = await connection.query("SELECT COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid'");
-    const [ecardCount] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE status = 'active'");
-    const [deviceCount] = await connection.query("SELECT COUNT(*) AS cnt FROM gate_devices WHERE assignment_status = 'assigned'");
-    const [communityCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities WHERE is_active = 1");
-    const [roomCount] = await connection.query("SELECT COUNT(*) AS cnt FROM access_rooms");
-    const [topPlan] = await connection.query(
-      "SELECT i.item_name, COUNT(*) AS cnt FROM billing_order_items i JOIN billing_orders o ON o.id = i.order_id WHERE i.item_type = 'plan' AND o.order_status = 'review_approved' GROUP BY i.item_name ORDER BY cnt DESC LIMIT 1"
+    const trialTenantId = reservedTrialTenantId || 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // SIP 帳號庫存
+    const [sipTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users");
+    const [sipRecycledRow] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE recycled_at IS NOT NULL");
+    const [sipAssignedRow] = await connection.query(
+      `SELECT COUNT(DISTINCT e.sip_user_id) AS cnt
+       FROM tenant_sip_account_entitlements e
+       WHERE e.status IN ('active', 'expired')
+         AND e.current_order_id IS NOT NULL
+         AND e.tenant_id <> ?`,
+      [trialTenantId]
     );
-    const [bottomPlan] = await connection.query(
-      "SELECT i.item_name, COUNT(*) AS cnt FROM billing_order_items i JOIN billing_orders o ON o.id = i.order_id WHERE i.item_type = 'plan' AND o.order_status = 'review_approved' GROUP BY i.item_name ORDER BY cnt ASC LIMIT 1"
+    const [sipAvailableRow] = await connection.query(
+      `SELECT COUNT(*) AS cnt FROM sip_users u
+       WHERE u.status = 'active' AND u.recycled_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM tenant_sip_account_entitlements e
+           WHERE e.sip_user_id = u.id AND e.status IN ('active', 'expired') AND e.current_order_id IS NOT NULL
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM trial_assignments ta
+           WHERE ta.sip_user_id = u.id AND ta.status = 'active' AND ta.expires_at >= CURDATE()
+         )`
+    );
+    const [trialSummary] = await connection.query(
+      `SELECT COUNT(*) AS total,
+              SUM(status = 'active' AND expires_at > DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS active,
+              SUM(status = 'active' AND expires_at >= CURDATE() AND expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS expiring,
+              SUM(status = 'active' AND expires_at < CURDATE()) AS grace,
+              SUM(status = 'paused') AS paused,
+              SUM(status = 'converted') AS converted,
+              SUM(status = 'reclaimed') AS reclaimed
+       FROM trial_assignments`
+    );
+    const [trialActiveRow] = await connection.query("SELECT COUNT(*) AS cnt FROM trial_assignments WHERE status = 'active' AND expires_at >= CURDATE()");
+
+    // Web 帳號
+    const [webTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM web_users");
+    const [webActiveRow] = await connection.query("SELECT COUNT(*) AS cnt FROM web_users WHERE status = 'active'");
+    const [webAssignedRow] = await connection.query(
+      "SELECT COUNT(DISTINCT web_user_id) AS cnt FROM tenant_web_account_entitlements WHERE status = 'active' AND service_expires_at >= CURDATE()"
     );
 
-    // 近7日数据
+    // 租戶
+    const [tenantCountRow] = await connection.query("SELECT COUNT(*) AS cnt FROM tenants WHERE status = 'active' AND is_system = 0");
+    const [tenantTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM tenants WHERE is_system = 0");
+
+    // 訂單（正式訂單不含試用批次）
+    const [orderCountRow] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved' AND order_type <> 'trial'");
+    const [orderNewRow] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved' AND order_type = 'new_purchase'");
+    const [orderRenewalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved' AND order_type = 'renewal'");
+    const [trialOrderRow] = await connection.query("SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved' AND order_type = 'trial'");
+    const [pendingReviewRow] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status IN ('pending_review', 'payment_submitted') AND order_type <> 'trial'"
+    );
+    const [pendingPaymentRow] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'pending_payment' AND order_type <> 'trial'"
+    );
+    const [paidTotalRow] = await connection.query("SELECT COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid'");
+    const [paidMonthRow] = await connection.query(
+      "SELECT COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid' AND paid_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"
+    );
+
+    // 套餐銷量
+    const [topPlanRow] = await connection.query(
+      `SELECT i.item_name, COUNT(*) AS cnt
+       FROM billing_order_items i JOIN billing_orders o ON o.id = i.order_id
+       WHERE i.item_type = 'plan' AND o.order_status = 'review_approved' AND o.order_type <> 'trial'
+       GROUP BY i.item_name ORDER BY cnt DESC LIMIT 1`
+    );
+    const [bottomPlanRow] = await connection.query(
+      `SELECT i.item_name, COUNT(*) AS cnt
+       FROM billing_order_items i JOIN billing_orders o ON o.id = i.order_id
+       WHERE i.item_type = 'plan' AND o.order_status = 'review_approved' AND o.order_type <> 'trial'
+       GROUP BY i.item_name ORDER BY cnt ASC LIMIT 1`
+    );
+
+    // 電子名片
+    const [ecardTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards");
+    const [ecardActiveRow] = await connection.query("SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE status = 'active'");
+    const [ecardExpiringRow] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM tenant_ecards WHERE status = 'active' AND valid_to IS NOT NULL AND valid_to >= CURDATE() AND valid_to <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)"
+    );
+
+    // 門禁設備（已分配 + MQTT 在線狀態）
+    const deviceRows = await connection.query(
+      "SELECT device_uuid, DATE_FORMAT(expires_at, '%Y-%m-%d') AS expires_at FROM gate_devices WHERE assignment_status = 'assigned'"
+    );
+    const [deviceTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM gate_devices");
+    const deviceStatusList = deviceRows.map((row) => {
+      const status = deviceMqttService.getStatus(row.device_uuid);
+      return {
+        online: status.online,
+        expiresAt: row.expires_at || null,
+        assignmentExpired: Boolean(row.expires_at && row.expires_at < todayStr),
+      };
+    });
+    const [communityTotalRow] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities");
+    const [communityActiveRow] = await connection.query("SELECT COUNT(*) AS cnt FROM access_communities WHERE is_active = 1");
+    const [roomCountRow] = await connection.query("SELECT COUNT(*) AS cnt FROM access_rooms");
+
+    // 同步異常與到期提醒
+    const [syncAnomalyRow] = await connection.query("SELECT COUNT(*) AS cnt FROM sip_users WHERE sync_status IS NOT NULL AND sync_status <> 'active'");
+    const [accountExpiryRow] = await connection.query(
+      `SELECT SUM(eff.max_exp < CURDATE()) AS expired,
+              SUM(eff.max_exp >= CURDATE() AND eff.max_exp <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)) AS expiring
+       FROM (
+         SELECT b.tenant_id, b.sip_user_id, MAX(o.expires_at) AS max_exp
+         FROM billing_order_sip_accounts b
+         JOIN billing_orders o ON o.id = b.order_id AND o.order_status = 'review_approved' AND o.order_type <> 'trial'
+         JOIN tenant_sip_account_entitlements e
+           ON e.tenant_id = b.tenant_id AND e.sip_user_id = b.sip_user_id
+          AND e.current_order_id = b.order_id AND e.status IN ('active', 'expired')
+         WHERE b.tenant_id <> ?
+         GROUP BY b.tenant_id, b.sip_user_id
+       ) eff`,
+      [trialTenantId]
+    );
+    const [plansExpiringRow] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM billing_orders WHERE order_status = 'review_approved' AND order_type <> 'trial' AND expires_at IS NOT NULL AND expires_at >= CURDATE() AND expires_at <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)"
+    );
+
+    // 近 7 日趨勢
     const tenantTrend = await connection.query(
-      "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS cnt FROM tenants WHERE is_system = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC"
+      "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS cnt FROM tenants WHERE is_system = 0 AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY date ORDER BY date ASC"
     );
     const paymentTrend = await connection.query(
-      "SELECT DATE_FORMAT(paid_at, '%Y-%m-%d') AS date, COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY date ORDER BY date ASC"
+      "SELECT DATE_FORMAT(paid_at, '%Y-%m-%d') AS date, COALESCE(SUM(payment_amount), 0) AS total FROM billing_payments WHERE payment_status = 'paid' AND paid_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY date ORDER BY date ASC"
     );
 
+    // 最近活動
+    const recentTenants = await connection.query(
+      "SELECT id, tenant_number, name, status, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') AS created_at FROM tenants WHERE is_system = 0 ORDER BY created_at DESC LIMIT 5"
+    );
+    const recentOrders = await connection.query(
+      `SELECT o.order_no, o.order_type, o.order_status, o.payable_amount,
+              DATE_FORMAT(o.created_at, '%Y-%m-%d %H:%i') AS created_at, t.name AS tenant_name,
+              (SELECT i.item_name FROM billing_order_items i WHERE i.order_id = o.id AND i.item_type = 'plan' LIMIT 1) AS plan_name
+       FROM billing_orders o JOIN tenants t ON t.id = o.tenant_id
+       WHERE o.order_type <> 'trial' ORDER BY o.created_at DESC LIMIT 5`
+    );
+    const recentPayments = await connection.query(
+      `SELECT p.payment_amount, DATE_FORMAT(p.paid_at, '%Y-%m-%d %H:%i') AS paid_at, o.order_no, t.name AS tenant_name
+       FROM billing_payments p
+       JOIN billing_orders o ON o.id = p.order_id
+       JOIN tenants t ON t.id = o.tenant_id
+       WHERE p.payment_status = 'paid' ORDER BY p.paid_at DESC LIMIT 5`
+    );
+
+    const sipAssigned = Number(sipAssignedRow.cnt);
+    const sipTrialActive = Number(trialActiveRow.cnt);
+    const sipRecycled = Number(sipRecycledRow.cnt);
+    const deviceAssigned = deviceStatusList.length;
+    const deviceOnline = deviceStatusList.filter((d) => d.online === true).length;
+    const deviceOffline = deviceStatusList.filter((d) => d.online === false).length;
+    const deviceUnknown = deviceStatusList.filter((d) => d.online === null).length;
+    const deviceAssignmentExpired = deviceStatusList.filter((d) => d.assignmentExpired).length;
+    const pendingReviewCount = Number(pendingReviewRow.cnt);
+    const pendingPaymentCount = Number(pendingPaymentRow.cnt);
+    const trialExpiring = Number(trialSummary?.expiring || 0);
+    const trialGrace = Number(trialSummary?.grace || 0);
+    const accountsExpiring = Number(accountExpiryRow?.expiring || 0);
+    const accountsExpired = Number(accountExpiryRow?.expired || 0);
+    const plansExpiring = Number(plansExpiringRow.cnt);
+    const syncAnomaly = Number(syncAnomalyRow.cnt);
+    const ecardExpiring = Number(ecardExpiringRow.cnt);
+
+    const alerts = [];
+    if (pendingReviewCount > 0) alerts.push({ type: 'order', severity: 'warning', text: `${pendingReviewCount} 筆訂單待稽核` });
+    if (pendingPaymentCount > 0) alerts.push({ type: 'order', severity: 'warning', text: `${pendingPaymentCount} 筆訂單待付款` });
+    if (trialExpiring > 0) alerts.push({ type: 'trial', severity: 'warning', text: `${trialExpiring} 個試用帳號將在 7 天內到期` });
+    if (trialGrace > 0) alerts.push({ type: 'trial', severity: 'error', text: `${trialGrace} 個試用帳號已到期（寬限期）` });
+    if (accountsExpired > 0) alerts.push({ type: 'account', severity: 'warning', text: `${accountsExpired} 個帳號已過期` });
+    if (accountsExpiring > 0) alerts.push({ type: 'account', severity: 'warning', text: `${accountsExpiring} 個帳號將在 7 天內到期` });
+    if (plansExpiring > 0) alerts.push({ type: 'plan', severity: 'warning', text: `${plansExpiring} 份套餐將在 7 天內到期` });
+    if (ecardExpiring > 0) alerts.push({ type: 'ecard', severity: 'warning', text: `${ecardExpiring} 張電子名片將在 7 天內到期` });
+    if (deviceOffline > 0) alerts.push({ type: 'device', severity: 'error', text: `${deviceOffline} 台門禁設備離線` });
+    if (deviceAssignmentExpired > 0) alerts.push({ type: 'device', severity: 'warning', text: `${deviceAssignmentExpired} 台門禁設備分配已過期` });
+    if (syncAnomaly > 0) alerts.push({ type: 'account', severity: 'warning', text: `${syncAnomaly} 個帳號同步異常` });
+
     return response.json({
-      sipCreated: Number(sipCreated.cnt),
-      sipAssigned: Number(sipAssigned.cnt),
-      webCreated: Number(webCreated.cnt),
-      webAssigned: Number(webAssigned.cnt),
-      tenantCount: Number(tenantCount.cnt),
-      orderCount: Number(orderCount.cnt),
-      pendingReviewCount: Number(pendingReviewCount.cnt),
-      pendingPaymentCount: Number(pendingPaymentCount.cnt),
-      paidTotal: Number(paidTotal.total),
-      ecardCount: Number(ecardCount.cnt),
-      deviceCount: Number(deviceCount.cnt),
-      communityCount: Number(communityCount.cnt),
-      roomCount: Number(roomCount.cnt),
-      topPlan: topPlan?.item_name || "-",
-      bottomPlan: bottomPlan?.item_name || "-",
+      sipCreated: Number(sipTotalRow.cnt),
+      sipTotal: Number(sipTotalRow.cnt),
+      sipAssigned,
+      sipTrialActive,
+      sipAvailable: Number(sipAvailableRow.cnt),
+      sipRecycled,
+      webCreated: Number(webTotalRow.cnt),
+      webTotal: Number(webTotalRow.cnt),
+      webActive: Number(webActiveRow.cnt),
+      webAssigned: Number(webAssignedRow.cnt),
+      tenantCount: Number(tenantCountRow.cnt),
+      tenantTotal: Number(tenantTotalRow.cnt),
+      orderCount: Number(orderCountRow.cnt),
+      orderNewCount: Number(orderNewRow.cnt),
+      orderRenewalCount: Number(orderRenewalRow.cnt),
+      trialOrderCount: Number(trialOrderRow.cnt),
+      pendingReviewCount,
+      pendingPaymentCount,
+      paidTotal: Number(paidTotalRow.total),
+      paidThisMonth: Number(paidMonthRow.total),
+      ecardCount: Number(ecardActiveRow.cnt),
+      ecardTotal: Number(ecardTotalRow.cnt),
+      ecardExpiring,
+      deviceCount: deviceAssigned,
+      deviceTotal: Number(deviceTotalRow.cnt),
+      deviceOnline,
+      deviceOffline,
+      deviceUnknown,
+      deviceAssignmentExpired,
+      communityCount: Number(communityActiveRow.cnt),
+      communityTotal: Number(communityTotalRow.cnt),
+      roomCount: Number(roomCountRow.cnt),
+      topPlan: topPlanRow?.item_name || "-",
+      topPlanCount: Number(topPlanRow?.cnt || 0),
+      bottomPlan: bottomPlanRow?.item_name || "-",
+      bottomPlanCount: Number(bottomPlanRow?.cnt || 0),
+      syncAnomaly,
+      accountsExpired,
+      accountsExpiring,
+      plansExpiring,
+      trial: {
+        total: Number(trialSummary?.total || 0),
+        active: Number(trialSummary?.active || 0),
+        expiring: trialExpiring,
+        grace: trialGrace,
+        paused: Number(trialSummary?.paused || 0),
+        converted: Number(trialSummary?.converted || 0),
+        reclaimed: Number(trialSummary?.reclaimed || 0),
+      },
       tenantTrend: tenantTrend.map(r => ({ date: r.date, count: Number(r.cnt) })),
       paymentTrend: paymentTrend.map(r => ({ date: r.date, amount: Number(r.total) })),
+      recentTenants: recentTenants.map(r => ({
+        id: Number(r.id),
+        tenantNumber: r.tenant_number || `TENANT-${String(r.id).padStart(6, '0')}`,
+        name: r.name || '',
+        status: r.status || 'active',
+        createdAt: r.created_at || null,
+      })),
+      recentOrders: recentOrders.map(r => ({
+        orderNo: r.order_no || '-',
+        orderType: r.order_type || 'new_purchase',
+        orderStatus: r.order_status || '-',
+        tenantName: r.tenant_name || '-',
+        planName: r.plan_name || '-',
+        payableAmount: Number(r.payable_amount || 0),
+        createdAt: r.created_at || null,
+      })),
+      recentPayments: recentPayments.map(r => ({
+        amount: Number(r.payment_amount || 0),
+        paidAt: r.paid_at || null,
+        orderNo: r.order_no || '-',
+        tenantName: r.tenant_name || '-',
+      })),
+      alerts,
     });
   } catch (error) {
     console.error("Failed to fetch platform stats:", error);
