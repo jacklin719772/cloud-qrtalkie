@@ -365,8 +365,14 @@ export default function MyAccount({ identity }) {
               </div>
               <div className="ma-action-row">
                 <button className="ma-action-btn ma-action-full" onClick={() => openDialog('profile')}>
-                  <span className="ma-action-icon" style={{ background: '#eef2ff', color: '#4f46e5' }}>&#128100;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>账号资料卡</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[form.company, form.jobTitle].filter(Boolean).join(' · ') || '设置头像、工作单位、职务'}</div></div>
+                  <span className="ma-action-icon" style={{ background: '#eef2ff', color: '#4f46e5', overflow: 'hidden', padding: 0 }}>
+                    {form.avatarPreview ? (
+                      <img src={avatarSrc(form.avatarPreview)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span>&#128100;</span>
+                    )}
+                  </span>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>头像 / 工作单位 / 职务</div><div style={{ fontSize: '12px', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[form.company, form.jobTitle].filter(Boolean).join(' · ') || '点击设置'}</div></div>
                 </button>
               </div>
               <div className="ma-action-row">
