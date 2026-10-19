@@ -115,6 +115,7 @@ export async function pollWebrtcPresence({ domain, batchLimit = DEFAULT_BATCH_LI
   if (polling) return { skipped: true, reason: "already_running" };
   polling = true;
   let connection;
+  const startedAt = Date.now();
 
   try {
     connection = await pool.getConnection();
@@ -129,10 +130,21 @@ export async function pollWebrtcPresence({ domain, batchLimit = DEFAULT_BATCH_LI
     );
     const previousMap = new Map(stateRows.map((row) => [String(row.extension), row]));
     const batch = await getPjsipEndpointStatusBatch(extensions);
-    for (const item of batch.items || []) {
-      const extension = String(item.extension);
-      await recordPresence(connection, item, checkedAt, previousMap.get(extension) || null);
-      previousMap.set(extension, { extension, status: item.status });
+    await connection.beginTransaction();
+    try {
+      for (const item of batch.items || []) {
+        const extension = String(item.extension);
+        await recordPresence(connection, item, checkedAt, previousMap.get(extension) || null);
+        previousMap.set(extension, { extension, status: item.status });
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback().catch(() => {});
+      throw error;
+    }
+    const durationMs = Date.now() - startedAt;
+    if (durationMs > 5000) {
+      console.warn(`[WebRTC Presence] Poll took ${durationMs}ms for ${extensions.length} accounts`);
     }
     return { skipped: false, count: extensions.length };
   } finally {

@@ -544,20 +544,25 @@ function parsePjsipEndpointsBulkOutput(output) {
 
 export async function getAllPjsipEndpointStatuses() {
   const command = "pjsip show endpoints";
-  try {
-    const { stdout, stderr } = await execFileAsync("asterisk", ["-x", command], {
-      timeout: 15000,
-      maxBuffer: 8 * 1024 * 1024,
-    });
-    return parsePjsipEndpointsBulkOutput(redactAsteriskOutput(`${stdout || ""}${stderr ? `\n${stderr}` : ""}`));
-  } catch (error) {
-    const output = redactAsteriskOutput(`${error?.stdout || ""}${error?.stderr ? `\n${error.stderr}` : ""}`);
-    throw new AsteriskCommandError(`Asterisk command failed: ${command}`, {
-      command,
-      output,
-      cause: error,
-    });
+  let lastError = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const { stdout, stderr } = await execFileAsync("asterisk", ["-x", command], {
+        timeout: 15000,
+        maxBuffer: 8 * 1024 * 1024,
+      });
+      return parsePjsipEndpointsBulkOutput(redactAsteriskOutput(`${stdout || ""}${stderr ? `\n${stderr}` : ""}`));
+    } catch (error) {
+      lastError = error;
+      if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
+  const output = redactAsteriskOutput(`${lastError?.stdout || ""}${lastError?.stderr ? `\n${lastError.stderr}` : ""}`);
+  throw new AsteriskCommandError(`Asterisk command failed: ${command}`, {
+    command,
+    output,
+    cause: lastError,
+  });
 }
 
 export async function getPjsipEndpointStatusBatch(extensions) {
