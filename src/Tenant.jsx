@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import apiClient from './apiClient';
+import TenantSubAdmins from './TenantSubAdmins';
 
 const emptyForm = {
   tenantNumber: '',
@@ -237,6 +238,8 @@ export default function Tenant({ onOpenLoginEmail }) {
                   <label>聯絡電話<input name="adminPhone" type="tel" value={formData.adminPhone} onChange={updateField('adminPhone')} /></label>
                 </div>
               </section>
+
+              <TenantSubAdmins />
             </>
           )}
         </div>

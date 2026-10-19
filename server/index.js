@@ -34,6 +34,16 @@ import { createEmailToken, createNumericCode, createSessionToken, hashPassword, 
 import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEmail, sendTrialNotificationEmail } from "./email.js";
 import { startScheduler } from "./scheduler.js";
 import { ensureBackupSchema, startBackup, listBackups, getBackupById, getBackupFilePath, deleteBackup, getBackupSettings } from "./backupService.js";
+import {
+  ensureTenantSubAdminSchema,
+  listTenantSubAdmins,
+  createTenantSubAdmin,
+  updateTenantSubAdmin,
+  deleteTenantSubAdmin,
+  listTenantSipAccounts,
+  getTenantSubAdminAccountIds,
+  TenantSubAdminError,
+} from "./tenantSubAdminService.js";
 import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombstoneClient.js";
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
@@ -803,6 +813,47 @@ function parsePermissions(value) {
   }
 }
 
+const TENANT_SUB_ADMIN_ALLOWED_PREFIXES = [
+  "/api/auth",
+  "/api/me",
+  "/api/tenant/sip-accounts",
+  "/api/tenant/ecard-accounts",
+  "/api/tenant/ecard-styles",
+  "/api/contact-books",
+  "/api/call-centers",
+  "/api/access-communities",
+  "/api/access-buildings",
+  "/api/access-entrances",
+  "/api/access-rooms",
+  "/api/tenant/gate-devices",
+  "/api/sip-users/available",
+];
+
+function isTenantSubAdminAllowedPath(pathname) {
+  const path = String(pathname || "");
+  return TENANT_SUB_ADMIN_ALLOWED_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
+  );
+}
+
+async function isSubAdminSipParamAllowed(connection, request, managedSipUserIds) {
+  const path = String(request.path || "");
+  const rawParam = request.params?.sipUserId ?? request.params?.id;
+  if (!rawParam || !/^\d+$/.test(String(rawParam))) return true;
+  const managed = new Set(managedSipUserIds);
+  if (path.startsWith("/api/tenant/ecard-accounts/")) {
+    return managed.has(Number(rawParam));
+  }
+  if (path.startsWith("/api/tenant/sip-accounts/")) {
+    const [row] = await connection.query(
+      "SELECT sip_user_id FROM billing_order_sip_accounts WHERE id = ? AND tenant_id = ? LIMIT 1",
+      [Number(rawParam), request.admin.tenantId],
+    );
+    return Boolean(row) && managed.has(Number(row.sip_user_id));
+  }
+  return true;
+}
+
 function getBearerToken(request) {
   const authorization = request.headers.authorization || "";
   const match = authorization.match(/^Bearer\s+(.+)$/i);
@@ -880,18 +931,43 @@ async function requireAdmin(request, response, next) {
       return response.status(401).json({ message: "請重新登入。" });
     }
 
+    const permissions = parsePermissions(session.permissions_json);
+    const role = session.role || "";
+    const accountType = session.account_type || "tenant";
+    const isTenantSubAdmin = accountType === "tenant" && role === "admin" && permissions?.tenantSubAdmin === true;
+    let managedSipUserIds = null;
+    if (isTenantSubAdmin) {
+      const managedRows = await connection.query(
+        "SELECT sip_user_id FROM admin_user_sip_accounts WHERE admin_user_id = ?",
+        [Number(session.admin_id)],
+      );
+      managedSipUserIds = managedRows.map((row) => Number(row.sip_user_id)).filter((id) => id > 0);
+    }
+
     request.admin = {
       id: Number(session.admin_id),
       tenantId: session.tenant_id == null ? null : Number(session.tenant_id),
-      accountType: session.account_type || "tenant",
+      accountType,
       email: session.email,
       displayName: session.display_name || "",
       nickname: session.nickname || "",
       phoneNumber: session.phone_number || "",
-      role: session.role || "",
+      role,
       platformRole: session.platform_role || "",
-      permissions: parsePermissions(session.permissions_json),
+      permissions,
+      isTenantSubAdmin,
+      managedSipUserIds,
     };
+
+    if (isTenantSubAdmin) {
+      if (!isTenantSubAdminAllowedPath(request.path)) {
+        return response.status(403).json({ message: "無許可權執行此操作。", code: "TENANT_SUB_ADMIN_FORBIDDEN" });
+      }
+      if (!(await isSubAdminSipParamAllowed(connection, request, managedSipUserIds))) {
+        return response.status(403).json({ message: "無許可權操作該帳號。", code: "TENANT_SUB_ADMIN_ACCOUNT_FORBIDDEN" });
+      }
+    }
+
     return next();
   } catch (error) {
     console.error(error);
@@ -2046,6 +2122,113 @@ app.get("/api/me", requireAdmin, async (request, response) => {
   }
 });
 
+// ── 租戶子管理員（僅租戶主管理員可操作）──
+function requireTenantPrimaryAdmin(request, response, next) {
+  if (request.admin.accountType !== "tenant" || !request.admin.tenantId || request.admin.isTenantSubAdmin) {
+    return response.status(403).json({ message: "只有租戶管理員可以管理子管理員。" });
+  }
+  next();
+}
+
+app.get("/api/tenant/sub-admins/accounts", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    const rows = await listTenantSipAccounts(request.admin.tenantId);
+    return response.json({
+      accounts: rows.map((row) => ({
+        id: Number(row.id),
+        username: row.username || "",
+        displayName: row.displayName || "",
+        status: row.status || "",
+        serviceExpiresAt: row.serviceExpiresAt || "",
+      })),
+    });
+  } catch (error) {
+    console.error("Failed to list tenant sub-admin accounts:", error);
+    return response.status(500).json({ message: "無法讀取可分配帳號。" });
+  }
+});
+
+app.get("/api/tenant/sub-admins", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    const items = await listTenantSubAdmins(request.admin.tenantId);
+    return response.json({ items });
+  } catch (error) {
+    console.error("Failed to list tenant sub-admins:", error);
+    return response.status(500).json({ message: "無法讀取子管理員列表。" });
+  }
+});
+
+app.post("/api/tenant/sub-admins", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    const adminId = await createTenantSubAdmin({
+      tenantId: request.admin.tenantId,
+      email: request.body?.email,
+      password: request.body?.password,
+      displayName: request.body?.displayName,
+      phoneNumber: request.body?.phoneNumber,
+      sipUserIds: request.body?.sipUserIds,
+    });
+    return response.status(201).json({ success: true, id: adminId });
+  } catch (error) {
+    const status = error instanceof TenantSubAdminError ? error.statusCode : 500;
+    console.error("Failed to create tenant sub-admin:", error?.message || error);
+    return response.status(status).json({
+      message: error?.message || "建立子管理員失敗。",
+      code: error instanceof TenantSubAdminError ? error.code : "SUB_ADMIN_CREATE_FAILED",
+    });
+  }
+});
+
+app.get("/api/tenant/sub-admins/:id/accounts", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    const adminId = Number(request.params.id);
+    const sipUserIds = await getTenantSubAdminAccountIds(request.admin.tenantId, adminId);
+    return response.json({ sipUserIds });
+  } catch (error) {
+    return response.status(500).json({ message: "無法讀取子管理員管轄帳號。" });
+  }
+});
+
+app.put("/api/tenant/sub-admins/:id", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    const adminId = Number(request.params.id);
+    await updateTenantSubAdmin({
+      tenantId: request.admin.tenantId,
+      adminId,
+      displayName: request.body?.displayName,
+      phoneNumber: request.body?.phoneNumber,
+      status: request.body?.status,
+      password: request.body?.password,
+      sipUserIds: request.body?.sipUserIds,
+    });
+    return response.json({ success: true });
+  } catch (error) {
+    const status = error instanceof TenantSubAdminError ? error.statusCode : 500;
+    console.error("Failed to update tenant sub-admin:", error?.message || error);
+    return response.status(status).json({
+      message: error?.message || "更新子管理員失敗。",
+      code: error instanceof TenantSubAdminError ? error.code : "SUB_ADMIN_UPDATE_FAILED",
+    });
+  }
+});
+
+app.delete("/api/tenant/sub-admins/:id", requireAdmin, requireTenantPrimaryAdmin, async (request, response) => {
+  try {
+    await deleteTenantSubAdmin({
+      tenantId: request.admin.tenantId,
+      adminId: Number(request.params.id),
+    });
+    return response.json({ success: true });
+  } catch (error) {
+    const status = error instanceof TenantSubAdminError ? error.statusCode : 500;
+    console.error("Failed to delete tenant sub-admin:", error?.message || error);
+    return response.status(status).json({
+      message: error?.message || "刪除子管理員失敗。",
+      code: error instanceof TenantSubAdminError ? error.code : "SUB_ADMIN_DELETE_FAILED",
+    });
+  }
+});
+
 app.get("/api/notifications", requireAdmin, async (request, response) => {
   let connection;
   try {
@@ -2307,6 +2490,17 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
   const query = sanitizeString(request.query?.q, 120);
   const orderQuery = /^ORD/i.test(query) ? query : "";
   const todayStr = new Date().toISOString().slice(0, 10);
+  const managedSipUserIds = request.admin.managedSipUserIds;
+  const scopeParams = [];
+  let scopeSql = "";
+  if (Array.isArray(managedSipUserIds)) {
+    if (managedSipUserIds.length) {
+      scopeSql = `AND a.sip_user_id IN (${managedSipUserIds.map(() => "?").join(",")})`;
+      scopeParams.push(...managedSipUserIds);
+    } else {
+      scopeSql = "AND 1=0";
+    }
+  }
   let connection;
   try {
     connection = await pool.getConnection();
@@ -2347,8 +2541,11 @@ app.get("/api/tenant/sip-accounts", requireAdmin, async (request, response) => {
         AND ec.tenant_id = a.tenant_id
        WHERE a.tenant_id = ?
          ${orderQuery ? "AND o.order_no LIKE ?" : ""}
+         ${scopeSql}
        ORDER BY a.assigned_at DESC, a.id DESC`,
-      orderQuery ? [request.admin.tenantId, `%${orderQuery}%`] : [request.admin.tenantId],
+      orderQuery
+        ? [request.admin.tenantId, `%${orderQuery}%`, ...scopeParams]
+        : [request.admin.tenantId, ...scopeParams],
     );
 
     // 每個帳號的訂閱歷史（按訂單時間順序）：正式/續訂訂單快照 + 試用批次記錄
@@ -2861,6 +3058,17 @@ app.get("/api/tenant/sip-accounts/am-status-check", requireAdmin, async (request
   let connection;
   try {
     connection = await pool.getConnection();
+    const managedSipUserIds = request.admin.managedSipUserIds;
+    const scopeParams = [];
+    let scopeSql = "";
+    if (Array.isArray(managedSipUserIds)) {
+      if (managedSipUserIds.length) {
+        scopeSql = `AND a.sip_user_id IN (${managedSipUserIds.map(() => "?").join(",")})`;
+        scopeParams.push(...managedSipUserIds);
+      } else {
+        scopeSql = "AND 1=0";
+      }
+    }
     const rows = await connection.query(
       `SELECT a.sip_user_id, a.username, a.display_name, u.flexisip_account_id, u.sync_status
        FROM billing_order_sip_accounts a
@@ -2873,8 +3081,9 @@ app.get("/api/tenant/sip-accounts/am-status-check", requireAdmin, async (request
        WHERE a.tenant_id = ?
          AND a.account_status = 'active'
          AND a.service_expires_at >= CURDATE()
+         ${scopeSql}
        ORDER BY a.username ASC`,
-      [request.admin.tenantId],
+      [request.admin.tenantId, ...scopeParams],
     );
 
     const accounts = rows.map((row) => ({
@@ -3246,6 +3455,25 @@ app.put("/api/tenant/sip-accounts/contact-book", requireAdmin, async (request, r
     if (rows.length !== assignedAccountIds.length) {
       await connection.rollback();
       return response.status(404).json({ message: "部分帳號不存在，請重新整理後重試。" });
+    }
+
+    if (Array.isArray(request.admin.managedSipUserIds)) {
+      const allowed = new Set(request.admin.managedSipUserIds);
+      if (rows.some((row) => !allowed.has(Number(row.sip_user_id)))) {
+        await connection.rollback();
+        return response.status(403).json({ message: "只能配置所管轄帳號的通訊錄。" });
+      }
+      if (contactBookId != null) {
+        const assignments = await connection.query(
+          `SELECT sip_user_id FROM tenant_contact_book_assignments
+            WHERE contact_book_id = ? AND tenant_id = ? AND status = 'active'`,
+          [contactBookId, request.admin.tenantId],
+        );
+        if (assignments.some((row) => !allowed.has(Number(row.sip_user_id)))) {
+          await connection.rollback();
+          return response.status(403).json({ message: "該通訊錄包含非管轄帳號，無法操作。" });
+        }
+      }
     }
 
     const today = new Date().setHours(0, 0, 0, 0);
@@ -3713,6 +3941,29 @@ app.put("/api/tenant/web-accounts/:id/status", requireAdmin, async (request, res
   }
 });
 
+async function requireContactBookScope(request, response, next) {
+  if (!Array.isArray(request.admin.managedSipUserIds)) return next();
+  const bookId = Number(request.params.id);
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return response.status(400).json({ message: "通訊錄編號無效。" });
+  }
+  try {
+    const rows = await pool.query(
+      `SELECT sip_user_id FROM tenant_contact_book_assignments
+        WHERE contact_book_id = ? AND tenant_id = ? AND status = 'active'`,
+      [bookId, request.admin.tenantId],
+    );
+    const allowed = new Set(request.admin.managedSipUserIds);
+    if (rows.some((row) => !allowed.has(Number(row.sip_user_id)))) {
+      return response.status(403).json({ message: "該通訊錄包含非管轄帳號，無法操作。" });
+    }
+    return next();
+  } catch (error) {
+    console.error("Contact book scope check failed:", error);
+    return response.status(500).json({ message: "通訊錄權限檢查失敗。" });
+  }
+}
+
 app.get("/api/contact-books", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "只有租戶管理員可以檢視通訊錄。" });
@@ -3721,8 +3972,23 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    const managedSipUserIds = request.admin.managedSipUserIds;
+    const scopeParams = [];
+    let scopeSql = "";
+    if (Array.isArray(managedSipUserIds)) {
+      if (managedSipUserIds.length) {
+        scopeSql = `AND NOT EXISTS (
+          SELECT 1 FROM tenant_contact_book_assignments x
+           WHERE x.contact_book_id = cb.id AND x.status = 'active'
+             AND x.sip_user_id NOT IN (${managedSipUserIds.map(() => "?").join(",")})
+        )`;
+        scopeParams.push(...managedSipUserIds);
+      } else {
+        scopeSql = "AND 1=0";
+      }
+    }
     const rows = await connection.query(
-      `SELECT 
+      `SELECT
          cb.id,
          cb.name,
          cb.description,
@@ -3735,8 +4001,9 @@ app.get("/api/contact-books", requireAdmin, async (request, response) => {
        FROM tenant_contact_books cb
        LEFT JOIN admin_users a ON cb.created_by_admin_id = a.id
        WHERE cb.tenant_id = ?
+         ${scopeSql}
        ORDER BY cb.created_at DESC`,
-      [request.admin.tenantId]
+      [request.admin.tenantId, ...scopeParams]
     );
 
     const formattedRows = rows.map((row) => ({
@@ -3771,6 +4038,13 @@ app.post("/api/contact-books", requireAdmin, async (request, response) => {
     : [];
 
   if (!name) return response.status(400).json({ message: "請輸入通訊錄名稱。" });
+
+  if (Array.isArray(request.admin.managedSipUserIds)) {
+    const allowed = new Set(request.admin.managedSipUserIds);
+    if (accountIds.some((id) => !allowed.has(Number(id))) || assignedAccountIds.some((id) => !allowed.has(Number(id)))) {
+      return response.status(403).json({ message: "只能操作所管轄帳號的通訊錄。" });
+    }
+  }
 
   let connection;
   try {
@@ -3979,6 +4253,17 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
   let connection;
   try {
     connection = await pool.getConnection();
+    const managedSipUserIds = request.admin.managedSipUserIds;
+    const scopeParams = [];
+    let scopeSql = "";
+    if (Array.isArray(managedSipUserIds)) {
+      if (managedSipUserIds.length) {
+        scopeSql = `AND u.id IN (${managedSipUserIds.map(() => "?").join(",")})`;
+        scopeParams.push(...managedSipUserIds);
+      } else {
+        scopeSql = "AND 1=0";
+      }
+    }
     // 可選賬號 = 本租戶目前可用的全部 SIP 賬號：
     //  - 直接歸屬本租戶（含歷史 NULL tenant_id 但權益屬於本租戶的賬號）；
     //  - 本租戶名下的有效試用賬號（試用賬號掛在保留試用租戶，歸屬以 trial_assignments 為準）。
@@ -4011,8 +4296,9 @@ app.get("/api/contact-books/available-accounts", requireAdmin, async (request, r
              WHERE ta.sip_user_id = u.id AND ta.owner_tenant_id = ? AND ta.status = 'active' AND ta.expires_at >= CURDATE()
            )
          )
+         ${scopeSql}
        ORDER BY u.username ASC`,
-      [request.admin.tenantId, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId]
+      [request.admin.tenantId, request.admin.tenantId, request.admin.tenantId, request.admin.tenantId, ...scopeParams]
     );
 
     return response.json({
@@ -4095,7 +4381,7 @@ app.get("/api/contact-books/validate", requireAdmin, async (request, response) =
     return response.status(500).json({ message: "資料校驗失敗。" });
   }
 });
-app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
+app.get("/api/contact-books/:id", requireAdmin, requireContactBookScope, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "只有租戶管理員可以檢視通訊錄詳情。" });
   }
@@ -4186,7 +4472,7 @@ app.get("/api/contact-books/:id", requireAdmin, async (request, response) => {
   }
 });
 
-app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
+app.put("/api/contact-books/:id", requireAdmin, requireContactBookScope, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "只有租戶管理員可以編輯通訊錄。" });
   }
@@ -4207,6 +4493,13 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
     : [];
 
   if (!name) return response.status(400).json({ message: "請輸入通訊錄名稱。" });
+
+  if (Array.isArray(request.admin.managedSipUserIds)) {
+    const allowed = new Set(request.admin.managedSipUserIds);
+    if (accountIds.some((id) => !allowed.has(Number(id))) || assignedAccountIds.some((id) => !allowed.has(Number(id)))) {
+      return response.status(403).json({ message: "只能操作所管轄帳號的通訊錄。" });
+    }
+  }
 
   let connection;
   try {
@@ -4361,7 +4654,7 @@ app.put("/api/contact-books/:id", requireAdmin, async (request, response) => {
   }
 });
 
-app.delete("/api/contact-books/:id", requireAdmin, async (request, response) => {
+app.delete("/api/contact-books/:id", requireAdmin, requireContactBookScope, async (request, response) => {
   if (request.admin.accountType === 'platform') {
     return response.status(403).json({ message: "只有租戶管理員可以刪除通訊錄。" });
   }
@@ -13169,6 +13462,17 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
   let connection;
   try {
     connection = await pool.getConnection();
+    const managedSipUserIds = request.admin.managedSipUserIds;
+    const scopeParams = [];
+    let scopeSql = "";
+    if (Array.isArray(managedSipUserIds)) {
+      if (managedSipUserIds.length) {
+        scopeSql = `AND su.id IN (${managedSipUserIds.map(() => "?").join(",")})`;
+        scopeParams.push(...managedSipUserIds);
+      } else {
+        scopeSql = "AND 1=0";
+      }
+    }
     const rows = await connection.query(
       `SELECT
          su.id AS sip_user_id,
@@ -13203,9 +13507,9 @@ app.get("/api/tenant/ecard-accounts", requireAdmin, async (request, response) =>
          ON su.tenant_id = t.id
        LEFT JOIN admin_users au 
          ON ec.created_by_admin_id = au.id
-       LEFT JOIN tenant_contact_book_assignments cba ON cba.sip_user_id = su.id AND cba.status != 'revoked' LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id AND tcb.tenant_id = su.tenant_id WHERE (su.tenant_id = ? OR ta.id IS NOT NULL) AND su.status = 'active'
+       LEFT JOIN tenant_contact_book_assignments cba ON cba.sip_user_id = su.id AND cba.status != 'revoked' LEFT JOIN tenant_contact_books tcb ON tcb.id = cba.contact_book_id AND tcb.tenant_id = su.tenant_id WHERE (su.tenant_id = ? OR ta.id IS NOT NULL) AND su.status = 'active' ${scopeSql}
        ORDER BY su.username ASC`,
-      [request.admin.tenantId, request.admin.tenantId]
+      [request.admin.tenantId, request.admin.tenantId, ...scopeParams]
     );
 
     const baseUrl = process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org";
@@ -15061,6 +15365,10 @@ app.post("/api/call-centers", requireAdmin, async (request, response) => {
           }
 
           const sipAccountId = agent.ecardId;
+          if (Array.isArray(request.admin.managedSipUserIds) && !request.admin.managedSipUserIds.includes(Number(sipAccountId))) {
+            await connection.rollback();
+            return response.status(403).json({ message: "坐席帳號不在管轄範圍內。" });
+          }
           
           if (!sipAccountId) {
             await connection.rollback();
@@ -15274,6 +15582,19 @@ app.delete("/api/call-centers", requireAdmin, async (request, response) => {
     const validIds = rows.map(r => Number(r.id));
     const validPlaceholders = validIds.map(() => "?").join(",");
 
+    if (Array.isArray(request.admin.managedSipUserIds)) {
+      const agentRows = await connection.query(
+        `SELECT DISTINCT call_center_id, sip_account_id FROM call_center_category_agents
+          WHERE call_center_id IN (${validPlaceholders}) AND tenant_id = ?`,
+        [...validIds, request.admin.tenantId],
+      );
+      const allowed = new Set(request.admin.managedSipUserIds);
+      if (agentRows.some((row) => !allowed.has(Number(row.sip_account_id)))) {
+        await connection.rollback();
+        return response.status(403).json({ code: -1, message: "包含非管轄坐席的呼叫中心無法刪除。" });
+      }
+    }
+
     await connection.query(`DELETE FROM call_center_category_agents WHERE call_center_id IN (${validPlaceholders}) AND tenant_id = ?`, [...validIds, request.admin.tenantId]);
     await connection.query(`DELETE FROM call_center_categories WHERE call_center_id IN (${validPlaceholders}) AND tenant_id = ?`, [...validIds, request.admin.tenantId]);
     const result = await connection.query(`DELETE FROM call_centers WHERE id IN (${validPlaceholders}) AND tenant_id = ?`, [...validIds, request.admin.tenantId]);
@@ -15423,6 +15744,18 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
       return response.status(404).json({ code: -1, message: "找不到指定的呼叫中心。" });
     }
 
+    if (Array.isArray(request.admin.managedSipUserIds)) {
+      const agentRows = await connection.query(
+        "SELECT DISTINCT sip_account_id FROM call_center_category_agents WHERE call_center_id = ? AND tenant_id = ?",
+        [id, request.admin.tenantId],
+      );
+      const allowed = new Set(request.admin.managedSipUserIds);
+      if (agentRows.some((row) => !allowed.has(Number(row.sip_account_id)))) {
+        await connection.rollback();
+        return response.status(403).json({ code: -1, message: "該呼叫中心包含非管轄坐席，無法編輯。" });
+      }
+    }
+
     let logoUrl = currentCc.logo_url;
     if (payload.logoDataUrl?.startsWith('data:')) {
       logoUrl = await saveCallCenterImage(payload.logoDataUrl, 'logo.png');
@@ -15489,6 +15822,10 @@ app.put("/api/call-centers/:id", requireAdmin, async (request, response) => {
           }
 
           const sipAccountId = agent.ecardId;
+          if (Array.isArray(request.admin.managedSipUserIds) && !request.admin.managedSipUserIds.includes(Number(sipAccountId))) {
+            await connection.rollback();
+            return response.status(403).json({ message: "坐席帳號不在管轄範圍內。" });
+          }
           
           if (!sipAccountId) {
             await connection.rollback();
@@ -16936,6 +17273,17 @@ app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
   let connection;
   try {
     connection = await pool.getConnection();
+    const managedSipUserIds = request.admin.managedSipUserIds;
+    const scopeParams = [];
+    let scopeSql = "";
+    if (Array.isArray(managedSipUserIds)) {
+      if (managedSipUserIds.length) {
+        scopeSql = `AND su.id IN (${managedSipUserIds.map(() => "?").join(",")})`;
+        scopeParams.push(...managedSipUserIds);
+      } else {
+        scopeSql = "AND 1=0";
+      }
+    }
     const rows = await connection.query(
       `SELECT su.id, su.username, su.sip_domain, su.display_name, su.email,
               su.phone_number, su.status,
@@ -16960,8 +17308,9 @@ app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
              AND (r2.id IS NULL OR r2.id = ?))
            OR r2.id = ?
          )
+         ${scopeSql}
        ORDER BY su.username`,
-      [request.admin.tenantId, request.admin.tenantId, Number(request.query.roomId) || 0, Number(request.query.roomId) || 0]
+      [request.admin.tenantId, request.admin.tenantId, Number(request.query.roomId) || 0, Number(request.query.roomId) || 0, ...scopeParams]
     );
     const list = rows.map(r => ({
       id: Number(r.id),
@@ -17000,10 +17349,21 @@ app.put("/api/access-rooms/:id/assign-sip", requireAdmin, async (request, respon
     connection = await pool.getConnection();
 
     const [room] = await connection.query(
-      "SELECT id, room_number, building_id FROM access_rooms WHERE id = ? AND tenant_id = ?",
+      "SELECT id, room_number, building_id, sip_user_id FROM access_rooms WHERE id = ? AND tenant_id = ?",
       [roomId, request.admin.tenantId]
     );
     if (!room) return response.status(404).json({ message: "房間不存在。" });
+
+    if (Array.isArray(request.admin.managedSipUserIds)) {
+      const allowed = new Set(request.admin.managedSipUserIds);
+      const currentSipUserId = room.sip_user_id == null ? null : Number(room.sip_user_id);
+      if (currentSipUserId != null && !allowed.has(currentSipUserId)) {
+        return response.status(403).json({ message: "該房間目前綁定非管轄帳號，無法修改。" });
+      }
+      if (sipUserId != null && !allowed.has(sipUserId)) {
+        return response.status(403).json({ message: "只能分配所管轄的 SIP 帳號。" });
+      }
+    }
 
     if (sipUserId) {
       const [sipUser] = await connection.query(
@@ -17076,6 +17436,9 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
   const contactEmail = sanitizeString(payload.contactEmail, 255) || null;
   const sipUserId = payload.sipUserId != null ? Number(payload.sipUserId) : null;
   if (!sipUserId) return response.status(400).json({ message: "請為房間分配 SIP 帳號。" });
+  if (Array.isArray(request.admin.managedSipUserIds) && !request.admin.managedSipUserIds.includes(sipUserId)) {
+    return response.status(403).json({ message: "只能分配所管轄的 SIP 帳號。" });
+  }
   const entranceIds = Array.isArray(payload.entranceIds)
     ? [...new Set(payload.entranceIds.map(Number).filter(Boolean))]
     : [];
@@ -25456,6 +25819,11 @@ async function ensureVisitorInquiryNoteColumn() {
 }
 await ensureVisitorInquiryNoteColumn();
 await ensureBackupSchema();
+try {
+  await ensureTenantSubAdminSchema();
+} catch (error) {
+  console.error("Failed to ensure tenant sub-admin schema:", error?.message || error);
+}
 
 const httpServer = app.listen(port, () => {
   console.log(`QRTalkie Cloud API listening on http://127.0.0.1:${port}`);

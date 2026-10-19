@@ -85,6 +85,17 @@ const viewTitles = {
   'analytics': '統計分析',
 };
 
+const SUB_ADMIN_ALLOWED_VIEWS = new Set([
+  'tenant-account-management',
+  'tenant-account-ecard',
+  'contact-books',
+  'ecard-styles-management',
+  'call-center',
+  'call-center-add',
+  'call-center-inquiries',
+  'access-control',
+]);
+
 function getNameFromEmail(email) {
   return String(email || '').split('@')[0] || 'Admin';
 }
@@ -93,6 +104,15 @@ export default function ConsoleLayout({ onLogout }) {
   const [currentView, setCurrentView] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [identity, setIdentity] = useState(null);
+  const isSubAdmin = identity?.admin?.accountType === 'tenant'
+    && identity?.admin?.role === 'admin'
+    && identity?.admin?.permissions?.tenantSubAdmin === true;
+  useEffect(() => {
+    if (!isSubAdmin) return;
+    if (!SUB_ADMIN_ALLOWED_VIEWS.has(currentView)) {
+      setCurrentView('tenant-account-management');
+    }
+  }, [isSubAdmin, currentView]);
   const [trialSignupEnabled, setTrialSignupEnabled] = useState(null); // null=載入中；平台管理員「開放試用申請」開關
   // 平台管理員進入租戶管理頁時讀取試用申請開關
   useEffect(() => {
@@ -214,12 +234,12 @@ export default function ConsoleLayout({ onLogout }) {
 
   // Notification fetching + polling
   const fetchNotifications = useCallback(async () => {
-    if (!identity) return;
+    if (!identity || isSubAdmin) return;
     try {
       const res = await apiClient.get('/notifications');
       setMessages(Array.isArray(res.notifications) ? res.notifications : []);
     } catch { /* ignore */ }
-  }, [identity]);
+  }, [identity, isSubAdmin]);
 
   useEffect(() => {
     fetchNotifications();
@@ -902,7 +922,7 @@ export default function ConsoleLayout({ onLogout }) {
       <Topbar
         workspaceName={workspaceName}
         userName={userName}
-        messages={messages}
+        messages={isSubAdmin ? [] : messages}
         onMessageClick={handleMessageClick}
         onMessageDismiss={handleMessageDismiss}
         onMessageDelete={handleMessageDelete}
@@ -918,10 +938,15 @@ export default function ConsoleLayout({ onLogout }) {
       <Sidebar
         currentView={currentView}
         isCollapsed={isSidebarCollapsed}
-        onViewChange={(view) => { if (userType === 'sip' && view !== 'registrations') return; setCurrentView(view); }}
+        onViewChange={(view) => {
+          if (userType === 'sip' && view !== 'registrations') return;
+          if (isSubAdmin && !SUB_ADMIN_ALLOWED_VIEWS.has(view)) return;
+          setCurrentView(view);
+        }}
         onLogout={onLogout}
         isAdminPlatform={identity?.admin?.accountType === 'platform'}
         isSuperAdmin={identity?.admin?.platformRole === 'super_admin'}
+        isSubAdmin={isSubAdmin}
         userType={userType}
       />
 

@@ -53,13 +53,15 @@ const baseDataItems = [
   { id: 'privacy-policy', label: '隱私政策' },
 ];
 
-export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogout, isAdminPlatform, userType, isSuperAdmin }) {
+export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogout, isAdminPlatform, userType, isSuperAdmin, isSubAdmin }) {
   const [isBaseDataOpen, setIsBaseDataOpen] = useState(false);
   const [isSipAccountOpen, setIsSipAccountOpen] = useState(false);
 
   const isSipUser = userType === 'sip';
+  const subAdminAllowedItems = new Set(['tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'access-control']);
   const tenantOnlyItems = ['domain', 'tenant-account-management', 'trial-management', 'contact-books', 'ecard-styles-management', 'call-center', 'access-control', 'tenant'];
   const visibleNavItems = navItems.filter(item => {
+    if (isSubAdmin) return subAdminAllowedItems.has(item.id);
     if (isSipUser) return item.id === 'registrations';
     if (item.id === 'registrations') return false;
     if (item.id === 'dashboard') return isAdminPlatform;
