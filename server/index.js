@@ -19439,6 +19439,9 @@ app.get("/api/platform/finance/orders", requireAdmin, requirePlatformAdmin, asyn
   const innerSql = `
     SELECT o.id, o.order_no, o.tenant_id, t.name AS tenant_name, o.order_type, o.order_status,
            o.currency, o.subtotal_amount, o.discount_amount, o.payable_amount,
+           (SELECT i.item_name FROM billing_order_items i
+             WHERE i.order_id = o.id AND i.item_type = 'plan'
+             ORDER BY i.sort_order ASC, i.id ASC LIMIT 1) AS plan_name,
            COALESCE(o.receivable_amount, o.payable_amount) AS receivable_amount,
            o.created_at, o.effective_at, o.expires_at,
            COALESCE(p.received_amount, 0) AS received_amount,
@@ -19501,6 +19504,7 @@ app.get("/api/platform/finance/orders", requireAdmin, requirePlatformAdmin, asyn
           tenantId: Number(row.tenant_id),
           tenantName: row.tenant_name || "",
           orderType: row.order_type || "",
+          planName: row.plan_name || "",
           orderStatus: row.order_status || "",
           currency: row.currency || "",
           subtotalAmount: Number(row.subtotal_amount || 0),

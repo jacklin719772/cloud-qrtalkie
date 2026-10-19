@@ -51,6 +51,31 @@ function fileUrl(url) {
   return `/api${url.startsWith('/') ? url : `/${url}`}`;
 }
 
+function orderTypeLabel(type) {
+  const map = {
+    new_purchase: '新購',
+    renewal: '續訂',
+    trial: '試用',
+    addon: '增值服務',
+    addon_service: '增值服務',
+    upgrade: '升級',
+  };
+  return map[String(type || '').toLowerCase()] || type || '-';
+}
+
+function orderStatusLabel(status) {
+  const map = {
+    draft: '草稿',
+    pending_payment: '待付款',
+    payment_submitted: '已提交付款',
+    pending_review: '待審核',
+    review_approved: '已審核通過',
+    review_rejected: '審核駁回',
+    cancelled: '已取消',
+  };
+  return map[String(status || '').toLowerCase()] || status || '-';
+}
+
 function paymentStateBadge(receivable, received) {
   const r = Number(receivable || 0);
   const p = Number(received || 0);
@@ -459,7 +484,7 @@ export default function FinanceManagement() {
                   <tr key={order.id}>
                     <td style={{ fontFamily: 'monospace' }}>{order.orderNo}</td>
                     <td title={order.tenantName}>{order.tenantName || '-'}</td>
-                    <td>{order.orderType}</td>
+                    <td>{orderTypeLabel(order.orderType)}</td>
                     <td style={{ fontFamily: 'monospace' }}>{formatMoney(order.orderAmount, order.currency)}</td>
                     <td style={{ fontFamily: 'monospace' }}>{formatMoney(order.receivableAmount, order.currency)}</td>
                     <td style={{ fontFamily: 'monospace', color: '#6ee7b7' }}>{formatMoney(order.receivedAmount, order.currency)}</td>
@@ -549,8 +574,9 @@ export default function FinanceManagement() {
                 {[
                   ['訂單號', detailModalOrder.orderNo],
                   ['租戶', detailModalOrder.tenantName || '-'],
-                  ['訂單類型', detailModalOrder.orderType],
-                  ['訂單狀態', detailModalOrder.orderStatus],
+                  ['套餐名', detailModalOrder.planName || '-'],
+                  ['訂單類型', orderTypeLabel(detailModalOrder.orderType)],
+                  ['訂單狀態', orderStatusLabel(detailModalOrder.orderStatus)],
                   ['創建時間', formatDateTime(detailModalOrder.createdAt)],
                   ['幣種', detailModalOrder.currency || '-'],
                   ['生效日期', detailModalOrder.effectiveAt ? formatDateTime(detailModalOrder.effectiveAt) : '-'],
