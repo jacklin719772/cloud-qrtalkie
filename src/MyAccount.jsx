@@ -9,6 +9,12 @@ function formatDate(value) {
   return String(value).slice(0, 10);
 }
 
+function formatDateTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-');
+}
+
 export default function MyAccount({ identity }) {
   const [profile, setProfile] = useState(null);
   const [ecardEnabled, setEcardEnabled] = useState(false);
@@ -18,6 +24,10 @@ export default function MyAccount({ identity }) {
   const [showEcardEditor, setShowEcardEditor] = useState(false);
   const [showEcardPreview, setShowEcardPreview] = useState(false);
   const [showQrDialog, setShowQrDialog] = useState(false);
+  const [showDevices, setShowDevices] = useState(false);
+  const [devices, setDevices] = useState([]);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [devicesError, setDevicesError] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionDialog, setActionDialog] = useState(null); // 'displayName' | 'email' | 'phone' | 'password' | 'ecard' | null
   const [form, setForm] = useState({ displayName: '', email: '', phone: '', password: '', confirmPassword: '', company: '', jobTitle: '', avatarDataUrl: '', avatarPreview: '', savedAvatarUrl: '', removeAvatar: false });
@@ -73,6 +83,23 @@ export default function MyAccount({ identity }) {
   };
 
   useEffect(() => { loadProfile(); }, []);
+
+  const loadDevices = async () => {
+    const username = profile?.admin?.username;
+    const domain = profile?.tenant?.sipDomain || '';
+    if (!username) return;
+    setDevicesLoading(true);
+    setDevicesError('');
+    try {
+      const res = await apiClient.get(`/flexisip/accounts/registration-detail?username=${encodeURIComponent(username)}&domain=${encodeURIComponent(domain)}`);
+      const detail = res?.data || {};
+      setDevices(Array.isArray(detail.devices) ? detail.devices : []);
+    } catch (error) {
+      setDevicesError(error?.message || '讀取設備失敗。');
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
   const openDialog = (type) => {
     setMessage({ type: '', text: '' });
     if (type === 'password') setForm(prev => ({ ...prev, password: '', confirmPassword: '' }));
@@ -376,9 +403,9 @@ export default function MyAccount({ identity }) {
                 </button>
               </div>
               <div className="ma-action-row">
-                <button className="ma-action-btn" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>
-                  <span className="ma-action-icon" style={{ background: '#1e293b', color: '#6b7280' }}>&#9881;</span>
-                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500, color: '#9ca3af' }}>设备管理</div><div style={{ fontSize: '12px', color: '#6b7280' }}>即将推出</div></div>
+                <button className="ma-action-btn" onClick={() => { setShowDevices(true); loadDevices(); }}>
+                  <span className="ma-action-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>&#9881;</span>
+                  <div style={{ minWidth: 0 }}><div style={{ fontWeight: 500 }}>设备管理</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>{devices.length ? `已註冊 ${devices.length} 台` : '查看已註冊設備'}</div></div>
                 </button>
                 <button className="ma-action-btn" onClick={() => setShowQrDialog(true)}>
                   <span className="ma-action-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}>&#128273;</span>
@@ -516,6 +543,61 @@ export default function MyAccount({ identity }) {
           </div>
         </div>,
         document.body
+      )}
+      {showDevices && createPortal(
+        <div className="ma-dialog-overlay" onMouseDown={e => { if (e.target === e.currentTarget) setShowDevices(false); }}>
+          <div className="ma-dialog" style={{ width: 'min(820px, 94vw)', maxWidth: '820px', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="ma-dialog-header">
+              <h3>設備管理</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button type="button" onClick={loadDevices} disabled={devicesLoading}
+                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1f2937', color: '#93c5fd', fontSize: '12px', cursor: devicesLoading ? 'wait' : 'pointer' }}>
+                  {devicesLoading ? '刷新中...' : '刷新'}
+                </button>
+                <button type="button" onClick={() => setShowDevices(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>&#10005;</button>
+              </div>
+            </div>
+            <div className="ma-dialog-body" style={{ overflow: 'auto', display: 'block', minHeight: '120px' }}>
+              {devicesLoading ? (
+                <p style={{ color: '#9ca3af', textAlign: 'center', padding: '24px 0' }}>載入中...</p>
+              ) : devicesError ? (
+                <p style={{ color: '#fca5a5', textAlign: 'center', padding: '24px 0', fontSize: '13px' }}>{devicesError}</p>
+              ) : devices.length === 0 ? (
+                <p style={{ color: '#6b7280', textAlign: 'center', padding: '24px 0', fontSize: '13px' }}>暫無已註冊設備</p>
+              ) : devices.map((device, index) => (
+                <div key={device.uuid || index} style={{ marginBottom: '12px', padding: '14px', background: '#0d1117', border: '1px solid #1f2937', borderRadius: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                    <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1e3a5f', color: '#60a5fa', fontSize: '11px', fontWeight: 600 }}>設備 #{index + 1}</span>
+                    <span style={{ padding: '2px 10px', borderRadius: '999px', background: device.valid === true ? '#065f46' : device.valid === false ? '#374151' : '#1f2937', color: device.valid === true ? '#6ee7b7' : device.valid === false ? '#9ca3af' : '#60a5fa', fontSize: '11px' }}>
+                      {device.valid === true ? '有效' : device.valid === false ? '已過期' : '已註冊'}
+                    </span>
+                    {device.displayName && <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#111827', color: '#d1d5db', fontSize: '11px' }}>{device.displayName}</span>}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
+                    {[
+                      { label: '裝置 ID', value: device.uuid, full: true },
+                      { label: 'User-Agent', value: device.userAgent, full: true },
+                      { label: '傳輸協議', value: device.transport, skip: !device.transport },
+                      { label: '最後註冊', value: formatDateTime(device.lastRegisterAt || device.updateTime) },
+                      { label: '過期時間', value: device.expiresAt ? formatDateTime(device.expiresAt) : null, skip: !device.expiresAt },
+                      { label: '剩餘 TTL (秒)', value: device.ttlSeconds == null ? null : String(device.ttlSeconds), skip: device.ttlSeconds == null },
+                      { label: 'Contact URI', value: device.contactUri, full: true, skip: !device.contactUri },
+                      { label: '註冊 IP', value: device.ip, skip: !device.ip },
+                      { label: '國家/地區', value: device.geo ? [device.geo.country, device.geo.subdivision].filter(Boolean).join(', ') || '-' : null, skip: !device.geo },
+                      { label: '城市', value: device.geo?.city || null, skip: !device.geo?.city },
+                    ].filter(item => !item.skip).map((item, i) => (
+                      <div key={i} style={{ ...(item.full ? { gridColumn: '1 / -1' } : {}), background: '#111827', borderRadius: '6px', padding: '8px 10px' }}>
+                        <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
+                        <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value || '-'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
       {showQrDialog && createPortal(
         <LoginQrDialog isOpen={showQrDialog} onClose={() => setShowQrDialog(false)} account={{ id: profile?.admin?.id }} />,

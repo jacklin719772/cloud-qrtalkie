@@ -23047,6 +23047,14 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
     } finally { dbConn.release(); }
   }
 
+  // SIP 用戶只能查看自己的帳號詳情/設備
+  if (request.admin.accountType === "sip_user") {
+    const selfUsername = String(request.admin.username || "").trim();
+    if (!selfUsername || username !== selfUsername) {
+      return response.status(403).json({ success: false, message: "無許可權檢視該帳號詳情" });
+    }
+  }
+
   try {
     const detail = await getAccountRegistrationDetail(username, domain, { domain: domain || sipDomain });
 
