@@ -19584,6 +19584,8 @@ async function handleWebrtcAccountCallLogsQuery(request, response) {
       extension,
       dateFrom,
       dateTo,
+      tzOffsetMinutes: request.query?.tzOffsetMinutes,
+      search: request.query?.search,
       source: request.query?.source,
       destination: request.query?.destination,
       eventType: request.query?.eventType,

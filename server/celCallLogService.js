@@ -124,10 +124,26 @@ function normalizeOrder(value) {
   return String(value || "").toLowerCase() === "asc" ? "ASC" : "DESC";
 }
 
+function localDateBoundaryToUtcString(dateOnly, endOfDay, tzOffsetMinutes) {
+  const match = String(dateOnly || "").slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return `${String(dateOnly || "").slice(0, 10)} ${endOfDay ? "23:59:59" : "00:00:00"}`;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const localMs = Date.UTC(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+  const utc = new Date(localMs - tzOffsetMinutes * 60000);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${utc.getUTCFullYear()}-${pad(utc.getUTCMonth() + 1)}-${pad(utc.getUTCDate())} ${pad(utc.getUTCHours())}:${pad(utc.getUTCMinutes())}:${pad(utc.getUTCSeconds())}`;
+}
+
 function buildFilters(filters = {}) {
   const clauses = ["1=1"];
   const values = [];
   const extension = String(filters.extension || "").trim();
+  const parsedOffset = Number(filters.tzOffsetMinutes);
+  const tzOffsetMinutes = Number.isFinite(parsedOffset) ? Math.min(840, Math.max(-840, parsedOffset)) : 0;
 
   if (extension) {
     clauses.push("(cid_num = ? OR exten = ? OR channame LIKE ?)");
@@ -136,12 +152,18 @@ function buildFilters(filters = {}) {
 
   if (filters.dateFrom) {
     clauses.push("eventtime >= ?");
-    values.push(`${String(filters.dateFrom).slice(0, 10)} 00:00:00`);
+    values.push(localDateBoundaryToUtcString(filters.dateFrom, false, tzOffsetMinutes));
   }
 
   if (filters.dateTo) {
     clauses.push("eventtime <= ?");
-    values.push(`${String(filters.dateTo).slice(0, 10)} 23:59:59`);
+    values.push(localDateBoundaryToUtcString(filters.dateTo, true, tzOffsetMinutes));
+  }
+
+  const search = sanitizeLike(filters.search);
+  if (search) {
+    clauses.push("(cid_num LIKE ? OR cid_name LIKE ? OR exten LIKE ?)");
+    values.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
 
   const source = sanitizeLike(filters.source);
@@ -207,25 +229,77 @@ function mapCelEvent(row = {}) {
   };
 }
 
+function parseJsonSafe(value) {
+  try {
+    return JSON.parse(String(value || ""));
+  } catch {
+    return null;
+  }
+}
+
+function deriveCallResult({ answered, dialStatus, hangupCause }) {
+  if (answered) return "answered";
+  const byDialStatus = {
+    NOANSWER: "missed",
+    BUSY: "busy",
+    CANCEL: "cancelled",
+    CANCELLED: "cancelled",
+    CONGESTION: "failed",
+    CHANUNAVAIL: "failed",
+  };
+  const normalized = String(dialStatus || "").toUpperCase();
+  if (byDialStatus[normalized]) return byDialStatus[normalized];
+  if (Number.isFinite(hangupCause)) {
+    if (hangupCause === 17) return "busy";
+    if (hangupCause === 18 || hangupCause === 19) return "missed";
+    if (hangupCause === 16) return "cancelled";
+    if (hangupCause === 21) return "declined";
+    if ([3, 20, 34, 38, 47, 127].includes(hangupCause)) return "failed";
+  }
+  return "unknown";
+}
+
 function summarizeCall(linkedId, rows) {
   const events = rows.map(mapCelEvent);
   const first = events[0] || {};
   const last = events[events.length - 1] || {};
+  const primary = events.find((event) => event.cidNumber && event.extension)
+    || events.find((event) => event.cidNumber)
+    || first;
+  const answerEvent = events.find((event) => event.eventType === "ANSWER") || null;
+  const hangupEvents = events.filter((event) => event.eventType === "HANGUP");
+  const talkEndEvent = hangupEvents[hangupEvents.length - 1] || last;
   const startMs = first.eventTime ? Date.parse(first.eventTime) : NaN;
-  const endMs = last.eventTime ? Date.parse(last.eventTime) : NaN;
-  const durationSeconds = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
-    ? Math.round((endMs - startMs) / 1000)
+  const answerMs = answerEvent?.eventTime ? Date.parse(answerEvent.eventTime) : NaN;
+  const endMs = talkEndEvent.eventTime ? Date.parse(talkEndEvent.eventTime) : NaN;
+  const answered = Boolean(answerEvent);
+  const durationSeconds = answered && Number.isFinite(answerMs) && Number.isFinite(endMs) && endMs >= answerMs
+    ? Math.round((endMs - answerMs) / 1000)
     : null;
+  const ringSeconds = answered && Number.isFinite(startMs) && Number.isFinite(answerMs) && answerMs >= startMs
+    ? Math.round((answerMs - startMs) / 1000)
+    : null;
+
+  const extras = hangupEvents.map((event) => parseJsonSafe(event.eventExtra)).filter(Boolean);
+  const dialStatus = extras.map((extra) => String(extra.dialstatus || "")).find(Boolean) || "";
+  const hangupCauseValue = extras.map((extra) => Number(extra.hangupcause)).find((value) => Number.isFinite(value));
+  const hangupCause = Number.isFinite(hangupCauseValue) ? hangupCauseValue : null;
 
   return {
     linkedId: String(linkedId || ""),
     eventTime: first.eventTime || null,
-    endTime: last.eventTime || null,
+    answerTime: answerEvent?.eventTime || null,
+    endTime: talkEndEvent.eventTime || last.eventTime || null,
     durationSeconds,
-    cidName: first.cidName || "",
-    cidNumber: first.cidNumber || "",
-    extension: first.extension || "",
-    channelName: first.channelName || "",
+    ringSeconds,
+    answered,
+    result: deriveCallResult({ answered, dialStatus, hangupCause }),
+    dialStatus,
+    hangupCause,
+    cidName: primary.cidName || first.cidName || "",
+    cidNumber: primary.cidNumber || first.cidNumber || "",
+    extension: primary.extension || first.extension || "",
+    channelName: primary.channelName || first.channelName || "",
     eventCount: events.length,
     events,
   };

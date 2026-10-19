@@ -33,6 +33,20 @@ const userStatusBadge = (s) => {
   return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: style.bg, color: style.color }}>{style.text}</span>;
 };
 
+const callResultBadge = (r) => {
+  const map = {
+    answered: { bg: '#065f46', color: '#6ee7b7', text: '已接聽' },
+    missed: { bg: '#7f1d1d', color: '#fca5a5', text: '未接' },
+    cancelled: { bg: '#1e293b', color: '#9ca3af', text: '已取消' },
+    busy: { bg: '#3b1111', color: '#fca5a5', text: '忙線' },
+    declined: { bg: '#7f1d1d', color: '#fca5a5', text: '拒絕' },
+    failed: { bg: '#7f1d1d', color: '#fca5a5', text: '失敗' },
+    unknown: { bg: '#1f2937', color: '#6b7280', text: '未知' },
+  };
+  const style = map[r] || map.unknown;
+  return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 500, background: style.bg, color: style.color }}>{style.text}</span>;
+};
+
 const pageSizeOptions = [10, 20, 50, '全部'];
 
 function formatTime(iso) {
@@ -45,6 +59,7 @@ function formatTime(iso) {
 
 export default function Analytics({ tenantId, isPlatformAdmin }) {
   const isTenantView = Boolean(!isPlatformAdmin && tenantId);
+  const visibleTabs = isPlatformAdmin ? TABS : TABS.filter((tab) => tab.key !== 'callLog');
   const [activeTab, setActiveTab] = useState('web');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -54,6 +69,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
 
   // Call log state
   const [callSearch, setCallSearch] = useState('');
+  const [callAppliedSearch, setCallAppliedSearch] = useState('');
   const [callDateFrom, setCallDateFrom] = useState('');
   const [callDateTo, setCallDateTo] = useState('');
   const [callPage, setCallPage] = useState(1);
@@ -62,7 +78,27 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
   const [expandedCall, setExpandedCall] = useState(null);
   const [callLogs, setCallLogs] = useState([]);
   const [callLogTotal, setCallLogTotal] = useState(0);
+  const [callLogError, setCallLogError] = useState('');
   const [isCallLogLoading, setIsCallLogLoading] = useState(false);
+  const callLogErrorTimerRef = useRef(null);
+
+  const showCallLogError = useCallback((text) => {
+    setCallLogError(text);
+    if (callLogErrorTimerRef.current) clearTimeout(callLogErrorTimerRef.current);
+    callLogErrorTimerRef.current = setTimeout(() => setCallLogError(''), 6000);
+  }, []);
+
+  useEffect(() => () => {
+    if (callLogErrorTimerRef.current) clearTimeout(callLogErrorTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCallAppliedSearch(callSearch.trim());
+      setCallPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [callSearch]);
 
   // SIP call log state
   const [sipCallLogs, setSipCallLogs] = useState([]);
@@ -274,7 +310,7 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
       {/* Tab 栏 */}
       <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1f2937', background: '#111827', padding: '0 24px' }}>
         <div style={{ display: 'flex' }}>
-          {TABS.map(tab => (
+          {visibleTabs.map(tab => (
             <button key={tab.key} onClick={() => { setActiveTab(tab.key); setCurrentPage(1); setSearchKeyword(''); setStatusFilter('all'); setAssignFilter('all'); }}
               style={{
                 padding: '14px 24px', fontSize: '14px', fontWeight: activeTab === tab.key ? 600 : 400,
@@ -420,8 +456,8 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
         onSearchChange={v => setSipSearch(v)} onStatusChange={v => { setSipStatusFilter(v); setSipPage(1); }} onTenantChange={v => { setSipTenantFilter(v); setSipPage(1); }}
         page={sipPage} pageSize={sipPageSize} onPageChange={setSipPage} onPageSizeChange={v => { setSipPageSize(v); setSipPage(1); }}
         sortField={sipSortField} sortDir={sipSortDir} onSort={handleSipSort} />}
-      {/* Web 呼叫日誌 Tab */}
-      {activeTab === 'callLog' && (
+      {/* Web 呼叫日誌 Tab（平台管理員專用） */}
+      {activeTab === 'callLog' && isPlatformAdmin && (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '10px', padding: '16px 20px', marginBottom: '20px', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', flexWrap: 'wrap' }}>
             <select value={callExtension} onChange={e => { setCallExtension(e.target.value); setCallPage(1); }}
@@ -442,7 +478,8 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
             <input type="date" value={callDateTo} onChange={e => { setCallDateTo(e.target.value); setCallPage(1); }}
               style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '13px', outline: 'none' }} />
           </div>
-          <CallLogTable logs={callLogs} total={callLogTotal} search={callSearch} dateFrom={callDateFrom} dateTo={callDateTo}
+          <CallLogTable logs={callLogs} total={callLogTotal} search={callAppliedSearch} dateFrom={callDateFrom} dateTo={callDateTo}
+            error={callLogError}
             page={callPage} pageSize={callPageSize} onPageChange={setCallPage} onPageSizeChange={v => { setCallPageSize(v); setCallPage(1); }}
             expandedCall={expandedCall} onToggleExpand={setExpandedCall} isLoading={isCallLogLoading}
             extension={callExtension} onFetch={async (ext, params) => {
@@ -452,7 +489,10 @@ export default function Analytics({ tenantId, isPlatformAdmin }) {
                 const res = await apiClient.get(`/pbx/webrtc-accounts/${ext}/call-logs?${qs}`);
                 setCallLogs(res.data?.calls || []);
                 setCallLogTotal(res.data?.total || 0);
-              } catch { setCallLogs([]); setCallLogTotal(0); }
+                setCallLogError('');
+              } catch (err) {
+                showCallLogError(err?.data?.message || err?.message || 'Web 呼叫日誌查詢失敗。');
+              }
               finally { setIsCallLogLoading(false); }
             }} />
         </div>
@@ -958,9 +998,9 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
       <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
         <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 筆記錄</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
+          <select value={pageSize} onChange={e => onPageSizeChange(Number(e.target.value))}
             style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
-            {[10, 20, 50, '全部'].map(o => <option key={o} value={o}>{o === '全部' ? o : `${o} 條/頁`}</option>)}
+            {[10, 20, 50, 100].map(o => <option key={o} value={o}>{`${o} 條/頁`}</option>)}
           </select>
           <button disabled={safePage <= 1} onClick={() => onPageChange(p => p - 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage <= 1 ? '#4b5563' : '#9ca3af', cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
           <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
@@ -972,14 +1012,15 @@ function FlexisipCallLogTable({ logs, total, accounts, direction, result, dateFr
 }
 
 // Call Log sub-component
-function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, extension, onFetch }) {
+function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, onPageChange, onPageSizeChange, expandedCall, onToggleExpand, isLoading, extension, error, onFetch }) {
   // Auto-fetch when extension is selected
   useEffect(() => {
     if (!extension) { onPageChange(1); return; }
     const params = {};
-    if (search) { params.source = search; params.destination = search; }
+    if (search) params.search = search;
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
+    params.tzOffsetMinutes = String(-new Date().getTimezoneOffset());
     params.limit = pageSize;
     params.offset = (page - 1) * pageSize;
     onFetch(extension, params);
@@ -994,24 +1035,28 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
 
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: '#111827', border: '1px solid #1f2937', borderRadius: '12px', overflow: 'hidden' }}>
+      {error && (
+        <div style={{ flexShrink: 0, margin: '12px 12px 0', padding: '9px 14px', borderRadius: '8px', background: '#7f1d1d', color: '#fecaca', fontSize: '13px' }}>{error}</div>
+      )}
       <div style={{ flex: 1, overflow: 'auto', scrollbarWidth: 'thin', scrollbarColor: '#1f2937 transparent' }}>
-        <table style={{ width: '100%', minWidth: '620px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
           <thead>
             <tr style={{ background: '#1e293b' }}>
               <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>日期</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>主叫號碼</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>被叫號碼</th>
+              <th style={{ width: '80px', padding: '12px 12px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>結果</th>
               <th style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>通話時長</th>
               <th style={{ width: '60px', padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontWeight: 600, fontSize: '12px', borderBottom: '2px solid #2d3a4a', background: '#1e293b', position: 'sticky', top: 0, zIndex: 2 }}>詳情</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
+              <tr><td colSpan="6" style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>載入中...</td></tr>
             ) : !extension ? (
-              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>請選擇分機號以查詢通話記錄</td></tr>
+              <tr><td colSpan="6" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>請選擇分機號以查詢通話記錄</td></tr>
             ) : logs.length === 0 ? (
-              <tr><td colSpan="5" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
+              <tr><td colSpan="6" style={{ padding: '60px', textAlign: 'center', color: '#6b7280' }}>暫無數據</td></tr>
             ) : logs.map(row => (
               <React.Fragment key={row.linkedId}>
                 <tr style={{ borderBottom: '1px solid #1f2937' }}>
@@ -1020,6 +1065,7 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
                     {row.cidName ? <span>{row.cidName}<br/><span style={{ fontSize: '11px', color: '#9ca3af' }}>{row.cidNumber}</span></span> : (row.cidNumber || <span style={{ color: '#6b7280' }}>—</span>)}
                   </td>
                   <td style={{ padding: '12px 16px', color: '#e5e7eb', fontFamily: 'monospace' }}>{row.extension || '—'}</td>
+                  <td style={{ padding: '12px 12px', textAlign: 'center' }}>{callResultBadge(row.result)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center', color: '#e5e7eb', fontFamily: 'monospace' }}>{formatDuration(row.durationSeconds)}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <button onClick={() => onToggleExpand(expandedCall === row.linkedId ? null : row.linkedId)}
@@ -1029,10 +1075,14 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
                   </td>
                 </tr>
                 {expandedCall === row.linkedId && (
-                  <tr><td colSpan="5" style={{ padding: 0, background: '#0f172a' }}>
+                  <tr><td colSpan="6" style={{ padding: 0, background: '#0f172a' }}>
                     <div style={{ padding: '12px 24px', borderBottom: '1px solid #1f2937', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px 24px', fontSize: '12px', color: '#9ca3af' }}>
                       <span>開始：<span style={{ color: '#d1d5db' }}>{formatTime(row.eventTime)}</span></span>
+                      <span>接聽：<span style={{ color: '#d1d5db' }}>{formatTime(row.answerTime)}</span></span>
                       <span>結束：<span style={{ color: '#d1d5db' }}>{formatTime(row.endTime)}</span></span>
+                      <span>響鈴時長：<span style={{ color: '#d1d5db' }}>{formatDuration(row.ringSeconds)}</span></span>
+                      <span>通話時長：<span style={{ color: '#d1d5db' }}>{formatDuration(row.durationSeconds)}</span></span>
+                      <span>結束原因：<span style={{ color: '#d1d5db' }}>{row.dialStatus || (row.hangupCause != null ? `cause ${row.hangupCause}` : '—')}</span></span>
                       <span>事件數：<span style={{ color: '#d1d5db' }}>{row.eventCount}</span></span>
                       <span>Linked ID：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.linkedId}</span></span>
                       <span>通道：<span style={{ color: '#d1d5db', fontFamily: 'monospace', fontSize: '11px' }}>{row.channelName}</span></span>
@@ -1047,9 +1097,9 @@ function CallLogTable({ logs, total, search, dateFrom, dateTo, page, pageSize, o
       <div style={{ flexShrink: 0, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #1f2937', background: '#111827' }}>
         <span style={{ color: '#9ca3af', fontSize: '12px' }}>共 {total} 筆記錄</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <select value={pageSize} onChange={e => onPageSizeChange(e.target.value === '全部' ? '全部' : Number(e.target.value))}
+          <select value={pageSize} onChange={e => onPageSizeChange(Number(e.target.value))}
             style={{ height: '34px', padding: '0 12px', borderRadius: '6px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', fontSize: '12px', outline: 'none', cursor: 'pointer' }}>
-            {[10, 20, 50, '全部'].map(o => <option key={o} value={o}>{o === '全部' ? o : `${o} 條/頁`}</option>)}
+            {[10, 20, 50, 100].map(o => <option key={o} value={o}>{`${o} 條/頁`}</option>)}
           </select>
           <button disabled={safePage <= 1} onClick={() => onPageChange(p => p - 1)} style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: safePage <= 1 ? '#4b5563' : '#9ca3af', cursor: safePage <= 1 ? 'default' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
           <span style={{ width: '34px', height: '34px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#1e3a5f', color: '#60a5fa', fontWeight: 600, fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{safePage}</span>
