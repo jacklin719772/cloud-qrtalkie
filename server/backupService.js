@@ -148,6 +148,39 @@ async function tarPaths(targetFile, relativePaths) {
   return true;
 }
 
+async function collectEnvFiles(root, maxDepth = 5) {
+  const results = [];
+  async function walk(dir, depth) {
+    if (depth > maxDepth) return;
+    let entries = [];
+    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (["node_modules", "vendor", ".git", "dist", "build"].includes(entry.name)) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full, depth + 1);
+      } else if (entry.isFile() && (entry.name === ".env" || entry.name.startsWith(".env.") || entry.name.endsWith(".env"))) {
+        results.push(path.relative("/", full).replace(/\\/g, "/"));
+      }
+    }
+  }
+  await walk(root, 0);
+  return results;
+}
+
+async function collectAiDockerConfig() {
+  const dir = "/root/ava-ai-agent";
+  let entries = [];
+  try { entries = await readdir(dir); } catch { return []; }
+  const composeFiles = entries
+    .filter((name) => /^docker-compose.*\.ya?ml$/i.test(name))
+    .map((name) => `root/ava-ai-agent/${name}`);
+  const envFiles = entries
+    .filter((name) => name.startsWith(".env"))
+    .map((name) => `root/ava-ai-agent/${name}`);
+  return [...composeFiles, "root/ava-ai-agent/config", "root/ava-ai-agent/Dockerfile", ...envFiles];
+}
+
 async function collectFiles(dir, base = dir, result = []) {
   let entries = [];
   try {
@@ -224,6 +257,22 @@ async function runBackupJob(record) {
       "opt/saas/package.json",
       "opt/saas/package-lock.json",
     ]);
+
+    // 所有環境文件：/opt、/etc 下的 .env/*.env，以及 /etc/default、profile 等
+    const envFiles = [...new Set([
+      ...(await collectEnvFiles("/opt", 5)),
+      ...(await collectEnvFiles("/etc", 3)),
+      "etc/default",
+      "etc/environment",
+      "etc/profile",
+      "etc/profile.d",
+      "etc/bash.bashrc",
+    ])];
+    await tarPaths(path.join(configsDir, "env-files.tar.gz"), envFiles);
+
+    // AI Docker：compose YAML、config/*.yaml、.env*、Dockerfile
+    const aiConfigPaths = await collectAiDockerConfig();
+    await tarPaths(path.join(configsDir, "ai-docker-config.tar.gz"), aiConfigPaths);
 
     // Redis 注册缓存（能通过 redis-cli 导出则导出，否则复制现有 RDB）
     const redisDump = path.join(configsDir, "redis-dump.rdb");
