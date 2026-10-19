@@ -253,7 +253,7 @@ export default function TenantSubAdmins() {
             <div style={{ flex: 1, overflow: 'auto', padding: '18px 22px', scrollbarWidth: 'thin', scrollbarColor: '#374151 transparent' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#d1d5db', fontSize: '12px' }}>
-                  登入信箱
+                  登入信箱 <span style={{ color: '#ef4444' }}>*</span>
                   <input autoComplete="off" type="email" value={form.email} disabled={Boolean(editing)} onChange={(e) => setForm((c) => ({ ...c, email: e.target.value }))}
                     style={{ height: '38px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: editing ? '#0f172a' : '#1a2332', color: '#e5e7eb', outline: 'none' }} />
                 </label>
@@ -273,7 +273,7 @@ export default function TenantSubAdmins() {
                     style={{ height: '38px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#d1d5db', fontSize: '12px' }}>
-                  {editing ? '重置密碼（留空不修改）' : '登入密碼'}
+                  {editing ? '重置密碼（留空不修改）' : <>登入密碼 <span style={{ color: '#ef4444' }}>*</span></>}
                   <input autoComplete="new-password" type="password" value={form.password} onChange={(e) => setForm((c) => ({ ...c, password: e.target.value }))}
                     style={{ height: '38px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: '#1a2332', color: '#e5e7eb', outline: 'none' }} />
                 </label>
