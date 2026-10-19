@@ -31,8 +31,6 @@ const emptyFilters = {
   tenantId: '',
   paymentStatus: 'all',
   invoiceStatus: 'all',
-  dateFrom: '',
-  dateTo: '',
 };
 
 function formatMoney(value, currency = '') {
@@ -134,12 +132,9 @@ export default function FinanceManagement() {
         pageSize: String(pageSize),
         paymentStatus: filters.paymentStatus,
         invoiceStatus: filters.invoiceStatus,
-        tzOffsetMinutes: String(-new Date().getTimezoneOffset()),
       });
       if (appliedSearch) params.set('search', appliedSearch);
       if (filters.tenantId) params.set('tenantId', String(filters.tenantId));
-      if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
-      if (filters.dateTo) params.set('dateTo', filters.dateTo);
       const res = await apiClient.get(`/platform/finance/orders?${params.toString()}`);
       if (requestId !== requestIdRef.current) return;
       const data = res?.data || {};
@@ -155,7 +150,7 @@ export default function FinanceManagement() {
         setRefreshing(false);
       }
     }
-  }, [page, pageSize, filters.paymentStatus, filters.invoiceStatus, filters.tenantId, filters.dateFrom, filters.dateTo, appliedSearch, showMessage]);
+  }, [page, pageSize, filters.paymentStatus, filters.invoiceStatus, filters.tenantId, appliedSearch, showMessage]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -413,9 +408,6 @@ export default function FinanceManagement() {
           <option value="invoiced">已開票</option>
           <option value="uninvoiced">未開票</option>
         </select>
-        <input type="date" value={filters.dateFrom} onChange={(e) => { setFilters((current) => ({ ...current, dateFrom: e.target.value })); setPage(1); }} style={{ ...inputStyle, width: '150px' }} />
-        <span style={{ color: '#6b7280', fontSize: '12px' }}>至</span>
-        <input type="date" value={filters.dateTo} onChange={(e) => { setFilters((current) => ({ ...current, dateTo: e.target.value })); setPage(1); }} style={{ ...inputStyle, width: '150px' }} />
         <button type="button" className="fin-btn" onClick={() => loadOrders({ silent: true })} disabled={refreshing} style={{ marginLeft: 'auto', height: '40px' }}>
           <RefreshCw size={14} /> {refreshing ? '刷新中...' : '刷新'}
         </button>
