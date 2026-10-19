@@ -44,6 +44,12 @@ import {
   getTenantSubAdminAccountIds,
   TenantSubAdminError,
 } from "./tenantSubAdminService.js";
+import {
+  ensureFinanceSchema,
+  saveFinanceFile,
+  listReceivingAccounts,
+  FinanceError,
+} from "./financeManagementService.js";
 import { FlexisipTombstoneError, releaseAccountTombstone } from "./flexisipTombstoneClient.js";
 
 function bigIntSafe(obj) { return JSON.parse(JSON.stringify(obj, (_, v) => typeof v === "bigint" ? Number(v) : v)); }
@@ -19336,6 +19342,406 @@ function readCertificateExpiry(filePath) {
   }
 }
 
+// ── 平臺財務管理 ──
+function requirePlatformAdmin(request, response, next) {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以操作財務管理。" });
+  }
+  next();
+}
+
+function financeDateOnly(value) {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const pad = (part) => String(part).padStart(2, "0");
+    return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+  }
+  return String(value).slice(0, 10);
+}
+
+function mapFinancePayment(row) {
+  return {
+    id: Number(row.id),
+    orderId: Number(row.order_id),
+    tenantId: Number(row.tenant_id),
+    paymentDate: financeDateOnly(row.payment_date),
+    receivingAccountId: row.receiving_account_id == null ? null : Number(row.receiving_account_id),
+    receivingAccountName: row.receiving_account_name || "",
+    receivingBankName: row.receiving_bank_name || "",
+    receivingAccountNo: row.receiving_account_no || "",
+    amount: Number(row.amount || 0),
+    currency: row.currency || "",
+    voucherNo: row.voucher_no || "",
+    voucherFile: row.voucher_file || "",
+    invoiced: Number(row.invoiced) === 1,
+    invoiceNo: row.invoice_no || "",
+    invoiceCode: row.invoice_code || "",
+    invoiceDate: financeDateOnly(row.invoice_date),
+    invoiceAmount: row.invoice_amount == null ? null : Number(row.invoice_amount),
+    invoiceFile: row.invoice_file || "",
+    notes: row.notes || "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+app.get("/api/platform/finance/receiving-accounts", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  try {
+    const rows = await listReceivingAccounts();
+    return response.json({ accounts: rows });
+  } catch (error) {
+    console.error("Failed to list finance receiving accounts:", error);
+    return response.status(500).json({ message: "無法讀取收款帳號。" });
+  }
+});
+
+app.get("/api/platform/finance/orders", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const page = Math.max(1, Number.parseInt(request.query?.page, 10) || 1);
+  const pageSize = Math.min(200, Math.max(1, Number.parseInt(request.query?.pageSize, 10) || 20));
+  const search = sanitizeString(request.query?.search, 120);
+  const tenantId = Number.parseInt(request.query?.tenantId, 10) || 0;
+  const paymentStatus = String(request.query?.paymentStatus || "all").toLowerCase();
+  const invoiceStatus = String(request.query?.invoiceStatus || "all").toLowerCase();
+  const dateFrom = String(request.query?.dateFrom || "").trim();
+  const dateTo = String(request.query?.dateTo || "").trim();
+  if (!isValidDateOnly(dateFrom) || !isValidDateOnly(dateTo)) {
+    return response.status(400).json({ message: "日期格式必須為 YYYY-MM-DD。" });
+  }
+  const tzParsed = Number(request.query?.tzOffsetMinutes);
+  const tzOffsetMinutes = Number.isFinite(tzParsed) ? Math.min(840, Math.max(-840, tzParsed)) : 0;
+  const toFinanceUtcBoundary = (dateOnly, endOfDay) => {
+    const [year, month, day] = dateOnly.split("-").map(Number);
+    const localMs = Date.UTC(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+    const date = new Date(localMs - tzOffsetMinutes * 60000);
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+  };
+
+  const innerWhere = [];
+  const innerParams = [];
+  if (tenantId > 0) {
+    innerWhere.push("o.tenant_id = ?");
+    innerParams.push(tenantId);
+  }
+  if (search) {
+    innerWhere.push("(o.order_no LIKE ? OR t.name LIKE ?)");
+    innerParams.push(`%${search}%`, `%${search}%`);
+  }
+  if (dateFrom) {
+    innerWhere.push("o.created_at >= ?");
+    innerParams.push(toFinanceUtcBoundary(dateFrom, false));
+  }
+  if (dateTo) {
+    innerWhere.push("o.created_at <= ?");
+    innerParams.push(toFinanceUtcBoundary(dateTo, true));
+  }
+
+  const innerSql = `
+    SELECT o.id, o.order_no, o.tenant_id, t.name AS tenant_name, o.order_type, o.order_status,
+           o.currency, o.subtotal_amount, o.discount_amount, o.payable_amount,
+           COALESCE(o.receivable_amount, o.payable_amount) AS receivable_amount,
+           o.created_at, o.effective_at, o.expires_at,
+           COALESCE(p.received_amount, 0) AS received_amount,
+           COALESCE(p.invoiced_amount, 0) AS invoiced_amount,
+           COALESCE(p.payment_count, 0) AS payment_count,
+           COALESCE(o.receivable_amount, o.payable_amount) - COALESCE(p.received_amount, 0) AS outstanding_amount
+      FROM billing_orders o
+      LEFT JOIN tenants t ON t.id = o.tenant_id
+      LEFT JOIN (
+        SELECT order_id,
+               SUM(amount) AS received_amount,
+               SUM(CASE WHEN invoiced = 1 THEN COALESCE(invoice_amount, 0) ELSE 0 END) AS invoiced_amount,
+               COUNT(*) AS payment_count
+          FROM order_payment_logs
+         GROUP BY order_id
+      ) p ON p.order_id = o.id
+      ${innerWhere.length ? `WHERE ${innerWhere.join(" AND ")}` : ""}
+  `;
+
+  const outerWhere = [];
+  if (paymentStatus === "unpaid") outerWhere.push("x.received_amount <= 0");
+  else if (paymentStatus === "partial") outerWhere.push("x.received_amount > 0 AND x.received_amount < x.receivable_amount");
+  else if (paymentStatus === "paid") outerWhere.push("x.received_amount > 0 AND x.received_amount >= x.receivable_amount");
+  else if (paymentStatus === "overpaid") outerWhere.push("x.received_amount > x.receivable_amount");
+  if (invoiceStatus === "invoiced") outerWhere.push("x.invoiced_amount > 0");
+  else if (invoiceStatus === "uninvoiced") outerWhere.push("x.invoiced_amount <= 0");
+  const outerSql = outerWhere.length ? `WHERE ${outerWhere.join(" AND ")}` : "";
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const countRows = await connection.query(
+      `SELECT COUNT(*) AS total FROM (${innerSql}) x ${outerSql}`,
+      innerParams,
+    );
+    const total = Number(countRows?.[0]?.total || 0);
+    const statsRows = await connection.query(
+      `SELECT COUNT(*) AS orders,
+              COALESCE(SUM(x.payable_amount), 0) AS order_amount,
+              COALESCE(SUM(x.receivable_amount), 0) AS receivable_amount,
+              COALESCE(SUM(x.received_amount), 0) AS received_amount,
+              COALESCE(SUM(x.outstanding_amount), 0) AS outstanding_amount,
+              COALESCE(SUM(x.invoiced_amount), 0) AS invoiced_amount
+         FROM (${innerSql}) x ${outerSql}`,
+      innerParams,
+    );
+    const rows = await connection.query(
+      `SELECT * FROM (${innerSql}) x ${outerSql}
+        ORDER BY x.created_at DESC, x.id DESC
+        LIMIT ? OFFSET ?`,
+      [...innerParams, pageSize, (page - 1) * pageSize],
+    );
+    const stats = statsRows?.[0] || {};
+    return response.json({
+      success: true,
+      data: {
+        orders: rows.map((row) => ({
+          id: Number(row.id),
+          orderNo: row.order_no || "",
+          tenantId: Number(row.tenant_id),
+          tenantName: row.tenant_name || "",
+          orderType: row.order_type || "",
+          orderStatus: row.order_status || "",
+          currency: row.currency || "",
+          subtotalAmount: Number(row.subtotal_amount || 0),
+          discountAmount: Number(row.discount_amount || 0),
+          orderAmount: Number(row.payable_amount || 0),
+          receivableAmount: Number(row.receivable_amount || 0),
+          receivedAmount: Number(row.received_amount || 0),
+          outstandingAmount: Number(row.outstanding_amount || 0),
+          invoicedAmount: Number(row.invoiced_amount || 0),
+          paymentCount: Number(row.payment_count || 0),
+          createdAt: row.created_at,
+          effectiveAt: row.effective_at,
+          expiresAt: row.expires_at,
+        })),
+        total,
+        page,
+        pageSize,
+        stats: {
+          orders: Number(stats.orders || 0),
+          orderAmount: Number(stats.order_amount || 0),
+          receivableAmount: Number(stats.receivable_amount || 0),
+          receivedAmount: Number(stats.received_amount || 0),
+          outstandingAmount: Number(stats.outstanding_amount || 0),
+          invoicedAmount: Number(stats.invoiced_amount || 0),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to query finance orders:", error);
+    return response.status(500).json({ message: "讀取財務訂單失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.put("/api/platform/finance/orders/:id/receivable", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const orderId = Number(request.params.id);
+  const amount = Number(request.body?.receivableAmount);
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "無效的訂單編號。" });
+  if (!Number.isFinite(amount) || amount < 0) return response.status(400).json({ message: "請輸入有效的應收金額。" });
+  try {
+    const result = await pool.query("UPDATE billing_orders SET receivable_amount = ? WHERE id = ?", [amount.toFixed(2), orderId]);
+    if (!result?.affectedRows) return response.status(404).json({ message: "訂單不存在。" });
+    return response.json({ success: true, receivableAmount: Number(amount.toFixed(2)) });
+  } catch (error) {
+    console.error("Failed to update receivable amount:", error);
+    return response.status(500).json({ message: "更新應收金額失敗。" });
+  }
+});
+
+async function loadFinanceOrder(orderId) {
+  const [order] = await pool.query(
+    `SELECT o.id, o.order_no, o.tenant_id, t.name AS tenant_name, o.currency,
+            o.payable_amount, COALESCE(o.receivable_amount, o.payable_amount) AS receivable_amount
+       FROM billing_orders o
+       LEFT JOIN tenants t ON t.id = o.tenant_id
+      WHERE o.id = ?
+      LIMIT 1`,
+    [orderId],
+  );
+  return order || null;
+}
+
+app.get("/api/platform/finance/orders/:id/payments", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const orderId = Number(request.params.id);
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "無效的訂單編號。" });
+  try {
+    const order = await loadFinanceOrder(orderId);
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const rows = await pool.query(
+      "SELECT * FROM order_payment_logs WHERE order_id = ? ORDER BY payment_date ASC, id ASC",
+      [orderId],
+    );
+    const payments = rows.map(mapFinancePayment);
+    const receivedAmount = payments.reduce((sum, item) => sum + item.amount, 0);
+    const invoicedAmount = payments.reduce((sum, item) => sum + (item.invoiced ? Number(item.invoiceAmount || 0) : 0), 0);
+    return response.json({
+      success: true,
+      data: {
+        order: {
+          id: Number(order.id),
+          orderNo: order.order_no || "",
+          tenantId: Number(order.tenant_id),
+          tenantName: order.tenant_name || "",
+          currency: order.currency || "",
+          orderAmount: Number(order.payable_amount || 0),
+          receivableAmount: Number(order.receivable_amount || 0),
+        },
+        payments,
+        stats: {
+          receivedAmount,
+          invoicedAmount,
+          outstandingAmount: Number(order.receivable_amount || 0) - receivedAmount,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to query finance payments:", error);
+    return response.status(500).json({ message: "讀取收款記錄失敗。" });
+  }
+});
+
+async function resolveFinancePaymentPayload(request, order) {
+  const payload = request.body || {};
+  const paymentDate = String(payload.paymentDate || "").trim();
+  if (!isValidDateOnly(paymentDate) || !paymentDate) {
+    throw new FinanceError("請選擇有效的收款日期。", { code: "INVALID_PAYMENT_DATE" });
+  }
+  const amount = Number(payload.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new FinanceError("請輸入有效的收款金額。", { code: "INVALID_PAYMENT_AMOUNT" });
+  }
+
+  let account = null;
+  const receivingAccountId = Number(payload.receivingAccountId) || null;
+  if (receivingAccountId) {
+    const [row] = await pool.query(
+      `SELECT id, display_name, payee_name, bank_name, bank_account_no
+         FROM billing_offline_payment_accounts WHERE id = ? LIMIT 1`,
+      [receivingAccountId],
+    );
+    account = row || null;
+  }
+
+  const invoiced = payload.invoiced === true || payload.invoiced === 1 || payload.invoiced === "1";
+  const invoiceDate = String(payload.invoiceDate || "").trim();
+  if (invoiceDate && !isValidDateOnly(invoiceDate)) {
+    throw new FinanceError("發票開具日期格式不正確。", { code: "INVALID_INVOICE_DATE" });
+  }
+  const invoiceAmountRaw = payload.invoiceAmount;
+  const invoiceAmount = invoiceAmountRaw === "" || invoiceAmountRaw == null ? null : Number(invoiceAmountRaw);
+  if (invoiceAmount != null && (!Number.isFinite(invoiceAmount) || invoiceAmount < 0)) {
+    throw new FinanceError("發票金額不正確。", { code: "INVALID_INVOICE_AMOUNT" });
+  }
+
+  const voucherFile = payload.voucherDataUrl
+    ? await saveFinanceFile(payload.voucherDataUrl, { orderId: order.id, prefix: "voucher" })
+    : "";
+  const invoiceFile = payload.invoiceDataUrl
+    ? await saveFinanceFile(payload.invoiceDataUrl, { orderId: order.id, prefix: "invoice" })
+    : "";
+
+  return {
+    payment_date: paymentDate,
+    receiving_account_id: receivingAccountId,
+    receiving_account_name: sanitizeString(payload.receivingAccountName, 255) || account?.display_name || account?.payee_name || "",
+    receiving_bank_name: sanitizeString(payload.receivingBankName, 255) || account?.bank_name || "",
+    receiving_account_no: sanitizeString(payload.receivingAccountNo, 120) || account?.bank_account_no || "",
+    amount: amount.toFixed(2),
+    currency: sanitizeString(payload.currency, 8) || order.currency || "",
+    voucher_no: sanitizeString(payload.voucherNo, 120),
+    voucher_file: voucherFile,
+    invoiced: invoiced ? 1 : 0,
+    invoice_no: sanitizeString(payload.invoiceNo, 120),
+    invoice_code: sanitizeString(payload.invoiceCode, 120),
+    invoice_date: invoiceDate || null,
+    invoice_amount: invoiceAmount == null ? null : invoiceAmount.toFixed(2),
+    invoice_file: invoiceFile,
+    notes: sanitizeString(payload.notes, 2000) || null,
+  };
+}
+
+app.post("/api/platform/finance/orders/:id/payments", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const orderId = Number(request.params.id);
+  if (!Number.isInteger(orderId) || orderId <= 0) return response.status(400).json({ message: "無效的訂單編號。" });
+  try {
+    const order = await loadFinanceOrder(orderId);
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const values = await resolveFinancePaymentPayload(request, order);
+    const result = await pool.query(
+      `INSERT INTO order_payment_logs
+        (order_id, tenant_id, payment_date, receiving_account_id, receiving_account_name,
+         receiving_bank_name, receiving_account_no, amount, currency, voucher_no, voucher_file,
+         invoiced, invoice_no, invoice_code, invoice_date, invoice_amount, invoice_file, notes,
+         created_by_admin_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        orderId, order.tenant_id, values.payment_date, values.receiving_account_id,
+        values.receiving_account_name, values.receiving_bank_name, values.receiving_account_no,
+        values.amount, values.currency, values.voucher_no, values.voucher_file,
+        values.invoiced, values.invoice_no, values.invoice_code, values.invoice_date,
+        values.invoice_amount, values.invoice_file, values.notes, request.admin.id,
+      ],
+    );
+    const [row] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ?", [Number(result.insertId)]);
+    return response.status(201).json({ success: true, payment: mapFinancePayment(row) });
+  } catch (error) {
+    const status = error instanceof FinanceError ? error.statusCode : 500;
+    if (!(error instanceof FinanceError)) console.error("Failed to create finance payment:", error);
+    return response.status(status).json({ message: error?.message || "新增收款記錄失敗。" });
+  }
+});
+
+app.put("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const paymentId = Number(request.params.id);
+  if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
+  try {
+    const [existing] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ? LIMIT 1", [paymentId]);
+    if (!existing) return response.status(404).json({ message: "收款記錄不存在。" });
+    const order = await loadFinanceOrder(Number(existing.order_id));
+    if (!order) return response.status(404).json({ message: "訂單不存在。" });
+    const values = await resolveFinancePaymentPayload(request, order);
+    if (!values.voucher_file) values.voucher_file = existing.voucher_file || "";
+    if (!values.invoice_file) values.invoice_file = existing.invoice_file || "";
+    await pool.query(
+      `UPDATE order_payment_logs SET
+         payment_date = ?, receiving_account_id = ?, receiving_account_name = ?,
+         receiving_bank_name = ?, receiving_account_no = ?, amount = ?, currency = ?,
+         voucher_no = ?, voucher_file = ?, invoiced = ?, invoice_no = ?, invoice_code = ?,
+         invoice_date = ?, invoice_amount = ?, invoice_file = ?, notes = ?
+       WHERE id = ?`,
+      [
+        values.payment_date, values.receiving_account_id, values.receiving_account_name,
+        values.receiving_bank_name, values.receiving_account_no, values.amount, values.currency,
+        values.voucher_no, values.voucher_file, values.invoiced, values.invoice_no,
+        values.invoice_code, values.invoice_date, values.invoice_amount, values.invoice_file,
+        values.notes, paymentId,
+      ],
+    );
+    const [row] = await pool.query("SELECT * FROM order_payment_logs WHERE id = ?", [paymentId]);
+    return response.json({ success: true, payment: mapFinancePayment(row) });
+  } catch (error) {
+    const status = error instanceof FinanceError ? error.statusCode : 500;
+    if (!(error instanceof FinanceError)) console.error("Failed to update finance payment:", error);
+    return response.status(status).json({ message: error?.message || "更新收款記錄失敗。" });
+  }
+});
+
+app.delete("/api/platform/finance/payments/:id", requireAdmin, requirePlatformAdmin, async (request, response) => {
+  const paymentId = Number(request.params.id);
+  if (!Number.isInteger(paymentId) || paymentId <= 0) return response.status(400).json({ message: "無效的收款記錄編號。" });
+  try {
+    const result = await pool.query("DELETE FROM order_payment_logs WHERE id = ?", [paymentId]);
+    if (!result?.affectedRows) return response.status(404).json({ message: "收款記錄不存在。" });
+    return response.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete finance payment:", error);
+    return response.status(500).json({ message: "刪除收款記錄失敗。" });
+  }
+});
+
 app.get("/api/platform/health", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
     return response.status(403).json({ message: "只有平臺管理員可以檢視平臺健康狀態。" });
@@ -25967,6 +26373,11 @@ try {
   await ensureTenantSubAdminSchema();
 } catch (error) {
   console.error("Failed to ensure tenant sub-admin schema:", error?.message || error);
+}
+try {
+  await ensureFinanceSchema();
+} catch (error) {
+  console.error("Failed to ensure finance schema:", error?.message || error);
 }
 
 const httpServer = app.listen(port, () => {

@@ -25,6 +25,7 @@ import {
   Flag,
   Rocket,
   Handshake,
+  Wallet,
 } from 'lucide-react';
 
 const navItems = [
@@ -212,6 +213,17 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
             >
               <Monitor className="nav-icon" size={20} aria-hidden="true" />
               {!isCollapsed && <span>設備管理</span>}
+            </button>
+
+            <button
+              className={`nav-item ${currentView === 'finance-management' ? 'active' : ''}`}
+              type="button"
+              title={isCollapsed ? '財務管理' : undefined}
+              aria-label="財務管理"
+              onClick={() => onViewChange('finance-management')}
+            >
+              <Wallet className="nav-icon" size={20} aria-hidden="true" />
+              {!isCollapsed && <span>財務管理</span>}
             </button>
 
             <button

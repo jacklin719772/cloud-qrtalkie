@@ -28,6 +28,7 @@ import apiClient from './apiClient';
 import SipAccountRegistration from './SipAccountRegistration';
 import WebAccountRegistration from './WebAccountRegistration';
 import DeviceManagement from './DeviceManagement';
+import FinanceManagement from './FinanceManagement';
 import PlanManagement from './PlanManagement';
 import TenantAccountManagement from './TenantAccountManagement';
 import ContactBooks from './ContactBooks';
@@ -65,6 +66,7 @@ const viewTitles = {
   'trial-management': '試用帳號管理',
   'tenant-coupon-management': '優惠碼管理',
   'device-management': '裝置管理',
+  'finance-management': '財務管理',
   'offline-account': '收款帳戶',
   plans: '套餐資料',
   'plans-add': '新增套餐',
@@ -950,7 +952,7 @@ export default function ConsoleLayout({ onLogout }) {
         userType={userType}
       />
 
-      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'trial-ecard-generate', 'tenant-account-ecard', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users', 'backup-management'].includes(currentView) ? 'domain-home-mode' : ''}`}>
+      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'trial-ecard-generate', 'tenant-account-ecard', 'device-management', 'finance-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users', 'backup-management'].includes(currentView) ? 'domain-home-mode' : ''}`}>
         <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add', 'trial-ecard-generate', 'tenant-account-ecard'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}), ...(['app-releases', 'platform-admin-management'].includes(currentView) ? { marginBottom: '18px' } : {}) }}>
           <h1 id="page-title">{
             currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平臺概覽' :
@@ -1130,6 +1132,7 @@ export default function ConsoleLayout({ onLogout }) {
           {currentView === 'device-management' && (
             <DeviceManagement ref={deviceManagementRef} onModeChange={setDeviceManagementMode} />
           )}
+          {currentView === 'finance-management' && <FinanceManagement />}
           {currentView === 'tenant-coupon-management' && (
             <TenantCouponManagement ref={tenantCouponManagementRef} onModeChange={setTenantCouponMode} />
           )}
