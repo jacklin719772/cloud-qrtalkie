@@ -587,6 +587,26 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
     finally { setDetailLoading(false); }
   };
 
+  const detailDevices = detailData
+    ? (Array.isArray(detailData.devices)
+        ? detailData.devices
+        : (detailData.parsedContacts || []).map((contact) => ({
+            uuid: contact.deviceUuid || contact.uniqueId,
+            displayName: contact.displayName || '',
+            userAgent: contact.userAgent || '',
+            lastRegisterAt: contact.lastRegisterAt || null,
+            expiresAt: contact.expiresAt || null,
+            ttlSeconds: contact.ttlSeconds ?? null,
+            valid: Boolean(contact.valid),
+            transport: contact.transport || '',
+            contactUri: contact.contactUri || '',
+            alias: Boolean(contact.alias),
+            accept: contact.accept || [],
+            ip: contact.ip || '',
+            geo: contact.geo || null,
+          })))
+    : [];
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minHeight: 0, overflow: 'hidden' }}>
       {error && (
@@ -751,8 +771,8 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
                         { label: '註冊狀態', value: detailData.status === 'online' ? '🟢 線上' : detailData.status === 'offline' ? '🔴 離線' : '⚪ 未知' },
                         { label: 'Key 型別', value: detailData.keyType },
                         { label: 'TTL (秒)', value: String(detailData.ttl) },
-                        { label: '設備總數', value: String(detailData.totalContacts) },
-                        { label: '有效設備數', value: String(detailData.validContacts) },
+                        { label: '設備總數', value: String(detailDevices.length) },
+                        { label: '有效設備數', value: String(detailDevices.filter((device) => device.valid === true).length) },
                         { label: '最後註冊時間', value: detailData.lastRegisterAt ? new Date(detailData.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                         { label: '註冊過期時間', value: detailData.expiresAt ? new Date(detailData.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
                       ].map((item, i) => (
@@ -774,41 +794,50 @@ function SipAccountTable({ data, stats, total, isLoading, search, statusFilter, 
                   )}
 
                   <div>
-                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>註冊設備列表 ({detailData.parsedContacts?.length || 0})</h3>
-                    {!detailData.parsedContacts || detailData.parsedContacts.length === 0 ? (
+                    <h3 style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#e5e7eb', fontWeight: 600, borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>註冊設備列表 ({detailDevices.length})</h3>
+                    {detailDevices.length === 0 ? (
                       <p style={{ color: '#6b7280', fontSize: '13px', padding: '20px', textAlign: 'center' }}>暫無註冊設備</p>
                     ) : (
-                      detailData.parsedContacts.map((contact, i) => (
-                        <div key={i} style={{ marginBottom: '16px', padding: '16px', background: '#1a2332', border: `1px solid ${contact.valid ? '#065f46' : '#374151'}`, borderRadius: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: contact.valid ? '#065f46' : '#374151', color: contact.valid ? '#6ee7b7' : '#9ca3af', fontSize: '11px', fontWeight: 600 }}>設備 #{i + 1}</span>
-                            <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1f2937', color: '#9ca3af', fontSize: '11px' }}>{contact.valid ? '有效' : '已過期'}</span>
-                            {contact.alias && <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1e3a5f', color: '#60a5fa', fontSize: '11px' }}>別名</span>}
+                      detailDevices.map((device, i) => {
+                        const validState = device.valid === true ? 'valid' : device.valid === false ? 'expired' : 'unknown';
+                        const stateStyle = validState === 'valid'
+                          ? { border: '#065f46', bg: '#065f46', color: '#6ee7b7', text: '有效' }
+                          : validState === 'expired'
+                            ? { border: '#374151', bg: '#374151', color: '#9ca3af', text: '已過期' }
+                            : { border: '#1e3a5f', bg: '#1e3a5f', color: '#60a5fa', text: '已註冊' };
+                        return (
+                          <div key={device.uuid || i} style={{ marginBottom: '16px', padding: '16px', background: '#1a2332', border: `1px solid ${stateStyle.border}`, borderRadius: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                              <span style={{ padding: '2px 10px', borderRadius: '999px', background: stateStyle.bg, color: stateStyle.color, fontSize: '11px', fontWeight: 600 }}>設備 #{i + 1}</span>
+                              <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1f2937', color: '#9ca3af', fontSize: '11px' }}>{stateStyle.text}</span>
+                              {device.alias && <span style={{ padding: '2px 10px', borderRadius: '999px', background: '#1e3a5f', color: '#60a5fa', fontSize: '11px' }}>別名</span>}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
+                              {[
+                                { label: '設備名稱', value: device.displayName, skip: !device.displayName },
+                                { label: '裝置 ID', value: device.uuid, full: true },
+                                { label: 'User-Agent', value: device.userAgent, full: true },
+                                { label: '最後註冊時間', value: formatShort(device.lastRegisterAt || device.updateTime) },
+                                { label: '過期時間', value: formatShort(device.expiresAt), skip: !device.expiresAt },
+                                { label: '剩餘 TTL (秒)', value: device.ttlSeconds == null ? null : String(device.ttlSeconds), skip: device.ttlSeconds == null },
+                                { label: '傳輸協議', value: device.transport, skip: !device.transport },
+                                { label: 'Contact URI', value: device.contactUri, full: true, skip: !device.contactUri },
+                                { label: '註冊 IP', value: device.ip, skip: !device.ip },
+                                { label: '國家/地區', value: device.geo ? [device.geo.country, device.geo.subdivision].filter(Boolean).join(', ') || '-' : null, skip: !device.geo },
+                                { label: '城市', value: device.geo?.city || null, skip: !device.geo?.city },
+                                { label: '經緯度', value: device.geo?.latitude != null && device.geo?.longitude != null ? `${device.geo.latitude.toFixed(4)}, ${device.geo.longitude.toFixed(4)}` : null, skip: !device.geo?.latitude },
+                                { label: '時區', value: device.geo?.timezone || null, skip: !device.geo?.timezone },
+                                { label: 'Accept', value: (device.accept || []).join(', ') || null, skip: !(device.accept || []).length },
+                              ].filter(item => !item.skip).map((item, j) => (
+                                <div key={j} style={{ ...(item.full ? { gridColumn: '1 / -1' } : {}), background: '#111827', borderRadius: '6px', padding: '8px 12px' }}>
+                                  <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
+                                  <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value || '-'}</div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px' }}>
-                            {[
-                              { label: '裝置 ID (脫敏)', value: contact.uniqueId },
-                              { label: 'Contact URI', value: contact.contactUri, full: true },
-                              { label: '傳輸協議', value: contact.transport },
-                              { label: 'User-Agent', value: contact.userAgent },
-                              { label: '最後註冊時間', value: contact.lastRegisterAt ? new Date(contact.lastRegisterAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
-                              { label: '過期時間', value: contact.expiresAt ? new Date(contact.expiresAt).toLocaleString('zh-CN', { hour12: false }) : '-' },
-                              { label: '剩餘 TTL (秒)', value: String(contact.ttlSeconds) },
-                              { label: '註冊 IP', value: contact.ip || '-', skip: !contact.ip },
-                              { label: '國家/地區', value: contact.geo ? [contact.geo.country, contact.geo.subdivision].filter(Boolean).join(', ') || '-' : null, skip: !contact.geo },
-                              { label: '城市', value: contact.geo?.city || null, skip: !contact.geo?.city },
-                              { label: '經緯度', value: contact.geo?.latitude != null && contact.geo?.longitude != null ? `${contact.geo.latitude.toFixed(4)}, ${contact.geo.longitude.toFixed(4)}` : null, skip: !contact.geo?.latitude },
-                              { label: '時區', value: contact.geo?.timezone || null, skip: !contact.geo?.timezone },
-                              { label: 'Accept', value: (contact.accept || []).join(', ') || '-' },
-                            ].filter(item => !item.skip).map((item, j) => (
-                              <div key={j} style={{ ...(item.full ? { gridColumn: '1 / -1' } : {}), background: '#111827', borderRadius: '6px', padding: '8px 12px' }}>
-                                <div style={{ color: '#6b7280', fontSize: '10px', marginBottom: '2px' }}>{item.label}</div>
-                                <div style={{ color: '#d1d5db', fontSize: '12px', wordBreak: 'break-all' }}>{item.value || '-'}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 

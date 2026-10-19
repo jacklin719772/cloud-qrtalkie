@@ -117,6 +117,10 @@ export function getAccount(id) {
   return request("GET", `/accounts/${encodeURIComponent(id)}`);
 }
 
+export function getAccountDevices(id) {
+  return request("GET", `/accounts/${encodeURIComponent(id)}/devices`);
+}
+
 export function searchAccountBySip(sip) {
   return request("GET", `/accounts/${encodeURIComponent(sip)}/search`);
 }

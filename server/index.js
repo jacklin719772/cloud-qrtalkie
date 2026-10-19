@@ -105,6 +105,7 @@ import {
   createAccount as flexisipCreateAccount,
   deleteAccount as flexisipDeleteAccount,
   getAccount as flexisipGetAccount,
+  getAccountDevices as flexisipGetAccountDevices,
   activateAccount as flexisipActivateAccount,
   deactivateAccount as flexisipDeactivateAccount,
   updateAccount as flexisipUpdateAccount,
@@ -21848,6 +21849,7 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
       profileConnection = await pool.getConnection();
       const [row] = await profileConnection.query(
         `SELECT s.id, s.username, s.sip_domain, s.display_name, s.email, s.phone_number, s.avatar_url,
+                s.flexisip_account_id,
                 s.status AS account_status, s.tenant_id AS legacy_tenant_id,
                 e.tenant_id AS entitlement_tenant_id,
                 COALESCE(et.name, t.name) AS tenant_name,
@@ -21883,6 +21885,7 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
           tenantId: tenantIdValue == null ? null : Number(tenantIdValue),
           tenantName: row.tenant_name || "",
           serviceExpiresAt: row.service_expires_at || "",
+          flexisipAccountId: row.flexisip_account_id == null ? null : Number(row.flexisip_account_id),
         };
       }
     } catch (profileError) {
@@ -21891,7 +21894,68 @@ app.get("/api/flexisip/accounts/registration-detail", requireAdmin, async (reque
       if (profileConnection) profileConnection.release();
     }
 
-    return response.json({ success: true, message: "帳號註冊詳情已取得", data: { ...detail, profile } });
+    // 設備列表以 Flexisip Account Manager 為準（AM 是設備顯示的官方口徑），
+    // 再用 Redis contact 補齊傳輸、過期時間、IP/位置等 AM 未返回的細節。
+    const normalizeDeviceUuid = (value) => String(value || "").replace(/[<>"']/g, "").trim().toLowerCase();
+    const contactByUuid = new Map();
+    for (const contact of detail.parsedContacts || []) {
+      const key = normalizeDeviceUuid(contact.deviceUuid);
+      if (key) contactByUuid.set(key, contact);
+    }
+
+    let devices = null;
+    let devicesSource = "redis";
+    if (profile?.flexisipAccountId) {
+      try {
+        const amDevices = await flexisipGetAccountDevices(profile.flexisipAccountId);
+        const list = amDevices && typeof amDevices === "object" ? Object.values(amDevices) : [];
+        devices = list
+          .filter((device) => device && typeof device === "object")
+          .map((device) => {
+            const uuid = String(device.uuid || "");
+            const contact = contactByUuid.get(normalizeDeviceUuid(uuid)) || null;
+            return {
+              uuid,
+              displayName: contact?.displayName || "",
+              userAgent: device.user_agent || contact?.userAgent || "",
+              updateTime: device.update_time || contact?.lastRegisterAt || null,
+              lastRegisterAt: contact?.lastRegisterAt || device.update_time || null,
+              expiresAt: contact?.expiresAt || null,
+              ttlSeconds: contact?.ttlSeconds ?? null,
+              valid: contact ? Boolean(contact.valid) : null,
+              transport: contact?.transport || "",
+              contactUri: contact?.contactUri || "",
+              alias: Boolean(contact?.alias),
+              accept: Array.isArray(contact?.accept) ? contact.accept : [],
+              ip: contact?.ip || "",
+              geo: contact?.geo || null,
+            };
+          });
+        devicesSource = "am";
+      } catch (amError) {
+        console.error("[registration-detail] AM devices read failed:", amError?.message || amError);
+      }
+    }
+    if (!Array.isArray(devices)) {
+      devices = (detail.parsedContacts || []).map((contact) => ({
+        uuid: normalizeDeviceUuid(contact.deviceUuid) || contact.uniqueId,
+        displayName: contact.displayName || "",
+        userAgent: contact.userAgent || "",
+        updateTime: contact.lastRegisterAt || null,
+        lastRegisterAt: contact.lastRegisterAt || null,
+        expiresAt: contact.expiresAt || null,
+        ttlSeconds: contact.ttlSeconds ?? null,
+        valid: Boolean(contact.valid),
+        transport: contact.transport || "",
+        contactUri: contact.contactUri || "",
+        alias: Boolean(contact.alias),
+        accept: contact.accept || [],
+        ip: contact.ip || "",
+        geo: contact.geo || null,
+      }));
+    }
+
+    return response.json({ success: true, message: "帳號註冊詳情已取得", data: { ...detail, profile, devices, devicesSource } });
   } catch (error) {
     if (error instanceof FlexisipRegistrationStatusError && error.code === "FLEXISIP_REGISTRAR_REDIS_UNAVAILABLE") {
       return response.status(503).json({

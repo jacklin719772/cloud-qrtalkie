@@ -80,16 +80,18 @@ function maskUniqueId(value) {
 }
 
 export function parseFlexisipContact(value, field, nowSeconds = Math.floor(Date.now() / 1000)) {
-  const raw = String(value || "");
-  const match = raw.match(/^<([^>]+)>(?:;(.*))?$/);
-  if (!match) {
+  const raw = String(value || "").trim();
+  // Flexisip 可能存成 `"顯示名稱" <sip:...>;參數`，需容許 URI 前的顯示名稱
+  const uriStart = raw.indexOf("<");
+  const uriEnd = raw.indexOf(">", uriStart + 1);
+  if (uriStart < 0 || uriEnd <= uriStart) {
     throw new FlexisipRegistrationStatusError("Invalid Flexisip contact format.", {
       code: "CONTACT_PARSE_FAILED",
     });
   }
-
-  const uriAndQuery = match[1] || "";
-  const headerParams = parsePairs(match[2] || "", ";");
+  const displayName = raw.slice(0, uriStart).trim().replace(/^"(.*)"$/, "$1").trim();
+  const uriAndQuery = raw.slice(uriStart + 1, uriEnd);
+  const headerParams = parsePairs(raw.slice(uriEnd + 1).replace(/^;/, ""), ";");
   const [uriPart, queryPart = ""] = uriAndQuery.split("?");
   const query = parseQuery(queryPart);
   const uriSegments = uriPart.split(";");
@@ -106,6 +108,7 @@ export function parseFlexisipContact(value, field, nowSeconds = Math.floor(Date.
 
   return {
     rawField: String(field || ""),
+    displayName,
     uniqueId: String(headerParams["+sip.instance"] || field || ""),
     contactUri,
     transport: String(uriParams.transport || "").toLowerCase(),
@@ -122,6 +125,7 @@ export function parseFlexisipContact(value, field, nowSeconds = Math.floor(Date.
 
 export function sanitizeContact(contact, _options = {}) {
   return {
+    displayName: contact.displayName || "",
     uniqueId: maskUniqueId(contact.uniqueId || contact.rawField),
     transport: contact.transport || "",
     userAgent: contact.userAgent || "",
@@ -426,6 +430,7 @@ export async function getAccountRegistrationDetail(username, domain, options = {
       const contactIp = extractIpFromContactUri(contact.contactUri);
       parsedContacts.push({
         ...sanitizeContact(contact, options),
+        deviceUuid: contact.uniqueId || "",
         updatedAtSeconds: contact.updatedAt,
         expiresSeconds: contact.expires,
         expiresAtSeconds: contact.expiresAt,
