@@ -175,8 +175,8 @@ function hostFromUrl(value) {
 const discoveredLime = discoverApacheSite("lime");
 const discoveredFts = discoverApacheSite("fts");
 const discoveredAccount = discoverApacheSite("account");
-// 僅本地回環位址，不指向任何外部環境
-const healthInternalHost = process.env.HEALTH_INTERNAL_HOST || "127.0.0.1";
+// 內部探測位址由環境變數提供（不內置任何環境位址）
+const healthInternalHost = process.env.HEALTH_INTERNAL_HOST || "";
 const healthSslPort = Number(process.env.HEALTH_SSL_PORT || 443);
 const limeDomain = process.env.LIME_DOMAIN || discoveredLime.domain;
 const ftsDomain = process.env.FTS_DOMAIN || discoveredFts.domain;
@@ -18523,7 +18523,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let limeStatus = "not_configured";
     try {
-      if (limeApacheConf && limeDomain && healthSipDomain) {
+      if (limeApacheConf && limeDomain && healthSipDomain && healthInternalHost) {
         const confExists = execSync("test -f " + limeApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
         if (confExists === "yes") {
           const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
@@ -18541,7 +18541,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let ftsStatus = "not_configured";
     try {
-      if (ftsApacheConf && ftsDomain) {
+      if (ftsApacheConf && ftsDomain && healthInternalHost) {
         const confExists = execSync("test -f " + ftsApacheConf + " && echo yes || echo no", { encoding: "utf8", timeout: 3000 }).trim();
         if (confExists === "yes") {
           const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
@@ -18559,7 +18559,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let accountManagerStatus = "not_configured";
     try {
-      if (accountDomain) {
+      if (accountDomain && healthInternalHost) {
         const apacheRunning = execSync("systemctl is-active apache2 2>/dev/null || echo inactive", { encoding: "utf8", timeout: 3000 }).trim();
         if (apacheRunning === "active") {
           const resp = execSync("curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k https://" + healthInternalHost + "/ -H 'Host: " + accountDomain + "' 2>/dev/null", { encoding: "utf8", timeout: 8000 }).trim();
@@ -18572,7 +18572,7 @@ app.get("/api/platform/health", requireAdmin, async (request, response) => {
 
     let sslExpiry = null;
     try {
-      if (sslCheckDomain) {
+      if (sslCheckDomain && healthInternalHost) {
         const out = execSync(`openssl s_client -servername ${sslCheckDomain} -connect ${healthInternalHost}:${healthSslPort} </dev/null 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null`, { encoding: "utf8", timeout: 8000 }).trim();
         const match = out.match(/notAfter=(.+)/);
         if (match) {
