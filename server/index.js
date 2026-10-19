@@ -2964,81 +2964,7 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       }
     }
 
-    // ── Flexisip sync (always attempt for data consistency) ──
-
-    let flexisipAccountId = sipUser.flexisip_account_id || null;
-
-      if (!flexisipAccountId && sipUser.sip_uri) {
-        try {
-          const sr = await searchAccountBySip(sipUser.sip_uri);
-          flexisipAccountId = sr?.id;
-        } catch {}
-      }
-
-      // Try to find by constructing sip URI from username + domain
-      if (!flexisipAccountId && sipUser.sip_domain) {
-        try {
-          const sipUri = `sip:${sipUser.username}@${sipUser.sip_domain}`;
-          const sr = await searchAccountBySip(sipUri);
-          flexisipAccountId = sr?.id;
-          if (flexisipAccountId) {
-            await connection.query(`UPDATE sip_users SET flexisip_account_id = ?, sip_uri = ? WHERE id = ?`, [flexisipAccountId, sipUri, sipUser.id]);
-          }
-        } catch {}
-      }
-
-      if (flexisipAccountId) {
-        const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
-        const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
-        // Always include all fields to prevent Flexisip from clearing unchanged values
-        flexisipPayload.display_name = displayName || null;
-        flexisipPayload.email = email || null;
-        flexisipPayload.phone = normalizedPhone || null;
-        if (password) {
-          flexisipPayload.password = password;
-          flexisipPayload.algorithm = "SHA-256";
-        }
-
-        // Get current activation status before update (update deactivates the account)
-        let wasActivated = false;
-        try {
-          const remote = await flexisipGetAccount(flexisipAccountId);
-          wasActivated = remote?.activated === true || remote?.activated === 1;
-        } catch {}
-
-        try {
-          await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
-          // Restore previous activation status
-          if (wasActivated) {
-            await flexisipActivateAccount(flexisipAccountId);
-          }
-          if (sipUser.flexisip_account_id !== flexisipAccountId) {
-            await connection.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, sipUser.id]);
-          }
-        } catch (flexisipErr) {
-          await connection.rollback();
-          // AM 的 422 校驗錯誤轉為中文提示（不向界面暴露英文技術文案）
-          const errs = flexisipErr?.responseBody?.errors || {};
-          const phoneMsgs = Array.isArray(errs.phone) ? errs.phone : [];
-          if (phoneMsgs.length > 0) {
-            const taken = phoneMsgs.some((m) => /already/i.test(String(m)));
-            return response.status(400).json({
-              message: taken ? "該電話號碼已被其他帳號使用。" : "電話號碼無效，請使用國際格式（如 +886912345678）。",
-              code: "FLEXISIP_PHONE_REJECTED",
-            });
-          }
-          if (errs.email) {
-            return response.status(400).json({ message: "該電子郵箱已被其他帳號使用。", code: "FLEXISIP_EMAIL_REJECTED" });
-          }
-          const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
-          if (flexisipErr?.status === 404) {
-            return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
-          }
-          console.error("Flexisip update rejected:", flexisipErr?.status, errMsg);
-          return response.status(502).json({ message: "遠端帳號資訊同步失敗，請稍後重試。", code: "FLEXISIP_UPDATE_FAILED" });
-        }
-    }
-
+    // ── 本地寫庫先行（仍在事務內）：AM 失敗時回滾，兩邊保持舊密碼 ──
     let userUpdateSql = `UPDATE sip_users SET display_name = ?, email = ?, phone_number = ?`;
     const userUpdateParams = [displayName || null, email, phone || null];
 
@@ -3074,7 +3000,116 @@ app.put("/api/tenant/sip-accounts/:id", requireAdmin, async (request, response, 
       await connection.query(snapshotUpdateSql, snapshotUpdateParams);
     }
 
+    // ── Flexisip sync (always attempt for data consistency) ──
+    let flexisipAccountId = sipUser.flexisip_account_id || null;
+
+    if (!flexisipAccountId && sipUser.sip_uri) {
+      try {
+        const sr = await searchAccountBySip(sipUser.sip_uri);
+        flexisipAccountId = sr?.id;
+      } catch {}
+    }
+
+    // Try to find by constructing sip URI from username + domain
+    if (!flexisipAccountId && sipUser.sip_domain) {
+      try {
+        const sipUri = `sip:${sipUser.username}@${sipUser.sip_domain}`;
+        const sr = await searchAccountBySip(sipUri);
+        flexisipAccountId = sr?.id;
+        if (flexisipAccountId) {
+          await connection.query(`UPDATE sip_users SET flexisip_account_id = ?, sip_uri = ? WHERE id = ?`, [flexisipAccountId, sipUri, sipUser.id]);
+        }
+      } catch {}
+    }
+
+    let activationRestoreFailed = false;
+    if (flexisipAccountId) {
+      const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
+      const flexisipPayload = { username: sipUser.username, algorithm: "SHA-256" };
+      // Always include all fields to prevent Flexisip from clearing unchanged values
+      flexisipPayload.display_name = displayName || null;
+      flexisipPayload.email = email || null;
+      flexisipPayload.phone = normalizedPhone || null;
+      if (password) {
+        flexisipPayload.password = password;
+        flexisipPayload.algorithm = "SHA-256";
+      }
+
+      // AM 的 API 更新會把 activated 置 false，先確認原狀態；讀不到就不更新，避免誤停用
+      let wasActivated;
+      try {
+        const remote = await flexisipGetAccount(flexisipAccountId);
+        wasActivated = remote?.activated === true || remote?.activated === 1;
+      } catch (statusErr) {
+        await connection.rollback();
+        console.error("Flexisip account status read failed:", statusErr?.message || statusErr);
+        return response.status(502).json({
+          message: "無法確認遠端帳號狀態，請稍後重試。",
+          code: "FLEXISIP_STATUS_UNAVAILABLE",
+        });
+      }
+
+      try {
+        await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
+        if (sipUser.flexisip_account_id !== flexisipAccountId) {
+          await connection.query(`UPDATE sip_users SET flexisip_account_id = ? WHERE id = ?`, [flexisipAccountId, sipUser.id]);
+        }
+      } catch (flexisipErr) {
+        await connection.rollback();
+        // AM 的 422 校驗錯誤轉為中文提示（不向界面暴露英文技術文案）
+        const errs = flexisipErr?.responseBody?.errors || {};
+        const phoneMsgs = Array.isArray(errs.phone) ? errs.phone : [];
+        if (phoneMsgs.length > 0) {
+          const taken = phoneMsgs.some((m) => /already/i.test(String(m)));
+          return response.status(400).json({
+            message: taken ? "該電話號碼已被其他帳號使用。" : "電話號碼無效，請使用國際格式（如 +886912345678）。",
+            code: "FLEXISIP_PHONE_REJECTED",
+          });
+        }
+        if (errs.email) {
+          return response.status(400).json({ message: "該電子郵箱已被其他帳號使用。", code: "FLEXISIP_EMAIL_REJECTED" });
+        }
+        const errMsg = (flexisipErr?.message || String(flexisipErr)).substring(0, 500);
+        if (flexisipErr?.status === 404) {
+          return response.status(502).json({ message: "遠端帳號不存在，無法更新。", code: "FLEXISIP_ACCOUNT_NOT_FOUND" });
+        }
+        console.error("Flexisip update rejected:", flexisipErr?.status, errMsg);
+        return response.status(502).json({ message: "遠端帳號資訊同步失敗，請稍後重試。", code: "FLEXISIP_UPDATE_FAILED" });
+      }
+
+      // Restore previous activation status (with limited retries)
+      if (wasActivated) {
+        let restored = false;
+        for (let attempt = 0; attempt < 3 && !restored; attempt += 1) {
+          if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+          try {
+            await flexisipActivateAccount(flexisipAccountId);
+            restored = true;
+          } catch (activateErr) {
+            if (attempt === 2) {
+              activationRestoreFailed = true;
+              console.error(`Failed to re-activate Flexisip account after update (id=${flexisipAccountId}):`, activateErr?.message || activateErr);
+            }
+          }
+        }
+      }
+    } else if (password) {
+      // 改密要求兩邊同步；找不到遠端帳號時不能只改本地
+      await connection.rollback();
+      return response.status(502).json({
+        message: "無法找到對應的遠端帳號，密碼未修改。",
+        code: "FLEXISIP_ACCOUNT_NOT_FOUND",
+      });
+    }
+
     await connection.commit();
+
+    if (activationRestoreFailed) {
+      return response.status(502).json({
+        message: "密碼已更新，但恢復遠端啟用狀態失敗，請在通訊核心中重新啟用該帳號。",
+        code: "FLEXISIP_ACTIVATE_FAILED",
+      });
+    }
 
     return response.json({
       message: "帳號已更新。",
