@@ -279,6 +279,12 @@ export default function FinanceManagement() {
     setPaymentFormOpen(true);
   };
 
+  const startCreateInvoicePayment = () => {
+    setEditingPaymentId(null);
+    setPaymentForm({ ...emptyPaymentForm, currency: paymentModalOrder?.currency || '', paymentDate: todayString(), invoiced: true });
+    setPaymentFormOpen(true);
+  };
+
   const startEditPayment = (payment) => {
     setEditingPaymentId(payment.id);
     setPaymentForm({
@@ -353,7 +359,8 @@ export default function FinanceManagement() {
       showMessage('error', '收款金額必須大於 0。');
       return;
     }
-    if (paymentForm.invoiced) {
+    const effectiveInvoiced = paymentModalMode === 'invoices' ? true : paymentForm.invoiced;
+    if (effectiveInvoiced) {
       const invoiceAmount = Number(paymentForm.invoiceAmount);
       if (!Number.isFinite(invoiceAmount) || invoiceAmount <= 0) {
         showMessage('error', '已開具發票時，發票金額必須大於 0。');
@@ -373,7 +380,7 @@ export default function FinanceManagement() {
         voucherNo: paymentForm.voucherNo,
         voucherDataUrl: paymentForm.voucherDataUrl || undefined,
         removeVoucher: paymentForm.removeVoucher === true,
-        invoiced: paymentForm.invoiced,
+        invoiced: effectiveInvoiced,
         invoiceNo: paymentForm.invoiceNo,
         invoiceCode: paymentForm.invoiceCode,
         invoiceDate: paymentForm.invoiceDate,
@@ -438,7 +445,7 @@ export default function FinanceManagement() {
         .fin-dropdown-menu { position: fixed; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); min-width: 140px; display: flex; flex-direction: column; padding: 4px 0; }
         .fin-dropdown-item { padding: 8px 16px; font-size: 13px; color: #334155; background: transparent; border: none; text-align: left; width: 100%; cursor: pointer; }
         .fin-dropdown-item:hover { background: #f1f5f9; }
-        .fin-form-date { color-scheme: dark; }
+        .fin-form-date { color-scheme: light; }
         .fin-form-date::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
         .fin-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 7px; border: 1px solid #374151; background: #1f2937; color: #93c5fd; font-size: 12px; cursor: pointer; white-space: nowrap; }
         .fin-btn:hover { background: #374151; }
@@ -651,9 +658,9 @@ export default function FinanceManagement() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {paymentModalMode === 'payments' && (
-                  <button type="button" className="fin-btn" onClick={startCreatePayment}><Plus size={13} /> 新增收款</button>
-                )}
+                <button type="button" className="fin-btn" onClick={paymentModalMode === 'invoices' ? startCreateInvoicePayment : startCreatePayment}>
+                  <Plus size={13} /> {paymentModalMode === 'invoices' ? '新增開票記錄' : '新增收款'}
+                </button>
                 <button type="button" className="fin-btn" onClick={closePayments} disabled={savingPayment}>關閉</button>
               </div>
             </div>
@@ -681,7 +688,7 @@ export default function FinanceManagement() {
                   <div style={{ overflowX: 'auto' }}>
                     <table className="fin-table" style={{ minWidth: '820px' }}>
                       <thead>
-                        <tr>{['發票開具日期', '發票號碼', '發票代碼', '發票金額', '發票檔案', '關聯收款'].map((label) => <th key={label}>{label}</th>)}</tr>
+                        <tr>{['發票開具日期', '發票號碼', '發票代碼', '發票金額', '發票檔案', '關聯收款', '操作'].map((label) => <th key={label}>{label}</th>)}</tr>
                       </thead>
                       <tbody>
                         {payments.filter((payment) => payment.invoiced).map((payment) => (
@@ -692,6 +699,9 @@ export default function FinanceManagement() {
                             <td style={{ color: '#fcd34d' }}>{formatMoney(payment.invoiceAmount || 0, payment.currency)}</td>
                             <td>{payment.invoiceFile ? <a href={fileUrl(payment.invoiceFile)} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>查看</a> : '-'}</td>
                             <td style={{ color: '#9ca3af', fontSize: '12px' }}>{payment.paymentDate} · {formatMoney(payment.amount, payment.currency)}</td>
+                            <td>
+                              <button type="button" className="fin-btn" onClick={() => startEditPayment(payment)}><Pencil size={12} /> 編輯</button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -729,12 +739,16 @@ export default function FinanceManagement() {
                 </div>
               )}
 
-              {paymentFormOpen && paymentModalMode === 'payments' && (
+              {paymentFormOpen && (
                 <div style={{ marginTop: '18px', borderTop: '1px solid #1f2937', paddingTop: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>{editingPaymentId ? '編輯收款記錄' : '新增收款記錄'}</h4>
+                  <h4 style={{ margin: '0 0 12px', color: '#e5e7eb', fontSize: '14px' }}>
+                    {editingPaymentId
+                      ? (paymentModalMode === 'invoices' ? '編輯開票記錄' : '編輯收款記錄')
+                      : (paymentModalMode === 'invoices' ? '新增開票記錄' : '新增收款記錄')}
+                  </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                     <label style={labelStyle}>收款日期 *
-                      <input className="fin-form-date" type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm((c) => ({ ...c, paymentDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
+                      <input className="fin-form-date" type="date" value={paymentForm.paymentDate} onChange={(e) => setPaymentForm((c) => ({ ...c, paymentDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'light' }} />
                     </label>
                     <label style={labelStyle}>收款金額 *<input type="number" min="0" step="0.01" value={paymentForm.amount} onChange={(e) => setPaymentForm((c) => ({ ...c, amount: e.target.value }))} style={inputStyle} /></label>
                     <label style={labelStyle}>收款帳號（基礎資料）
@@ -767,15 +781,15 @@ export default function FinanceManagement() {
                       )}
                     </div>
                     <label style={{ ...labelStyle, gridColumn: '1 / -1', flexDirection: 'row', alignItems: 'center', gap: '8px', paddingTop: '4px' }}>
-                      <input type="checkbox" checked={paymentForm.invoiced} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiced: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
+                      <input type="checkbox" checked={paymentModalMode === 'invoices' ? true : paymentForm.invoiced} disabled={paymentModalMode === 'invoices'} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiced: e.target.checked }))} style={{ accentColor: '#3b82f6' }} />
                       已開具發票
                     </label>
-                    {paymentForm.invoiced && (
+                    {(paymentForm.invoiced || paymentModalMode === 'invoices') && (
                       <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', borderTop: '1px solid #1f2937', paddingTop: '12px' }}>
                         <label style={labelStyle}>發票號碼（票面唯一號碼）<input value={paymentForm.invoiceNo} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceNo: e.target.value }))} style={inputStyle} /></label>
                         <label style={labelStyle}>發票代碼（地區/類型代碼）<input value={paymentForm.invoiceCode} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceCode: e.target.value }))} style={inputStyle} /></label>
                         <label style={labelStyle}>開具日期
-                          <input className="fin-form-date" type="date" value={paymentForm.invoiceDate} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'dark' }} />
+                          <input className="fin-form-date" type="date" value={paymentForm.invoiceDate} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceDate: e.target.value }))} style={{ ...inputStyle, colorScheme: 'light' }} />
                         </label>
                         <label style={labelStyle}>發票金額 *<input type="number" min="0" step="0.01" value={paymentForm.invoiceAmount} onChange={(e) => setPaymentForm((c) => ({ ...c, invoiceAmount: e.target.value }))} style={inputStyle} /></label>
                         <div style={labelStyle}>
