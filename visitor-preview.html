@@ -263,7 +263,7 @@
       .mobile-step { display: flex; flex-direction: column; flex: 1; min-height: 0; }
       .mobile-step-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border-color); }
       .mobile-step-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
-      .mobile-back-btn { border: none; background: none; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; padding: 4px 0; }
+      .mobile-back-btn { border: none; background: none; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; padding: 4px 0; display: flex; align-items: center; min-height: 44px; }
       .mobile-cat-list { flex: 1; overflow-y: auto; padding: 8px; scrollbar-width: none; -ms-overflow-style: none; }
       .mobile-cat-list::-webkit-scrollbar { display: none; }
       .mobile-cat-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; margin-bottom: 6px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s; }
@@ -280,7 +280,7 @@
       .mobile-agent-title { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
       .mobile-agent-status { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
       .mobile-agent-actions { display: flex; gap: 8px; }
-      .mobile-agent-action { flex: 1; min-width: 0; height: 38px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-main); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; text-decoration: none; }
+      .mobile-agent-action { flex: 1; min-width: 0; height: 44px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-main); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; text-decoration: none; }
       .mobile-agent-action.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
       .mobile-agent-action.contact { flex: 0 0 42px; padding: 0; }
       .mobile-agent-action:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -289,6 +289,9 @@
       #messageModal { align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
       #messageModal .modal-content { padding: 20px 16px 16px !important; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important; }
       #messageModal .cc-message-grid { grid-template-columns: 1fr !important; gap: 12px !important; padding-right: 0 !important; }
+      #ecardDrawerHeader > button { min-width: 44px; min-height: 44px; padding: 10px !important; }
+      #visitorModal input, #visitorModal textarea, #visitorModal select,
+      #messageModal input, #messageModal textarea, #messageModal select { font-size: 16px !important; }
     }
 
     /* 坐席网格 */
@@ -698,11 +701,14 @@
         document.getElementById('modalTitle').textContent = data.visitorTitle || '訪客登記';
         document.getElementById('modalDesc').textContent = data.visitorDescription || '';
         var fields = '';
+        var fieldLabels = { name: '姓名', phone: '電話', email: '郵箱', company: '公司', content: '諮詢內容' };
+        var fieldInputModes = { email: 'email', phone: 'tel' };
+        var fieldInputMode = function(f) { return fieldInputModes[f] ? ' inputmode="' + fieldInputModes[f] + '"' : ''; };
         (data.requiredFields || []).forEach(function(f) {
-          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:var(--text-muted);">' + (f === 'name' ? '姓名' : f === 'phone' ? '電話' : f === 'company' ? '公司' : f === 'content' ? '諮詢內容' : f) + ' <span style="color:#dc2626;">*</span></span><input name="' + f + '" required style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;margin-top:4px;background:var(--bg-input);color:var(--text-main);"></label>';
+          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:var(--text-muted);">' + (fieldLabels[f] || f) + ' <span style="color:#dc2626;">*</span></span><input name="' + f + '" required' + fieldInputMode(f) + ' style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;margin-top:4px;background:var(--bg-input);color:var(--text-main);"></label>';
         });
         (data.optionalFields || []).forEach(function(f) {
-          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:var(--text-muted);">' + (f === 'company' ? '公司' : f === 'content' ? '諮詢內容' : f) + '</span><input name="' + f + '" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;margin-top:4px;background:var(--bg-input);color:var(--text-main);"></label>';
+          fields += '<label style="display:block;margin-bottom:12px;"><span style="font-size:13px;font-weight:500;color:var(--text-muted);">' + (fieldLabels[f] || f) + '</span><input name="' + f + '"' + fieldInputMode(f) + ' style="width:100%;height:40px;padding:0 12px;border:1px solid var(--border-color);border-radius:8px;font-size:13px;margin-top:4px;background:var(--bg-input);color:var(--text-main);"></label>';
         });
         document.getElementById('formFields').innerHTML = fields;
         document.getElementById('visitorModal').classList.remove('hidden');
@@ -798,8 +804,13 @@
       // Mobile categories
       var mcl = document.getElementById('mobileCatList');
       mcl.innerHTML = (data.categories || []).map(function(c) {
-        return '<div class="mobile-cat-item" onclick="selectMobileCat(this, ' + c.id + ', \'' + esc(c.name) + '\')"><div><div class="mobile-cat-name">' + esc(c.name) + '</div><div class="mobile-cat-count">' + visibleAgents(c).length + ' 位坐席</div></div><span style="color:#94a3b8;">▶</span></div>';
+        return '<div class="mobile-cat-item" data-cat-id="' + c.id + '" data-cat-name="' + esc(c.name) + '"><div><div class="mobile-cat-name">' + esc(c.name) + '</div><div class="mobile-cat-count">' + visibleAgents(c).length + ' 位坐席</div></div><span style="color:#94a3b8;">▶</span></div>';
       }).join('');
+      mcl.querySelectorAll('.mobile-cat-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          selectMobileCat(item, Number(item.dataset.catId), item.dataset.catName || '');
+        });
+      });
 
       // Hide mobile step 2 initially
       document.getElementById('mobileStepAgents').style.display = 'none';
@@ -824,9 +835,14 @@
           (a.phone ? '<div class="contact-item">📱 ' + a.phone + '</div>' : '<div class="contact-item">📱 -</div>') +
           (a.email ? '<div class="contact-item">✉ ' + a.email + '</div>' : '<div class="contact-item">✉ -</div>') +
         '</div><div class="agent-actions">' +
-          (a.ecardSlug ? '<button type="button" class="btn-call" onclick="openEcardDrawer(\'' + esc(a.name) + '\', \'' + esc(a.sip) + '\', \'' + esc(a.ecardSlug) + '\')">💬 在線交流</button>' : '<button class="btn-call" disabled title="此坐席暫無可用的交流連結" style="opacity:0.5;cursor:not-allowed;">💬 在線交流</button>') +
+          (a.ecardSlug ? '<button type="button" class="btn-call" data-ecard-agent data-name="' + esc(a.name) + '" data-sip="' + esc(a.sip) + '" data-slug="' + esc(a.ecardSlug) + '">💬 在線交流</button>' : '<button class="btn-call" disabled title="此坐席暫無可用的交流連結" style="opacity:0.5;cursor:not-allowed;">💬 在線交流</button>') +
           '<button class="btn-call" style="background:#f59e0b;" onclick="openMessageModal(' + a.id + ')">✉ 留言給他</button></div></div>';
       }).join('');
+      document.getElementById('agentsContainer').querySelectorAll('[data-ecard-agent]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          openEcardDrawer(btn.dataset.name || '', btn.dataset.sip || '', btn.dataset.slug || '');
+        });
+      });
     }
 
     function showCallPopup(name, phone, email, title) {
@@ -932,16 +948,21 @@
           '</div>' +
           '<div class="mobile-agent-actions">' +
             (a.ecardSlug
-              ? '<button type="button" class="mobile-agent-action primary" onclick="openEcardDrawer(\'' + esc(a.name) + '\', \'' + esc(a.sip) + '\', \'' + esc(a.ecardSlug) + '\')">💬 在線交流</button>'
+              ? '<button type="button" class="mobile-agent-action primary" data-ecard-agent data-name="' + esc(a.name) + '" data-sip="' + esc(a.sip) + '" data-slug="' + esc(a.ecardSlug) + '">💬 在線交流</button>'
               : '<button type="button" class="mobile-agent-action primary" disabled title="此坐席暫無可用的交流連結">💬 在線交流</button>') +
             '<button type="button" class="mobile-agent-action" onclick="openMessageModal(' + a.id + ')">✉ 留言</button>' +
           '</div>' +
         '</div>';
       }).join('');
+      document.getElementById('mobileAgentsArea').querySelectorAll('[data-ecard-agent]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          openEcardDrawer(btn.dataset.name || '', btn.dataset.sip || '', btn.dataset.slug || '');
+        });
+      });
       document.getElementById('mobileStepCats').style.display = 'none';
       document.getElementById('mobileStepAgents').style.display = 'flex';
       agents.forEach(function(a) {
-        if (a.sip) fetchAgentStatus(a.sip, 'mobile-agent-' + catId + '-' + a.id);
+        if (a.sip) fetchAgentStatus(a.sip, 'mobile-agent-' + catId + '-' + a.id, '狀態未知');
       });
     }
     function goBackToMobileCats() {
@@ -949,7 +970,7 @@
       document.getElementById('mobileStepCats').style.display = 'flex';
     }
 
-    function fetchAgentStatus(sip, cardId) {
+    function fetchAgentStatus(sip, cardId, unknownText) {
       var dot = document.getElementById(cardId + '-dot');
       var txt = document.getElementById(cardId + '-txt');
       if (!dot || !txt) return;
@@ -971,11 +992,11 @@
           } catch(e) {}
         }
         dot.className = 'agent-sip-dot offline';
-        txt.textContent = '離線';
+        txt.textContent = unknownText || '離線';
       };
       xhr.onerror = function() {
         dot.className = 'agent-sip-dot offline';
-        txt.textContent = '離線';
+        txt.textContent = unknownText || '離線';
       };
       xhr.send();
     }
