@@ -236,6 +236,7 @@ export default function MyAccount({ identity }) {
             .ma-mobile-ecard-wrap.view-preview .ecard-generation-page > *:not(.ecard-add-content) { display: none !important; }
             .ma-mobile-ecard-wrap.view-preview .ecard-add-content { padding: 0 !important; }
             .ma-mobile-ecard-wrap .ecard-media-layout { flex-direction: column !important; gap: 12px !important; align-items: flex-start !important; }
+            .ma-mobile-ecard-wrap .ecard-media-layout > .ecard-form-grid { width: 100% !important; align-self: stretch !important; min-width: 0 !important; }
             .ma-mobile-ecard-wrap .ecard-upload-area { width: 100px !important; height: 100px !important; flex: 0 0 auto !important; }
             .ma-mobile-ecard-wrap .ecard-form-grid.single-column { margin-left: 0 !important; }
             .ma-mobile-ecard-wrap label input[type="checkbox"] { width: 16px !important; height: 16px !important; flex-shrink: 0; }
