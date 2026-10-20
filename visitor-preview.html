@@ -255,7 +255,9 @@
       .center-name { font-size: 20px; }
       .center-desc { font-size: 12px; }
       .main-container { padding: 10px; }
-      .welcome-banner { display: flex; margin-bottom: 10px; padding: 10px 12px; }
+      .welcome-banner { display: flex; width: 100%; max-width: 100%; min-width: 0; margin-bottom: 10px; padding: 10px 12px; overflow: hidden; }
+      .welcome-banner-text { flex: 1 1 0; width: 0; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+      .welcome-banner .btn-message { flex: 0 0 42px; }
       .site-footer { font-size: 11px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)); flex: 0 0 calc(44px + env(safe-area-inset-bottom, 0px)); }
       .content-layout { display: none !important; }
       .mobile-step { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -278,7 +280,7 @@
       .mobile-agent-title { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
       .mobile-agent-status { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
       .mobile-agent-actions { display: flex; gap: 8px; }
-      .mobile-agent-action { flex: 1; min-width: 0; height: 38px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-main); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+      .mobile-agent-action { flex: 1; min-width: 0; height: 38px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-main); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; text-decoration: none; }
       .mobile-agent-action.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
       .mobile-agent-action.contact { flex: 0 0 42px; padding: 0; }
       .mobile-agent-action:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -933,7 +935,6 @@
               ? '<button type="button" class="mobile-agent-action primary" onclick="openEcardDrawer(\'' + esc(a.name) + '\', \'' + esc(a.sip) + '\', \'' + esc(a.ecardSlug) + '\')">💬 在線交流</button>'
               : '<button type="button" class="mobile-agent-action primary" disabled title="此坐席暫無可用的交流連結">💬 在線交流</button>') +
             '<button type="button" class="mobile-agent-action" onclick="openMessageModal(' + a.id + ')">✉ 留言</button>' +
-            '<button type="button" class="mobile-agent-action contact" title="聯絡方式" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞</button>' +
           '</div>' +
         '</div>';
       }).join('');
