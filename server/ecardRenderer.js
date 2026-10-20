@@ -146,6 +146,11 @@ function drawImageField(ctx, s, img, fallbackText) {
       const scale = Math.max(s.w / iw, s.h / ih);
       const dw = iw * scale, dh = ih * scale;
       ctx.drawImage(img, s.x - (dw - s.w) / 2, s.y - (dh - s.h) / 2, dw, dh);
+    } else if (s.objectFit === "contain") {
+      const iw = img.width, ih = img.height;
+      const scale = Math.min(s.w / iw, s.h / ih);
+      const dw = iw * scale, dh = ih * scale;
+      ctx.drawImage(img, s.x + (s.w - dw) / 2, s.y + (s.h - dh) / 2, dw, dh);
     } else {
       ctx.drawImage(img, s.x, s.y, s.w, s.h);
     }
