@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>呼叫中心 - 訪客端預覽</title>
   <style>
     :root {
@@ -249,14 +249,14 @@
 
     @media (max-width: 768px) {
       body { padding: 0; }
-      #app { border-radius: 0; }
+      #app { border-radius: 0; height: 100vh; height: 100dvh; }
       .hero { flex-basis: 120px; min-height: 120px; max-height: 120px; }
       .hero .logo { width: 40px; height: 40px; }
       .center-name { font-size: 20px; }
       .center-desc { font-size: 12px; }
       .main-container { padding: 10px; }
-        .welcome-banner { display: none; }
-      .site-footer { font-size: 11px; padding: 10px; }
+      .welcome-banner { display: flex; margin-bottom: 10px; padding: 10px 12px; }
+      .site-footer { font-size: 11px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)); flex: 0 0 calc(44px + env(safe-area-inset-bottom, 0px)); }
       .content-layout { display: none !important; }
       .mobile-step { display: flex; flex-direction: column; flex: 1; min-height: 0; }
       .mobile-step-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid var(--border-color); }
@@ -270,12 +270,23 @@
       .mobile-cat-count { font-size: 12px; color: var(--text-muted); }
       .mobile-agents-area { flex: 1; overflow-y: auto; padding: 12px 16px; scrollbar-width: none; -ms-overflow-style: none; display: flex; flex-direction: column; gap: 10px; }
       .mobile-agents-area::-webkit-scrollbar { display: none; }
-      .mobile-agent-card { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 14px; background: var(--bg-card); border: 1px solid var(--border-color); }
+      .mobile-agent-card { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--bg-card); border: 1px solid var(--border-color); }
+      .mobile-agent-main { display: flex; align-items: center; gap: 14px; }
       .mobile-agent-avatar { width: 48px; height: 48px; border-radius: 50%; background: #1e293b; flex-shrink: 0; background-size: cover; background-position: center; }
       .mobile-agent-info { flex: 1; min-width: 0; }
       .mobile-agent-name { font-size: 15px; font-weight: 600; color: var(--text-main); }
       .mobile-agent-title { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-      .mobile-agent-call { width: 44px; height: 44px; border-radius: 12px; border: none; background: #16a34a; color: #fff; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+      .mobile-agent-status { display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+      .mobile-agent-actions { display: flex; gap: 8px; }
+      .mobile-agent-action { flex: 1; min-width: 0; height: 38px; padding: 0 8px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-card-hover); color: var(--text-main); font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+      .mobile-agent-action.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+      .mobile-agent-action.contact { flex: 0 0 42px; padding: 0; }
+      .mobile-agent-action:disabled { opacity: 0.5; cursor: not-allowed; }
+      #visitorModal { align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      #visitorModal .modal-content { max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 24px 20px; }
+      #messageModal { align-items: flex-start; justify-content: center; padding: 12px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      #messageModal .modal-content { padding: 20px 16px 16px !important; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important; }
+      #messageModal .cc-message-grid { grid-template-columns: 1fr !important; gap: 12px !important; padding-right: 0 !important; }
     }
 
     /* 坐席网格 */
@@ -481,7 +492,7 @@
       </div>
       <p class="modal-desc" style="margin-bottom:16px;">如有任何疑問，請填寫以下資訊，我們將盡快回覆。</p>
       <form id="messageForm" style="display:flex;flex-direction:column;flex:1;min-height:0;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-right:4px;">
+        <div class="cc-message-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-right:4px;">
           <div class="form-group">
             <label>郵箱 <span>*</span></label>
             <input type="email" name="email" required placeholder="請輸入您的郵箱" autocomplete="email">
@@ -498,7 +509,7 @@
             <label>諮詢內容 <span>*</span></label>
             <textarea name="content" required placeholder="請描述您的問題或需求" rows="4" style="resize:vertical;padding:12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:var(--bg-input);color:var(--text-main);"></textarea>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="cc-message-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <div class="form-group">
               <label>姓名</label>
               <input type="text" name="name" placeholder="請輸入您的姓名（選填）" autocomplete="name">
@@ -702,10 +713,15 @@
 
     var registeredVisitor = { name: '', email: '', phone: '', company: '' };
     var registeredVisitorEmail = '';
+    var visitorSubmitting = false;
     document.getElementById('visitorForm').addEventListener('submit', function(e) {
       e.preventDefault();
+      if (visitorSubmitting) return;
+      visitorSubmitting = true;
+      var form = e.target;
+      var submitBtn = form.querySelector('button[type="submit"]');
       try {
-        var visitorFormData = new FormData(e.target);
+        var visitorFormData = new FormData(form);
         registeredVisitor = {
           name: String(visitorFormData.get('name') || '').trim(),
           email: String(visitorFormData.get('email') || '').trim(),
@@ -717,8 +733,42 @@
         registeredVisitor = { name: '', email: '', phone: '', company: '' };
         registeredVisitorEmail = '';
       }
-      document.getElementById('visitorModal').classList.add('hidden');
-      renderMain();
+      var finish = function() {
+        visitorSubmitting = false;
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '開始諮詢'; }
+        document.getElementById('visitorModal').classList.add('hidden');
+        renderMain();
+      };
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '提交中...'; }
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timer = setTimeout(function() { if (controller) controller.abort(); }, 5000);
+      var request;
+      try {
+        request = fetch('/api/public/call-centers/' + encodeURIComponent(data.slug) + '/visitor-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: registeredVisitor.name,
+            email: registeredVisitor.email,
+            phone: registeredVisitor.phone,
+            company: registeredVisitor.company,
+            content: String((visitorFormData && visitorFormData.get('content')) || '').trim(),
+          }),
+          signal: controller ? controller.signal : undefined,
+          keepalive: true,
+        });
+      } catch (err) {
+        console.warn('訪客登記保存失敗，繼續進入呼叫中心', err);
+        clearTimeout(timer);
+        finish();
+        return;
+      }
+      request.catch(function(err) {
+        console.warn('訪客登記保存失敗，繼續進入呼叫中心', err);
+      }).then(function() {
+        clearTimeout(timer);
+        finish();
+      });
     });
 
     function renderMain() {
@@ -780,8 +830,30 @@
     function showCallPopup(name, phone, email, title) {
       document.getElementById('callName').textContent = name;
       document.getElementById('callTitle').textContent = title || '';
-      document.getElementById('callPhone').textContent = phone || '-';
-      document.getElementById('callEmail').textContent = email || '-';
+      var phoneEl = document.getElementById('callPhone');
+      var emailEl = document.getElementById('callEmail');
+      phoneEl.textContent = '';
+      emailEl.textContent = '';
+      if (phone) {
+        var phoneLink = document.createElement('a');
+        phoneLink.href = 'tel:' + String(phone).replace(/[^\d+]/g, '');
+        phoneLink.textContent = phone;
+        phoneLink.style.color = 'var(--primary)';
+        phoneLink.style.textDecoration = 'none';
+        phoneEl.appendChild(phoneLink);
+      } else {
+        phoneEl.textContent = '-';
+      }
+      if (email) {
+        var emailLink = document.createElement('a');
+        emailLink.href = 'mailto:' + encodeURIComponent(String(email)).replace(/%40/g, '@');
+        emailLink.textContent = email;
+        emailLink.style.color = 'var(--primary)';
+        emailLink.style.textDecoration = 'none';
+        emailEl.appendChild(emailLink);
+      } else {
+        emailEl.textContent = '-';
+      }
       document.getElementById('callPopup').style.display = 'flex';
     }
     function closeCallPopup() { document.getElementById('callPopup').style.display = 'none'; }
@@ -848,10 +920,28 @@
       document.getElementById('mobileAgentsArea').innerHTML = agents.length === 0
         ? '<div style="padding:32px;text-align:center;color:#94a3b8;font-size:13px;">暫無可用坐席</div>'
         : agents.map(function(a) {
-        return '<div class="mobile-agent-card"><div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div><div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div></div><button class="mobile-agent-call" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞</button></div>';
+        var cardId = 'mobile-agent-' + catId + '-' + a.id;
+        return '<div class="mobile-agent-card" id="' + cardId + '">' +
+          '<div class="mobile-agent-main">' +
+            '<div class="mobile-agent-avatar" style="background-image:url(\'' + (a.avatarDataUrl || '') + '\');"></div>' +
+            '<div class="mobile-agent-info"><div class="mobile-agent-name">' + esc(a.name) + '</div><div class="mobile-agent-title">' + esc(a.title || '') + '</div>' +
+              (a.sip ? '<div class="mobile-agent-status"><span class="agent-sip-dot loading" id="' + cardId + '-dot"></span><span id="' + cardId + '-txt" style="color:var(--text-muted);">...</span></div>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="mobile-agent-actions">' +
+            (a.ecardSlug
+              ? '<button type="button" class="mobile-agent-action primary" onclick="openEcardDrawer(\'' + esc(a.name) + '\', \'' + esc(a.sip) + '\', \'' + esc(a.ecardSlug) + '\')">💬 在線交流</button>'
+              : '<button type="button" class="mobile-agent-action primary" disabled title="此坐席暫無可用的交流連結">💬 在線交流</button>') +
+            '<button type="button" class="mobile-agent-action" onclick="openMessageModal(' + a.id + ')">✉ 留言</button>' +
+            '<button type="button" class="mobile-agent-action contact" title="聯絡方式" onclick="showCallPopup(\'' + esc(a.name) + '\', \'' + (a.phone || '') + '\', \'' + (a.email || '') + '\', \'' + esc(a.title || '') + '\')">📞</button>' +
+          '</div>' +
+        '</div>';
       }).join('');
       document.getElementById('mobileStepCats').style.display = 'none';
       document.getElementById('mobileStepAgents').style.display = 'flex';
+      agents.forEach(function(a) {
+        if (a.sip) fetchAgentStatus(a.sip, 'mobile-agent-' + catId + '-' + a.id);
+      });
     }
     function goBackToMobileCats() {
       document.getElementById('mobileStepAgents').style.display = 'none';
