@@ -35,11 +35,12 @@ const contentSlides = [
     ],
   },
   {
-    title: '高清视讯会议', img: '/assets/landing/content-vc.jpg', logo: ['QRTalkie', 'Video Conference'],
-    paragraphs: [
-      '打破地域限制，实现全球团队无缝协作。我们的视讯会议功能提供影院级的高清画质与低延迟音频，',
-      '让每一次远程沟通都如同面对面般真实。支持屏幕共享、实时标注与会议录制，',
-      '大幅提升团队决策效率，让沟通创造价值。',
+    title: '高清视频会议', img: '/assets/landing/conference01.jpg', logo: ['QRTalkie', 'Video Conference'],
+    points: [
+      { title: '灵活配置', desc: '公有、私有、混合云灵活部署，第三方 Web Meet 轻松接入。' },
+      { title: '简单便捷', desc: '打通通讯录与聊天室，一键便捷发起视频会议。' },
+      { title: '超清流畅传输', desc: '超清视频，高保真语音，智能丢包视觉补偿。' },
+      { title: '功能丰富多样', desc: '会议功能一应俱全，满足多样的应用需求。' },
     ],
   },
   {
