@@ -26,7 +26,7 @@ const features = [
 
 const contentSlides = [
   {
-    title: '内部即时通讯', img: '/assets/landing/content-im.jpg', logo: ['QRTalkie', 'Secure Messaging'],
+    title: '内部即时通讯', img: '/assets/landing/im-01.jpg', logo: ['QRTalkie', 'Secure Messaging'],
     points: [
       { title: '全消息类型', desc: '支持文本消息、动态表情、图片、语音、视频、附件、文件等 IM 功能；' },
       { title: '强大的消息管理', desc: '一键实现消息引用、撤回、删除、编辑、转发、阅后即焚等管理操作，支持表情回复、输入状态、已读回执等社交化功能。' },
