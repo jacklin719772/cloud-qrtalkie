@@ -63,11 +63,13 @@ const contentSlides = [
     ],
   },
   {
-    title: '定制AI助手', img: '/assets/landing/content-ai.jpg', logo: ['QRTalkie', 'AI Assistant'],
-    paragraphs: [
-      '内置强大的大语言模型，为您打造专属的企业知识大脑。',
-      'AI 助手可以自动总结会议记录、快速检索企业内部文档、甚至协助撰写专业报告。',
-      '它将繁琐的日常工作自动化，让每一位员工都拥有超级生产力，专注于更具创造性的工作。',
+    title: '可定制化AI助手', img: '/assets/landing/AI01.jpg', logo: ['QRTalkie', 'AI Assistant'],
+    points: [
+      { title: '专属知识库构建', desc: '灵活构建企业专属知识库，支持文档导入与分类管理，持续沉淀专属知识系统。' },
+      { title: '角色定制', desc: '自定义助手角色、提示词与回答风格，适配客服、销售与内部支持场景。' },
+      { title: '智能语音', desc: '支持语音问答与 7×24 智能语音应答，服务与办公随时在线。' },
+      { title: '灵活接入', desc: '支持多种大模型灵活接入，按场景选择模型与能力，兼顾效果与成本。' },
+      { title: '多端随行', desc: '桌面、手机与 Web 随时调用，问答、检索与办公处理一个入口完成。' },
     ],
   },
   {
