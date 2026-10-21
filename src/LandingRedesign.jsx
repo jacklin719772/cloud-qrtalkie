@@ -53,11 +53,13 @@ const contentSlides = [
     ],
   },
   {
-    title: '外部访客交流', img: '/assets/landing/content-visitor.jpg', logo: ['QRTalkie', 'Visitor Access'],
-    paragraphs: [
-      '为外部合作伙伴和访客提供安全、便捷的临时通讯通道。',
-      '无需下载额外软件，通过扫码即可加入安全会话。支持文件安全传输与阅后即焚功能，',
-      '确保商业机密在跨组织交流中绝对安全，让合作更加顺畅无忧。',
+    title: '外部访客交流', img: '/assets/landing/ecard01.jpg', logo: ['QRTalkie', 'Visitor Access'],
+    points: [
+      { title: '名片配置', desc: '账号所有者设置头像、姓名、职务、公司与联系方式，保存后生成专属电子名片。' },
+      { title: '名片即码', desc: '每张名片自动生成专属二维码与访问链接，可直接分享给好友与合作伙伴。' },
+      { title: '扫码即联', desc: '对方扫码或打开链接，无需下载 App，即可进入名片页直接发起交流。' },
+      { title: '多元沟通', desc: '支持文字、语音、视频与留言，随时与名片主人保持联系。' },
+      { title: '消息管理', desc: '支持消息删除、撤回、归档与分享，重要内容可随时整理与转出。' },
     ],
   },
   {
