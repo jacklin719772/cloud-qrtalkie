@@ -82,11 +82,13 @@ const contentSlides = [
     ],
   },
   {
-    title: '数据加密传输', img: '/assets/landing/content-security.jpg', logo: ['QRTalkie', 'Bank-Grade Security'],
-    paragraphs: [
-      '安全是 QRTalkie 的基石。我们采用银行级的端到端加密技术（E2EE），',
-      '确保您的每一条消息、每一次通话、每一份文件在传输过程中都坚不可摧。',
-      '支持私有化部署，数据主权完全归属企业，彻底杜绝第三方数据泄露风险。',
+    title: '高可靠信息安全保障', img: '/assets/landing/security01.jpg', logo: ['QRTalkie', 'Bank-Grade Security'],
+    points: [
+      { title: '多重鉴权', desc: '账号、设备与接口多层鉴权，权限分级控制，防止未授权访问。' },
+      { title: '全链路加密', desc: '传输加密与存储加密结合，消息、通话与文件在传输和落盘时均受保护。' },
+      { title: '数据隔离', desc: '租户、账号与业务数据隔离，支持私有化部署，数据主权自主掌控。' },
+      { title: '点对点加密', desc: '支持点对点加密通讯，敏感会话在两端之间安全传递。' },
+      { title: '可控销毁', desc: '支持定制化阅后即焚与一键清空聊天记录，敏感信息按需清除。' },
     ],
   },
 ];
