@@ -542,9 +542,12 @@ export default function LandingRedesign() {
         </div>
       </footer>
 
-      <div className="qrt-float-tools">
-        <button type="button" className="qrt-float-btn" onClick={openAuth}><i>📞</i><span>电话咨询</span></button>
-        <button type="button" className="qrt-float-btn" onClick={openAuth}><i>💬</i><span>企微客服</span></button>
+      <div className="qrt-float-tools" aria-label="在线显示">
+        <div className="qrt-float-title"><span className="qrt-online-dot"></span>在线显示</div>
+        <button type="button" className="qrt-float-item"><i>📇</i><span>电子名片</span><em className="qrt-float-arrow">›</em></button>
+        <button type="button" className="qrt-float-item"><i>🤖</i><span>AI客服</span><em className="qrt-float-arrow">›</em></button>
+        <button type="button" className="qrt-float-item"><i>📞</i><span>呼叫中心</span><em className="qrt-float-arrow">›</em></button>
+        <button type="button" className="qrt-float-item"><i>🏢</i><span>楼宇管理</span><em className="qrt-float-arrow">›</em></button>
       </div>
       <button type="button" id="qrt-back-to-top" className={`qrt-back-to-top-btn${showBackTop ? ' show' : ''}`} aria-label="回到顶部" onClick={scrollTop}>↑</button>
       </div>
