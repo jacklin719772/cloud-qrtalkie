@@ -15119,6 +15119,9 @@ const HOMEPAGE_FOOTER_DEFAULTS = Object.freeze({
   desktopDownloadUrl: "",
   androidDownloadUrl: "",
   iosDownloadUrl: "",
+  desktopVersion: "",
+  androidVersion: "",
+  iosVersion: "",
   copyright: "© 2026 QRTalkie. All Rights Reserved.",
   privacyUrl: "#",
 });
@@ -15157,6 +15160,9 @@ function parseHomepageFooterSetting(raw) {
     desktopDownloadUrl: url("desktopDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.desktopDownloadUrl),
     androidDownloadUrl: url("androidDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.androidDownloadUrl),
     iosDownloadUrl: url("iosDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.iosDownloadUrl),
+    desktopVersion: text("desktopVersion", HOMEPAGE_FOOTER_DEFAULTS.desktopVersion, 64),
+    androidVersion: text("androidVersion", HOMEPAGE_FOOTER_DEFAULTS.androidVersion, 64),
+    iosVersion: text("iosVersion", HOMEPAGE_FOOTER_DEFAULTS.iosVersion, 64),
     copyright: text("copyright", HOMEPAGE_FOOTER_DEFAULTS.copyright, 300),
     privacyUrl: url("privacyUrl", HOMEPAGE_FOOTER_DEFAULTS.privacyUrl) || "#",
   };
@@ -15173,6 +15179,9 @@ function buildHomepageFooterSettings(body) {
     desktopDownloadUrl: sanitizeString(source.desktopDownloadUrl, 500),
     androidDownloadUrl: sanitizeString(source.androidDownloadUrl, 500),
     iosDownloadUrl: sanitizeString(source.iosDownloadUrl, 500),
+    desktopVersion: sanitizeString(source.desktopVersion, 64),
+    androidVersion: sanitizeString(source.androidVersion, 64),
+    iosVersion: sanitizeString(source.iosVersion, 64),
     copyright: sanitizeString(source.copyright, 300),
     privacyUrl: sanitizeString(source.privacyUrl, 500) || "#",
   };

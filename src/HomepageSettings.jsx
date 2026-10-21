@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import apiClient from './apiClient';
 
 const FOOTER_DEFAULTS = {
@@ -10,6 +11,9 @@ const FOOTER_DEFAULTS = {
   desktopDownloadUrl: '',
   androidDownloadUrl: '',
   iosDownloadUrl: '',
+  desktopVersion: '',
+  androidVersion: '',
+  iosVersion: '',
   copyright: '© 2026 QRTalkie. All Rights Reserved.',
   privacyUrl: '#',
 };
@@ -62,6 +66,68 @@ const gridStyle = {
   gap: '14px',
 };
 
+const downloadRowStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '16px',
+  padding: '14px 16px',
+  border: '1px solid #1f2937',
+  borderRadius: '10px',
+  background: '#0f172a',
+};
+
+const downloadPlatformStyle = {
+  color: '#f3f4f6',
+  fontSize: '14px',
+  fontWeight: 600,
+};
+
+const downloadMetaStyle = {
+  marginTop: '4px',
+  color: '#9ca3af',
+  fontSize: '12px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  maxWidth: '560px',
+};
+
+const getButtonStyle = {
+  padding: '7px 16px',
+  borderRadius: '7px',
+  border: '1px solid #2563eb',
+  background: '#1e3a5f',
+  color: '#93c5fd',
+  fontSize: '13px',
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+const clearButtonStyle = {
+  padding: '7px 14px',
+  borderRadius: '7px',
+  border: '1px solid #4b5563',
+  background: 'transparent',
+  color: '#9ca3af',
+  fontSize: '13px',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+};
+
+function formatFileSize(bytes) {
+  const value = Number(bytes);
+  if (!value) return '';
+  if (value >= 1024 * 1024 * 1024) return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.round(value / 1024)} KB`;
+}
+
+function formatDate(value) {
+  return value ? String(value).slice(0, 10) : '';
+}
+
 function Field({ label, value, onChange, placeholder, type = 'text' }) {
   return (
     <label style={labelStyle}>
@@ -86,6 +152,8 @@ export default function HomepageSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [releases, setReleases] = useState([]);
+  const [picker, setPicker] = useState({ platform: '', selectedId: null });
   const messageTimerRef = useRef(null);
 
   const showMessage = (type, text) => {
@@ -115,7 +183,56 @@ export default function HomepageSettings() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get('/admin/releases').then((data) => {
+      if (cancelled) return;
+      const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+      setReleases(list.filter((item) => item.status === 'published'));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const update = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const versionsFor = (platform) => releases
+    .filter((item) => String(item.platform || '').toLowerCase() === platform)
+    .filter((item) => item.download_url)
+    .sort((a, b) => Number(b.version_code || 0) - Number(a.version_code || 0));
+
+  const absoluteDownloadUrl = (url) => {
+    const text = String(url || '');
+    if (!text) return '';
+    return text.startsWith('/') ? `${window.location.origin}${text}` : text;
+  };
+
+  const selectedRelease = picker.platform
+    ? releases.find((item) => String(item.id) === String(picker.selectedId))
+    : null;
+
+  const openVersionPicker = (platform) => {
+    const versions = versionsFor(platform);
+    if (versions.length === 0) return;
+    setPicker({ platform, selectedId: null });
+  };
+
+  const applySelectedRelease = () => {
+    if (!selectedRelease || !picker.platform) return;
+    const fieldMap = {
+      windows: ['desktopDownloadUrl', 'desktopVersion'],
+      android: ['androidDownloadUrl', 'androidVersion'],
+      ios: ['iosDownloadUrl', 'iosVersion'],
+    };
+    const fields = fieldMap[picker.platform];
+    if (!fields) return;
+    setForm((prev) => ({
+      ...prev,
+      [fields[0]]: selectedRelease.download_url || '',
+      [fields[1]]: selectedRelease.version || '',
+    }));
+    setPicker({ platform: '', selectedId: null });
+    showMessage('success', `已選擇 ${selectedRelease.platform === 'windows' ? 'Windows' : selectedRelease.platform} v${selectedRelease.version}，請儲存更改。`);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -135,6 +252,9 @@ export default function HomepageSettings() {
       setIsSaving(false);
     }
   };
+
+  const pickerVersions = picker.platform ? versionsFor(picker.platform) : [];
+  const pickerLabel = picker.platform === 'windows' ? 'Windows' : picker.platform === 'android' ? 'Android' : 'iOS';
 
   return (
     <section className="view active settings-form-page" id="homepage-settings" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -180,12 +300,60 @@ export default function HomepageSettings() {
 
                 <div style={sectionStyle}>
                   <h3 style={sectionTitleStyle}>資源下載</h3>
-                  <div style={gridStyle}>
-                    <Field label="Windows 下載連結" value={form.desktopDownloadUrl} onChange={update('desktopDownloadUrl')} placeholder="https://..." />
-                    <Field label="Android 下載連結" value={form.androidDownloadUrl} onChange={update('androidDownloadUrl')} placeholder="https://..." />
-                    <Field label="iOS 下載連結" value={form.iosDownloadUrl} onChange={update('iosDownloadUrl')} placeholder="https://..." />
-                  </div>
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>留空時，頁腳仍顯示平台名稱與掃碼提示，但不提供點擊跳轉。</p>
+                  {[
+                    { platform: 'windows', label: 'Windows', version: form.desktopVersion, url: form.desktopDownloadUrl, versionKey: 'desktopVersion', urlKey: 'desktopDownloadUrl' },
+                    { platform: 'android', label: 'Android', version: form.androidVersion, url: form.androidDownloadUrl, versionKey: 'androidVersion', urlKey: 'androidDownloadUrl' },
+                    { platform: 'ios', label: 'iOS', version: form.iosVersion, url: form.iosDownloadUrl, versionKey: 'iosVersion', urlKey: 'iosDownloadUrl' },
+                  ].map((item) => {
+                    const versions = versionsFor(item.platform);
+                    return (
+                      <div key={item.platform} style={downloadRowStyle}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={downloadPlatformStyle}>{item.label}</div>
+                          <div style={downloadMetaStyle}>
+                            {item.version
+                              ? `v${item.version} · ${item.url || '未設定連結'}`
+                              : versions.length > 0
+                                ? '尚未選擇版本'
+                                : item.platform === 'ios'
+                                  ? '暫無已發布版本，可在下方填寫手動連結'
+                                  : '暫無已發布版本'}
+                          </div>
+                          {item.platform === 'ios' && versions.length === 0 && (
+                            <input
+                              value={form.iosDownloadUrl || ''}
+                              onChange={(e) => update('iosDownloadUrl')(e.target.value)}
+                              placeholder="https://..."
+                              autoComplete="off"
+                              style={{ ...inputStyle, marginTop: '8px' }}
+                              onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                              onBlur={(e) => { e.target.style.borderColor = '#374151'; }}
+                            />
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                          {item.url && (
+                            <button
+                              type="button"
+                              style={clearButtonStyle}
+                              onClick={() => setForm((prev) => ({ ...prev, [item.urlKey]: '', [item.versionKey]: '' }))}
+                            >
+                              清除
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            style={{ ...getButtonStyle, opacity: versions.length ? 1 : 0.5, cursor: versions.length ? 'pointer' : 'not-allowed' }}
+                            disabled={versions.length === 0}
+                            onClick={() => openVersionPicker(item.platform)}
+                          >
+                            獲取
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>版本列表來自「App 版本管理」中的已發布版本；選擇後會自動生成下載連結與二維碼，儲存後同步到官網頁腳。</p>
                 </div>
 
                 <div style={sectionStyle}>
@@ -213,6 +381,70 @@ export default function HomepageSettings() {
           </div>
         </form>
       </div>
+
+      {picker.platform && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={() => setPicker({ platform: '', selectedId: null })}
+        >
+          <div
+            style={{ width: 'min(820px, 94vw)', maxHeight: '86vh', background: '#111827', border: '1px solid #374151', borderRadius: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 24px 70px rgba(0,0,0,0.5)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #1f2937' }}>
+              <h3 style={{ margin: 0, color: '#f3f4f6', fontSize: '16px' }}>選擇 {pickerLabel} 版本</h3>
+              <button type="button" onClick={() => setPicker({ platform: '', selectedId: null })} style={{ width: '30px', height: '30px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {pickerVersions.length === 0 ? (
+                <p style={{ color: '#9ca3af', fontSize: '13px', textAlign: 'center', margin: '30px 0' }}>暫無已發布版本。</p>
+              ) : pickerVersions.map((item) => {
+                const selected = String(item.id) === String(picker.selectedId);
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setPicker((prev) => ({ ...prev, selectedId: item.id }))}
+                    style={{ width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: '8px', border: selected ? '1px solid #3b82f6' : '1px solid #374151', background: selected ? '#1e3a5f' : '#0f172a', color: '#e5e7eb', cursor: 'pointer' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <strong style={{ fontSize: '14px' }}>v{item.version}</strong>
+                      <span style={{ color: '#9ca3af', fontSize: '12px' }}>#{item.version_code}</span>
+                      <span style={{ color: '#6b7280', fontSize: '12px', marginLeft: 'auto' }}>{formatDate(item.released_at)} · {formatFileSize(item.file_size)}</span>
+                    </div>
+                    <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.download_url}</div>
+                  </button>
+                );
+              })}
+
+              {selectedRelease && (
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '18px', padding: '14px', border: '1px solid #374151', borderRadius: '10px', background: '#0d1524' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ color: '#93c5fd', fontSize: '13px', fontWeight: 600 }}>下載連結</div>
+                    <div style={{ color: '#d1d5db', fontSize: '12px', marginTop: '6px', wordBreak: 'break-all' }}>{absoluteDownloadUrl(selectedRelease.download_url)}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, background: '#fff', padding: '8px', borderRadius: '8px' }}>
+                    <QRCodeSVG value={absoluteDownloadUrl(selectedRelease.download_url)} size={150} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 20px', borderTop: '1px solid #1f2937' }}>
+              <button type="button" onClick={() => setPicker({ platform: '', selectedId: null })} style={{ padding: '8px 20px', borderRadius: '6px', border: '1px solid #4b5563', background: 'transparent', color: '#d1d5db', fontSize: '13px', cursor: 'pointer' }}>取消</button>
+              <button
+                type="button"
+                disabled={!selectedRelease}
+                onClick={applySelectedRelease}
+                style={{ padding: '8px 22px', borderRadius: '6px', border: 'none', background: '#3b82f6', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: selectedRelease ? 'pointer' : 'not-allowed', opacity: selectedRelease ? 1 : 0.55 }}
+              >
+                使用此版本
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

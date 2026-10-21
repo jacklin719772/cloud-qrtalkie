@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Landing from '../Landing';
@@ -120,9 +121,18 @@ const FOOTER_DEFAULTS = {
   desktopDownloadUrl: '',
   androidDownloadUrl: '',
   iosDownloadUrl: '',
+  desktopVersion: '',
+  androidVersion: '',
+  iosVersion: '',
   copyright: '© 2026 QRTalkie. All Rights Reserved.',
   privacyUrl: '#',
 };
+
+function absoluteDownloadUrl(url) {
+  const text = String(url || '');
+  if (!text) return '';
+  return text.startsWith('/') ? `${window.location.origin}${text}` : text;
+}
 
 function useLandingViewport() {
   useEffect(() => {
@@ -451,7 +461,7 @@ export default function LandingRedesign() {
                 onClick={(e) => { if (!footerSettings.desktopDownloadUrl) e.preventDefault(); }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
-                <span className="qrt-dl-text"><span className="qrt-dl-title">桌面版 (Windows)</span><span className="qrt-dl-sub">点击下载</span></span>
+                <span className="qrt-dl-text"><span className="qrt-dl-title">桌面版 (Windows)</span><span className="qrt-dl-sub">{footerSettings.desktopVersion ? `v${footerSettings.desktopVersion} · 点击下载` : '点击下载'}</span></span>
               </a>
             </div>
             <div className="qrt-download-item">
@@ -463,8 +473,14 @@ export default function LandingRedesign() {
                 onClick={(e) => { if (!footerSettings.androidDownloadUrl) e.preventDefault(); }}
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
-                <div className="qrt-qr-mini"><div className="qrt-qr-placeholder-mini"></div></div>
-                <div className="qrt-qr-download-text"><span className="qrt-platform-name">Android</span><span className="qrt-scan-tip">扫码下载到手机</span></div>
+                <div className="qrt-qr-mini">
+                  {footerSettings.androidDownloadUrl ? (
+                    <QRCodeSVG value={absoluteDownloadUrl(footerSettings.androidDownloadUrl)} size={60} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+                  ) : (
+                    <div className="qrt-qr-placeholder-mini"></div>
+                  )}
+                </div>
+                <div className="qrt-qr-download-text"><span className="qrt-platform-name">Android</span><span className="qrt-scan-tip">{footerSettings.androidVersion ? `v${footerSettings.androidVersion} · 扫码下载到手机` : '扫码下载到手机'}</span></div>
               </a>
             </div>
             <div className="qrt-download-item">
@@ -476,8 +492,14 @@ export default function LandingRedesign() {
                 onClick={(e) => { if (!footerSettings.iosDownloadUrl) e.preventDefault(); }}
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
-                <div className="qrt-qr-mini"><div className="qrt-qr-placeholder-mini"></div></div>
-                <div className="qrt-qr-download-text"><span className="qrt-platform-name">iOS</span><span className="qrt-scan-tip">扫码下载到手机</span></div>
+                <div className="qrt-qr-mini">
+                  {footerSettings.iosDownloadUrl ? (
+                    <QRCodeSVG value={absoluteDownloadUrl(footerSettings.iosDownloadUrl)} size={60} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+                  ) : (
+                    <div className="qrt-qr-placeholder-mini"></div>
+                  )}
+                </div>
+                <div className="qrt-qr-download-text"><span className="qrt-platform-name">iOS</span><span className="qrt-scan-tip">{footerSettings.iosVersion ? `v${footerSettings.iosVersion} · 扫码下载到手机` : '扫码下载到手机'}</span></div>
               </a>
             </div>
           </div>
