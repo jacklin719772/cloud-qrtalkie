@@ -392,8 +392,11 @@ export default function LandingRedesign() {
         <div className="qrt-auth-modal" role="dialog" aria-modal="true" aria-label="云管理平台登录" onMouseDown={(e) => { if (e.target === e.currentTarget) closeAuth(); }}>
           <div className="qrt-auth-dialog">
             <div className="qrt-auth-left">
-              <img src="/assets/landing/login.jpg" alt="QRTalkie Cloud" />
-              <div className="qrt-auth-left-text">QRTalkie Cloud<br />Intelligent Workspace</div>
+              <img src="/assets/landing/login02.jpg" alt="QRTalkie Cloud" />
+              <div className="qrt-auth-left-text">
+                <span className="qrt-auth-left-kicker">歡迎使用</span>
+                <strong>QRTalkie雲管理平台</strong>
+              </div>
             </div>
             <div className="qrt-auth-right">
               <button type="button" className="qrt-auth-close" onClick={closeAuth} aria-label="關閉">×</button>
