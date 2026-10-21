@@ -179,6 +179,14 @@ export default function LandingRedesign() {
   const trialNoticeTimer = useRef(null);
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
   const [qrModal, setQrModal] = useState(null);
+  const [demoOpen, setDemoOpen] = useState(false);
+
+  useEffect(() => {
+    if (!demoOpen) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setDemoOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [demoOpen]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -542,13 +550,36 @@ export default function LandingRedesign() {
         </div>
       </footer>
 
-      <div className="qrt-float-tools" aria-label="在线显示">
-        <div className="qrt-float-title"><span className="qrt-online-dot"></span>在线显示</div>
-        <button type="button" className="qrt-float-item"><i>📇</i><span>电子名片</span><em className="qrt-float-arrow">›</em></button>
-        <button type="button" className="qrt-float-item"><i>🤖</i><span>AI客服</span><em className="qrt-float-arrow">›</em></button>
-        <button type="button" className="qrt-float-item"><i>📞</i><span>呼叫中心</span><em className="qrt-float-arrow">›</em></button>
-        <button type="button" className="qrt-float-item"><i>🏢</i><span>楼宇管理</span><em className="qrt-float-arrow">›</em></button>
-      </div>
+      <button
+        type="button"
+        className={`qrt-demo-launcher${demoOpen ? ' hidden' : ''}`}
+        aria-label="在线演示"
+        aria-expanded={demoOpen}
+        onClick={() => setDemoOpen(true)}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="12" rx="2" />
+          <path d="M8 20h8M12 16v4" />
+          <path d="M10.5 7.5v5l4-2.5-4-2.5z" fill="currentColor" stroke="none" />
+        </svg>
+        <span>演示</span>
+      </button>
+
+      {demoOpen && <div className="qrt-demo-backdrop" onClick={() => setDemoOpen(false)}></div>}
+      <aside className={`qrt-demo-drawer${demoOpen ? ' open' : ''}`} role="dialog" aria-modal="true" aria-label="在线显示" aria-hidden={!demoOpen}>
+        <div className="qrt-demo-head">
+          <span className="qrt-online-dot"></span>
+          <h3>在线显示</h3>
+          <button type="button" className="qrt-demo-close" onClick={() => setDemoOpen(false)} aria-label="关闭">×</button>
+        </div>
+        <div className="qrt-demo-list">
+          <button type="button" className="qrt-demo-item"><i>📇</i><span>电子名片</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item"><i>🤖</i><span>AI客服</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item"><i>📞</i><span>呼叫中心</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item"><i>🏢</i><span>楼宇管理</span><em>›</em></button>
+        </div>
+        <p className="qrt-demo-hint">选择要体验的在线演示</p>
+      </aside>
       <button type="button" id="qrt-back-to-top" className={`qrt-back-to-top-btn${showBackTop ? ' show' : ''}`} aria-label="回到顶部" onClick={scrollTop}>↑</button>
       </div>
 
