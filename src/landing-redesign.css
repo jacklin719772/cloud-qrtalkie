@@ -362,9 +362,14 @@ body.qrt-modal-open { overflow: hidden !important; }
 
 /* Embedded current auth panel */
 .qrt-auth-modal .landing--embed {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  display: block !important;
+  flex: none !important;
   background: none !important;
   color: #333 !important;
-  min-height: 0 !important;
   overflow: visible !important;
   padding: 0 !important;
 }
@@ -375,6 +380,8 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-auth-modal .landing--embed .product-visual { display: none !important; }
 .qrt-auth-modal .landing--embed .hero {
   display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
   min-height: 0 !important;
   height: auto !important;
   padding: 0 !important;
