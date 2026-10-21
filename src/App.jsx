@@ -1,8 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import Landing from '../Landing';
+import LandingRedesign from './LandingRedesign';
 import ConsoleLayout from './ConsoleLayout';
 import apiClient from './apiClient';
 import ECardVisitorPage from './pages/ecard/ECardVisitorPage';
+
+function consumeHandoffToken() {
+  try {
+    const token = localStorage.getItem('qrtalkieHandoffToken');
+    const expiresAt = Number(localStorage.getItem('qrtalkieHandoffExpiresAt') || 0);
+    if (token && (!expiresAt || Date.now() <= expiresAt)) {
+      sessionStorage.setItem('qrtalkieAdminToken', token);
+      const userType = localStorage.getItem('qrtalkieHandoffUserType');
+      if (userType) sessionStorage.setItem('qrtalkieUserType', userType);
+    }
+    localStorage.removeItem('qrtalkieHandoffToken');
+    localStorage.removeItem('qrtalkieHandoffUserType');
+    localStorage.removeItem('qrtalkieHandoffExpiresAt');
+  } catch {
+    // Storage can be unavailable in private/restricted contexts; normal login still works.
+  }
+}
 
 function getPublicEcardSlug(pathname, search) {
   const path = String(pathname || '');
@@ -43,6 +60,8 @@ export default function App() {
         setIsInitializing(false);
         return;
       }
+
+      consumeHandoffToken();
 
       const token = localStorage.getItem('qrtalkieAdminToken') || sessionStorage.getItem('qrtalkieAdminToken');
       
@@ -107,7 +126,7 @@ export default function App() {
           setIsLoggedIn(false);
         }} />
       ) : (
-        <Landing onLogin={() => setIsLoggedIn(true)} />
+        <LandingRedesign />
       )}
     </div>
   );

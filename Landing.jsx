@@ -3,7 +3,7 @@ import apiClient from './src/apiClient';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-export default function Landing({ onLogin }) {
+export default function Landing({ onLogin, embedded = false }) {
   // 使用 React State 控制目前顯示的表單模式：'login', 'signup', 或 'forgot'
   const initialResetToken = new URLSearchParams(window.location.search).get('resetPasswordToken') || '';
   const [authMode, setAuthMode] = useState(initialResetToken ? 'reset' : 'login');
@@ -166,7 +166,7 @@ export default function Landing({ onLogin }) {
         primaryStorage.setItem('qrtalkieUserType', result.userType);
         secondaryStorage.removeItem('qrtalkieUserType');
       }
-      onLogin();
+      onLogin?.();
     } catch (error) {
       // 優先獲取後端返回的自定義錯誤資訊，防止顯示預設的 HTTP 狀態報錯
       const serverMessage = error.response?.data?.message || error.message;
@@ -345,7 +345,7 @@ export default function Landing({ onLogin }) {
   const homePageUrl = import.meta.env.VITE_HOME_PAGE_URL || 'https://www.qrtalkie.org';
 
   return (
-    <section className="landing" id="landing">
+    <section className={`landing${embedded ? ' landing--embed' : ''}`} id="landing">
       {loadingPhase !== 'done' && (
         <div className={`landing-loader${loadingPhase === 'fade' ? ' landing-loader--fade' : ''}`}>
           <img src="/assets/landing-animation.gif" alt="載入中..." onError={(e) => { e.target.style.display = 'none'; }} />
