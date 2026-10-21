@@ -521,6 +521,11 @@ body.qrt-modal-open { overflow: hidden !important; }
 }
 .qrt-qr-large svg { width: 100%; height: auto; display: block; }
 .qrt-qr-scan-tip { margin: 8px 0 0; color: #1e3a8a; font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+.qrt-qr-download-link {
+  color: #2563eb; text-decoration: underline; text-underline-offset: 2px;
+  margin-left: 2px;
+}
+.qrt-qr-download-link:hover { color: #1d4ed8; }
 
 /* Embedded current auth panel */
 .qrt-auth-modal .landing--embed {

@@ -615,7 +615,22 @@ export default function LandingRedesign() {
             <div className="qrt-qr-large">
               <QRCodeSVG value={absoluteDownloadUrl(qrModal.url)} size={300} bgColor="#ffffff" fgColor="#0f172a" level="M" />
             </div>
-            <p className="qrt-qr-scan-tip">扫码安装</p>
+            <p className="qrt-qr-scan-tip">
+              扫码安装
+              {qrModal.platform === 'Android' && (
+                <>
+                  或
+                  <a
+                    className="qrt-qr-download-link"
+                    href={absoluteDownloadUrl(qrModal.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    点击下载
+                  </a>
+                </>
+              )}
+            </p>
           </div>
         </div>
       )}
