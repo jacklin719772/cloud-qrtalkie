@@ -260,6 +260,40 @@ body.qrt-modal-open { overflow: hidden !important; }
   font-size: 20px; color: #1e3a8a; margin-bottom: 20px; font-weight: bold;
 }
 .qrt-content-text p { margin-bottom: 15px; }
+.qrt-im-points {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+.qrt-im-point {
+  padding: 0;
+}
+.qrt-im-point h5 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: #1e3a8a;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.qrt-im-point h5::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #111827;
+  flex-shrink: 0;
+}
+.qrt-im-point p {
+  margin: 0;
+  padding-left: 15px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #555;
+}
 
 /* Scenarios */
 #scenarios { scroll-margin-top: 100px; }

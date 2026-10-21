@@ -27,10 +27,11 @@ const features = [
 const contentSlides = [
   {
     title: '内部即时通讯', img: '/assets/landing/content-im.jpg', logo: ['QRTalkie', 'Secure Messaging'],
-    paragraphs: [
-      'QRTalkie 让团队沟通更高效：消息、通话、文件与任务在同一个平台完成。',
-      '支持私有化部署与端到端加密，重要信息只在企业自己的网络中流转。',
-      '无论是跨部门协作还是远程办公，都能保持沟通顺畅、信息可追溯。',
+    points: [
+      { title: '全消息类型', desc: '支持文本消息、动态表情、图片、语音、视频、附件、文件等 IM 功能；' },
+      { title: '强大的消息管理', desc: '一键实现消息引用、撤回、删除、编辑、转发、阅后即焚等管理操作，支持表情回复、输入状态、已读回执等社交化功能。' },
+      { title: '多端多设备消息同步', desc: '支持多端多设备同时登录并保持在线状态，无缝切换设备。' },
+      { title: '离线消息推送', desc: '深度整合 APNs、Google FCM、华为、荣耀、小米、OPPO、vivo、魅族等各大厂商消息推送通道，保障推送送达率及稳定性。' },
     ],
   },
   {
@@ -408,7 +409,18 @@ export default function LandingRedesign() {
                     </div>
                     <div className="qrt-content-text">
                       <h4>{slide.title}</h4>
-                      {slide.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                      {slide.points ? (
+                        <div className="qrt-im-points">
+                          {slide.points.map((point) => (
+                            <div className="qrt-im-point" key={point.title}>
+                              <h5>{point.title}</h5>
+                              <p>{point.desc}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        slide.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)
+                      )}
                     </div>
                   </div>
                 ))}
