@@ -44,11 +44,12 @@ const contentSlides = [
     ],
   },
   {
-    title: '远距设备管控', img: '/assets/landing/content-device.jpg', logo: ['QRTalkie', 'IoT Control'],
-    paragraphs: [
-      '通过 QRTalkie 的物联网整合能力，您可以随时随地监控和管理您的智能设备。',
-      '无论是办公室的空调、灯光，还是工厂的传感器，一切尽在掌握。',
-      '我们提供安全的远程控制通道，确保您的设备数据不被泄露，运行状态实时可见。',
+    title: '远距设备管理', img: '/assets/landing/device01.jpg', logo: ['QRTalkie', 'IoT Control'],
+    points: [
+      { title: '统一接入', desc: '门禁、门锁、传感器等终端统一接入，设备台账与分组清晰可见。' },
+      { title: '实时监控', desc: '在线状态、运行数据与异常情况实时同步，设备状况一目了然。' },
+      { title: '可视化远程协助', desc: '通过实时视频呼叫查看设备现场，远程完成可视化操控与协助处理，无需人员到场。' },
+      { title: '安全可溯', desc: '设备接入认证、权限隔离与操作日志完整记录，每次操作有据可查。' },
     ],
   },
   {
