@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Landing from '../Landing';
@@ -118,6 +118,8 @@ export default function LandingRedesign() {
   const [enterError, setEnterError] = useState('');
   const [entered, setEntered] = useState(false);
   const [legalViewer, setLegalViewer] = useState({ open: false, title: '', content: '', loading: false });
+  const [trialNotice, setTrialNotice] = useState('');
+  const trialNoticeTimer = useRef(null);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -147,6 +149,16 @@ export default function LandingRedesign() {
     return () => document.body.classList.remove('qrt-modal-open');
   }, [authOpen]);
 
+  useEffect(() => () => {
+    if (trialNoticeTimer.current) window.clearTimeout(trialNoticeTimer.current);
+  }, []);
+
+  const showTrialNotice = (message) => {
+    setTrialNotice(message);
+    if (trialNoticeTimer.current) window.clearTimeout(trialNoticeTimer.current);
+    trialNoticeTimer.current = window.setTimeout(() => setTrialNotice(''), 6000);
+  };
+
   const openAuth = (event) => {
     event?.preventDefault();
     setAuthOpen(true);
@@ -160,6 +172,11 @@ export default function LandingRedesign() {
     setAuthSuccess(false);
     setEnterError('');
     setEntered(false);
+    setTrialNotice('');
+    if (trialNoticeTimer.current) {
+      window.clearTimeout(trialNoticeTimer.current);
+      trialNoticeTimer.current = null;
+    }
   };
 
   const handleAuthSuccess = () => {
@@ -427,9 +444,10 @@ export default function LandingRedesign() {
                   <button type="button" className="qrt-auth-secondary" onClick={closeAuth}>留在官網</button>
                 </div>
               ) : (
-                <Landing embedded onLogin={handleAuthSuccess} />
+                <Landing embedded onLogin={handleAuthSuccess} onTrialUnavailable={showTrialNotice} />
               )}
             </div>
+            {trialNotice && <div className="qrt-auth-notice" role="status">{trialNotice}</div>}
           </div>
         </div>
       )}

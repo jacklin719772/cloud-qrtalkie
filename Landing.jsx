@@ -3,7 +3,7 @@ import apiClient from './src/apiClient';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-export default function Landing({ onLogin, embedded = false }) {
+export default function Landing({ onLogin, embedded = false, onTrialUnavailable }) {
   // 使用 React State 控制目前顯示的表單模式：'login', 'signup', 或 'forgot'
   const initialResetToken = new URLSearchParams(window.location.search).get('resetPasswordToken') || '';
   const [authMode, setAuthMode] = useState(initialResetToken ? 'reset' : 'login');
@@ -26,13 +26,15 @@ export default function Landing({ onLogin, embedded = false }) {
   useEffect(() => {
     if (!trialSignupEnabled && authMode === 'signup') {
       setAuthMode('login');
-      showTimedError('試用申請暫未開放，請聯繫平台管理員。');
+      if (onTrialUnavailable) onTrialUnavailable('試用申請暫未開放，請聯繫平台管理員。');
+      else showTimedError('試用申請暫未開放，請聯繫平台管理員。');
     }
-  }, [trialSignupEnabled, authMode]);
+  }, [trialSignupEnabled, authMode, onTrialUnavailable]);
   // 點擊「申請試用」：關閉時僅提示，不切換表單
   const handleTrialTabClick = () => {
     if (!trialSignupEnabled) {
-      showTimedError('試用申請暫未開放，請聯繫平台管理員。');
+      if (onTrialUnavailable) onTrialUnavailable('試用申請暫未開放，請聯繫平台管理員。');
+      else showTimedError('試用申請暫未開放，請聯繫平台管理員。');
       return;
     }
     changeMode('signup');
