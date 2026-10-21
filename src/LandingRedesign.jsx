@@ -178,6 +178,7 @@ export default function LandingRedesign() {
   const [trialNotice, setTrialNotice] = useState('');
   const trialNoticeTimer = useRef(null);
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
+  const [demoLinks, setDemoLinks] = useState({ callcenter: '', building: '' });
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
@@ -234,6 +235,21 @@ export default function LandingRedesign() {
         }
       })
       .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      apiClient.get('/public/settings/homepage-callcenter').catch(() => null),
+      apiClient.get('/public/settings/homepage-building').catch(() => null),
+    ]).then(([callCenter, building]) => {
+      if (cancelled) return;
+      setDemoLinks({
+        callcenter: callCenter?.settings?.url || '',
+        building: building?.settings?.url || '',
+      });
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -307,6 +323,13 @@ export default function LandingRedesign() {
   };
 
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const openDemoLink = (key) => {
+    const url = String(demoLinks[key] || '').trim();
+    if (!url) return;
+    setDemoOpen(false);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="qrt-landing" id="qrt-top">
@@ -580,8 +603,8 @@ export default function LandingRedesign() {
         <div className="qrt-demo-list">
           <button type="button" className="qrt-demo-item" onClick={() => { setDemoOpen(false); setEcardDemoOpen(true); }}><i>📇</i><span>电子名片</span><em>›</em></button>
           <button type="button" className="qrt-demo-item"><i>🤖</i><span>AI客服</span><em>›</em></button>
-          <button type="button" className="qrt-demo-item"><i>📞</i><span>呼叫中心</span><em>›</em></button>
-          <button type="button" className="qrt-demo-item"><i>🏢</i><span>楼宇管理</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('callcenter')}><i>📞</i><span>呼叫中心</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('building')}><i>🏢</i><span>楼宇管理</span><em>›</em></button>
         </div>
         <p className="qrt-demo-hint">选择要体验的在线演示</p>
       </aside>

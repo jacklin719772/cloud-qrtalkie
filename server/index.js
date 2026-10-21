@@ -15261,6 +15261,101 @@ app.get("/api/public/settings/homepage-footer", async (request, response) => {
   }
 });
 
+// 平台首頁演示連結設置（存於 system_settings.homepage_callcenter / homepage_building）
+const HOMEPAGE_DEMO_LINKS = Object.freeze({
+  callcenter: { key: "homepage_callcenter", label: "呼叫中心" },
+  building: { key: "homepage_building", label: "樓宇管理" },
+});
+const HOMEPAGE_DEMO_LINK_DEFAULTS = Object.freeze({ url: "" });
+
+function parseHomepageDemoLinkSetting(raw) {
+  if (!raw) return { ...HOMEPAGE_DEMO_LINK_DEFAULTS };
+  let parsed;
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return { ...HOMEPAGE_DEMO_LINK_DEFAULTS };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ...HOMEPAGE_DEMO_LINK_DEFAULTS };
+  }
+  const url = sanitizeString(parsed.url, 500);
+  return { url: url && url !== "#" && isSafeHomepageUrl(url) ? url : "" };
+}
+
+function buildHomepageDemoLinkSettings(body, label) {
+  const url = sanitizeString(body?.url, 500);
+  if (url && url !== "#" && !isSafeHomepageUrl(url)) {
+    return { error: `請輸入有效的${label}連結（http/https 或站內路徑）。` };
+  }
+  return { settings: { url: url === "#" ? "" : url } };
+}
+
+for (const [slug, config] of Object.entries(HOMEPAGE_DEMO_LINKS)) {
+  app.get(`/api/admin/settings/homepage-${slug}`, requireAdmin, async (request, response) => {
+    if (request.admin.accountType !== "platform") {
+      return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+    }
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const rows = await connection.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
+        [config.key],
+      );
+      return response.json({ settings: parseHomepageDemoLinkSetting(rows[0]?.setting_value) });
+    } catch (error) {
+      console.error(`Failed to get homepage ${slug} setting:`, error);
+      return response.status(500).json({ message: `讀取${config.label}設置失敗。` });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  app.put(`/api/admin/settings/homepage-${slug}`, requireAdmin, async (request, response) => {
+    if (request.admin.accountType !== "platform") {
+      return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+    }
+    const built = buildHomepageDemoLinkSettings(request.body, config.label);
+    if (built.error) return response.status(400).json({ message: built.error });
+    const serialized = JSON.stringify(built.settings);
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.query(
+        `INSERT INTO system_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+        [config.key, serialized],
+      );
+      return response.json({ message: `${config.label}設置已儲存。`, settings: built.settings });
+    } catch (error) {
+      console.error(`Failed to save homepage ${slug} setting:`, error);
+      return response.status(500).json({ message: `儲存${config.label}設置失敗。` });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  app.get(`/api/public/settings/homepage-${slug}`, async (request, response) => {
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const rows = await connection.query(
+        "SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1",
+        [config.key],
+      );
+      response.setHeader("Cache-Control", "no-store");
+      return response.json({ settings: parseHomepageDemoLinkSetting(rows[0]?.setting_value) });
+    } catch (error) {
+      console.error(`Failed to get public homepage ${slug} setting:`, error);
+      return response.status(500).json({ message: `讀取${config.label}設置失敗。` });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+}
+
 // 讀取隐私政策 (管理后台)
 app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {

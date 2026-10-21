@@ -18,6 +18,15 @@ const FOOTER_DEFAULTS = {
   privacyUrl: '#',
 };
 
+const DEMO_LINK_SECTIONS = {
+  callcenter: { label: '呼叫中心', path: '/admin/settings/homepage-callcenter', placeholder: 'https://cloud.qrtalkie.org/callcenter?id=...' },
+  building: { label: '樓宇管理', path: '/admin/settings/homepage-building', placeholder: 'https://cloud.qrtalkie.org/building?id=...' },
+};
+
+const DEMO_LINK_DEFAULTS = {
+  url: '',
+};
+
 const labelStyle = {
   display: 'flex',
   flexDirection: 'column',
@@ -149,6 +158,11 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
 export default function HomepageSettings() {
   const [activeSection, setActiveSection] = useState('footer');
   const [form, setForm] = useState(FOOTER_DEFAULTS);
+  const [demoLinkForms, setDemoLinkForms] = useState({
+    callcenter: { ...DEMO_LINK_DEFAULTS },
+    building: { ...DEMO_LINK_DEFAULTS },
+  });
+  const [demoLinkLoading, setDemoLinkLoading] = useState({ callcenter: true, building: true });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -180,6 +194,24 @@ export default function HomepageSettings() {
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Object.entries(DEMO_LINK_SECTIONS).forEach(([key, config]) => {
+      apiClient.get(config.path)
+        .then((data) => {
+          if (cancelled) return;
+          setDemoLinkForms((prev) => ({ ...prev, [key]: { ...DEMO_LINK_DEFAULTS, ...(data?.settings || {}) } }));
+        })
+        .catch((err) => {
+          if (!cancelled) showMessage('error', err.message || `讀取${config.label}設置失敗。`);
+        })
+        .finally(() => {
+          if (!cancelled) setDemoLinkLoading((prev) => ({ ...prev, [key]: false }));
+        });
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -237,6 +269,22 @@ export default function HomepageSettings() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSaving) return;
+    const demoSection = DEMO_LINK_SECTIONS[activeSection];
+    if (demoSection) {
+      setIsSaving(true);
+      try {
+        const data = await apiClient.put(demoSection.path, demoLinkForms[activeSection]);
+        if (data?.settings) {
+          setDemoLinkForms((prev) => ({ ...prev, [activeSection]: { ...DEMO_LINK_DEFAULTS, ...data.settings } }));
+        }
+        showMessage('success', data?.message || `${demoSection.label}設置已儲存。`);
+      } catch (err) {
+        showMessage('error', err.message || `儲存${demoSection.label}設置失敗。`);
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
     if (!String(form.brandTitle || '').trim()) {
       showMessage('error', '品牌標題不能為空。');
       return;
@@ -255,6 +303,7 @@ export default function HomepageSettings() {
 
   const pickerVersions = picker.platform ? versionsFor(picker.platform) : [];
   const pickerLabel = picker.platform === 'windows' ? 'Windows' : picker.platform === 'android' ? 'Android' : 'iOS';
+  const sectionLoading = DEMO_LINK_SECTIONS[activeSection] ? demoLinkLoading[activeSection] : isLoading;
 
   return (
     <section className="view active settings-form-page" id="homepage-settings" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -269,6 +318,8 @@ export default function HomepageSettings() {
                 style={{ height: '36px', minWidth: '150px', padding: '0 10px', borderRadius: '8px', border: '1px solid #374151', background: '#0f172a', color: '#e5e7eb', outline: 'none', fontSize: '13px' }}
               >
                 <option value="footer">頁腳設置</option>
+                <option value="callcenter">呼叫中心設置</option>
+                <option value="building">樓宇管理設置</option>
                 <option value="banner" disabled>Banner 設置（即將開放）</option>
                 <option value="blocks" disabled>首頁區塊設置（即將開放）</option>
               </select>
@@ -277,8 +328,10 @@ export default function HomepageSettings() {
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
-            {isLoading ? (
+            {activeSection === 'footer' && isLoading ? (
               <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入頁腳設置中...</p>
+            ) : DEMO_LINK_SECTIONS[activeSection] && demoLinkLoading[activeSection] ? (
+              <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入{DEMO_LINK_SECTIONS[activeSection].label}設置中...</p>
             ) : activeSection === 'footer' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={sectionStyle}>
@@ -364,6 +417,19 @@ export default function HomepageSettings() {
                   </div>
                 </div>
               </div>
+            ) : DEMO_LINK_SECTIONS[activeSection] ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={sectionStyle}>
+                  <h3 style={sectionTitleStyle}>{DEMO_LINK_SECTIONS[activeSection].label}設置</h3>
+                  <Field
+                    label={`${DEMO_LINK_SECTIONS[activeSection].label}訪問連結`}
+                    value={demoLinkForms[activeSection].url}
+                    onChange={(value) => setDemoLinkForms((prev) => ({ ...prev, [activeSection]: { url: value } }))}
+                    placeholder={DEMO_LINK_SECTIONS[activeSection].placeholder}
+                  />
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>用戶在官網「在線演示」中點擊「{DEMO_LINK_SECTIONS[activeSection].label}」時，將在新分頁打開此連結。</p>
+                </div>
+              </div>
             ) : (
               <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>該設置項暫未開放。</p>
             )}
@@ -375,7 +441,7 @@ export default function HomepageSettings() {
                 {message.text}
               </p>
             )}
-            <button type="submit" disabled={isSaving || isLoading} style={{ padding: '8px 26px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || isLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || isLoading) ? 0.7 : 1 }}>
+            <button type="submit" disabled={isSaving || sectionLoading} style={{ padding: '8px 26px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: (isSaving || sectionLoading) ? 'not-allowed' : 'pointer', fontSize: '14px', fontWeight: 500, opacity: (isSaving || sectionLoading) ? 0.7 : 1 }}>
               {isSaving ? '儲存中...' : '儲存更改'}
             </button>
           </div>
