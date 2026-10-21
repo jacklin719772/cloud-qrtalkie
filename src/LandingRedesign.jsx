@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Landing from '../Landing';
+import apiClient from './apiClient';
 import './landing-redesign.css';
 
 const slides = [
@@ -114,6 +117,7 @@ export default function LandingRedesign() {
   const [authSuccess, setAuthSuccess] = useState(false);
   const [enterError, setEnterError] = useState('');
   const [entered, setEntered] = useState(false);
+  const [legalViewer, setLegalViewer] = useState({ open: false, title: '', content: '', loading: false });
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -161,6 +165,18 @@ export default function LandingRedesign() {
   const handleAuthSuccess = () => {
     setAuthSuccess(true);
     setEnterError('');
+  };
+
+  const openLegal = async (type) => {
+    const title = type === 'privacy' ? '隱私權政策' : '會員服務條款';
+    const endpoint = type === 'privacy' ? '/public/settings/privacy-policy' : '/public/settings/terms-of-service';
+    setLegalViewer({ open: true, title, content: '', loading: true });
+    try {
+      const data = await apiClient.get(endpoint);
+      setLegalViewer({ open: true, title, content: data?.content || '暫無內容，請聯絡管理員。', loading: false });
+    } catch {
+      setLegalViewer({ open: true, title, content: '內容載入失敗，請稍後再試。', loading: false });
+    }
   };
 
   const handleEnterPlatform = () => {
@@ -381,6 +397,9 @@ export default function LandingRedesign() {
             </div>
             <div className="qrt-auth-right">
               <button type="button" className="qrt-auth-close" onClick={closeAuth} aria-label="關閉">×</button>
+              <div className="qrt-auth-brand">
+                <img src="/assets/landing/QRTalkie-Logo.png" alt="QRTalkie" />
+              </div>
               {authSuccess ? (
                 <div className="qrt-auth-success">
                   <h2>登入成功</h2>
@@ -396,11 +415,44 @@ export default function LandingRedesign() {
                   </a>
                   {entered && <p className="qrt-auth-hint">已在新分頁開啟管理平台。</p>}
                   {enterError && <p className="qrt-auth-error">{enterError}</p>}
+                  <p className="qrt-auth-legal-note">
+                    確認登錄表明您已閱讀並同意
+                    <button type="button" className="qrt-legal-link" onClick={() => openLegal('terms')}>《會員服務條款》</button>
+                    和
+                    <button type="button" className="qrt-legal-link" onClick={() => openLegal('privacy')}>《隱私權政策》</button>
+                  </p>
                   <button type="button" className="qrt-auth-secondary" onClick={closeAuth}>留在官網</button>
                 </div>
               ) : (
                 <Landing embedded onLogin={handleAuthSuccess} />
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {legalViewer.open && (
+        <div
+          className="qrt-legal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={legalViewer.title}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setLegalViewer((v) => ({ ...v, open: false })); }}
+        >
+          <div className="qrt-legal-dialog">
+            <div className="qrt-legal-header">
+              <h2>{legalViewer.title}</h2>
+              <button type="button" className="qrt-legal-close" aria-label="關閉" onClick={() => setLegalViewer((v) => ({ ...v, open: false }))}>×</button>
+            </div>
+            <div className="qrt-legal-body">
+              {legalViewer.loading ? (
+                <p className="qrt-legal-loading">內容載入中...</p>
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{legalViewer.content || ''}</ReactMarkdown>
+              )}
+            </div>
+            <div className="qrt-legal-footer">
+              <button type="button" className="qrt-legal-confirm" onClick={() => setLegalViewer((v) => ({ ...v, open: false }))}>我知道了</button>
             </div>
           </div>
         </div>
