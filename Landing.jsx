@@ -414,6 +414,12 @@ export default function Landing({ onLogin, embedded = false }) {
               <button type="submit" className="primary-btn full" disabled={isLoading}>
                 {isLoading ? '登入中...' : '登入'}
               </button>
+              <p className="auth-legal-note">
+                確認登錄表明您已閱讀並同意
+                <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>《會員服務條款》</button>
+                和
+                <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>《隱私權政策》</button>
+              </p>
             </form>
           )}
 

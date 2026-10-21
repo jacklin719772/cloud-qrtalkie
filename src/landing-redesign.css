@@ -349,10 +349,10 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-auth-success h2 { font-size: 28px; color: #1e3a8a; margin: 0; font-family: sans-serif; }
 .qrt-auth-success p { color: #666; font-size: 14px; margin: 0; }
 .qrt-enter-platform {
-  display: block; background: #1e3a8a; color: #fff; padding: 14px 20px;
+  display: block; background: #2563eb; color: #fff; padding: 14px 20px;
   border-radius: 6px; font-size: 16px; font-weight: 700; margin-top: 8px;
 }
-.qrt-enter-platform:hover { background: #152a6b; color: #fff; }
+.qrt-enter-platform:hover { background: #1d4ed8; color: #fff; }
 .qrt-auth-hint { color: #1e8e3e !important; font-size: 13px !important; }
 .qrt-auth-error { color: #d93025 !important; font-size: 13px !important; }
 .qrt-auth-secondary {
@@ -455,23 +455,33 @@ body.qrt-modal-open { overflow: hidden !important; }
 }
 .qrt-auth-modal .landing--embed .primary-btn.full {
   min-height: 46px;
-  background: #1e3a8a !important;
+  background: #2563eb !important;
   color: #fff !important;
   border: 0;
   border-radius: 4px;
   font-size: 16px;
   font-weight: 600;
 }
+.qrt-auth-modal .landing--embed .primary-btn.full:hover { background: #1d4ed8 !important; }
 .qrt-auth-modal .landing--embed .muted { color: #888 !important; }
 .qrt-auth-modal .landing--embed .auth-scroll {
   max-height: 280px;
   overflow-y: auto;
   padding-right: 4px;
 }
-.qrt-auth-modal .landing--embed .terms-consent { color: #888 !important; font-size: 12px; }
+.qrt-auth-modal .landing--embed .terms-consent { color: #666 !important; font-size: 12px; }
 .qrt-auth-modal .landing--embed .text-link {
-  background: none; border: 0; padding: 0; color: #1e3a8a; cursor: pointer;
+  background: none; border: 0; padding: 0; color: #2563eb; cursor: pointer;
+  font: inherit; text-decoration: underline; text-underline-offset: 2px;
 }
+.qrt-auth-modal .landing--embed .auth-legal-note {
+  margin-top: 2px;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+}
+.qrt-auth-modal .landing--embed .auth-legal-note .text-link { font-size: 12px; }
 
 /* Responsive */
 @media (max-width: 768px) {
