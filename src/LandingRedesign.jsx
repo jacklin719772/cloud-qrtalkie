@@ -73,11 +73,12 @@ const contentSlides = [
     ],
   },
   {
-    title: '呼叫转接&合并', img: '/assets/landing/content-call.jpg', logo: ['QRTalkie', 'Call Management'],
-    paragraphs: [
-      '专业的企业级通讯管理功能，满足复杂业务场景需求。',
-      '支持一键呼叫转接、多方通话合并与静音管理。无论是客服中心的繁忙调度，',
-      '还是高管的跨国多方会议，都能轻松应对，确保每一次通话都专业、高效。',
+    title: '呼叫转接&合并', img: '/assets/landing/call01.jpg', logo: ['QRTalkie', 'Call Management'],
+    points: [
+      { title: '一键转接', desc: '通话中一键转接给同事、部门或坐席，客户无需重复描述问题。' },
+      { title: '多方合并', desc: '支持两路或多路通话合并为多方会议，随时邀请相关人员加入。' },
+      { title: '通话控制', desc: '支持保持、恢复、静音与切换，沟通节奏灵活可控。' },
+      { title: '录音留痕', desc: '支持通话录音，转接、合并与通话结果全程记录，便于复盘与服务质量追溯。' },
     ],
   },
   {
