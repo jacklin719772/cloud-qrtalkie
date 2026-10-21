@@ -515,6 +515,35 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-demo-item em { font-style: normal; font-size: 17px; color: #c3ccd9; }
 .qrt-demo-item:hover em { color: #1d63d8; }
 .qrt-demo-hint { margin: 0; padding: 0 20px 22px; font-size: 12px; color: #9aa4b2; text-align: center; }
+.qrt-ecard-demo-modal {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: center;
+  padding: 48px 32px 32px;
+  background: rgba(5, 10, 20, 0.84);
+  animation: qrtDemoFade 0.25s ease;
+}
+.qrt-ecard-demo-figure {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  max-width: min(1024px, 94vw); max-height: 90vh;
+  margin: 0;
+}
+.qrt-ecard-demo-figure img {
+  display: block; width: auto; height: auto;
+  max-width: 100%; max-height: 80vh;
+  border-radius: 14px;
+  background: #000;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+.qrt-ecard-demo-figure figcaption { font-size: 14px; color: #dbe4f0; letter-spacing: 0.5px; }
+.qrt-ecard-demo-close {
+  position: absolute; top: 22px; right: 26px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: #fff;
+  font-size: 26px; line-height: 1; cursor: pointer;
+  transition: background 0.2s ease;
+}
+.qrt-ecard-demo-close:hover { background: rgba(255, 255, 255, 0.28); }
 .qrt-back-to-top-btn {
   position: fixed; bottom: 40px; right: 40px; width: 50px; height: 50px;
   background-color: #1e3a8a; color: #fff; border: none; border-radius: 50%;
@@ -871,6 +900,11 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-demo-head { padding: 16px 16px 14px; }
   .qrt-demo-list { padding: 14px; }
   .qrt-demo-item { padding: 12px 14px; font-size: 13px; margin-bottom: 10px; }
+  .qrt-ecard-demo-modal { padding: 56px 14px 24px; }
+  .qrt-ecard-demo-figure { max-width: 96vw; gap: 12px; }
+  .qrt-ecard-demo-figure img { max-height: 72vh; border-radius: 10px; }
+  .qrt-ecard-demo-figure figcaption { font-size: 12px; }
+  .qrt-ecard-demo-close { top: 12px; right: 12px; width: 36px; height: 36px; }
   .qrt-solutions-grid { grid-template-columns: 1fr; gap: 16px; }
   .qrt-solution-head { height: 132px; padding: 0 20px; }
   .qrt-solution-head h3 { font-size: 18px; }

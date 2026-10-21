@@ -180,13 +180,18 @@ export default function LandingRedesign() {
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
 
   useEffect(() => {
-    if (!demoOpen) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') setDemoOpen(false); };
+    if (!demoOpen && !ecardDemoOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key !== 'Escape') return;
+      if (ecardDemoOpen) setEcardDemoOpen(false);
+      else setDemoOpen(false);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [demoOpen]);
+  }, [demoOpen, ecardDemoOpen]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -573,13 +578,29 @@ export default function LandingRedesign() {
           <button type="button" className="qrt-demo-close" onClick={() => setDemoOpen(false)} aria-label="关闭">×</button>
         </div>
         <div className="qrt-demo-list">
-          <button type="button" className="qrt-demo-item"><i>📇</i><span>电子名片</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={() => { setDemoOpen(false); setEcardDemoOpen(true); }}><i>📇</i><span>电子名片</span><em>›</em></button>
           <button type="button" className="qrt-demo-item"><i>🤖</i><span>AI客服</span><em>›</em></button>
           <button type="button" className="qrt-demo-item"><i>📞</i><span>呼叫中心</span><em>›</em></button>
           <button type="button" className="qrt-demo-item"><i>🏢</i><span>楼宇管理</span><em>›</em></button>
         </div>
         <p className="qrt-demo-hint">选择要体验的在线演示</p>
       </aside>
+
+      {ecardDemoOpen && (
+        <div
+          className="qrt-ecard-demo-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="电子名片在线演示"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setEcardDemoOpen(false); }}
+        >
+          <button type="button" className="qrt-ecard-demo-close" aria-label="关闭" onClick={() => setEcardDemoOpen(false)}>×</button>
+          <figure className="qrt-ecard-demo-figure">
+            <img src="/assets/landing/ecard-demo01.png" alt="电子名片演示" />
+            <figcaption>扫描图中二维码，体验电子名片</figcaption>
+          </figure>
+        </div>
+      )}
       <button type="button" id="qrt-back-to-top" className={`qrt-back-to-top-btn${showBackTop ? ' show' : ''}`} aria-label="回到顶部" onClick={scrollTop}>↑</button>
       </div>
 
