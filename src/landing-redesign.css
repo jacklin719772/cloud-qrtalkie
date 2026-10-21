@@ -133,7 +133,6 @@ body.qrt-modal-open { overflow: hidden !important; }
 }
 .qrt-concept-visual {
   height: 600px; background-color: #0f172a;
-  background-image: url('/assets/landing/design-concept.jpg');
   background-size: cover; background-position: center;
   display: flex; justify-content: center; align-items: center; position: relative;
 }
@@ -226,7 +225,6 @@ body.qrt-modal-open { overflow: hidden !important; }
 /* Footer */
 #footer { scroll-margin-top: 80px; }
 .qrt-site-footer {
-  background-image: url('/assets/landing/footer-bg.jpg');
   background-size: cover; background-position: center bottom; background-repeat: no-repeat;
   background-color: #050a14; color: #fff; font-size: 14px; padding-top: 60px;
 }

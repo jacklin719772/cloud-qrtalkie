@@ -243,7 +243,7 @@ export default function LandingRedesign() {
         <section className="qrt-brand-concept" id="design-philosophy">
           <h2 className="qrt-section-title">设计理念</h2>
           <p className="qrt-section-subtitle">Design Philosophy</p>
-          <div className="qrt-concept-visual"></div>
+          <div className="qrt-concept-visual" style={{ backgroundImage: "url('/assets/landing/design-concept.jpg')" }}></div>
         </section>
 
         <section className="qrt-integrated-block">
@@ -314,7 +314,7 @@ export default function LandingRedesign() {
         </section>
       </main>
 
-      <footer className="qrt-site-footer" id="footer">
+      <footer className="qrt-site-footer" id="footer" style={{ backgroundImage: "url('/assets/landing/footer-bg.jpg')" }}>
         <div className="qrt-container qrt-footer-content">
           <div className="qrt-footer-col qrt-brand-info">
             <h3>QRTalkie</h3>
