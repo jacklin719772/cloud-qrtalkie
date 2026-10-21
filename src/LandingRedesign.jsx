@@ -97,7 +97,7 @@ const solutions = [
   { title: '私有化即时通讯', img: '/assets/landing/001.jpg', tone: 'blue', desc: '部署在企业自有环境，消息、文件与通话全程加密，多端同步，数据主权自主掌控。' },
   { title: 'SaaS公共服务', img: '/assets/landing/002.jpg', tone: 'violet', desc: '云端开箱即用，账号、消息与通话集中管理，按需开通，快速构建对外沟通服务。' },
   { title: '云端呼叫中心', img: '/assets/landing/call01.jpg', tone: 'dark', desc: '坐席、排队、转接与合并统一调度，支持通话录音与留痕，客户咨询不漏接。' },
-  { title: '智能门禁管理', img: '/assets/landing/004.jpg', tone: 'violet', desc: '门禁、门锁与摄像头统一接入，扫码或远程开门，通行记录实时可查。' },
+  { title: '智能门禁管理', img: '/assets/landing/004.jpg', tone: 'violet', desc: '门禁、门锁与摄像头统一接入；访客扫码即可发起音视频呼叫，联系人核验后按授权一键解锁，通行记录实时可查。' },
   { title: '远距设备操控', img: '/assets/landing/device01.jpg', tone: 'dark', desc: '设备状态实时可见，支持视频呼叫与可视化远程协助，异常情况远程处置。' },
   { title: '敏捷政务服务', img: '/assets/landing/003.jpg', tone: 'blue', desc: '面向政务窗口与社区，提供安全合规的即时沟通与视频协同，事项办理高效透明。' },
 ];
