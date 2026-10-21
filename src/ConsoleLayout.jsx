@@ -34,6 +34,7 @@ import TenantAccountManagement from './TenantAccountManagement';
 import ContactBooks from './ContactBooks';
 import PrivacyPolicy from './PrivacyPolicy';
 import TermsOfService from './TermsOfService';
+import HomepageSettings from './HomepageSettings';
 import EcardStyles from './EcardStyles';
 import EcardGeneration from './EcardGeneration';
 import CallCenterConfiguration from './CallCenterConfiguration';
@@ -75,6 +76,7 @@ const viewTitles = {
   addons: '增值服務',
   'terms-of-service': '服務條款',
   'privacy-policy': '隱私政策',
+  'homepage-settings': '首頁設置',
   'purchase-plan': '購買套餐',
   'call-center': '呼叫中心設定',
   'call-center-add': '新增呼叫中心',
@@ -1017,6 +1019,7 @@ export default function ConsoleLayout({ onLogout }) {
           )}
           {currentView === 'terms-of-service' && <TermsOfService />}
           {currentView === 'privacy-policy' && <PrivacyPolicy />}
+          {currentView === 'homepage-settings' && <HomepageSettings />}
           {currentView === 'call-center' && (
             <CallCenterConfiguration 
               ref={callCenterConfigurationRef} 

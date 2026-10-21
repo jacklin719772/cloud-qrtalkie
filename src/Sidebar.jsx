@@ -52,6 +52,7 @@ const baseDataItems = [
   { id: 'e-business-card', label: '電子名片' },
   { id: 'terms-of-service', label: '服務條款' },
   { id: 'privacy-policy', label: '隱私政策' },
+  { id: 'homepage-settings', label: '首頁設置' },
 ];
 
 export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogout, isAdminPlatform, userType, isSuperAdmin, isSubAdmin }) {
@@ -261,9 +262,9 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
                     key={item.id}
                     className={`sub-nav-item ${currentView === item.id ? 'active' : ''}`}
                     type="button"
-                  title={['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy'].includes(item.id) ? item.label : `${item.label}（暫未實作）`}
+                  title={['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy', 'homepage-settings'].includes(item.id) ? item.label : `${item.label}（暫未實作）`}
                     onClick={() => {
-                    if (['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy'].includes(item.id)) onViewChange(item.id);
+                    if (['plans', 'offline-account', 'payment-methods', 'discount-data', 'addons', 'e-business-card', 'terms-of-service', 'privacy-policy', 'homepage-settings'].includes(item.id)) onViewChange(item.id);
                     }}
                   >
                     {item.label}

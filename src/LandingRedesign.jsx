@@ -111,6 +111,19 @@ const conceptMobileFeatures = [
   { no: '08', title: '云管理平台', desc: '账号、订单与运营一屏掌握。' },
 ];
 
+const FOOTER_DEFAULTS = {
+  brandTitle: 'QRTalkie',
+  brandSubtitleEn: 'Secure Instant Messaging & IoT App',
+  brandSubtitleZh: '安全即时通讯与物联网应用',
+  address: '台中市西區五權西四街57號3樓',
+  email: 'qtalkie@gmail.com',
+  desktopDownloadUrl: '',
+  androidDownloadUrl: '',
+  iosDownloadUrl: '',
+  copyright: '© 2026 QRTalkie. All Rights Reserved.',
+  privacyUrl: '#',
+};
+
 function useLandingViewport() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -142,6 +155,7 @@ export default function LandingRedesign() {
   const [legalViewer, setLegalViewer] = useState({ open: false, title: '', content: '', loading: false });
   const [trialNotice, setTrialNotice] = useState('');
   const trialNoticeTimer = useRef(null);
+  const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -173,6 +187,18 @@ export default function LandingRedesign() {
 
   useEffect(() => () => {
     if (trialNoticeTimer.current) window.clearTimeout(trialNoticeTimer.current);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get('/public/settings/homepage-footer')
+      .then((data) => {
+        if (!cancelled && data?.settings) {
+          setFooterSettings({ ...FOOTER_DEFAULTS, ...data.settings });
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const showTrialNotice = (message) => {
@@ -397,9 +423,9 @@ export default function LandingRedesign() {
       <footer className="qrt-site-footer" id="footer" style={{ backgroundImage: "url('/assets/landing/footer-bg.jpg')" }}>
         <div className="qrt-container qrt-footer-content">
           <div className="qrt-footer-col qrt-brand-info">
-            <h3>QRTalkie</h3>
-            <p>Secure Instant Messaging &amp; IoT App</p>
-            <p>安全即时通讯与物联网应用</p>
+            <h3>{footerSettings.brandTitle}</h3>
+            <p>{footerSettings.brandSubtitleEn}</p>
+            <p>{footerSettings.brandSubtitleZh}</p>
           </div>
           <div className="qrt-footer-col qrt-quick-links">
             <h4>快速链接</h4>
@@ -413,34 +439,52 @@ export default function LandingRedesign() {
           </div>
           <div className="qrt-footer-col qrt-contact-info">
             <h4>联系我们</h4>
-            <p>地址：台中市西區五權西四街57號3樓</p>
-            <p>✉️ 邮箱：qtalkie@gmail.com</p>
+            <p>地址：{footerSettings.address || '-'}</p>
+            <p>✉️ 邮箱：{footerSettings.email ? <a href={`mailto:${footerSettings.email}`}>{footerSettings.email}</a> : '-'}</p>
           </div>
           <div className="qrt-footer-col qrt-download-col">
             <h4>资源下载</h4>
             <div className="qrt-download-item">
-              <a href="#" className="qrt-desktop-download" onClick={(e) => e.preventDefault()}>
+              <a
+                href={footerSettings.desktopDownloadUrl || '#'}
+                className="qrt-desktop-download"
+                onClick={(e) => { if (!footerSettings.desktopDownloadUrl) e.preventDefault(); }}
+              >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
                 <span className="qrt-dl-text"><span className="qrt-dl-title">桌面版 (Windows)</span><span className="qrt-dl-sub">点击下载</span></span>
               </a>
             </div>
             <div className="qrt-download-item">
-              <div className="qrt-qr-download-item">
+              <a
+                className="qrt-qr-download-item"
+                href={footerSettings.androidDownloadUrl || '#'}
+                target={footerSettings.androidDownloadUrl ? '_blank' : undefined}
+                rel="noopener noreferrer"
+                onClick={(e) => { if (!footerSettings.androidDownloadUrl) e.preventDefault(); }}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
                 <div className="qrt-qr-mini"><div className="qrt-qr-placeholder-mini"></div></div>
                 <div className="qrt-qr-download-text"><span className="qrt-platform-name">Android</span><span className="qrt-scan-tip">扫码下载到手机</span></div>
-              </div>
+              </a>
             </div>
             <div className="qrt-download-item">
-              <div className="qrt-qr-download-item">
+              <a
+                className="qrt-qr-download-item"
+                href={footerSettings.iosDownloadUrl || '#'}
+                target={footerSettings.iosDownloadUrl ? '_blank' : undefined}
+                rel="noopener noreferrer"
+                onClick={(e) => { if (!footerSettings.iosDownloadUrl) e.preventDefault(); }}
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
                 <div className="qrt-qr-mini"><div className="qrt-qr-placeholder-mini"></div></div>
                 <div className="qrt-qr-download-text"><span className="qrt-platform-name">iOS</span><span className="qrt-scan-tip">扫码下载到手机</span></div>
-              </div>
+              </a>
             </div>
           </div>
         </div>
         <div className="qrt-footer-bottom">
           <div className="qrt-container">
-            <p>© 2026 QRTalkie. All Rights Reserved. | <a href="#">隐私政策</a></p>
+            <p>{footerSettings.copyright} | <a href={footerSettings.privacyUrl || '#'} onClick={(e) => { if (!footerSettings.privacyUrl || footerSettings.privacyUrl === '#') e.preventDefault(); }}>隐私政策</a></p>
           </div>
         </div>
       </footer>

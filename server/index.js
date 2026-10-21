@@ -15109,6 +15109,149 @@ app.post("/api/tenant/ecard-accounts/:sipUserId/send-notification-email", requir
  * ==========================================
  */
 
+// 平台首頁頁腳設置（存於 system_settings.homepage_footer）
+const HOMEPAGE_FOOTER_DEFAULTS = Object.freeze({
+  brandTitle: "QRTalkie",
+  brandSubtitleEn: "Secure Instant Messaging & IoT App",
+  brandSubtitleZh: "安全即时通讯与物联网应用",
+  address: "台中市西區五權西四街57號3樓",
+  email: "qtalkie@gmail.com",
+  desktopDownloadUrl: "",
+  androidDownloadUrl: "",
+  iosDownloadUrl: "",
+  copyright: "© 2026 QRTalkie. All Rights Reserved.",
+  privacyUrl: "#",
+});
+
+function isSafeHomepageUrl(value) {
+  if (!value) return true;
+  return value === "#" || value.startsWith("/") || /^https?:\/\//i.test(value);
+}
+
+function parseHomepageFooterSetting(raw) {
+  if (!raw) return { ...HOMEPAGE_FOOTER_DEFAULTS };
+  let parsed;
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return { ...HOMEPAGE_FOOTER_DEFAULTS };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ...HOMEPAGE_FOOTER_DEFAULTS };
+  }
+  const text = (key, fallback, max) => {
+    if (parsed[key] === undefined || parsed[key] === null) return fallback;
+    return sanitizeString(parsed[key], max);
+  };
+  const url = (key, fallback) => {
+    if (parsed[key] === undefined || parsed[key] === null) return fallback;
+    const value = sanitizeString(parsed[key], 500);
+    return isSafeHomepageUrl(value) ? value : "";
+  };
+  return {
+    brandTitle: text("brandTitle", HOMEPAGE_FOOTER_DEFAULTS.brandTitle, 120) || HOMEPAGE_FOOTER_DEFAULTS.brandTitle,
+    brandSubtitleEn: text("brandSubtitleEn", HOMEPAGE_FOOTER_DEFAULTS.brandSubtitleEn, 200),
+    brandSubtitleZh: text("brandSubtitleZh", HOMEPAGE_FOOTER_DEFAULTS.brandSubtitleZh, 200),
+    address: text("address", HOMEPAGE_FOOTER_DEFAULTS.address, 300),
+    email: normalizeEmail(text("email", HOMEPAGE_FOOTER_DEFAULTS.email, 255)),
+    desktopDownloadUrl: url("desktopDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.desktopDownloadUrl),
+    androidDownloadUrl: url("androidDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.androidDownloadUrl),
+    iosDownloadUrl: url("iosDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.iosDownloadUrl),
+    copyright: text("copyright", HOMEPAGE_FOOTER_DEFAULTS.copyright, 300),
+    privacyUrl: url("privacyUrl", HOMEPAGE_FOOTER_DEFAULTS.privacyUrl) || "#",
+  };
+}
+
+function buildHomepageFooterSettings(body) {
+  const source = body || {};
+  const settings = {
+    brandTitle: sanitizeString(source.brandTitle, 120),
+    brandSubtitleEn: sanitizeString(source.brandSubtitleEn, 200),
+    brandSubtitleZh: sanitizeString(source.brandSubtitleZh, 200),
+    address: sanitizeString(source.address, 300),
+    email: sanitizeString(source.email, 255),
+    desktopDownloadUrl: sanitizeString(source.desktopDownloadUrl, 500),
+    androidDownloadUrl: sanitizeString(source.androidDownloadUrl, 500),
+    iosDownloadUrl: sanitizeString(source.iosDownloadUrl, 500),
+    copyright: sanitizeString(source.copyright, 300),
+    privacyUrl: sanitizeString(source.privacyUrl, 500) || "#",
+  };
+  if (!settings.brandTitle) {
+    return { error: "品牌標題不能為空。" };
+  }
+  if (settings.email && !isValidEmail(settings.email)) {
+    return { error: "請輸入有效的聯絡郵箱。" };
+  }
+  for (const key of ["desktopDownloadUrl", "androidDownloadUrl", "iosDownloadUrl", "privacyUrl"]) {
+    if (!isSafeHomepageUrl(settings[key])) {
+      return { error: "請輸入有效的連結（http/https、站內路徑或 #）。" };
+    }
+  }
+  settings.email = normalizeEmail(settings.email);
+  return { settings };
+}
+
+app.get("/api/admin/settings/homepage-footer", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_footer' LIMIT 1",
+    );
+    return response.json({ settings: parseHomepageFooterSetting(rows[0]?.setting_value) });
+  } catch (error) {
+    console.error("Failed to get homepage footer settings:", error);
+    return response.status(500).json({ message: "讀取首頁頁腳設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.put("/api/admin/settings/homepage-footer", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+  }
+  const built = buildHomepageFooterSettings(request.body);
+  if (built.error) return response.status(400).json({ message: built.error });
+  const serialized = JSON.stringify(built.settings);
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('homepage_footer', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [serialized],
+    );
+    return response.json({ message: "首頁頁腳設置已儲存。", settings: built.settings });
+  } catch (error) {
+    console.error("Failed to save homepage footer settings:", error);
+    return response.status(500).json({ message: "儲存首頁頁腳設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.get("/api/public/settings/homepage-footer", async (request, response) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_footer' LIMIT 1",
+    );
+    response.setHeader("Cache-Control", "no-store");
+    return response.json({ settings: parseHomepageFooterSetting(rows[0]?.setting_value) });
+  } catch (error) {
+    console.error("Failed to get public homepage footer settings:", error);
+    return response.status(500).json({ message: "讀取首頁頁腳設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // 讀取隐私政策 (管理后台)
 app.get("/api/admin/settings/privacy-policy", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== 'platform') {
