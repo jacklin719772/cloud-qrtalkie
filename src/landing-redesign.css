@@ -566,20 +566,22 @@ body.qrt-modal-open { overflow: hidden !important; }
   display: flex; flex-direction: column;
   background: #fff;
   border-radius: 18px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
 }
 .qrt-demo-entry-media {
   display: block; width: 100%; height: auto;
-  max-height: 56vh; object-fit: cover;
+  flex: 1 1 auto; min-height: 0; max-height: none;
+  object-fit: cover;
   background: #06101f;
 }
-.qrt-demo-entry-body { padding: 20px 28px 26px; text-align: center; }
+.qrt-demo-entry-body { padding: 18px 24px 22px; text-align: center; flex: 0 0 auto; }
 .qrt-demo-entry-body h3 {
   margin: 0 0 6px; color: #0f172a; font-size: 19px; font-weight: 700; letter-spacing: 0.5px;
 }
-.qrt-demo-entry-sub { margin: 0 0 18px; color: #64748b; font-size: 13px; }
-.qrt-demo-entry-actions { display: flex; align-items: center; justify-content: center; gap: 48px; }
+.qrt-demo-entry-sub { margin: 0 0 14px; color: #64748b; font-size: 13px; }
+.qrt-demo-entry-actions { display: flex; align-items: center; justify-content: center; gap: 36px; }
 .qrt-demo-entry-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .qrt-demo-entry-qr-box {
   display: inline-flex; padding: 10px;
@@ -965,7 +967,6 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-ecard-demo-close { top: 12px; right: 12px; width: 36px; height: 36px; }
   .qrt-demo-entry-modal { padding: 56px 12px 20px; }
   .qrt-demo-entry-dialog { width: 96vw; border-radius: 14px; }
-  .qrt-demo-entry-media { max-height: 40vh; }
   .qrt-demo-entry-body { padding: 16px 18px 20px; }
   .qrt-demo-entry-body h3 { font-size: 16px; }
   .qrt-demo-entry-sub { font-size: 12px; margin-bottom: 14px; }
