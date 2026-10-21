@@ -100,6 +100,17 @@ const conceptFeatures = [
   { no: '08', title: '云管理平台', desc: '账号、订单、通话与运营数据集中管理，经营状态一目了然。' },
 ];
 
+const conceptMobileFeatures = [
+  { no: '01', title: '私有部署', desc: '数据主权自主掌控。' },
+  { no: '02', title: '融合通信', desc: '多端同步，语音视频随时接入。' },
+  { no: '03', title: '安全加密', desc: '消息与通话全程加密。' },
+  { no: '04', title: '电子名片', desc: '扫码即联，随时分享。' },
+  { no: '05', title: '呼叫中心', desc: '坐席、转接与留言统一管理。' },
+  { no: '06', title: '设备管理', desc: '终端统一接入，远程可控。' },
+  { no: '07', title: 'AI 助手', desc: '私有知识问答与智能语音应答。' },
+  { no: '08', title: '云管理平台', desc: '账号、订单与运营一屏掌握。' },
+];
+
 function useLandingViewport() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -287,9 +298,22 @@ export default function LandingRedesign() {
         <section className="qrt-brand-concept" id="design-philosophy">
           <h2 className="qrt-section-title">设计理念</h2>
           <p className="qrt-section-subtitle">Design Philosophy</p>
-          <div className="qrt-concept-visual" style={{ backgroundImage: "url('/assets/landing/why05.jpg')" }}>
+          <div className="qrt-concept-visual qrt-concept-desktop" style={{ backgroundImage: "url('/assets/landing/why05.jpg')" }}>
             <div className="qrt-concept-grid">
               {conceptFeatures.map((item) => (
+                <div className="qrt-concept-item" key={item.no}>
+                  <div className="qrt-concept-copy">
+                    <span className="qrt-concept-number">{item.no}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="qrt-concept-visual qrt-concept-mobile" style={{ backgroundImage: "url('/assets/landing/why07.jpg')" }}>
+            <div className="qrt-concept-grid">
+              {conceptMobileFeatures.map((item) => (
                 <div className="qrt-concept-item" key={item.no}>
                   <div className="qrt-concept-copy">
                     <span className="qrt-concept-number">{item.no}</span>
