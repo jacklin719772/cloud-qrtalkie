@@ -93,11 +93,13 @@ const contentSlides = [
   },
 ];
 
-const scenarios = [
-  { title: '智慧办公 / Smart Office', img: '/assets/landing/scenario-office.jpg', textFirst: true, paragraphs: ['打造无缝协作的现代化办公环境。通过 QRTalkie，员工可以在一个平台上完成即时沟通、高清视频会议、文件共享与任务分配。', '结合 AI 助手功能，自动整理会议纪要并生成待办事项，让团队告别低效沟通，专注于核心业务创新，大幅提升整体运营效率。'] },
-  { title: '智慧社区 / Smart Community', img: '/assets/landing/scenario-community.jpg', textFirst: false, paragraphs: ['为高端住宅与智慧社区提供安全、便捷的邻里沟通与物业服务通道。居民可通过 APP 与物业进行即时报修、缴费咨询。', '访客通过扫码即可与业主进行高清视频对讲，并获取临时通行权限。全方位保障社区安全，提升居住幸福感与科技感。'] },
-  { title: '智慧医疗 / Smart Healthcare', img: '/assets/landing/scenario-healthcare.jpg', textFirst: true, paragraphs: ['赋能医疗机构，实现医患之间的高效、安全互动。支持远程问诊、电子处方流转与检查报告的安全推送。', '严格的端到端加密确保患者隐私数据绝对安全。同时，内部医护人员可通过专属频道进行紧急病例讨论，争分夺秒挽救生命。'] },
-  { title: '智慧零售 / Smart Retail', img: '/assets/landing/scenario-retail.jpg', textFirst: false, paragraphs: ['重塑线上线下融合的消费体验。门店导购可通过 QRTalkie 与总部实时同步库存、价格与促销信息。', '顾客扫码即可添加专属导购，享受一对一的 VIP 咨询服务与售后支持。通过私域流量的精细化运营，有效提升客户复购率与品牌忠诚度。'] },
+const solutions = [
+  { title: '私有化即时通讯', img: '/assets/landing/001.jpg', tone: 'blue', desc: '部署在企业自有环境，消息、文件与通话全程加密，多端同步，数据主权自主掌控。' },
+  { title: 'SaaS公共服务', img: '/assets/landing/002.jpg', tone: 'violet', desc: '云端开箱即用，账号、消息与通话集中管理，按需开通，快速构建对外沟通服务。' },
+  { title: '云端呼叫中心', img: '/assets/landing/call01.jpg', tone: 'dark', desc: '坐席、排队、转接与合并统一调度，支持通话录音与留痕，客户咨询不漏接。' },
+  { title: '智能门禁管理', img: '/assets/landing/004.jpg', tone: 'violet', desc: '门禁、门锁与摄像头统一接入，扫码或远程开门，通行记录实时可查。' },
+  { title: '远距设备操控', img: '/assets/landing/device01.jpg', tone: 'dark', desc: '设备状态实时可见，支持视频呼叫与可视化远程协助，异常情况远程处置。' },
+  { title: '敏捷政务服务', img: '/assets/landing/003.jpg', tone: 'blue', desc: '面向政务窗口与社区，提供安全合规的即时沟通与视频协同，事项办理高效透明。' },
 ];
 
 const conceptFeatures = [
@@ -444,17 +446,17 @@ export default function LandingRedesign() {
               <h2 className="qrt-section-title">丰富应用场景</h2>
               <p className="qrt-section-subtitle">Rich Application Scenarios</p>
             </div>
-            {scenarios.map((scenario) => (
-              <div key={scenario.title} className={`qrt-scenario-item${scenario.textFirst ? ' text-first-mobile' : ''}`}>
-                <div className="qrt-scenario-text">
-                  <h3>{scenario.title}</h3>
-                  {scenario.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-                </div>
-                <div className="qrt-scenario-img">
-                  <img src={scenario.img} alt={scenario.title} />
-                </div>
-              </div>
-            ))}
+            <div className="qrt-solutions-grid">
+              {solutions.map((solution) => (
+                <article key={solution.title} className={`qrt-solution-card tone-${solution.tone}`}>
+                  <div className="qrt-solution-head">
+                    <h3>{solution.title}</h3>
+                    <img src={solution.img} alt="" loading="lazy" />
+                  </div>
+                  <p className="qrt-solution-desc">{solution.desc}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
       </main>
