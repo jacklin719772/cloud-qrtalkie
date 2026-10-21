@@ -544,6 +544,64 @@ body.qrt-modal-open { overflow: hidden !important; }
   transition: background 0.2s ease;
 }
 .qrt-ecard-demo-close:hover { background: rgba(255, 255, 255, 0.28); }
+.qrt-demo-entry-modal {
+  position: fixed; inset: 0; z-index: 121;
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 24px;
+  background: rgba(5, 10, 20, 0.84);
+  animation: qrtDemoFade 0.25s ease;
+}
+.qrt-demo-entry-close {
+  position: absolute; top: 22px; right: 26px; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border: none; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: #fff;
+  font-size: 26px; line-height: 1; cursor: pointer;
+  transition: background 0.2s ease;
+}
+.qrt-demo-entry-close:hover { background: rgba(255, 255, 255, 0.28); }
+.qrt-demo-entry-dialog {
+  width: min(920px, 94vw);
+  max-height: 92vh;
+  display: flex; flex-direction: column;
+  background: #fff;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
+}
+.qrt-demo-entry-media {
+  display: block; width: 100%; height: auto;
+  max-height: 56vh; object-fit: cover;
+  background: #06101f;
+}
+.qrt-demo-entry-body { padding: 20px 28px 26px; text-align: center; }
+.qrt-demo-entry-body h3 {
+  margin: 0 0 6px; color: #0f172a; font-size: 19px; font-weight: 700; letter-spacing: 0.5px;
+}
+.qrt-demo-entry-sub { margin: 0 0 18px; color: #64748b; font-size: 13px; }
+.qrt-demo-entry-actions { display: flex; align-items: center; justify-content: center; gap: 48px; }
+.qrt-demo-entry-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.qrt-demo-entry-qr-box {
+  display: inline-flex; padding: 10px;
+  background: #fff; border: 1px solid #e6ecf5; border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+.qrt-demo-entry-qr span { font-size: 12px; color: #64748b; }
+.qrt-demo-entry-link {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 180px; padding: 14px 36px;
+  border-radius: 999px;
+  background: linear-gradient(120deg, #1d63d8 0%, #38a8e8 100%);
+  color: #fff !important; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(29, 99, 216, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.qrt-demo-entry-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(29, 99, 216, 0.4);
+}
+.qrt-demo-entry-empty { margin: 14px 0 4px; color: #94a3b8; font-size: 13px; }
 .qrt-back-to-top-btn {
   position: fixed; bottom: 40px; right: 40px; width: 50px; height: 50px;
   background-color: #1e3a8a; color: #fff; border: none; border-radius: 50%;
@@ -905,6 +963,15 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-ecard-demo-figure img { max-height: 72vh; border-radius: 10px; }
   .qrt-ecard-demo-figure figcaption { font-size: 12px; }
   .qrt-ecard-demo-close { top: 12px; right: 12px; width: 36px; height: 36px; }
+  .qrt-demo-entry-modal { padding: 56px 12px 20px; }
+  .qrt-demo-entry-dialog { width: 96vw; border-radius: 14px; }
+  .qrt-demo-entry-media { max-height: 40vh; }
+  .qrt-demo-entry-body { padding: 16px 18px 20px; }
+  .qrt-demo-entry-body h3 { font-size: 16px; }
+  .qrt-demo-entry-sub { font-size: 12px; margin-bottom: 14px; }
+  .qrt-demo-entry-actions { flex-direction: column; gap: 18px; }
+  .qrt-demo-entry-link { width: 100%; min-width: 0; padding: 12px 20px; font-size: 15px; }
+  .qrt-demo-entry-close { top: 12px; right: 12px; width: 36px; height: 36px; }
   .qrt-solutions-grid { grid-template-columns: 1fr; gap: 16px; }
   .qrt-solution-head { height: 132px; padding: 0 20px; }
   .qrt-solution-head h3 { font-size: 18px; }

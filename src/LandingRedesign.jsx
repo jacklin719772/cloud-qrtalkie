@@ -146,6 +146,11 @@ function absoluteDownloadUrl(url) {
   return text.startsWith('/') ? `${window.location.origin}${text}` : text;
 }
 
+const DEMO_ENTRY_CONFIG = {
+  callcenter: { title: '呼叫中心演示', img: '/assets/landing/callcenter-demo01.jpg' },
+  building: { title: '楼宇管理演示', img: '/assets/landing/building-demo01.jpg' },
+};
+
 function useLandingViewport() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -182,17 +187,19 @@ export default function LandingRedesign() {
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
+  const [demoEntry, setDemoEntry] = useState(null);
 
   useEffect(() => {
-    if (!demoOpen && !ecardDemoOpen) return undefined;
+    if (!demoOpen && !ecardDemoOpen && !demoEntry) return undefined;
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
-      if (ecardDemoOpen) setEcardDemoOpen(false);
+      if (demoEntry) setDemoEntry(null);
+      else if (ecardDemoOpen) setEcardDemoOpen(false);
       else setDemoOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [demoOpen, ecardDemoOpen]);
+  }, [demoOpen, ecardDemoOpen, demoEntry]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -325,11 +332,13 @@ export default function LandingRedesign() {
   const scrollTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const openDemoLink = (key) => {
-    const url = String(demoLinks[key] || '').trim();
-    if (!url) return;
     setDemoOpen(false);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setDemoEntry(key);
   };
+
+  const demoEntryConfig = demoEntry ? DEMO_ENTRY_CONFIG[demoEntry] : null;
+  const demoEntryUrl = demoEntry ? String(demoLinks[demoEntry] || '').trim() : '';
+  const demoEntryAbsoluteUrl = demoEntryUrl ? absoluteDownloadUrl(demoEntryUrl) : '';
 
   return (
     <div className="qrt-landing" id="qrt-top">
@@ -626,6 +635,40 @@ export default function LandingRedesign() {
       )}
       <button type="button" id="qrt-back-to-top" className={`qrt-back-to-top-btn${showBackTop ? ' show' : ''}`} aria-label="回到顶部" onClick={scrollTop}>↑</button>
       </div>
+
+      {demoEntry && demoEntryConfig && (
+        <div
+          className="qrt-demo-entry-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={demoEntryConfig.title}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setDemoEntry(null); }}
+        >
+          <button type="button" className="qrt-demo-entry-close" aria-label="关闭" onClick={() => setDemoEntry(null)}>×</button>
+          <div className="qrt-demo-entry-dialog">
+            <img className="qrt-demo-entry-media" src={demoEntryConfig.img} alt={demoEntryConfig.title} />
+            <div className="qrt-demo-entry-body">
+              <h3>{demoEntryConfig.title}</h3>
+              <p className="qrt-demo-entry-sub">扫描二维码或点击链接进入在线演示</p>
+              {demoEntryUrl ? (
+                <div className="qrt-demo-entry-actions">
+                  <div className="qrt-demo-entry-qr">
+                    <div className="qrt-demo-entry-qr-box">
+                      <QRCodeSVG value={demoEntryAbsoluteUrl} size={200} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+                    </div>
+                    <span>扫描二维码进入</span>
+                  </div>
+                  <a className="qrt-demo-entry-link" href={demoEntryAbsoluteUrl} target="_blank" rel="noopener noreferrer">
+                    点击链接进入
+                  </a>
+                </div>
+              ) : (
+                <p className="qrt-demo-entry-empty">演示链接尚未配置，请联系管理员在「首页设置」中设置。</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {authOpen && (
         <div className="qrt-auth-modal" role="dialog" aria-modal="true" aria-label="云管理平台登录" onMouseDown={(e) => { if (e.target === e.currentTarget) closeAuth(); }}>
