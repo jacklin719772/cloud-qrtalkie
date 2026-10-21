@@ -345,7 +345,9 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-auth-right {
   flex: 1; padding: 24px 40px 24px; display: flex; flex-direction: column;
   position: relative; background: #fff; overflow-y: auto;
+  scrollbar-width: none;
 }
+.qrt-auth-right::-webkit-scrollbar { display: none; }
 .qrt-auth-brand { display: flex; align-items: center; justify-content: center; margin: 0 0 16px; min-height: 52px; }
 .qrt-auth-brand img { height: 52px; width: auto; max-width: 280px; object-fit: contain; display: block; }
 .qrt-auth-close {
