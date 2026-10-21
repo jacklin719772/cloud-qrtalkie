@@ -166,6 +166,7 @@ export default function LandingRedesign() {
   const [trialNotice, setTrialNotice] = useState('');
   const trialNoticeTimer = useRef(null);
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
+  const [qrModal, setQrModal] = useState(null);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -241,6 +242,13 @@ export default function LandingRedesign() {
     setAuthSuccess(true);
     setEnterError('');
   };
+
+  const openQrModal = (platform, version, url) => {
+    if (!url) return;
+    setQrModal({ platform, version: version || '', url });
+  };
+
+  const closeQrModal = () => setQrModal(null);
 
   const openLegal = async (type) => {
     const title = type === 'privacy' ? '隱私權政策' : '會員服務條款';
@@ -470,7 +478,7 @@ export default function LandingRedesign() {
                 href={footerSettings.androidDownloadUrl || '#'}
                 target={footerSettings.androidDownloadUrl ? '_blank' : undefined}
                 rel="noopener noreferrer"
-                onClick={(e) => { if (!footerSettings.androidDownloadUrl) e.preventDefault(); }}
+                onClick={(e) => { e.preventDefault(); openQrModal('Android', footerSettings.androidVersion, footerSettings.androidDownloadUrl); }}
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
                 <div className="qrt-qr-mini">
@@ -480,7 +488,7 @@ export default function LandingRedesign() {
                     <div className="qrt-qr-placeholder-mini"></div>
                   )}
                 </div>
-                <div className="qrt-qr-download-text"><span className="qrt-platform-name">Android</span><span className="qrt-scan-tip">{footerSettings.androidVersion ? `v${footerSettings.androidVersion} · 扫码下载到手机` : '扫码下载到手机'}</span></div>
+                <div className="qrt-qr-download-text"><span className="qrt-platform-name">Android</span><span className="qrt-scan-tip">{footerSettings.androidDownloadUrl ? '点击获取Android二维码' : '暂无可用二维码'}</span></div>
               </a>
             </div>
             <div className="qrt-download-item">
@@ -489,7 +497,7 @@ export default function LandingRedesign() {
                 href={footerSettings.iosDownloadUrl || '#'}
                 target={footerSettings.iosDownloadUrl ? '_blank' : undefined}
                 rel="noopener noreferrer"
-                onClick={(e) => { if (!footerSettings.iosDownloadUrl) e.preventDefault(); }}
+                onClick={(e) => { e.preventDefault(); openQrModal('iOS', footerSettings.iosVersion, footerSettings.iosDownloadUrl); }}
                 style={{ color: 'inherit', textDecoration: 'none' }}
               >
                 <div className="qrt-qr-mini">
@@ -499,7 +507,7 @@ export default function LandingRedesign() {
                     <div className="qrt-qr-placeholder-mini"></div>
                   )}
                 </div>
-                <div className="qrt-qr-download-text"><span className="qrt-platform-name">iOS</span><span className="qrt-scan-tip">{footerSettings.iosVersion ? `v${footerSettings.iosVersion} · 扫码下载到手机` : '扫码下载到手机'}</span></div>
+                <div className="qrt-qr-download-text"><span className="qrt-platform-name">iOS</span><span className="qrt-scan-tip">{footerSettings.iosDownloadUrl ? '点击获取iOS二维码' : '暂无可用二维码'}</span></div>
               </a>
             </div>
           </div>
@@ -588,6 +596,26 @@ export default function LandingRedesign() {
             <div className="qrt-legal-footer">
               <button type="button" className="qrt-legal-confirm" onClick={() => setLegalViewer((v) => ({ ...v, open: false }))}>我知道了</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {qrModal && (
+        <div
+          className="qrt-qr-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${qrModal.platform} 安裝二維碼`}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeQrModal(); }}
+        >
+          <div className="qrt-qr-dialog">
+            <button type="button" className="qrt-qr-close" onClick={closeQrModal} aria-label="關閉">×</button>
+            <h3>{qrModal.platform} 安裝二維碼</h3>
+            {qrModal.version && <p className="qrt-qr-version">版本 v{qrModal.version}</p>}
+            <div className="qrt-qr-large">
+              <QRCodeSVG value={absoluteDownloadUrl(qrModal.url)} size={300} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+            </div>
+            <p className="qrt-qr-scan-tip">扫码安装</p>
           </div>
         </div>
       )}
