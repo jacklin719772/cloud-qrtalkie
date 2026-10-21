@@ -132,9 +132,64 @@ body.qrt-modal-open { overflow: hidden !important; }
   font-family: sans-serif; text-transform: uppercase;
 }
 .qrt-concept-visual {
-  height: 600px; background-color: #0f172a;
-  background-size: cover; background-position: center;
-  display: flex; justify-content: center; align-items: center; position: relative;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2560 / 794;
+  height: auto;
+  background-color: #081a33;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  container-type: inline-size;
+  overflow: hidden;
+}
+.qrt-concept-grid {
+  position: absolute;
+  inset: 3.4% 1.1% 3.4% 1.1%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  column-gap: 1.4%;
+  row-gap: 6.4%;
+}
+.qrt-concept-item {
+  position: relative;
+  min-width: 0;
+  padding: 4.2% 5% 3%;
+  display: flex;
+  align-items: flex-start;
+}
+.qrt-concept-copy {
+  max-width: 68%;
+  padding: 3.2% 4%;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(3, 12, 27, 0.82), rgba(3, 12, 27, 0.38));
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.qrt-concept-number {
+  display: block;
+  font-size: clamp(18px, 1.9cqw, 36px);
+  font-weight: 800;
+  color: #22d3ee;
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+  line-height: 1.1;
+}
+.qrt-concept-copy h3 {
+  margin: 0 0 6px;
+  font-size: clamp(15px, 1.7cqw, 30px);
+  color: #fff;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.qrt-concept-copy p {
+  margin: 0;
+  font-size: clamp(11px, 1.05cqw, 20px);
+  line-height: 1.55;
+  color: #c7d7f5;
 }
 
 /* All in one */
@@ -573,7 +628,31 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-next-btn { right: 10px; }
   .qrt-feature-nav-bar { flex-wrap: wrap; }
   .qrt-feature-item { width: 50%; flex: 0 0 50%; border-bottom: 1px solid #f0f0f0; padding: 15px 10px; }
-  .qrt-concept-visual { height: 400px; }
+  .qrt-concept-visual {
+    aspect-ratio: auto;
+    height: auto;
+    padding: 24px 16px;
+    background-image: none !important;
+    background: linear-gradient(160deg, #071a33, #0b2a5b);
+    container-type: normal;
+  }
+  .qrt-concept-grid {
+    position: static;
+    inset: auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    gap: 12px;
+  }
+  .qrt-concept-item { padding: 0; display: block; }
+  .qrt-concept-copy {
+    max-width: none;
+    padding: 14px 16px;
+    background: rgba(5, 16, 35, 0.72);
+  }
+  .qrt-concept-number { font-size: 18px; }
+  .qrt-concept-copy h3 { font-size: 18px; }
+  .qrt-concept-copy p { font-size: 13px; }
   .qrt-integrated-block { padding: 40px 0 30px 0; }
   .qrt-block-tags {
     overflow-x: auto; justify-content: flex-start; gap: 15px;

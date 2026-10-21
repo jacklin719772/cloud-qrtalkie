@@ -89,6 +89,17 @@ const scenarios = [
   { title: '智慧零售 / Smart Retail', img: '/assets/landing/scenario-retail.jpg', textFirst: false, paragraphs: ['重塑线上线下融合的消费体验。门店导购可通过 QRTalkie 与总部实时同步库存、价格与促销信息。', '顾客扫码即可添加专属导购，享受一对一的 VIP 咨询服务与售后支持。通过私域流量的精细化运营，有效提升客户复购率与品牌忠诚度。'] },
 ];
 
+const conceptFeatures = [
+  { no: '01', title: '私有部署', desc: '数据留在企业自有环境，安全、合规与数据主权自主掌控。' },
+  { no: '02', title: '融合通信', desc: '手机、桌面与 Web 消息同步，高清语音视频随时接入。' },
+  { no: '03', title: '安全加密', desc: '消息、通话与文件全程加密，敏感信息不出企业。' },
+  { no: '04', title: '电子名片', desc: '一张可定制的数字名片，扫码即可联系与分享。' },
+  { no: '05', title: '呼叫中心', desc: '坐席、在线交流、留言与呼叫转接/合并统一管理，咨询不漏接。' },
+  { no: '06', title: '设备管理', desc: '门禁、门锁等终端统一接入，远程控制与运行状态实时可见。' },
+  { no: '07', title: 'AI 助手', desc: '企业私有知识问答与 7×24 智能语音应答，服务办公双提效。' },
+  { no: '08', title: '云管理平台', desc: '账号、订单、通话与运营数据集中管理，经营状态一目了然。' },
+];
+
 function useLandingViewport() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -276,7 +287,19 @@ export default function LandingRedesign() {
         <section className="qrt-brand-concept" id="design-philosophy">
           <h2 className="qrt-section-title">设计理念</h2>
           <p className="qrt-section-subtitle">Design Philosophy</p>
-          <div className="qrt-concept-visual" style={{ backgroundImage: "url('/assets/landing/design-concept.jpg')" }}></div>
+          <div className="qrt-concept-visual" style={{ backgroundImage: "url('/assets/landing/why05.jpg')" }}>
+            <div className="qrt-concept-grid">
+              {conceptFeatures.map((item) => (
+                <div className="qrt-concept-item" key={item.no}>
+                  <div className="qrt-concept-copy">
+                    <span className="qrt-concept-number">{item.no}</span>
+                    <h3>{item.title}</h3>
+                    <p>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="qrt-integrated-block">
