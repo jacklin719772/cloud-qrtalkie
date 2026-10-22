@@ -15438,6 +15438,7 @@ async function loadHomepageLivechatAccount(connection, sipUserId) {
     sipAccount: String(row.sip_account || ""),
     sipDomain: String(row.sip_domain || ""),
     webAccount: String(bindingRows[0]?.web_account || ""),
+    ecardSlug: String(row.access_slug || ""),
     ecardUrl: row.access_slug
       ? `${process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org"}/u/${row.access_slug}`
       : "",

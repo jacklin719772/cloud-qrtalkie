@@ -4,7 +4,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Landing from '../Landing';
 import apiClient from './apiClient';
+import { useVisitorChat } from './pages/ecard/useVisitorChat';
+import { chatApi } from './pages/ecard/ecardChatApi';
 import './landing-redesign.css';
+
+const ECardChatPanel = React.lazy(() => import('./pages/ecard/ECardChatPanel'));
 
 const slides = [
   { img: '/assets/landing/001.jpg', subtitle: '私有化部署・專屬即時通訊解決方案', lines: ['專屬私有部署', '解鎖無限可能'] },
@@ -158,13 +162,6 @@ const AI_DEMO_QUICK_QUESTIONS = [
   '呼叫中心怎么接入？',
 ];
 
-const SERVICE_QUICK_QUESTIONS = [
-  'QRTalkie 能解决什么问题？',
-  '如何申请试用？',
-  '支持私有化部署吗？',
-  '呼叫中心怎么接入？',
-];
-const SERVICE_DEMO_REPLY = '（演示）在线客服会话功能将在部署后接入。您可以先通过语音、视频或 Web 会议联系我们。';
 const SERVICE_STATUS_FALLBACK = {
   configured: false,
   sip: { state: 'unknown', label: 'SIP 未知', account: '' },
@@ -179,6 +176,87 @@ function normalizeServiceStatus(data) {
     web: data.web || SERVICE_STATUS_FALLBACK.web,
   };
 }
+
+let jsSipPromise = null;
+async function loadJsSip() {
+  if (!jsSipPromise) {
+    jsSipPromise = import('jssip').then((mod) => mod.default || mod);
+  }
+  return jsSipPromise;
+}
+
+function injectServiceSdpPatch(uaInstance, serverIp, originalSendRef) {
+  if (!uaInstance?.transport || !serverIp || originalSendRef.current) return;
+  originalSendRef.current = uaInstance.transport.send;
+  uaInstance.transport.send = function patchedSend(...args) {
+    if (args[0]?.body) {
+      let body = args[0].body;
+      if (body.includes('127.0.0.1') || body.includes('0.0.0.0')) {
+        body = body
+          .replace(/IN IP4 (127\.0\.0\.1|0\.0\.0\.0)/g, `IN IP4 ${serverIp}`)
+          .replace(/c=IN IP4 (127\.0\.0\.1|0\.0\.0\.0)/g, `c=IN IP4 ${serverIp}`);
+        args[0].body = body;
+      }
+    }
+    return originalSendRef.current.apply(this, args);
+  };
+}
+
+function applyServiceCodecPreferences(pc) {
+  if (!pc || !window.RTCRtpSender?.getCapabilities) return;
+  const audioTransceiver = pc.getTransceivers().find((item) => item.sender?.track?.kind === 'audio' || item.receiver?.track?.kind === 'audio');
+  if (!audioTransceiver) return;
+  try {
+    const caps = window.RTCRtpSender.getCapabilities('audio');
+    const pcmu = caps?.codecs?.find((codec) => String(codec.mimeType).toLowerCase() === 'audio/pcmu');
+    const dtmf = caps?.codecs?.find((codec) => String(codec.mimeType).toLowerCase().includes('telephone-event'));
+    if (pcmu && dtmf) audioTransceiver.setCodecPreferences([pcmu, dtmf]);
+  } catch {}
+}
+
+function bindServiceRemoteAudio(pc) {
+  if (!pc) return;
+  try {
+    const receiver = pc.getReceivers().find((item) => item.track && item.track.kind === 'audio');
+    if (!receiver?.track) return;
+    const audioEl = document.getElementById('serviceRemoteAudio');
+    if (!audioEl) return;
+    audioEl.srcObject = new MediaStream([receiver.track]);
+    audioEl.play().catch(() => {});
+  } catch {}
+}
+
+function tuneServiceVideoSender(pc, intervalRef) {
+  if (!pc) return;
+  try {
+    const sender = pc.getSenders().find((item) => item.track && item.track.kind === 'video');
+    if (!sender) return;
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings.forEach((encoding) => {
+      encoding.maxBitrate = 300000;
+      encoding.maxFramerate = 15;
+    });
+    sender.setParameters(params).catch(() => {});
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    let alternate = false;
+    intervalRef.current = setInterval(async () => {
+      try {
+        alternate = !alternate;
+        const next = sender.getParameters();
+        if (!next.encodings || next.encodings.length === 0) next.encodings = [{}];
+        next.encodings.forEach((encoding) => {
+          encoding.scaleResolutionDownBy = alternate ? 1.25 : 1;
+          encoding.maxBitrate = 300000;
+          encoding.maxFramerate = 15;
+        });
+        await sender.setParameters(next);
+      } catch {}
+    }, 2000);
+  } catch {}
+}
+
+const SERVICE_CALL_DEFAULT = { open: false, video: false, status: '', muted: false, cameraOn: true };
 
 const AI_ATTACHMENT_MAX = 3;
 const AI_ATTACHMENT_MAX_TOTAL = 15 * 1024 * 1024;
@@ -266,12 +344,27 @@ export default function LandingRedesign() {
   const [aiNotice, setAiNotice] = useState('');
   const [aiAttachments, setAiAttachments] = useState([]);
   const [serviceOpen, setServiceOpen] = useState(false);
-  const [serviceMessages, setServiceMessages] = useState([]);
-  const [serviceInput, setServiceInput] = useState('');
   const [serviceNotice, setServiceNotice] = useState('');
   const [serviceProfile, setServiceProfile] = useState(null);
   const [serviceStatus, setServiceStatus] = useState(SERVICE_STATUS_FALLBACK);
   const [serviceStatusLoading, setServiceStatusLoading] = useState(false);
+  const [serviceWebState, setServiceWebState] = useState('idle');
+  const [serviceWebAccount, setServiceWebAccount] = useState('');
+  const [serviceWebRetry, setServiceWebRetry] = useState(0);
+  const [serviceCall, setServiceCall] = useState(SERVICE_CALL_DEFAULT);
+  const serviceUaRef = useRef(null);
+  const serviceCallSessionRef = useRef(null);
+  const serviceCurrentCallRef = useRef(null);
+  const serviceLocalStreamRef = useRef(null);
+  const serviceRemoteVideoRef = useRef(null);
+  const serviceLocalVideoRef = useRef(null);
+  const serviceKeyframeKickRef = useRef(null);
+  const serviceOriginalSendRef = useRef(null);
+  const serviceCallBusyRef = useRef(false);
+  const serviceChat = useVisitorChat(serviceProfile?.ecardSlug || '');
+  const [serviceRegForm, setServiceRegForm] = useState({ name: '', email: '', phone: '', subject: '' });
+  const [serviceRegistering, setServiceRegistering] = useState(false);
+  const [serviceEcardData, setServiceEcardData] = useState(null);
   const aiErrorTimer = useRef(null);
   const aiNoticeTimer = useRef(null);
   const serviceNoticeTimer = useRef(null);
@@ -381,6 +474,108 @@ export default function LandingRedesign() {
       window.clearInterval(timer);
     };
   }, [serviceOpen]);
+
+  useEffect(() => {
+    if (!serviceOpen || !serviceProfile?.ecardSlug) return undefined;
+    let cancelled = false;
+    setServiceWebState('registering');
+    const start = async () => {
+      try {
+        const res = await apiClient.post(`/ecard/public/${serviceProfile.ecardSlug}/call-session`);
+        if (!res?.success) throw new Error(res?.message || 'Web 账号注册失败');
+        const data = res.data || {};
+        if (!data.webAccount || !data.credential?.value || !data.wssUrl || !data.webrtcDomain) {
+          throw new Error('呼叫配置不完整');
+        }
+        if (cancelled) return;
+        setServiceWebAccount(String(data.webAccount));
+        serviceCallSessionRef.current = data;
+        const JsSIP = await loadJsSip();
+        if (cancelled) return;
+        const socket = new JsSIP.WebSocketInterface(data.wssUrl);
+        const ua = new JsSIP.UA({
+          sockets: [socket],
+          uri: `sip:${data.webAccount}@${data.webrtcDomain}`,
+          password: data.credential.value,
+          register: true,
+        });
+        serviceUaRef.current = ua;
+        let registrationFailed = false;
+        ua.on('registered', () => {
+          if (!cancelled) setServiceWebState('registered');
+          injectServiceSdpPatch(ua, data.sipServerPublicIp, serviceOriginalSendRef);
+        });
+        ua.on('unregistered', () => {
+          if (!cancelled && !registrationFailed) setServiceWebState('idle');
+        });
+        ua.on('registrationFailed', () => {
+          registrationFailed = true;
+          if (!cancelled) setServiceWebState('failed');
+          try { ua.stop(); } catch {}
+        });
+        ua.on('disconnected', () => {
+          registrationFailed = true;
+          if (!cancelled) setServiceWebState('failed');
+          try { ua.stop(); } catch {}
+        });
+        ua.start();
+      } catch {
+        if (!cancelled) setServiceWebState('failed');
+      }
+    };
+    start();
+    return () => {
+      cancelled = true;
+      cleanupServiceCallResources();
+      setServiceCall(SERVICE_CALL_DEFAULT);
+      serviceCallSessionRef.current = null;
+      serviceOriginalSendRef.current = null;
+      const ua = serviceUaRef.current;
+      serviceUaRef.current = null;
+      if (ua) {
+        try { ua.stop(); } catch {}
+      }
+    };
+  }, [serviceOpen, serviceProfile?.ecardSlug, serviceWebRetry]);
+
+  useEffect(() => {
+    if (!serviceCall.open || !serviceCall.video) return;
+    if (serviceLocalVideoRef.current && serviceLocalStreamRef.current) {
+      serviceLocalVideoRef.current.srcObject = serviceLocalStreamRef.current;
+    }
+  }, [serviceCall.open, serviceCall.video]);
+
+  useEffect(() => {
+    if (serviceOpen) return;
+    cleanupServiceCallResources();
+    setServiceCall(SERVICE_CALL_DEFAULT);
+  }, [serviceOpen]);
+
+  useEffect(() => {
+    const slug = serviceProfile?.ecardSlug;
+    if (!slug) {
+      setServiceEcardData(null);
+      return undefined;
+    }
+    let cancelled = false;
+    apiClient.get(`/ecard/public/${slug}`)
+      .then((data) => {
+        if (!cancelled && data?.success) setServiceEcardData(data.data || null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [serviceProfile?.ecardSlug]);
+
+  useEffect(() => {
+    const stored = serviceChat.storedContact;
+    if (!stored) return;
+    setServiceRegForm((prev) => ({
+      name: prev.name || stored.name || '',
+      email: prev.email || stored.email || '',
+      phone: prev.phone || stored.phone || '',
+      subject: prev.subject || stored.subject || '',
+    }));
+  }, [serviceChat.storedContact]);
 
   const showTrialNotice = (message) => {
     setTrialNotice(message);
@@ -591,20 +786,11 @@ export default function LandingRedesign() {
   const openServiceDemo = () => {
     setDemoOpen(false);
     setServiceOpen(true);
-    setServiceMessages([]);
-    setServiceInput('');
     setServiceNotice('');
     setServiceStatus(SERVICE_STATUS_FALLBACK);
-  };
-
-  const sendServiceMessage = (text) => {
-    const content = String(text !== undefined ? text : serviceInput).trim();
-    if (!content) return;
-    setServiceMessages((prev) => [...prev, { role: 'user', content }]);
-    setServiceInput('');
-    window.setTimeout(() => {
-      setServiceMessages((prev) => [...prev, { role: 'assistant', content: SERVICE_DEMO_REPLY }]);
-    }, 600);
+    setServiceWebState('idle');
+    setServiceWebAccount('');
+    setServiceWebRetry(0);
   };
 
   const refreshServiceStatus = async () => {
@@ -618,11 +804,201 @@ export default function LandingRedesign() {
     }
   };
 
+  function cleanupServiceCallResources() {
+    if (serviceKeyframeKickRef.current) {
+      window.clearInterval(serviceKeyframeKickRef.current);
+      serviceKeyframeKickRef.current = null;
+    }
+    const currentCall = serviceCurrentCallRef.current;
+    serviceCurrentCallRef.current = null;
+    if (currentCall) {
+      try { currentCall.terminate(); } catch {}
+    }
+    const stream = serviceLocalStreamRef.current;
+    serviceLocalStreamRef.current = null;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch {}
+      });
+    }
+    if (serviceRemoteVideoRef.current) serviceRemoteVideoRef.current.srcObject = null;
+    if (serviceLocalVideoRef.current) serviceLocalVideoRef.current.srcObject = null;
+    const audioEl = document.getElementById('serviceRemoteAudio');
+    if (audioEl) audioEl.srcObject = null;
+    serviceCallBusyRef.current = false;
+  }
+
+  function endServiceCall(message) {
+    cleanupServiceCallResources();
+    setServiceCall(SERVICE_CALL_DEFAULT);
+    if (message) showServiceNotice(message);
+  }
+
+  const updateServiceCallStatus = (status) => {
+    setServiceCall((prev) => ({ ...prev, status }));
+  };
+
+  const startServiceCall = async (video) => {
+    if (serviceCallBusyRef.current || serviceCall.open) return;
+    if (serviceWebState !== 'registered' || !serviceUaRef.current || !serviceCallSessionRef.current) {
+      showServiceNotice('Web 账号尚未注册完成，请稍后再试。');
+      return;
+    }
+    const callSession = serviceCallSessionRef.current;
+    if (video && !callSession.enableVideo) {
+      showServiceNotice('当前未开启视频呼叫。');
+      return;
+    }
+    if (!video && !callSession.enableVoice) {
+      showServiceNotice('当前未开启语音呼叫。');
+      return;
+    }
+    if (serviceStatus.sip?.state === 'online_busy') {
+      showServiceNotice('客服正在通话中，请稍后再试。');
+      return;
+    }
+    if (serviceStatus.sip?.state === 'offline') {
+      showServiceNotice('客服 SIP 账号离线，暂时无法呼叫。');
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showServiceNotice('当前浏览器不支持语音/视频呼叫。');
+      return;
+    }
+    serviceCallBusyRef.current = true;
+    let stream = null;
+    let withVideo = video;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(withVideo
+        ? { audio: true, video: { width: { max: 320 }, height: { max: 240 }, frameRate: { max: 15 } } }
+        : { audio: true });
+    } catch {
+      if (withVideo) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          withVideo = false;
+          showServiceNotice('摄像头不可用，已改为语音呼叫。');
+        } catch {
+          serviceCallBusyRef.current = false;
+          showServiceNotice('无法访问麦克风，请检查浏览器权限。');
+          return;
+        }
+      } else {
+        serviceCallBusyRef.current = false;
+        showServiceNotice('无法访问麦克风，请检查浏览器权限。');
+        return;
+      }
+    }
+    serviceLocalStreamRef.current = stream;
+    setServiceCall({ ...SERVICE_CALL_DEFAULT, open: true, video: withVideo, status: '呼叫中…' });
+    const ua = serviceUaRef.current;
+    const options = {
+      mediaStream: stream,
+      pcConfig: {
+        iceServers: Array.isArray(callSession.iceServers) ? callSession.iceServers : [],
+        iceTransportPolicy: 'all',
+        iceCandidatePoolSize: 0,
+      },
+      rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: withVideo },
+      eventHandlers: {
+        progress: () => updateServiceCallStatus('正在响铃…'),
+        ringing: () => updateServiceCallStatus('正在响铃…'),
+        accepted: () => updateServiceCallStatus('通话中'),
+        confirmed: () => updateServiceCallStatus('通话中'),
+        failed: () => endServiceCall('呼叫失败，请稍后再试。'),
+        ended: () => endServiceCall('通话已结束。'),
+        peerconnection: (event) => {
+          const pc = event.peerconnection;
+          applyServiceCodecPreferences(pc);
+          if (withVideo) tuneServiceVideoSender(pc, serviceKeyframeKickRef);
+          pc.ontrack = (trackEvent) => {
+            if (trackEvent.track.kind === 'video' && serviceRemoteVideoRef.current) {
+              serviceRemoteVideoRef.current.srcObject = new MediaStream([trackEvent.track]);
+            }
+            if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc);
+          };
+          pc.oniceconnectionstatechange = () => {
+            if (pc.iceConnectionState === 'connected') bindServiceRemoteAudio(pc);
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+              endServiceCall('通话中断。');
+            }
+          };
+        },
+      },
+    };
+    try {
+      serviceCurrentCallRef.current = ua.call(callSession.targetSipUri, options);
+    } catch {
+      endServiceCall('呼叫失败，请稍后再试。');
+    } finally {
+      serviceCallBusyRef.current = false;
+    }
+  };
+
+  const toggleServiceMute = () => {
+    const stream = serviceLocalStreamRef.current;
+    if (!stream) return;
+    const nextMuted = !serviceCall.muted;
+    stream.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; });
+    setServiceCall((prev) => ({ ...prev, muted: nextMuted }));
+  };
+
+  const toggleServiceCamera = () => {
+    const stream = serviceLocalStreamRef.current;
+    if (!stream) return;
+    const nextOn = !serviceCall.cameraOn;
+    stream.getVideoTracks().forEach((track) => { track.enabled = nextOn; });
+    setServiceCall((prev) => ({ ...prev, cameraOn: nextOn }));
+  };
+
+  const handleServiceRegister = async (event) => {
+    event.preventDefault();
+    if (serviceRegistering) return;
+    const slug = serviceProfile?.ecardSlug;
+    if (!slug) {
+      showServiceNotice('客服账号尚未配置，暂时无法在线交流。');
+      return;
+    }
+    const name = serviceRegForm.name.trim();
+    const email = serviceRegForm.email.trim();
+    if (!name || !email) {
+      showServiceNotice('请填写姓名与电子邮箱。');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showServiceNotice('电子邮箱格式不正确。');
+      return;
+    }
+    const contact = {
+      name,
+      email,
+      phone: serviceRegForm.phone.trim(),
+      subject: serviceRegForm.subject.trim(),
+    };
+    setServiceRegistering(true);
+    try {
+      const session = await chatApi.register(slug, contact);
+      serviceChat.start({ session, contact, code: session?.resumeCode || '' });
+    } catch (error) {
+      showServiceNotice(error?.message || '登记失败，请稍后再试。');
+    } finally {
+      setServiceRegistering(false);
+    }
+  };
+
   const serviceAvatar = serviceProfile?.avatarUrl
     ? absoluteDownloadUrl(serviceProfile.avatarUrl)
     : '/assets/landing/service-avatar.jpg';
   const serviceName = serviceProfile?.name || '客服小雅';
   const serviceDuty = serviceProfile?.duty || '在线客服专员';
+  const serviceChatEcardData = {
+    name: serviceProfile?.name || serviceEcardData?.profile?.name || serviceName,
+    duty: serviceProfile?.duty || serviceEcardData?.profile?.duty || serviceDuty,
+    tenantName: serviceProfile?.company || serviceEcardData?.tenantName || 'QRTalkie',
+    phone: serviceEcardData?.profile?.phone || '',
+    email: serviceEcardData?.profile?.email || '',
+    sipAccount: serviceProfile?.sipAccount || serviceEcardData?.callConfigSummary?.sipAccount || '',
+  };
   const sipState = serviceStatus.sip?.state || 'unknown';
   const avatarStatusClass = sipState === 'online_idle'
     ? 'online'
@@ -630,10 +1006,12 @@ export default function LandingRedesign() {
   const sipTone = sipState === 'online_idle'
     ? 'ok'
     : sipState === 'online_busy' ? 'busy' : sipState === 'offline' ? 'bad' : 'unknown';
-  const webStateValue = serviceStatus.web?.state || 'unknown';
-  const webTone = webStateValue === 'online'
+  const webTone = serviceWebState === 'registered'
     ? 'ok'
-    : webStateValue === 'offline' ? 'bad' : webStateValue === 'unconfigured' ? 'warn' : 'unknown';
+    : serviceWebState === 'registering' ? 'busy' : serviceWebState === 'failed' ? 'bad' : 'unknown';
+  const webLabel = serviceWebState === 'registered'
+    ? '已注册'
+    : serviceWebState === 'registering' ? '注册中' : serviceWebState === 'failed' ? '注册失败' : '未注册';
 
   return (
     <div className="qrt-landing" id="qrt-top">
@@ -1098,18 +1476,18 @@ export default function LandingRedesign() {
                       <button
                         type="button"
                         className="qrt-service-status-refresh"
-                        onClick={refreshServiceStatus}
-                        disabled={serviceStatusLoading}
-                        aria-label="刷新 Web 账号状态"
+                        onClick={() => setServiceWebRetry((value) => value + 1)}
+                        disabled={serviceWebState === 'registering'}
+                        aria-label="重新注册 Web 账号"
                       >
-                        <svg className={serviceStatusLoading ? 'qrt-spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <svg className={serviceWebState === 'registering' ? 'qrt-spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                           <path d="M21 12a9 9 0 1 1-2.64-6.36" />
                           <path d="M21 3v6h-6" />
                         </svg>
                       </button>
                     </div>
-                    <span className="qrt-service-status-sub">{serviceStatus.web?.account || '未配置 Web 账号'}</span>
-                    <span className={`qrt-service-status-pill is-${webTone}`}>{serviceStatus.web?.label || '未知'}</span>
+                    <span className="qrt-service-status-sub">{serviceWebAccount || serviceProfile?.webAccount || '未配置 Web 账号'}</span>
+                    <span className={`qrt-service-status-pill is-${webTone}`}>{webLabel}</span>
                   </div>
                   <div className="qrt-service-status-card">
                     <div className="qrt-service-status-head">
@@ -1132,13 +1510,13 @@ export default function LandingRedesign() {
                   </div>
                 </div>
                 <div className="qrt-service-actions">
-                  <button type="button" onClick={() => showServiceNotice('语音呼叫功能即将开放。')}>
+                  <button type="button" onClick={() => startServiceCall(false)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.23a2 2 0 0 1 2.11-.45c.83.32 1.71.54 2.61.66A2 2 0 0 1 22 16.92z" />
                     </svg>
                     <span>语音呼叫</span>
                   </button>
-                  <button type="button" onClick={() => showServiceNotice('视频呼叫功能即将开放。')}>
+                  <button type="button" onClick={() => startServiceCall(true)}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="3" y="6" width="12" height="12" rx="2" />
                       <path d="M15 10.5 21 7v10l-6-3.5" />
@@ -1156,56 +1534,120 @@ export default function LandingRedesign() {
                 </div>
               </div>
             </aside>
-            <section className="qrt-service-chat">
-              <div className="qrt-service-body">
-                {serviceMessages.length === 0 ? (
-                  <div className="qrt-service-welcome">
-                    <svg className="qrt-service-bot" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="12" y="14" width="24" height="20" rx="7" />
-                      <path d="M24 8v6" />
-                      <circle cx="18" cy="24" r="2" fill="currentColor" stroke="none" />
-                      <circle cx="30" cy="24" r="2" fill="currentColor" stroke="none" />
-                      <path d="M20 30h8" />
-                      <path d="M8 22v6M40 22v6" />
-                    </svg>
-                    <h3>Welcome !</h3>
-                    <div className="qrt-service-quote">“</div>
-                    <p className="qrt-service-intro">我是 QRTalkie 在线客服，很高兴为您服务。您可以在这里留言，或通过左侧按钮发起语音、视频与 Web 会议。</p>
-                    <p className="qrt-service-hint">请选择您想了解的问题，或直接输入…</p>
-                    <div className="qrt-service-quick">
-                      {SERVICE_QUICK_QUESTIONS.map((question) => (
-                        <button key={question} type="button" onClick={() => sendServiceMessage(question)}>{question}</button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="qrt-service-messages">
-                    {serviceMessages.map((message, index) => (
-                      <div key={`${message.role}-${index}`} className={`qrt-service-msg ${message.role}`}>{message.content}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <form className="qrt-service-input-row" onSubmit={(e) => { e.preventDefault(); sendServiceMessage(); }}>
-                <input
-                  value={serviceInput}
-                  onChange={(e) => setServiceInput(e.target.value)}
-                  placeholder="输入您的问题…"
-                  maxLength={500}
-                  autoComplete="off"
-                  aria-label="输入问题"
-                />
-                <button type="submit" disabled={!serviceInput.trim()}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M21 3 10.5 13.5" />
-                    <path d="M21 3 14 21l-3.5-7.5L3 10l18-7z" />
-                  </svg>
-                  <span>发送</span>
-                </button>
-              </form>
+            <section className={`qrt-service-chat${serviceChat.session ? ' is-chatting' : ''}`}>
+              {serviceChat.session ? (
+                <React.Suspense fallback={<div className="qrt-service-chat-loading">会话加载中…</div>}>
+                  <ECardChatPanel
+                    ecardData={serviceChatEcardData}
+                    displayName={serviceChatEcardData.name}
+                    statusTone={serviceChat.statusTone}
+                    statusText={serviceChat.statusText}
+                    avatarUrl={serviceAvatar}
+                    fallbackAvatar="/assets/landing/service-avatar.jpg"
+                    callEnabled={serviceWebState === 'registered' && serviceStatus.sip?.state !== 'online_busy' && serviceStatus.sip?.state !== 'offline'}
+                    onCall={(video) => startServiceCall(video)}
+                    messages={serviceChat.messages}
+                    loading={serviceChat.loading}
+                    sending={serviceChat.sending}
+                    hasMore={serviceChat.hasMore}
+                    onLoadMore={serviceChat.loadMore}
+                    onSend={serviceChat.send}
+                    onSendVoice={serviceChat.sendVoice}
+                    onSendAttachment={serviceChat.sendAttachment}
+                    onLoadAudio={serviceChat.loadAudioUrl}
+                    onRecall={serviceChat.recallMessage}
+                    onHideMessage={serviceChat.hideMessage}
+                    onDownloadAttachment={serviceChat.downloadAttachment}
+                    uploadProgress={serviceChat.uploadProgress}
+                    chatCode={serviceChat.code}
+                    onGetCode={serviceChat.rotateCode}
+                    connection={serviceChat.connection}
+                    error={serviceChat.error}
+                    embedMode
+                  />
+                </React.Suspense>
+              ) : (
+                <div className="qrt-service-register">
+                  <h3>在线咨询</h3>
+                  <p className="qrt-service-register-intro">请先留下联系方式，方便客服回复您。登记后即可与客服在线交流，客服会在 App 的「访客」中收到您的消息。</p>
+                  <form className="qrt-service-register-form" onSubmit={handleServiceRegister}>
+                    <label>
+                      <span>姓名 *</span>
+                      <input
+                        value={serviceRegForm.name}
+                        onChange={(e) => setServiceRegForm((prev) => ({ ...prev, name: e.target.value }))}
+                        maxLength={120}
+                        autoComplete="name"
+                      />
+                    </label>
+                    <label>
+                      <span>电子邮箱 *</span>
+                      <input
+                        type="email"
+                        value={serviceRegForm.email}
+                        onChange={(e) => setServiceRegForm((prev) => ({ ...prev, email: e.target.value }))}
+                        maxLength={128}
+                        placeholder="name@example.com"
+                        autoComplete="email"
+                      />
+                    </label>
+                    <label>
+                      <span>手机</span>
+                      <input
+                        value={serviceRegForm.phone}
+                        onChange={(e) => setServiceRegForm((prev) => ({ ...prev, phone: e.target.value }))}
+                        maxLength={64}
+                        autoComplete="tel"
+                      />
+                    </label>
+                    <label>
+                      <span>事由</span>
+                      <input
+                        value={serviceRegForm.subject}
+                        onChange={(e) => setServiceRegForm((prev) => ({ ...prev, subject: e.target.value }))}
+                        maxLength={200}
+                      />
+                    </label>
+                    {!serviceProfile?.ecardSlug && (
+                      <p className="qrt-service-register-hint">客服账号尚未配置，暂时无法在线交流。</p>
+                    )}
+                    <button type="submit" className="qrt-service-register-submit" disabled={serviceRegistering || !serviceProfile?.ecardSlug}>
+                      {serviceRegistering ? '登记中…' : '在线交流'}
+                    </button>
+                  </form>
+                </div>
+              )}
               {serviceNotice && <p className="qrt-service-notice">{serviceNotice}</p>}
             </section>
           </div>
+          {serviceCall.open && (
+            <div className="qrt-service-call-layer" role="dialog" aria-modal="true" aria-label={serviceCall.video ? '视频通话' : '语音通话'}>
+              <audio id="serviceRemoteAudio" autoPlay playsInline style={{ display: 'none' }}></audio>
+              <div className={`qrt-service-call-card${serviceCall.video ? ' is-video' : ''}`}>
+                {serviceCall.video ? (
+                  <video className="qrt-service-call-remote" ref={serviceRemoteVideoRef} autoPlay playsInline muted></video>
+                ) : (
+                  <div className="qrt-service-call-avatar">
+                    <img src={serviceAvatar} alt={serviceName} />
+                  </div>
+                )}
+                <div className="qrt-service-call-info">
+                  <h3>{serviceName}</h3>
+                  <p>{serviceCall.status || '呼叫中…'}</p>
+                </div>
+                {serviceCall.video && (
+                  <video className="qrt-service-call-local" ref={serviceLocalVideoRef} autoPlay playsInline muted></video>
+                )}
+                <div className="qrt-service-call-actions">
+                  <button type="button" onClick={toggleServiceMute}>{serviceCall.muted ? '取消静音' : '静音'}</button>
+                  {serviceCall.video && (
+                    <button type="button" onClick={toggleServiceCamera}>{serviceCall.cameraOn ? '关闭摄像头' : '开启摄像头'}</button>
+                  )}
+                  <button type="button" className="is-hangup" onClick={() => endServiceCall('通话已结束。')}>挂断</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

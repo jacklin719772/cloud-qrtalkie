@@ -58,6 +58,7 @@ export default function ECardChatPanel({
   avatarUrl = '',
   fallbackAvatar = '',
   callEnabled = false,
+  embedMode = false,
   onBack,
   onCall,
   messages = [],
@@ -316,7 +317,8 @@ export default function ECardChatPanel({
   }, []);
 
   return (
-    <div className="ecard-chatBody">
+    <div className={`ecard-chatBody${embedMode ? ' is-embedded' : ''}`}>
+      {!embedMode && (
       <aside className="ecard-chatAside">
         <div className="ecard-profileTop">
           <div className="ecard-avatarWrap">
@@ -361,13 +363,16 @@ export default function ECardChatPanel({
           </button>
         </div>
       </aside>
+      )}
 
       <section className="ecard-chatMain">
         <header className="ecard-chatHeader">
-          <button type="button" className="ecard-chatBack" onClick={onBack}>
-            <ArrowLeft size={14} />
-            名片
-          </button>
+          {onBack && (
+            <button type="button" className="ecard-chatBack" onClick={onBack}>
+              <ArrowLeft size={14} />
+              名片
+            </button>
+          )}
           <div className="ecard-chatHeadMain">
             <div className="ecard-chatTitle">{displayName || '線上諮詢'}</div>
             <div className="ecard-chatSubstate">

@@ -17,6 +17,10 @@
   gap: 10px;
   padding: 8px;
 }
+.ecard-chatBody.is-embedded {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+}
 
 /* ── 左栏：名片摘要 + 随时可转电话 ── */
 .ecard-chatAside {

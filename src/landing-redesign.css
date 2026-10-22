@@ -766,7 +766,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   background: #2f3943;
 }
 .qrt-service-banner {
-  position: relative; flex: 0 0 45%; min-height: 200px;
+  position: relative; flex: 0 0 56%; min-height: 200px;
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;
@@ -843,6 +843,61 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-service-status-pill.is-unknown { color: #cbd5e1; background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.35); }
 @keyframes qrtSpin { to { transform: rotate(360deg); } }
 .qrt-spin { animation: qrtSpin 1s linear infinite; }
+.qrt-service-call-layer {
+  position: fixed; inset: 0; z-index: 140;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: rgba(5, 10, 18, 0.86);
+}
+.qrt-service-call-card {
+  position: relative;
+  width: min(440px, 92vw);
+  min-height: 380px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: 32px 24px;
+  background: #1e2733; border: 1px solid #46525f; border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.qrt-service-call-avatar img {
+  display: block; width: 104px; height: 104px; border-radius: 50%;
+  object-fit: cover; border: 3px solid #f8fafc;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+}
+.qrt-service-call-info { text-align: center; z-index: 2; }
+.qrt-service-call-info h3 { margin: 0 0 6px; color: #f8fafc; font-size: 20px; font-weight: 700; }
+.qrt-service-call-info p { margin: 0; color: #5aa7e0; font-size: 13px; }
+.qrt-service-call-actions { display: flex; gap: 10px; z-index: 3; }
+.qrt-service-call-actions button {
+  min-width: 76px; height: 40px; padding: 0 16px;
+  border: 1px solid #46525f; border-radius: 999px;
+  background: rgba(48, 58, 68, 0.92); color: #e2e8f0;
+  font-size: 12px; cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.qrt-service-call-actions button:hover { background: #394552; border-color: #5aa7e0; }
+.qrt-service-call-actions button.is-hangup { background: #dc2626; border-color: #ef4444; color: #fff; }
+.qrt-service-call-actions button.is-hangup:hover { background: #b91c1c; border-color: #f87171; }
+.qrt-service-call-card.is-video {
+  width: min(760px, 94vw); height: min(520px, 82vh); min-height: 0;
+  padding: 0; justify-content: flex-start; background: #0b1119;
+}
+.qrt-service-call-remote {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; background: #000;
+}
+.qrt-service-call-card.is-video .qrt-service-call-info {
+  position: absolute; top: 16px; left: 0; right: 0; padding: 0 16px; z-index: 3;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+.qrt-service-call-local {
+  position: absolute; right: 14px; bottom: 78px; z-index: 3;
+  width: 128px; height: 96px; object-fit: cover;
+  border-radius: 10px; border: 2px solid rgba(255, 255, 255, 0.75); background: #000;
+}
+.qrt-service-call-card.is-video .qrt-service-call-actions {
+  position: absolute; left: 0; right: 0; bottom: 16px; justify-content: center; z-index: 4;
+}
 .qrt-service-actions {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
   width: 100%; margin-top: auto; padding-top: 18px;
@@ -921,6 +976,36 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-service-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
 .qrt-service-input-row button svg { width: 17px; height: 17px; color: #6fb3e8; }
 .qrt-service-notice { flex: 0 0 auto; margin: 8px 0 0; color: #5aa7e0; font-size: 12px; text-align: center; }
+.qrt-service-chat.is-chatting { padding: 10px; }
+.qrt-service-chat-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: #a7b2be; font-size: 13px;
+}
+.qrt-service-register {
+  display: flex; flex-direction: column; justify-content: center;
+  width: 100%; max-width: 640px; height: 100%; margin: 0 auto;
+  padding: 10px 6px;
+}
+.qrt-service-register h3 { margin: 0 0 8px; color: #f8fafc; font-size: 22px; font-weight: 700; }
+.qrt-service-register-intro { margin: 0 0 20px; color: #a7b2be; font-size: 13px; line-height: 1.8; }
+.qrt-service-register-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.qrt-service-register-form label { display: flex; flex-direction: column; gap: 6px; color: #c7d2dd; font-size: 12px; }
+.qrt-service-register-form input {
+  height: 42px; padding: 0 12px;
+  border: 1px solid #46525f; border-radius: 8px;
+  background: #2c353f; color: #eef4fa; font-size: 13px; outline: none;
+  box-sizing: border-box;
+}
+.qrt-service-register-form input:focus { border-color: #5aa7e0; }
+.qrt-service-register-submit {
+  grid-column: 1 / -1;
+  height: 44px; margin-top: 4px;
+  border: none; border-radius: 999px;
+  background: linear-gradient(120deg, #2563eb 0%, #38bdf8 100%);
+  color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.qrt-service-register-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+.qrt-service-register-hint { grid-column: 1 / -1; margin: 0; color: #fbbf24; font-size: 12px; }
 @media (max-width: 1100px) {
   .qrt-service-panel { grid-template-columns: minmax(280px, 34%) minmax(0, 1fr); }
   .qrt-service-chat { padding: 22px 24px 18px; }
@@ -934,7 +1019,7 @@ body.qrt-modal-open { overflow: hidden !important; }
     border: none; border-radius: 0;
   }
   .qrt-service-left { flex: 0 0 auto; }
-  .qrt-service-banner { flex: 0 0 110px; min-height: 0; }
+  .qrt-service-banner { flex: 0 0 120px; min-height: 0; }
   .qrt-service-profile { flex: 0 0 auto; margin-top: -40px; padding: 0 14px 12px; }
   .qrt-service-avatar { width: 80px; height: 80px; border-width: 3px; }
   .qrt-service-status { width: 15px; height: 15px; border-width: 2px; }
@@ -961,9 +1046,22 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-service-input-row input { font-size: 13px; }
   .qrt-service-input-row button { height: 36px; padding: 0 8px; font-size: 12px; }
   .qrt-service-close { top: 8px; right: 8px; width: 34px; height: 34px; font-size: 22px; }
+  .qrt-service-call-layer { padding: 12px; }
+  .qrt-service-call-card { width: min(92vw, 420px); min-height: 340px; padding: 24px 18px; }
+  .qrt-service-call-card.is-video { width: 96vw; height: 70vh; }
+  .qrt-service-call-avatar img { width: 84px; height: 84px; }
+  .qrt-service-call-local { right: 10px; bottom: 72px; width: 96px; height: 72px; }
+  .qrt-service-call-actions button { min-width: 64px; height: 38px; padding: 0 12px; font-size: 11px; }
+  .qrt-service-chat.is-chatting { padding: 6px; }
+  .qrt-service-register { padding: 4px 2px; }
+  .qrt-service-register h3 { font-size: 18px; }
+  .qrt-service-register-intro { margin-bottom: 14px; font-size: 12px; }
+  .qrt-service-register-form { grid-template-columns: 1fr; gap: 10px; }
+  .qrt-service-register-form input { height: 40px; font-size: 12px; }
+  .qrt-service-register-submit { height: 42px; font-size: 13px; }
 }
 @media (min-width: 901px) and (max-height: 700px) {
-  .qrt-service-banner { flex-basis: 34%; min-height: 150px; }
+  .qrt-service-banner { flex-basis: 40%; min-height: 150px; }
   .qrt-service-profile { margin-top: -48px; }
   .qrt-service-avatar { width: 96px; height: 96px; }
   .qrt-service-profile h2 { margin-top: 10px; font-size: 22px; }
