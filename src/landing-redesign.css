@@ -622,6 +622,7 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-ai-demo-close:hover { background: rgba(255, 255, 255, 0.28); }
 .qrt-ai-demo-dialog {
   width: min(1040px, 94vw);
+  height: min(760px, 92vh);
   max-height: 92vh;
   display: flex; flex-direction: column;
   background: #fff; border-radius: 18px; overflow: hidden;
@@ -629,7 +630,7 @@ body.qrt-modal-open { overflow: hidden !important; }
 }
 .qrt-ai-demo-banner {
   display: block; width: 100%; height: auto;
-  flex: 0 1 auto; min-height: 0;
+  flex: 0 1 auto; min-height: 0; max-height: 34vh;
   object-fit: cover; background: #06101f;
 }
 .qrt-ai-chat {
@@ -638,7 +639,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   padding: 16px 24px 20px;
 }
 .qrt-ai-messages {
-  flex: 1 1 auto; min-height: 180px; max-height: 330px;
+  flex: 1 1 auto; min-height: 0; max-height: none;
   overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px;
   padding: 4px 4px 2px;
@@ -661,7 +662,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-3px); }
 }
-.qrt-ai-quick { display: flex; flex-wrap: wrap; gap: 8px; }
+.qrt-ai-quick { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .qrt-ai-quick button {
   padding: 7px 12px; border-radius: 999px;
   border: 1px solid #dbe6f5; background: #f8fbff; color: #1d63d8;
@@ -669,7 +670,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 .qrt-ai-quick button:hover { background: #eaf2ff; border-color: #b9d0f5; }
-.qrt-ai-input-row { display: flex; gap: 10px; }
+.qrt-ai-input-row { display: flex; gap: 10px; flex: 0 0 auto; }
 .qrt-ai-input-row input {
   flex: 1; min-width: 0; height: 44px; padding: 0 14px;
   border: 1px solid #dbe3ee; border-radius: 10px;
@@ -685,7 +686,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   transition: opacity 0.2s ease;
 }
 .qrt-ai-input-row button:disabled { opacity: 0.55; cursor: not-allowed; }
-.qrt-ai-attachments { display: flex; flex-wrap: wrap; gap: 8px; }
+.qrt-ai-attachments { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .qrt-ai-attach {
   position: relative; display: flex; align-items: center; gap: 6px;
   max-width: 100%; padding: 6px 8px;
@@ -707,10 +708,10 @@ body.qrt-modal-open { overflow: hidden !important; }
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   width: 44px; height: 44px;
   border: 1px solid #dbe3ee; border-radius: 10px; background: #fff;
-  font-size: 18px; line-height: 1; cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  color: #475569; font-size: 22px; font-weight: 400; line-height: 1; cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
-.qrt-ai-attach-btn:hover { background: #f5f8ff; border-color: #b9d0f5; }
+.qrt-ai-attach-btn:hover { background: #f5f8ff; border-color: #b9d0f5; color: #1d63d8; }
 .qrt-ai-attach-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .qrt-ai-msg-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .qrt-ai-msg-attachments img { display: block; max-width: 160px; max-height: 120px; border-radius: 8px; object-fit: cover; }
@@ -719,7 +720,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   border-radius: 6px; background: rgba(255, 255, 255, 0.18); font-size: 12px;
 }
 .qrt-ai-msg-text { white-space: pre-wrap; }
-.qrt-ai-error { margin: 0; color: #ef4444; font-size: 12px; text-align: center; }
+.qrt-ai-error { margin: 0; color: #ef4444; font-size: 12px; text-align: center; flex: 0 0 auto; }
 .qrt-back-to-top-btn {
   position: fixed; bottom: 40px; right: 40px; width: 50px; height: 50px;
   background-color: #1e3a8a; color: #fff; border: none; border-radius: 50%;
@@ -1092,7 +1093,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-ai-demo-modal { padding: 24px 8px; }
   .qrt-ai-demo-dialog { width: 96vw; border-radius: 14px; }
   .qrt-ai-chat { padding: 12px 14px 14px; gap: 8px; }
-  .qrt-ai-messages { min-height: 160px; max-height: 44vh; }
+  .qrt-ai-messages { min-height: 0; max-height: none; }
   .qrt-ai-msg { max-width: 88%; font-size: 13px; padding: 9px 12px; }
   .qrt-ai-quick button { font-size: 11px; padding: 6px 10px; }
   .qrt-ai-input-row input { height: 42px; font-size: 13px; }

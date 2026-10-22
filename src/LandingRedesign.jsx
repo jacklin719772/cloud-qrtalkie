@@ -917,11 +917,11 @@ export default function LandingRedesign() {
                   disabled={aiSending}
                   aria-label="上传图片或文件"
                   title="上传图片或文件"
-                >📎</button>
+                >+</button>
                 <input
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
-                  placeholder="输入问题，或点击 📎 上传图片/文件…"
+                  placeholder="输入问题，或点击 + 上传图片/文件…"
                   maxLength={500}
                   autoComplete="off"
                   aria-label="输入问题"
