@@ -1476,7 +1476,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   }
   .qrt-download-item:last-child { border-bottom: none; }
   .qrt-desktop-download { justify-content: center; width: 80%; max-width: 250px; }
-  .qrt-qr-download-item { flex-direction: row; justify-content: flex-start; align-items: center; gap: 15px; width: 100%; }
+  .qrt-qr-download-item { flex-direction: row; justify-content: flex-start; align-items: center; gap: 15px; width: 80%; max-width: 250px; margin: 0 auto; }
   .qrt-qr-mini { width: 60px; height: 60px; flex-shrink: 0; }
   .qrt-qr-download-text { text-align: left; }
   .qrt-platform-name { font-size: 14px; margin-bottom: 2px; }
