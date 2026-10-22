@@ -151,6 +151,54 @@ const DEMO_ENTRY_CONFIG = {
   building: { title: '楼宇管理演示', img: '/assets/landing/building-demo01.jpg' },
 };
 
+const AI_DEMO_WELCOME = '您好，我是 QRTalkie AI 客服，可以为您介绍私有化部署、呼叫中心、电子名片、设备管理等方案。请问想了解什么？';
+const AI_DEMO_QUICK_QUESTIONS = [
+  'QRTalkie 能解决什么问题？',
+  '支持私有化部署吗？',
+  '呼叫中心怎么接入？',
+];
+
+const AI_ATTACHMENT_MAX = 3;
+const AI_ATTACHMENT_MAX_TOTAL = 15 * 1024 * 1024;
+const AI_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const AI_DOC_EXTS = ['.pdf', '.docx', '.txt', '.md', '.markdown', '.csv', '.json', '.log', '.xml'];
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('读取文件失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('图片解析失败'));
+    image.src = dataUrl;
+  });
+}
+
+async function compressAiImage(file) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await loadImageElement(dataUrl);
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  const scale = Math.min(1, 1600 / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', 0.82);
+}
+
 function useLandingViewport() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -188,18 +236,28 @@ export default function LandingRedesign() {
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
   const [demoEntry, setDemoEntry] = useState(null);
+  const [aiDemoOpen, setAiDemoOpen] = useState(false);
+  const [aiMessages, setAiMessages] = useState([]);
+  const [aiInput, setAiInput] = useState('');
+  const [aiSending, setAiSending] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiAttachments, setAiAttachments] = useState([]);
+  const aiErrorTimer = useRef(null);
+  const aiListRef = useRef(null);
+  const aiFileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!demoOpen && !ecardDemoOpen && !demoEntry) return undefined;
+    if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen) return undefined;
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
       if (demoEntry) setDemoEntry(null);
+      else if (aiDemoOpen) setAiDemoOpen(false);
       else if (ecardDemoOpen) setEcardDemoOpen(false);
       else setDemoOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [demoOpen, ecardDemoOpen, demoEntry]);
+  }, [demoOpen, ecardDemoOpen, demoEntry, aiDemoOpen]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -231,7 +289,13 @@ export default function LandingRedesign() {
 
   useEffect(() => () => {
     if (trialNoticeTimer.current) window.clearTimeout(trialNoticeTimer.current);
+    if (aiErrorTimer.current) window.clearTimeout(aiErrorTimer.current);
   }, []);
+
+  useEffect(() => {
+    const list = aiListRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [aiMessages, aiSending, aiDemoOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -339,6 +403,119 @@ export default function LandingRedesign() {
   const demoEntryConfig = demoEntry ? DEMO_ENTRY_CONFIG[demoEntry] : null;
   const demoEntryUrl = demoEntry ? String(demoLinks[demoEntry] || '').trim() : '';
   const demoEntryAbsoluteUrl = demoEntryUrl ? absoluteDownloadUrl(demoEntryUrl) : '';
+
+  const showAiError = (text) => {
+    setAiError(text);
+    if (aiErrorTimer.current) window.clearTimeout(aiErrorTimer.current);
+    aiErrorTimer.current = window.setTimeout(() => setAiError(''), 4000);
+  };
+
+  const openAiDemo = () => {
+    setDemoOpen(false);
+    setAiDemoOpen(true);
+    setAiMessages([{ role: 'assistant', content: AI_DEMO_WELCOME }]);
+    setAiInput('');
+    setAiAttachments([]);
+    setAiError('');
+    setAiSending(false);
+  };
+
+  const removeAiAttachment = (id) => {
+    setAiAttachments((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleAiFiles = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (files.length === 0) return;
+    const next = [...aiAttachments];
+    for (const file of files) {
+      if (next.length >= AI_ATTACHMENT_MAX) {
+        showAiError(`最多上传 ${AI_ATTACHMENT_MAX} 个附件。`);
+        break;
+      }
+      const isImage = AI_IMAGE_TYPES.includes(file.type);
+      const ext = `.${String(file.name || '').split('.').pop().toLowerCase()}`;
+      const isDoc = AI_DOC_EXTS.includes(ext);
+      if (!isImage && !isDoc) {
+        showAiError(`不支持的文件类型：${file.name}`);
+        continue;
+      }
+      if (isImage && file.size > 8 * 1024 * 1024) {
+        showAiError('图片不能超过 8MB。');
+        continue;
+      }
+      if (!isImage && file.size > 10 * 1024 * 1024) {
+        showAiError('文件不能超过 10MB。');
+        continue;
+      }
+      const currentTotal = next.reduce((sum, item) => sum + (item.size || 0), 0);
+      if (currentTotal + file.size > AI_ATTACHMENT_MAX_TOTAL) {
+        showAiError('附件总大小不能超过 15MB。');
+        break;
+      }
+      try {
+        if (isImage) {
+          const dataUrl = await compressAiImage(file);
+          next.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            kind: 'image',
+            name: file.name,
+            mimeType: 'image/jpeg',
+            dataUrl,
+            size: file.size,
+          });
+        } else {
+          const dataUrl = await readFileAsDataUrl(file);
+          next.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            kind: 'file',
+            name: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            dataBase64: String(dataUrl).split(',')[1] || '',
+            size: file.size,
+          });
+        }
+      } catch (err) {
+        showAiError(err.message || `读取 ${file.name} 失败。`);
+      }
+    }
+    setAiAttachments(next);
+  };
+
+  const sendAiMessage = async (text) => {
+    const content = String(text !== undefined ? text : aiInput).trim();
+    if ((!content && aiAttachments.length === 0) || aiSending) return;
+    const attachments = aiAttachments.map((item) => (item.kind === 'image'
+      ? { id: item.id, kind: 'image', name: item.name, mimeType: item.mimeType, dataUrl: item.dataUrl }
+      : { id: item.id, kind: 'file', name: item.name, mimeType: item.mimeType, dataBase64: item.dataBase64 }));
+    const userMessage = { role: 'user', content: content || '请分析我上传的附件。', attachments };
+    const nextMessages = [...aiMessages, userMessage];
+    setAiMessages(nextMessages);
+    setAiInput('');
+    setAiAttachments([]);
+    setAiSending(true);
+    setAiError('');
+    try {
+      const payloadMessages = nextMessages.slice(-10).map((message, index, array) => (
+        index === array.length - 1
+          ? message
+          : { role: message.role, content: message.content }
+      ));
+      const data = await apiClient.post(
+        '/public/demo/ai-chat',
+        { messages: payloadMessages },
+        { timeoutMs: 60000 },
+      );
+      const reply = String(data?.reply || '').trim();
+      if (!reply) throw new Error('AI 客服未返回内容，请稍后再试。');
+      setAiMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    } catch (err) {
+      showAiError(err.message || 'AI 客服暂时无法回复，请稍后再试。');
+    } finally {
+      setAiSending(false);
+    }
+  };
 
   return (
     <div className="qrt-landing" id="qrt-top">
@@ -611,7 +788,7 @@ export default function LandingRedesign() {
         </div>
         <div className="qrt-demo-list">
           <button type="button" className="qrt-demo-item" onClick={() => { setDemoOpen(false); setEcardDemoOpen(true); }}><i>📇</i><span>电子名片</span><em>›</em></button>
-          <button type="button" className="qrt-demo-item"><i>🤖</i><span>AI客服</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={openAiDemo}><i>🤖</i><span>AI客服</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('callcenter')}><i>📞</i><span>呼叫中心</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('building')}><i>🏢</i><span>楼宇管理</span><em>›</em></button>
         </div>
@@ -665,6 +842,93 @@ export default function LandingRedesign() {
               ) : (
                 <p className="qrt-demo-entry-empty">演示链接尚未配置，请联系管理员在「首页设置」中设置。</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aiDemoOpen && (
+        <div
+          className="qrt-ai-demo-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="AI客服在线演示"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setAiDemoOpen(false); }}
+        >
+          <button type="button" className="qrt-ai-demo-close" aria-label="关闭" onClick={() => setAiDemoOpen(false)}>×</button>
+          <div className="qrt-ai-demo-dialog">
+            <img className="qrt-ai-demo-banner" src="/assets/landing/ai-demo01.jpg" alt="AI客服在线演示" />
+            <div className="qrt-ai-chat">
+              <div className="qrt-ai-messages" ref={aiListRef}>
+                {aiMessages.map((message, index) => (
+                  <div key={`${message.role}-${index}`} className={`qrt-ai-msg ${message.role}`}>
+                    {Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                      <div className="qrt-ai-msg-attachments">
+                        {message.attachments.map((attachment) => (attachment.kind === 'image' ? (
+                          <img key={attachment.id} src={attachment.dataUrl} alt={attachment.name} />
+                        ) : (
+                          <span key={attachment.id} className="qrt-ai-msg-file">📄 {attachment.name}</span>
+                        )))}
+                      </div>
+                    )}
+                    {message.content && <span className="qrt-ai-msg-text">{message.content}</span>}
+                  </div>
+                ))}
+                {aiSending && (
+                  <div className="qrt-ai-msg assistant qrt-ai-typing" aria-label="AI 正在回复">
+                    <span></span><span></span><span></span>
+                  </div>
+                )}
+              </div>
+              {aiMessages.length <= 1 && !aiSending && (
+                <div className="qrt-ai-quick">
+                  {AI_DEMO_QUICK_QUESTIONS.map((question) => (
+                    <button key={question} type="button" onClick={() => sendAiMessage(question)}>{question}</button>
+                  ))}
+                </div>
+              )}
+              {aiAttachments.length > 0 && (
+                <div className="qrt-ai-attachments">
+                  {aiAttachments.map((attachment) => (
+                    <div key={attachment.id} className="qrt-ai-attach">
+                      {attachment.kind === 'image' ? (
+                        <img src={attachment.dataUrl} alt={attachment.name} />
+                      ) : (
+                        <span className="qrt-ai-attach-name">📄 {attachment.name}</span>
+                      )}
+                      <button type="button" onClick={() => removeAiAttachment(attachment.id)} disabled={aiSending} aria-label="移除附件">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                ref={aiFileInputRef}
+                type="file"
+                multiple
+                hidden
+                accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json,.log,.xml,image/png,image/jpeg,image/webp"
+                onChange={handleAiFiles}
+              />
+              <form className="qrt-ai-input-row" onSubmit={(e) => { e.preventDefault(); sendAiMessage(); }}>
+                <button
+                  type="button"
+                  className="qrt-ai-attach-btn"
+                  onClick={() => aiFileInputRef.current?.click()}
+                  disabled={aiSending}
+                  aria-label="上传图片或文件"
+                  title="上传图片或文件"
+                >📎</button>
+                <input
+                  value={aiInput}
+                  onChange={(e) => setAiInput(e.target.value)}
+                  placeholder="输入问题，或点击 📎 上传图片/文件…"
+                  maxLength={500}
+                  autoComplete="off"
+                  aria-label="输入问题"
+                />
+                <button type="submit" disabled={aiSending || (!aiInput.trim() && aiAttachments.length === 0)}>{aiSending ? '回复中…' : '发送'}</button>
+              </form>
+              {aiError && <p className="qrt-ai-error">{aiError}</p>}
             </div>
           </div>
         </div>
