@@ -371,9 +371,11 @@ export default function LandingRedesign() {
   const serviceKeyframeKickRef = useRef(null);
   const serviceOriginalSendRef = useRef(null);
   const serviceCallBusyRef = useRef(false);
+  const serviceRegNameRef = useRef(null);
   const serviceChat = useVisitorChat(serviceProfile?.ecardSlug || '');
   const [serviceRegForm, setServiceRegForm] = useState({ name: '', email: '', phone: '', subject: '' });
   const [serviceRegistering, setServiceRegistering] = useState(false);
+  const [serviceWebMeetLoading, setServiceWebMeetLoading] = useState(false);
   const [serviceEcardData, setServiceEcardData] = useState(null);
   const aiErrorTimer = useRef(null);
   const aiNoticeTimer = useRef(null);
@@ -1065,6 +1067,35 @@ export default function LandingRedesign() {
       showServiceNotice(error?.message || '登记失败，请稍后再试。');
     } finally {
       setServiceRegistering(false);
+    }
+  };
+
+  const handleServiceWebMeet = async () => {
+    if (serviceWebMeetLoading) return;
+    const slug = serviceProfile?.ecardSlug;
+    if (!slug) {
+      showServiceNotice('客服账号尚未配置，暂时无法发起 Web 会议。');
+      return;
+    }
+    const token = serviceChat.session?.accessToken;
+    if (!token) {
+      showServiceNotice('请先填写姓名与电子邮箱，点击「在线交流」进入会话后再发起 Web 会议。');
+      serviceRegNameRef.current?.focus();
+      return;
+    }
+    setServiceWebMeetLoading(true);
+    try {
+      const data = await chatApi.webMeet(slug, token);
+      const meetingUri = String(data?.meeting?.meetingUri || '').trim();
+      if (!meetingUri) throw new Error('会议链接生成失败，请稍后再试。');
+      const sent = await serviceChat.send(`技术支持邀请您加入 Web 会议：${meetingUri}`);
+      showServiceNotice(sent
+        ? '会议链接已发送，请在会话中点击链接加入。'
+        : '会议已创建，但链接发送失败，请稍后重试。');
+    } catch (error) {
+      showServiceNotice(error?.message || 'Web 会议创建失败，请稍后再试。');
+    } finally {
+      setServiceWebMeetLoading(false);
     }
   };
 
@@ -1780,13 +1811,13 @@ export default function LandingRedesign() {
                     </svg>
                     <span>视频呼叫</span>
                   </button>
-                  <button type="button" onClick={() => showServiceNotice('Web 会议功能即将开放。')}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <button type="button" onClick={handleServiceWebMeet} disabled={serviceWebMeetLoading}>
+                    <svg className={serviceWebMeetLoading ? 'qrt-spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <rect x="3" y="4" width="18" height="13" rx="2" />
                       <path d="M8 21h8M12 17v4" />
                       <path d="M8 12l2.5-2 2 1.5L16 8" />
                     </svg>
-                    <span>Web会议</span>
+                    <span>{serviceWebMeetLoading ? '生成中…' : 'Web会议'}</span>
                   </button>
                 </div>
               </div>
@@ -1831,6 +1862,7 @@ export default function LandingRedesign() {
                     <label>
                       <span>姓名 *</span>
                       <input
+                        ref={serviceRegNameRef}
                         value={serviceRegForm.name}
                         onChange={(e) => setServiceRegForm((prev) => ({ ...prev, name: e.target.value }))}
                         maxLength={120}

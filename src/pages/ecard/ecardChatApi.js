@@ -117,6 +117,9 @@ export const chatApi = {
 
   ticket: (slug, token) => request(`${chatBase(slug)}/ticket`, { token }),
 
+  /** 在線交流中生成 Web 會議連結（訪客會話鑒權，不自建 SIP 登錄） */
+  webMeet: (slug, token) => request(`${chatBase(slug)}/web-meet`, { method: 'POST', token }),
+
   /** 更换聊天码：旧码立即失效，新码只返回一次 */
   rotateCode: (slug, token) => request(`${chatBase(slug)}/resume-code`, { method: 'POST', token }),
 

@@ -115,6 +115,11 @@ async function createMeetingSpace() {
   return { name: payload.name, meetingCode: payload.meetingCode, meetingUri: payload.meetingUri };
 }
 
+export async function createWebMeetMeeting() {
+  const provider = (process.env.MEET_PROVIDER || "jitsi").toLowerCase();
+  return provider === "google" ? await createMeetingSpace() : createJitsiMeeting();
+}
+
 export function registerGoogleMeetRoutes(app, { requireSipUser } = {}) {
   if (typeof requireSipUser !== "function") {
     throw new Error("registerGoogleMeetRoutes 需要 requireSipUser 中间件");

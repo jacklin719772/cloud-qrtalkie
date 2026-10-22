@@ -21,6 +21,7 @@ import { logCaEvent, CA_AUDIT_ACTIONS } from "./cleanupService.js";
 import { decodeUploadData, saveAttachmentBuffer, openAttachmentStream, resolveStoragePath, statAttachmentByKey } from "./attachmentService.js";
 import { rm } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
+import { createWebMeetMeeting } from "../googleMeet/routes.js";
 import {
   ARCHIVE_FILE_LINK_PLACEHOLDER,
   ARCHIVE_ZIP_LINK_PLACEHOLDER,
@@ -832,6 +833,54 @@ export function registerCustomerAssistantRoutes(app, { requireSipUser } = {}) {
       return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
     } finally {
       connection.release();
+    }
+  });
+
+  // 在線交流中發起 Web meet：訪客會話鑒權 + 會話存在校驗 + 限流
+  const webMeetGenerationHits = new Map();
+  const WEB_MEET_WINDOW_MS = 10 * 60 * 1000;
+  const WEB_MEET_MAX_PER_WINDOW = 3;
+  app.post("/api/ecard/public/:slug/chat/web-meet", requireVisitorAuth, async (request, response) => {
+    const slug = String(request.params.slug || "").trim();
+    const visitorId = Number(request.caVisitor?.visitorId) || 0;
+    if (!visitorId) return fail(response, 401, "SESSION_EXPIRED", "請重新取得授權");
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const loaded = await loadEcardBySlug(connection, slug);
+      if (loaded.error) return fail(response, loaded.error.status, loaded.error.code, loaded.error.message);
+      const conversations = await connection.query(
+        "SELECT id FROM ca_conversations WHERE ecard_id = ? AND visitor_id = ? LIMIT 1",
+        [loaded.ecard.id, visitorId],
+      );
+      if (!conversations[0]) return fail(response, 404, "CONVERSATION_NOT_FOUND", "會話不存在");
+    } catch (error) {
+      console.error("[customerAssistant] web-meet session check failed:", error?.message || error);
+      return fail(response, 500, "CA_INTERNAL_ERROR", "服務暫時不可用");
+    } finally {
+      if (connection) connection.release();
+    }
+    const now = Date.now();
+    if (webMeetGenerationHits.size > 2000) {
+      for (const [key, times] of webMeetGenerationHits) {
+        const kept = times.filter((time) => now - time < WEB_MEET_WINDOW_MS);
+        if (kept.length === 0) webMeetGenerationHits.delete(key);
+        else webMeetGenerationHits.set(key, kept);
+      }
+    }
+    const hits = (webMeetGenerationHits.get(visitorId) || []).filter((time) => now - time < WEB_MEET_WINDOW_MS);
+    if (hits.length >= WEB_MEET_MAX_PER_WINDOW) {
+      return fail(response, 429, "WEB_MEET_RATE_LIMITED", "會議連結生成過於頻繁，請稍後再試");
+    }
+    try {
+      const meeting = await createWebMeetMeeting();
+      hits.push(now);
+      webMeetGenerationHits.set(visitorId, hits);
+      console.log(`[web-meet] visitor=${visitorId} 创建会议 ${meeting.meetingCode}`);
+      return ok(response, { meeting });
+    } catch (error) {
+      console.error("[customerAssistant] web-meet create failed:", error?.message || error);
+      return fail(response, 500, "WEB_MEET_FAILED", "會議連結生成失敗，請稍後再試");
     }
   });
 

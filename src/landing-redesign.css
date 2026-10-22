@@ -931,6 +931,10 @@ body.qrt-modal-open { overflow: hidden !important; }
   border-color: #5aa7e0; background: rgba(72, 130, 180, 0.2);
   box-shadow: 0 0 18px rgba(90, 167, 224, 0.25);
 }
+.qrt-service-actions button:disabled {
+  opacity: 0.6; cursor: default;
+  border-color: #46525f; background: rgba(72, 130, 180, 0.12); box-shadow: none;
+}
 .qrt-service-actions svg { width: 18px; height: 18px; color: #6fb3e8; }
 .qrt-service-actions span { white-space: nowrap; }
 .qrt-service-chat {
