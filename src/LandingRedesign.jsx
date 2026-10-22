@@ -165,6 +165,20 @@ const SERVICE_QUICK_QUESTIONS = [
   '呼叫中心怎么接入？',
 ];
 const SERVICE_DEMO_REPLY = '（演示）在线客服会话功能将在部署后接入。您可以先通过语音、视频或 Web 会议联系我们。';
+const SERVICE_STATUS_FALLBACK = {
+  configured: false,
+  sip: { state: 'unknown', label: 'SIP 未知', account: '' },
+  web: { state: 'unconfigured', label: '未配置', account: '' },
+};
+
+function normalizeServiceStatus(data) {
+  if (!data) return SERVICE_STATUS_FALLBACK;
+  return {
+    configured: Boolean(data.configured),
+    sip: data.sip || SERVICE_STATUS_FALLBACK.sip,
+    web: data.web || SERVICE_STATUS_FALLBACK.web,
+  };
+}
 
 const AI_ATTACHMENT_MAX = 3;
 const AI_ATTACHMENT_MAX_TOTAL = 15 * 1024 * 1024;
@@ -239,7 +253,7 @@ export default function LandingRedesign() {
   const [trialNotice, setTrialNotice] = useState('');
   const trialNoticeTimer = useRef(null);
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
-  const [demoLinks, setDemoLinks] = useState({ callcenter: '', building: '', livechat: '' });
+  const [demoLinks, setDemoLinks] = useState({ callcenter: '', building: '' });
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
@@ -255,6 +269,9 @@ export default function LandingRedesign() {
   const [serviceMessages, setServiceMessages] = useState([]);
   const [serviceInput, setServiceInput] = useState('');
   const [serviceNotice, setServiceNotice] = useState('');
+  const [serviceProfile, setServiceProfile] = useState(null);
+  const [serviceStatus, setServiceStatus] = useState(SERVICE_STATUS_FALLBACK);
+  const [serviceStatusLoading, setServiceStatusLoading] = useState(false);
   const aiErrorTimer = useRef(null);
   const aiNoticeTimer = useRef(null);
   const serviceNoticeTimer = useRef(null);
@@ -338,11 +355,32 @@ export default function LandingRedesign() {
       setDemoLinks({
         callcenter: callCenter?.settings?.url || '',
         building: building?.settings?.url || '',
-        livechat: livechat?.settings?.url || '',
       });
+      setServiceProfile(livechat?.settings?.account || null);
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!serviceOpen) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      setServiceStatusLoading(true);
+      try {
+        const data = await apiClient.get('/public/livechat/status');
+        if (!cancelled && data) setServiceStatus(normalizeServiceStatus(data));
+      } catch {
+      } finally {
+        if (!cancelled) setServiceStatusLoading(false);
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [serviceOpen]);
 
   const showTrialNotice = (message) => {
     setTrialNotice(message);
@@ -556,6 +594,7 @@ export default function LandingRedesign() {
     setServiceMessages([]);
     setServiceInput('');
     setServiceNotice('');
+    setServiceStatus(SERVICE_STATUS_FALLBACK);
   };
 
   const sendServiceMessage = (text) => {
@@ -567,6 +606,34 @@ export default function LandingRedesign() {
       setServiceMessages((prev) => [...prev, { role: 'assistant', content: SERVICE_DEMO_REPLY }]);
     }, 600);
   };
+
+  const refreshServiceStatus = async () => {
+    setServiceStatusLoading(true);
+    try {
+      const data = await apiClient.get('/public/livechat/status');
+      if (data) setServiceStatus(normalizeServiceStatus(data));
+    } catch {
+    } finally {
+      setServiceStatusLoading(false);
+    }
+  };
+
+  const serviceAvatar = serviceProfile?.avatarUrl
+    ? absoluteDownloadUrl(serviceProfile.avatarUrl)
+    : '/assets/landing/service-avatar.jpg';
+  const serviceName = serviceProfile?.name || '客服小雅';
+  const serviceDuty = serviceProfile?.duty || '在线客服专员';
+  const sipState = serviceStatus.sip?.state || 'unknown';
+  const avatarStatusClass = sipState === 'online_idle'
+    ? 'online'
+    : sipState === 'online_busy' ? 'busy' : sipState === 'offline' ? 'offline' : 'unknown';
+  const sipTone = sipState === 'online_idle'
+    ? 'ok'
+    : sipState === 'online_busy' ? 'busy' : sipState === 'offline' ? 'bad' : 'unknown';
+  const webStateValue = serviceStatus.web?.state || 'unknown';
+  const webTone = webStateValue === 'online'
+    ? 'ok'
+    : webStateValue === 'offline' ? 'bad' : webStateValue === 'unconfigured' ? 'warn' : 'unknown';
 
   return (
     <div className="qrt-landing" id="qrt-top">
@@ -1015,12 +1082,55 @@ export default function LandingRedesign() {
               <div className="qrt-service-banner" style={{ backgroundImage: "url('/assets/landing/service03.jpg')" }}></div>
               <div className="qrt-service-profile">
                 <div className="qrt-service-avatar">
-                  <img src="/assets/landing/service-avatar.jpg" alt="客服小雅" />
-                  <span className="qrt-service-status online" title="在线" aria-label="在线"></span>
+                  <img src={serviceAvatar} alt={serviceName} />
+                  <span
+                    className={`qrt-service-status ${avatarStatusClass}`}
+                    title={serviceStatus.sip?.label || '状态未知'}
+                    aria-label={serviceStatus.sip?.label || '状态未知'}
+                  ></span>
                 </div>
-                <h2>客服小雅</h2>
-                <p className="qrt-service-role">在线客服专员</p>
-                <p className="qrt-service-note">QRTalkie 官方在线客服</p>
+                <h2>{serviceName}</h2>
+                <p className="qrt-service-role">{serviceDuty}</p>
+                <div className="qrt-service-statuses">
+                  <div className="qrt-service-status-card">
+                    <div className="qrt-service-status-head">
+                      <span className="qrt-service-status-title">Web 账号状态</span>
+                      <button
+                        type="button"
+                        className="qrt-service-status-refresh"
+                        onClick={refreshServiceStatus}
+                        disabled={serviceStatusLoading}
+                        aria-label="刷新 Web 账号状态"
+                      >
+                        <svg className={serviceStatusLoading ? 'qrt-spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                          <path d="M21 3v6h-6" />
+                        </svg>
+                      </button>
+                    </div>
+                    <span className="qrt-service-status-sub">{serviceStatus.web?.account || '未配置 Web 账号'}</span>
+                    <span className={`qrt-service-status-pill is-${webTone}`}>{serviceStatus.web?.label || '未知'}</span>
+                  </div>
+                  <div className="qrt-service-status-card">
+                    <div className="qrt-service-status-head">
+                      <span className="qrt-service-status-title">SIP 账号状态</span>
+                      <button
+                        type="button"
+                        className="qrt-service-status-refresh"
+                        onClick={refreshServiceStatus}
+                        disabled={serviceStatusLoading}
+                        aria-label="刷新 SIP 账号状态"
+                      >
+                        <svg className={serviceStatusLoading ? 'qrt-spin' : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                          <path d="M21 3v6h-6" />
+                        </svg>
+                      </button>
+                    </div>
+                    <span className="qrt-service-status-sub">{serviceStatus.sip?.account || serviceProfile?.sipAccount || '—'}</span>
+                    <span className={`qrt-service-status-pill is-${sipTone}`}>{serviceStatus.sip?.label || 'SIP 未知'}</span>
+                  </div>
+                </div>
                 <div className="qrt-service-actions">
                   <button type="button" onClick={() => showServiceNotice('语音呼叫功能即将开放。')}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -799,13 +799,50 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-service-status.online { background: #22c55e; }
 .qrt-service-status.busy { background: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.55); }
 .qrt-service-status.away { background: #eab308; box-shadow: 0 0 10px rgba(234, 179, 8, 0.55); }
-.qrt-service-status.offline { background: #64748b; box-shadow: none; }
+.qrt-service-status.offline { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.qrt-service-status.unknown { background: #64748b; box-shadow: none; }
 .qrt-service-profile h2 {
   margin: 14px 0 0; color: #fcfcfc;
   font-size: 26px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.25;
 }
 .qrt-service-role { margin: 6px 0 0; color: #5aa7e0; font-size: 12px; font-weight: 600; letter-spacing: 2px; }
-.qrt-service-note { margin: 10px 0 0; color: #a7b2be; font-size: 12px; }
+.qrt-service-statuses {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+  width: 100%; margin-top: 12px;
+}
+.qrt-service-status-card {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 9px;
+  border: 1px solid #46525f; border-radius: 8px;
+  background: rgba(23, 30, 39, 0.35);
+  text-align: left; min-width: 0;
+}
+.qrt-service-status-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.qrt-service-status-title { font-size: 11px; color: #c7d2dd; font-weight: 600; white-space: nowrap; }
+.qrt-service-status-refresh {
+  flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0;
+  border: none; background: transparent; color: #8fa3b5; cursor: pointer;
+}
+.qrt-service-status-refresh:hover { color: #5aa7e0; }
+.qrt-service-status-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+.qrt-service-status-refresh svg { width: 13px; height: 13px; }
+.qrt-service-status-sub {
+  font-size: 9px; color: #8fa3b5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.qrt-service-status-pill {
+  display: inline-flex; align-items: center; width: fit-content;
+  padding: 2px 7px; border-radius: 999px; border: 1px solid transparent;
+  font-size: 10px; line-height: 1.4;
+}
+.qrt-service-status-pill.is-ok { color: #6ee7b7; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.35); }
+.qrt-service-status-pill.is-busy { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); }
+.qrt-service-status-pill.is-bad { color: #fca5a5; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35); }
+.qrt-service-status-pill.is-warn { color: #fcd34d; background: rgba(234, 179, 8, 0.12); border-color: rgba(234, 179, 8, 0.35); }
+.qrt-service-status-pill.is-unknown { color: #cbd5e1; background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.35); }
+@keyframes qrtSpin { to { transform: rotate(360deg); } }
+.qrt-spin { animation: qrtSpin 1s linear infinite; }
 .qrt-service-actions {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
   width: 100%; margin-top: auto; padding-top: 18px;
@@ -903,7 +940,10 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-service-status { width: 15px; height: 15px; border-width: 2px; }
   .qrt-service-profile h2 { margin-top: 8px; font-size: 20px; }
   .qrt-service-role { font-size: 11px; letter-spacing: 1px; }
-  .qrt-service-note { display: none; }
+  .qrt-service-statuses { margin-top: 8px; gap: 6px; }
+  .qrt-service-status-card { padding: 6px 7px; gap: 3px; }
+  .qrt-service-status-title { font-size: 10px; }
+  .qrt-service-status-sub { font-size: 9px; }
   .qrt-service-actions { margin-top: 12px; padding-top: 0; }
   .qrt-service-actions button { height: 46px; font-size: 11px; gap: 3px; }
   .qrt-service-actions svg { width: 16px; height: 16px; }
@@ -927,7 +967,9 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-service-profile { margin-top: -48px; }
   .qrt-service-avatar { width: 96px; height: 96px; }
   .qrt-service-profile h2 { margin-top: 10px; font-size: 22px; }
-  .qrt-service-note { display: none; }
+  .qrt-service-statuses { margin-top: 8px; gap: 6px; }
+  .qrt-service-status-card { padding: 6px 8px; gap: 3px; }
+  .qrt-service-status-sub { display: none; }
   .qrt-service-actions { padding-top: 12px; }
   .qrt-service-actions button { height: 48px; }
   .qrt-service-welcome { padding-top: 0; }

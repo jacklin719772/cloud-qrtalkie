@@ -162,9 +162,11 @@ export default function HomepageSettings() {
   const [demoLinkForms, setDemoLinkForms] = useState({
     callcenter: { ...DEMO_LINK_DEFAULTS },
     building: { ...DEMO_LINK_DEFAULTS },
-    livechat: { ...DEMO_LINK_DEFAULTS },
+    livechat: { ...DEMO_LINK_DEFAULTS, sipUserId: '' },
   });
   const [demoLinkLoading, setDemoLinkLoading] = useState({ callcenter: true, building: true, livechat: true });
+  const [livechatAccounts, setLivechatAccounts] = useState([]);
+  const [livechatAccountsLoading, setLivechatAccountsLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -214,6 +216,21 @@ export default function HomepageSettings() {
           if (!cancelled) setDemoLinkLoading((prev) => ({ ...prev, [key]: false }));
         });
     });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get('/admin/settings/homepage-livechat/accounts')
+      .then((data) => {
+        if (!cancelled) setLivechatAccounts(Array.isArray(data?.accounts) ? data.accounts : []);
+      })
+      .catch(() => {
+        if (!cancelled) setLivechatAccounts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLivechatAccountsLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -275,7 +292,10 @@ export default function HomepageSettings() {
     if (demoSection) {
       setIsSaving(true);
       try {
-        const data = await apiClient.put(demoSection.path, demoLinkForms[activeSection]);
+        const payload = activeSection === 'livechat'
+          ? { sipUserId: demoLinkForms.livechat.sipUserId }
+          : demoLinkForms[activeSection];
+        const data = await apiClient.put(demoSection.path, payload);
         if (data?.settings) {
           setDemoLinkForms((prev) => ({ ...prev, [activeSection]: { ...DEMO_LINK_DEFAULTS, ...data.settings } }));
         }
@@ -305,7 +325,10 @@ export default function HomepageSettings() {
 
   const pickerVersions = picker.platform ? versionsFor(picker.platform) : [];
   const pickerLabel = picker.platform === 'windows' ? 'Windows' : picker.platform === 'android' ? 'Android' : 'iOS';
-  const sectionLoading = DEMO_LINK_SECTIONS[activeSection] ? demoLinkLoading[activeSection] : isLoading;
+  const sectionLoading = activeSection === 'livechat'
+    ? (demoLinkLoading.livechat || livechatAccountsLoading)
+    : DEMO_LINK_SECTIONS[activeSection] ? demoLinkLoading[activeSection] : isLoading;
+  const selectedLivechatAccount = livechatAccounts.find((account) => String(account.sipUserId) === String(demoLinkForms.livechat.sipUserId)) || null;
 
   return (
     <section className="view active settings-form-page" id="homepage-settings" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -333,8 +356,8 @@ export default function HomepageSettings() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px', scrollbarWidth: 'thin', scrollbarColor: '#374151 #111827' }}>
             {activeSection === 'footer' && isLoading ? (
               <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入頁腳設置中...</p>
-            ) : DEMO_LINK_SECTIONS[activeSection] && demoLinkLoading[activeSection] ? (
-              <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入{DEMO_LINK_SECTIONS[activeSection].label}設置中...</p>
+            ) : activeSection !== 'footer' && sectionLoading ? (
+              <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入{DEMO_LINK_SECTIONS[activeSection]?.label || ''}設置中...</p>
             ) : activeSection === 'footer' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={sectionStyle}>
@@ -420,6 +443,72 @@ export default function HomepageSettings() {
                   </div>
                 </div>
               </div>
+            ) : activeSection === 'livechat' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={sectionStyle}>
+                  <h3 style={sectionTitleStyle}>線上客服設置</h3>
+                  <label style={labelStyle}>
+                    客服帳號（需已設置電子名片）
+                    <select
+                      value={String(demoLinkForms.livechat.sipUserId || '')}
+                      onChange={(e) => setDemoLinkForms((prev) => ({ ...prev, livechat: { ...prev.livechat, sipUserId: e.target.value } }))}
+                      style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#0f172a', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
+                    >
+                      <option value="">未選擇</option>
+                      {livechatAccounts.map((account) => (
+                        <option key={account.sipUserId} value={String(account.sipUserId)}>
+                          {`${account.name || account.sipAccount}（${account.sipAccount}）${account.company ? ` · ${account.company}` : ''}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div style={labelStyle}>
+                    Ecard 連結
+                    {selectedLivechatAccount?.ecardUrl ? (
+                      <a
+                        href={selectedLivechatAccount.ecardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ ...inputStyle, display: 'flex', alignItems: 'center', color: '#93c5fd', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {selectedLivechatAccount.ecardUrl}
+                      </a>
+                    ) : (
+                      <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', color: '#6b7280' }}>選擇帳號後自動顯示</div>
+                    )}
+                  </div>
+                  <div style={labelStyle}>
+                    SIP 帳號
+                    <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', color: '#e5e7eb' }}>
+                      {selectedLivechatAccount?.sipAccount || '—'}
+                    </div>
+                  </div>
+                  {livechatAccountsLoading && (
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>載入可選帳號中...</p>
+                  )}
+                  {!livechatAccountsLoading && livechatAccounts.length === 0 && (
+                    <p style={{ margin: 0, color: '#f59e0b', fontSize: '12px' }}>暫無已設置電子名片的帳號。</p>
+                  )}
+                  {selectedLivechatAccount && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', border: '1px solid #1f2937', borderRadius: '10px', background: '#0f172a' }}>
+                      {selectedLivechatAccount.avatarUrl ? (
+                        <img
+                          src={absoluteDownloadUrl(selectedLivechatAccount.avatarUrl)}
+                          alt=""
+                          style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                        />
+                      ) : null}
+                      <div>
+                        <div style={{ color: '#f3f4f6', fontSize: '13px', fontWeight: 600 }}>{selectedLivechatAccount.name || selectedLivechatAccount.sipAccount}</div>
+                        <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '2px' }}>
+                          {selectedLivechatAccount.duty || '—'}{selectedLivechatAccount.company ? ` · ${selectedLivechatAccount.company}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>官網「線上客服」將使用此帳號的電子名片頭像、姓名與職務，並顯示其 Web / SIP 帳號狀態。</p>
+                </div>
+              </div>
             ) : DEMO_LINK_SECTIONS[activeSection] ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={sectionStyle}>
@@ -427,7 +516,7 @@ export default function HomepageSettings() {
                   <Field
                     label={`${DEMO_LINK_SECTIONS[activeSection].label}訪問連結`}
                     value={demoLinkForms[activeSection].url}
-                    onChange={(value) => setDemoLinkForms((prev) => ({ ...prev, [activeSection]: { url: value } }))}
+                    onChange={(value) => setDemoLinkForms((prev) => ({ ...prev, [activeSection]: { ...prev[activeSection], url: value } }))}
                     placeholder={DEMO_LINK_SECTIONS[activeSection].placeholder}
                   />
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>用戶在官網「在線演示」中點擊「{DEMO_LINK_SECTIONS[activeSection].label}」時，將在新分頁打開此連結。</p>

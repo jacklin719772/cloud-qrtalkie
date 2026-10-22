@@ -15266,7 +15266,6 @@ app.get("/api/public/settings/homepage-footer", async (request, response) => {
 const HOMEPAGE_DEMO_LINKS = Object.freeze({
   callcenter: { key: "homepage_callcenter", label: "呼叫中心" },
   building: { key: "homepage_building", label: "樓宇管理" },
-  livechat: { key: "homepage_livechat", label: "線上客服" },
 });
 const HOMEPAGE_DEMO_LINK_DEFAULTS = Object.freeze({ url: "" });
 
@@ -15357,6 +15356,327 @@ for (const [slug, config] of Object.entries(HOMEPAGE_DEMO_LINKS)) {
     }
   });
 }
+
+// 平台首頁線上客服（指定已設置電子名片的帳號）
+const HOMEPAGE_LIVECHAT_DEFAULTS = Object.freeze({ url: "", sipUserId: null });
+
+function parseHomepageLivechatSetting(raw) {
+  if (!raw) return { ...HOMEPAGE_LIVECHAT_DEFAULTS };
+  let parsed;
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return { ...HOMEPAGE_LIVECHAT_DEFAULTS };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ...HOMEPAGE_LIVECHAT_DEFAULTS };
+  }
+  const url = sanitizeString(parsed.url, 500);
+  const sipUserIdNum = Number(parsed.sipUserId);
+  return {
+    url: url && url !== "#" && isSafeHomepageUrl(url) ? url : "",
+    sipUserId: Number.isInteger(sipUserIdNum) && sipUserIdNum > 0 ? sipUserIdNum : null,
+  };
+}
+
+function buildHomepageLivechatSettings(body) {
+  const url = sanitizeString(body?.url, 500);
+  if (url && url !== "#" && !isSafeHomepageUrl(url)) {
+    return { error: "請輸入有效的線上客服連結（http/https 或站內路徑）。" };
+  }
+  const sipUserIdNum = Number(body?.sipUserId);
+  return {
+    settings: {
+      url: url === "#" ? "" : url,
+      sipUserId: Number.isInteger(sipUserIdNum) && sipUserIdNum > 0 ? sipUserIdNum : null,
+    },
+  };
+}
+
+async function loadHomepageLivechatAccount(connection, sipUserId) {
+  if (!sipUserId) return null;
+  const rows = await connection.query(
+    `SELECT ec.sip_user_id, ec.tenant_id, ec.access_slug, ec.avatar_url, ec.ecard_data_json, ec.card_data_json,
+            su.username AS sip_account, su.display_name, su.email, su.phone_number, su.sip_domain,
+            su.avatar_url AS sip_avatar_url, su.status AS sip_status,
+            t.name AS tenant_name
+     FROM tenant_ecards ec
+     JOIN sip_users su ON su.id = ec.sip_user_id
+     LEFT JOIN tenants t ON t.id = ec.tenant_id
+     WHERE ec.sip_user_id = ? AND ec.status = 'active'
+     LIMIT 1`,
+    [sipUserId],
+  );
+  const row = rows[0] || null;
+  if (!row) return null;
+  const dataJson = parseEcardPublicJson(row.ecard_data_json || row.card_data_json);
+  const profile = resolveEcardProfileFromJson(dataJson, {
+    display_name: row.display_name,
+    username: row.sip_account,
+    email: row.email,
+    phone_number: row.phone_number,
+    avatar_url: row.sip_avatar_url,
+  });
+  const bindingRows = await connection.query(
+    `SELECT wu.username AS web_account
+     FROM tenant_web_account_entitlements e
+     JOIN web_users wu ON wu.id = e.web_user_id
+     WHERE e.sip_user_id = ?
+       AND e.tenant_id = ?
+       AND e.status = 'active'
+       AND (wu.status IS NULL OR wu.status = 'active')
+     ORDER BY e.id ASC
+     LIMIT 1`,
+    [Number(row.sip_user_id), Number(row.tenant_id)],
+  );
+  return {
+    sipUserId: Number(row.sip_user_id),
+    name: profile.name || "",
+    duty: profile.duty || "",
+    company: String(row.tenant_name || ""),
+    avatarUrl: pickFirstString(row.avatar_url, profile.avatarUrl),
+    sipAccount: String(row.sip_account || ""),
+    sipDomain: String(row.sip_domain || ""),
+    webAccount: String(bindingRows[0]?.web_account || ""),
+    ecardUrl: row.access_slug
+      ? `${process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org"}/u/${row.access_slug}`
+      : "",
+  };
+}
+
+app.get("/api/admin/settings/homepage-livechat/accounts", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      `SELECT ec.sip_user_id, ec.tenant_id, ec.access_slug, ec.avatar_url, ec.ecard_data_json, ec.card_data_json,
+              su.username AS sip_account, su.display_name, su.email, su.phone_number,
+              su.avatar_url AS sip_avatar_url, su.status AS sip_status,
+              t.name AS tenant_name
+       FROM tenant_ecards ec
+       JOIN sip_users su ON su.id = ec.sip_user_id
+       LEFT JOIN tenants t ON t.id = ec.tenant_id
+       WHERE ec.status = 'active' AND (su.status IS NULL OR su.status = 'active')
+       ORDER BY t.name ASC, su.display_name ASC, su.username ASC`,
+    );
+    const accounts = rows.map((row) => {
+      const dataJson = parseEcardPublicJson(row.ecard_data_json || row.card_data_json);
+      const profile = resolveEcardProfileFromJson(dataJson, {
+        display_name: row.display_name,
+        username: row.sip_account,
+        email: row.email,
+        phone_number: row.phone_number,
+        avatar_url: row.sip_avatar_url,
+      });
+      return {
+        sipUserId: Number(row.sip_user_id),
+        tenantId: Number(row.tenant_id),
+        name: profile.name || "",
+        duty: profile.duty || "",
+        company: String(row.tenant_name || ""),
+        avatarUrl: pickFirstString(row.avatar_url, profile.avatarUrl),
+        sipAccount: String(row.sip_account || ""),
+        ecardUrl: row.access_slug
+          ? `${process.env.ECARD_APP_URL || "https://ecard.qrtalkie.org"}/u/${row.access_slug}`
+          : "",
+      };
+    });
+    return response.json({ accounts });
+  } catch (error) {
+    console.error("Failed to list homepage livechat accounts:", error);
+    return response.status(500).json({ message: "讀取可選客服帳號失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.get("/api/admin/settings/homepage-livechat", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_livechat' LIMIT 1",
+    );
+    return response.json({ settings: parseHomepageLivechatSetting(rows[0]?.setting_value) });
+  } catch (error) {
+    console.error("Failed to get homepage livechat setting:", error);
+    return response.status(500).json({ message: "讀取線上客服設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.put("/api/admin/settings/homepage-livechat", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+  }
+  const built = buildHomepageLivechatSettings(request.body);
+  if (built.error) return response.status(400).json({ message: built.error });
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    if (built.settings.sipUserId) {
+      const ecardRows = await connection.query(
+        "SELECT id FROM tenant_ecards WHERE sip_user_id = ? AND status = 'active' LIMIT 1",
+        [built.settings.sipUserId],
+      );
+      if (ecardRows.length === 0) {
+        return response.status(400).json({ message: "所選帳號尚未設置電子名片。" });
+      }
+    }
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('homepage_livechat', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [JSON.stringify(built.settings)],
+    );
+    return response.json({ message: "線上客服設置已儲存。", settings: built.settings });
+  } catch (error) {
+    console.error("Failed to save homepage livechat setting:", error);
+    return response.status(500).json({ message: "儲存線上客服設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.get("/api/public/settings/homepage-livechat", async (request, response) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_livechat' LIMIT 1",
+    );
+    const settings = parseHomepageLivechatSetting(rows[0]?.setting_value);
+    const account = settings.sipUserId
+      ? await loadHomepageLivechatAccount(connection, settings.sipUserId)
+      : null;
+    response.setHeader("Cache-Control", "no-store");
+    return response.json({ settings: { ...settings, account } });
+  } catch (error) {
+    console.error("Failed to get public homepage livechat setting:", error);
+    return response.status(500).json({ message: "讀取線上客服設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 在線客服即時狀態（Web 帳號 + SIP 帳號）
+const LIVECHAT_STATUS_CACHE_MS = 5000;
+const LIVECHAT_STATUS_WINDOW_MS = 60 * 1000;
+const LIVECHAT_STATUS_MAX = 120;
+const livechatStatusCache = new Map();
+const livechatStatusHits = new Map();
+
+function allowLivechatStatus(ip) {
+  const now = Date.now();
+  if (livechatStatusHits.size > 5000) {
+    for (const [key, item] of livechatStatusHits) {
+      if (!item || item.windowEndsAt <= now) livechatStatusHits.delete(key);
+    }
+  }
+  const current = livechatStatusHits.get(ip);
+  if (!current || current.windowEndsAt <= now) {
+    livechatStatusHits.set(ip, { windowEndsAt: now + LIVECHAT_STATUS_WINDOW_MS, count: 1 });
+    return true;
+  }
+  if (current.count >= LIVECHAT_STATUS_MAX) return false;
+  current.count += 1;
+  return true;
+}
+
+app.get("/api/public/livechat/status", async (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwarded || request.ip || request.socket?.remoteAddress || "unknown";
+  if (!allowLivechatStatus(ip)) {
+    return response.status(429).json({ message: "請求過於頻繁，請稍後再試。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_livechat' LIMIT 1",
+    );
+    const settings = parseHomepageLivechatSetting(rows[0]?.setting_value);
+    if (!settings.sipUserId) {
+      return response.json({
+        configured: false,
+        sip: { state: "unknown", label: "SIP 未知", account: "" },
+        web: { state: "unconfigured", label: "未配置", account: "" },
+      });
+    }
+    const cached = livechatStatusCache.get(settings.sipUserId);
+    if (cached && Date.now() - cached.at < LIVECHAT_STATUS_CACHE_MS) {
+      return response.json(cached.data);
+    }
+    const account = await loadHomepageLivechatAccount(connection, settings.sipUserId);
+    if (!account) {
+      return response.json({
+        configured: false,
+        sip: { state: "unknown", label: "SIP 未知", account: "" },
+        web: { state: "unconfigured", label: "未配置", account: "" },
+      });
+    }
+    let sipState = "unknown";
+    try {
+      const sip = await getSipAccountStatus({ account: account.sipAccount, domain: account.sipDomain });
+      sipState = String(sip?.state || "unknown").toLowerCase();
+    } catch {
+      sipState = "unknown";
+    }
+    const sipLabels = {
+      online_idle: "SIP 在线",
+      online_busy: "SIP 通话中",
+      offline: "SIP 离线",
+      unknown: "SIP 未知",
+    };
+    const sipKey = sipLabels[sipState] ? sipState : "unknown";
+    let webState = "unconfigured";
+    let webLabel = "未配置";
+    if (account.webAccount && /^\d+$/.test(account.webAccount)) {
+      try {
+        const presence = await getWebrtcPresence(account.webAccount);
+        const status = String(presence?.status || "unknown").toLowerCase();
+        if (status.includes("online")) {
+          webState = "online";
+          webLabel = "在线";
+        } else if (status.includes("offline")) {
+          webState = "offline";
+          webLabel = "离线";
+        } else {
+          webState = "unknown";
+          webLabel = "未知";
+        }
+      } catch {
+        webState = "unknown";
+        webLabel = "未知";
+      }
+    }
+    const data = {
+      configured: true,
+      sip: { state: sipKey, label: sipLabels[sipKey], account: account.sipAccount },
+      web: { state: webState, label: webLabel, account: account.webAccount },
+    };
+    livechatStatusCache.set(settings.sipUserId, { at: Date.now(), data });
+    if (livechatStatusCache.size > 1000) {
+      for (const [key, item] of livechatStatusCache) {
+        if (Date.now() - item.at > LIVECHAT_STATUS_CACHE_MS * 4) livechatStatusCache.delete(key);
+      }
+    }
+    return response.json(data);
+  } catch (error) {
+    console.error("Failed to get public livechat status:", error);
+    return response.status(500).json({ message: "讀取線上客服狀態失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
 
 // 在線演示 AI 客服（公開、無狀態、獨立限流）
 const AI_DEMO_SYSTEM_PROMPT = [
