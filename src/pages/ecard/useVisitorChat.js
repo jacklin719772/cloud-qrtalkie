@@ -78,7 +78,7 @@ export function useVisitorChat(slug) {
         oldestSeqRef.current = Number(list[0].seq) || oldestSeqRef.current;
       }
     } catch (err) {
-      setError(err?.message || '訊息載入失敗');
+      setError(err?.message || '消息加载失败');
     } finally {
       setLoading(false);
     }
@@ -154,7 +154,7 @@ export function useVisitorChat(slug) {
     const content = String(text || '').trim();
     if (!content || sending) return false;
     if (!token) {
-      setError('連線已過期，請重新整理頁面後再試');
+      setError('连接已过期，请刷新页面后再试');
       return false;
     }
     setSending(true);
@@ -170,7 +170,7 @@ export function useVisitorChat(slug) {
       setError('');
       return true;
     } catch (err) {
-      setError(err?.message || '訊息發送失敗');
+      setError(err?.message || '消息发送失败');
       return false;
     } finally {
       setSending(false);
@@ -188,7 +188,7 @@ export function useVisitorChat(slug) {
       setError('');
       return true;
     } catch (err) {
-      setError(err?.message || '撤回失敗');
+      setError(err?.message || '撤回失败');
       return false;
     }
   }, [slug]);
@@ -222,7 +222,7 @@ export function useVisitorChat(slug) {
         saveStoredCode(slug, result.resumeCode);
       }
     } catch (err) {
-      setError(err?.message || '聊天碼更新失敗');
+      setError(err?.message || '聊天码更新失败');
     }
   }, [slug]);
 
@@ -231,11 +231,11 @@ export function useVisitorChat(slug) {
     const token = tokenRef.current;
     if (!blob) return false;
     if (sending) {
-      setError('上一則訊息還在傳送中，請稍候');
+      setError('上一条消息还在发送中，请稍候');
       return false;
     }
     if (!token) {
-      setError('連線已過期，請重新整理頁面後再試');
+      setError('连接已过期，请刷新页面后再试');
       return false;
     }
     setSending(true);
@@ -245,7 +245,7 @@ export function useVisitorChat(slug) {
         blob, fileName, mimeType, onProgress: (percent) => setUploadProgress(percent),
       });
       const key = uploaded?.key;
-      if (!key) throw new Error('檔案上傳失敗');
+      if (!key) throw new Error('文件上传失败');
       const contentType = uploaded?.kind === 'image' || uploaded?.kind === 'sticker' ? 'image' : 'file';
       const clientMsgId = `a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const result = await chatApi.sendAttachment(slug, token, {
@@ -265,7 +265,7 @@ export function useVisitorChat(slug) {
       setError('');
       return true;
     } catch (err) {
-      setError(err?.message || '檔案發送失敗');
+      setError(err?.message || '文件发送失败');
       return false;
     } finally {
       setSending(false);
@@ -281,7 +281,7 @@ export function useVisitorChat(slug) {
     try {
       const uploaded = await chatApi.uploadVoice(slug, token, { blob, fileName, mimeType, durationMs });
       const key = uploaded?.key;
-      if (!key) throw new Error('語音上傳失敗');
+      if (!key) throw new Error('语音上传失败');
       const clientMsgId = `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const result = await chatApi.sendVoice(slug, token, { key, fileName, durationMs, clientMsgId });
       const message = result?.message;
@@ -293,7 +293,7 @@ export function useVisitorChat(slug) {
       setError('');
       return true;
     } catch (err) {
-      setError(err?.message || '語音發送失敗');
+      setError(err?.message || '语音发送失败');
       return false;
     } finally {
       setSending(false);
@@ -345,15 +345,15 @@ export function useVisitorChat(slug) {
     if (!sending) return undefined;
     const timer = setTimeout(() => {
       setSending(false);
-      setError('傳送逾時，請重新整理頁面後重試');
+      setError('发送超时，请刷新页面后重试');
     }, 150000);
     return () => clearTimeout(timer);
   }, [sending]);
 
   const statusTone = agentStatus === 'available' ? 'is-ok' : 'is-warn';
   const statusText = agentStatus === 'available'
-    ? '在線'
-    : agentStatus === 'unavailable' ? '離線，可先留言' : '狀態未知';
+    ? '在线'
+    : agentStatus === 'unavailable' ? '离线，可先留言' : '状态未知';
 
   return {
     dialogOpen, openDialog, closeDialog, start,

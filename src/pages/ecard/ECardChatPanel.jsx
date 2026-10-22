@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Camera, Check, CheckCheck, Copy, Download, Headphones, Image as ImageIcon, KeyRound, MessageSquareDashed, Mic, Paperclip, Pause, Play, Send, Trash2, Undo2, Video } from 'lucide-react';
+import { useLandingI18nContextOptional } from '../../landing/i18n/LandingI18n.jsx';
+import { createLandingTranslator } from '../../landing/i18n/index.js';
 import './ecardChatTheme.css';
+
+const DEFAULT_TRADITIONAL_T = createLandingTranslator('zh-Hant');
 
 const MAX_RECORD_MS = 60000;
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 与服务端一致
@@ -53,7 +57,7 @@ export default function ECardChatPanel({
   ecardData,
   displayName,
   statusTone = 'is-warn',
-  statusText = '未知',
+  statusText = '',
   chatCode = '',
   avatarUrl = '',
   fallbackAvatar = '',
@@ -79,6 +83,8 @@ export default function ECardChatPanel({
   error = '',
 }) {
   const [draft, setDraft] = useState('');
+  const i18nContext = useLandingI18nContextOptional();
+  const t = i18nContext?.t || DEFAULT_TRADITIONAL_T;
   const [codeCopied, setCodeCopied] = useState(false);
   const [connIssue, setConnIssue] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -129,7 +135,7 @@ export default function ECardChatPanel({
     const file = await downscaleImage(picked);
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      setLocalError(`檔案過大（上限 ${Math.round(MAX_UPLOAD_BYTES / 1048576)}MB）`);
+      setLocalError(t('文件过大（上限 {size}MB）', { size: Math.round(MAX_UPLOAD_BYTES / 1048576) }));
       return;
     }
     const ext = EXT_BY_MIME[String(file.type || '').toLowerCase()] || 'jpg';
@@ -253,7 +259,7 @@ export default function ECardChatPanel({
     if (recording || sending) return;
     setRecordError('');
     if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setRecordError('此瀏覽器不支援錄音，請改用文字訊息');
+      setRecordError(t('此浏览器不支持录音，请改用文字消息'));
       return;
     }
     try {
@@ -295,8 +301,8 @@ export default function ECardChatPanel({
     } catch (err) {
       releaseRecorder();
       setRecordError(err?.name === 'NotAllowedError'
-        ? '麥克風權限被拒絕，請在瀏覽器設定中允許後重試'
-        : '無法啟動錄音，請確認裝置麥克風可用');
+        ? t('麦克风权限被拒绝，请在浏览器设置中允许后重试')
+        : t('无法启动录音，请确认设备麦克风可用'));
     }
   }
 
@@ -339,15 +345,15 @@ export default function ECardChatPanel({
 
         <div className="ecard-contactGrid">
           <div className="ecard-contactItem">
-            <div className="ecard-contactLabel">手機</div>
+            <div className="ecard-contactLabel">{t('手机')}</div>
             <div className="ecard-contactValue">{ecardData?.phone || '—'}</div>
           </div>
           <div className="ecard-contactItem">
-            <div className="ecard-contactLabel">郵箱</div>
+            <div className="ecard-contactLabel">{t('邮箱')}</div>
             <div className="ecard-contactValue">{ecardData?.email || '—'}</div>
           </div>
           <div className="ecard-contactItem">
-            <div className="ecard-contactLabel">SIP 目標</div>
+            <div className="ecard-contactLabel">{t('SIP 目标')}</div>
             <div className="ecard-contactValue ecard-sipTarget">{ecardData?.sipAccount || '—'}</div>
           </div>
         </div>
@@ -355,11 +361,11 @@ export default function ECardChatPanel({
         <div className="ecard-callButtons">
           <button type="button" className="ecard-callButton" disabled={!callEnabled} onClick={() => onCall?.(false)} style={callButtonStyle(callEnabled)}>
             <Headphones size={16} style={{ marginRight: 6 }} />
-            語音
+            {t('语音')}
           </button>
           <button type="button" className="ecard-callButton" disabled={!callEnabled} onClick={() => onCall?.(true)} style={callButtonStyle(callEnabled)}>
             <Video size={16} style={{ marginRight: 6 }} />
-            視頻
+            {t('视频')}
           </button>
         </div>
       </aside>
@@ -370,25 +376,25 @@ export default function ECardChatPanel({
           {onBack && (
             <button type="button" className="ecard-chatBack" onClick={onBack}>
               <ArrowLeft size={14} />
-              名片
+              {t('名片')}
             </button>
           )}
           <div className="ecard-chatHeadMain">
-            <div className="ecard-chatTitle">{displayName || '線上諮詢'}</div>
+            <div className="ecard-chatTitle">{displayName || t('线上咨询')}</div>
             <div className="ecard-chatSubstate">
               <span className={`ecard-statusDot ${statusTone}`} />
-              {statusText}
+              {t(statusText || '未知')}
             </div>
           </div>
           {chatCode ? (
-            <button type="button" className="ecard-chatCode" onClick={handleCopyCode} title="點擊複製聊天碼">
+            <button type="button" className="ecard-chatCode" onClick={handleCopyCode} title={t('点击复制聊天码')}>
               <KeyRound size={13} />
-              {codeCopied ? '已複製' : chatCode}
+              {codeCopied ? t('已复制') : chatCode}
             </button>
           ) : (
-            <button type="button" className="ecard-chatCode is-empty" onClick={onGetCode} title="取得聊天碼（用於換裝置後找回本次對話）">
+            <button type="button" className="ecard-chatCode is-empty" onClick={onGetCode} title={t('获取聊天码（用于换设备后找回本次对话）')}>
               <KeyRound size={13} />
-              取得聊天碼
+              {t('获取聊天码')}
             </button>
           )}
         </header>
@@ -396,14 +402,14 @@ export default function ECardChatPanel({
         <div className="ecard-chatMessages" ref={listRef} onScroll={handleListScroll}>
           {hasMore ? (
             <button type="button" className="ecard-chatLoadMore" onClick={handleLoadMore} disabled={loading}>
-              {loading ? '載入中…' : '載入更早的訊息'}
+              {loading ? t('加载中…') : t('加载更早的消息')}
             </button>
           ) : null}
 
           {messages.length === 0 ? (
             <div className="ecard-chatEmpty">
               <MessageSquareDashed size={30} />
-              <div>{loading ? '載入中…' : '尚無訊息，輸入您的問題即可開始諮詢'}</div>
+              <div>{loading ? t('加载中…') : t('暂无消息，输入您的问题即可开始咨询')}</div>
             </div>
           ) : (
             messages.map((item) => {
@@ -425,11 +431,11 @@ export default function ECardChatPanel({
                   onTouchCancel={cancelLongPress}
                 >
                   {isAudio ? (
-                    <AudioBubble message={item} onLoadAudio={onLoadAudio} />
+                    <AudioBubble message={item} onLoadAudio={onLoadAudio} t={t} />
                   ) : isImage ? (
-                    <ImageBubble message={item} onLoadAttachment={onLoadAudio} />
+                    <ImageBubble message={item} onLoadAttachment={onLoadAudio} t={t} />
                   ) : isFile ? (
-                    <FileBubble message={item} onLoadAttachment={onLoadAudio} onDownloadAttachment={onDownloadAttachment} />
+                    <FileBubble message={item} onLoadAttachment={onLoadAudio} onDownloadAttachment={onDownloadAttachment} t={t} />
                   ) : (
                     <div className="ecard-chatBubble">{renderTextWithLinks(item.content)}</div>
                   )}
@@ -451,22 +457,22 @@ export default function ECardChatPanel({
         </div>
 
         {connIssue ? (
-          <div className="ecard-chatConnBar">連線中斷，正在重新連線…</div>
+          <div className="ecard-chatConnBar">{t('连接中断，正在重新连接…')}</div>
         ) : null}
 
-        {error ? <div className="ecard-chatConnBar is-error">{error}</div> : null}
+        {error ? <div className="ecard-chatConnBar is-error">{t(error)}</div> : null}
 
         <div className="ecard-chatComposer">
           {recording ? (
             <>
               <span className="ecard-chatRecDot" />
               <span className="ecard-chatRecTime">{formatDuration(recordSeconds * 1000)}</span>
-              <span className="ecard-chatRecHint">錄音中，最多 60 秒</span>
+              <span className="ecard-chatRecHint">{t('录音中，最多 60 秒')}</span>
               <button
                 type="button"
                 className="ecard-chatIconButton"
                 onClick={() => stopRecording(false)}
-                title="取消錄音"
+                title={t('取消录音')}
               >
                 <Trash2 size={16} />
               </button>
@@ -477,7 +483,7 @@ export default function ECardChatPanel({
                 disabled={recordSeconds < 1}
               >
                 <Send size={15} style={{ marginRight: 6 }} />
-                發送
+                {t('发送')}
               </button>
             </>
           ) : (
@@ -490,7 +496,7 @@ export default function ECardChatPanel({
                     if (isIos) { iosInputRef.current?.click(); return; }
                     setAttachMenuOpen((open) => !open);
                   }}
-                  title="傳送圖片或檔案"
+                  title={t('发送图片或文件')}
                 >
                   <Paperclip size={16} />
                 </button>
@@ -505,16 +511,16 @@ export default function ECardChatPanel({
                         onClick={() => cameraInputRef.current?.click()}
                       >
                         <Camera size={16} />
-                        <span>拍照</span>
-                        {!cameraSupported && <em>（手機端可用）</em>}
+                        <span>{t('拍照')}</span>
+                        {!cameraSupported && <em>{t('（手机端可用）')}</em>}
                       </button>
                       <button type="button" className="ecard-chatAttachItem" onClick={() => albumInputRef.current?.click()}>
                         <ImageIcon size={16} />
-                        <span>打開相冊</span>
+                        <span>{t('打开相册')}</span>
                       </button>
                       <button type="button" className="ecard-chatAttachItem" onClick={() => fileInputRef.current?.click()}>
                         <Paperclip size={16} />
-                        <span>選擇文件</span>
+                        <span>{t('选择文件')}</span>
                       </button>
                     </div>
                   </>
@@ -537,7 +543,7 @@ export default function ECardChatPanel({
                 className="ecard-chatIconButton"
                 onClick={startRecording}
                 disabled={sending}
-                title="按住說話（錄音發送）"
+                title={t('按住说话（录音发送）')}
               >
                 <Mic size={16} />
               </button>
@@ -545,7 +551,7 @@ export default function ECardChatPanel({
                 className="ecard-chatInput"
                 rows={1}
                 value={draft}
-                placeholder="輸入訊息…"
+                placeholder={t('输入消息…')}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => {
@@ -557,7 +563,7 @@ export default function ECardChatPanel({
               />
               <button type="button" className="ecard-chatSend" disabled={!draft.trim() || sending} onClick={handleSend}>
                 <Send size={15} style={{ marginRight: 6 }} />
-                發送
+                {t('发送')}
               </button>
             </>
           )}
@@ -578,7 +584,7 @@ export default function ECardChatPanel({
                   }}
                 >
                   <Copy size={16} />
-                  複製
+                  {t('复制')}
                 </button>
               ) : null}
               {actionMessage.attachment ? (
@@ -592,7 +598,7 @@ export default function ECardChatPanel({
                   }}
                 >
                   <Download size={16} />
-                  下載
+                  {t('下载')}
                 </button>
               ) : null}
               {actionMessage.senderType === 'visitor' ? (
@@ -606,7 +612,7 @@ export default function ECardChatPanel({
                   }}
                 >
                   <Undo2 size={16} />
-                  撤回（雙方不可見）
+                  {t('撤回（双方不可见）')}
                 </button>
               ) : null}
               <button
@@ -619,7 +625,7 @@ export default function ECardChatPanel({
                 }}
               >
                 <Trash2 size={16} />
-                刪除（僅自己隱藏）
+                {t('删除（仅自己隐藏）')}
               </button>
             </div>
           </>
@@ -628,7 +634,7 @@ export default function ECardChatPanel({
         {recordError ? <div className="ecard-chatConnBar is-error">{recordError}</div> : null}
         {localError ? <div className="ecard-chatConnBar is-error">{localError}</div> : null}
         {uploadProgress != null ? (
-          <div className="ecard-chatConnBar is-info">正在上傳… {uploadProgress}%（請保持頁面開啟）</div>
+          <div className="ecard-chatConnBar is-info">{t('正在上传… {progress}%（请保持页面开启）', { progress: uploadProgress })}</div>
         ) : null}
       </section>
     </div>
@@ -636,7 +642,7 @@ export default function ECardChatPanel({
 }
 
 /** 语音气泡：播放/暂停 + 进度条 + 时长（附件需带 token 取回，这里走 onLoadAudio） */
-function AudioBubble({ message, onLoadAudio }) {
+function AudioBubble({ message, onLoadAudio, t }) {
   const [state, setState] = useState('idle'); // idle | loading | playing | error
   const [progress, setProgress] = useState(0);
   const audioRef = useRef(null);
@@ -667,14 +673,14 @@ function AudioBubble({ message, onLoadAudio }) {
 
   return (
     <div className="ecard-chatVoice">
-      <button type="button" className="ecard-chatVoiceButton" onClick={handleToggle} aria-label="播放語音">
+      <button type="button" className="ecard-chatVoiceButton" onClick={handleToggle} aria-label={t('播放语音')}>
         {state === 'playing' ? <Pause size={15} /> : <Play size={15} />}
       </button>
       <span className="ecard-chatVoiceBar">
         <span className="ecard-chatVoiceProgress" style={{ width: `${Math.round(progress * 100)}%` }} />
       </span>
       <span className="ecard-chatVoiceTime">
-        {state === 'error' ? '載入失敗' : formatDuration(durationMs)}
+        {state === 'error' ? t('加载失败') : formatDuration(durationMs)}
       </span>
       <audio
         ref={audioRef}
@@ -700,7 +706,7 @@ function formatDuration(ms) {
 }
 
 /** 图片气泡：带 token 取回后内联显示，点击在新标签打开原图 */
-function ImageBubble({ message, onLoadAttachment }) {
+function ImageBubble({ message, onLoadAttachment, t }) {
   const [url, setUrl] = useState('');
   const [failed, setFailed] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
@@ -739,24 +745,24 @@ function ImageBubble({ message, onLoadAttachment }) {
     return () => { cancelled = true; };
   }, [nearViewport, message, onLoadAttachment]);
 
-  if (failed) return <div className="ecard-chatFileChip"><span>圖片載入失敗</span></div>;
+  if (failed) return <div className="ecard-chatFileChip"><span>{t('图片加载失败')}</span></div>;
   if (!url) {
     return (
-      <div ref={holderRef} className="ecard-chatImagePlaceholder">{nearViewport ? '載入中…' : ''}</div>
+      <div ref={holderRef} className="ecard-chatImagePlaceholder">{nearViewport ? t('加载中…') : ''}</div>
     );
   }
   return (
     <img
       className="ecard-chatImage"
       src={url}
-      alt={message.attachment?.fileName || '圖片'}
+      alt={message.attachment?.fileName || t('图片')}
       onClick={() => { try { window.open(url, '_blank'); } catch { /* 忽略 */ } }}
     />
   );
 }
 
 /** 文件气泡：类型徽标 + 文件名 + 大小，点击下载 */
-function FileBubble({ message, onLoadAttachment, onDownloadAttachment }) {
+function FileBubble({ message, onLoadAttachment, onDownloadAttachment, t }) {
   const [state, setState] = useState('idle'); // idle | downloading | done | error
   const [percent, setPercent] = useState(0);
   const attachment = message.attachment || {};
@@ -794,18 +800,18 @@ function FileBubble({ message, onLoadAttachment, onDownloadAttachment }) {
   }
 
   const statusText = state === 'downloading'
-    ? `下載中 ${percent}%`
+    ? t('下载中 {percent}%', { percent })
     : state === 'done'
-      ? '已下載（見瀏覽器下載項目）'
+      ? t('已下载（见浏览器下载项目）')
       : state === 'error'
-        ? '下載失敗，點擊重試'
+        ? t('下载失败，点击重试')
         : formatSize(attachment.fileSize);
 
   return (
     <button type="button" className="ecard-chatFileChip" onClick={handleOpen}>
       <span className="ecard-chatFileBadge">{ext}</span>
       <span className="ecard-chatFileMain">
-        <span className="ecard-chatFileName">{attachment.fileName || '檔案'}</span>
+        <span className="ecard-chatFileName">{attachment.fileName || t('文件')}</span>
         <span className={`ecard-chatFileSize${state === 'done' ? ' is-done' : state === 'error' ? ' is-error' : ''}`}>
           {statusText}
         </span>
@@ -817,7 +823,7 @@ function FileBubble({ message, onLoadAttachment, onDownloadAttachment }) {
 /** 附件下载：附件需带 Bearer 取回，先换 objectURL 再触发下载 */
 async function downloadAttachment(message, onLoadAttachment) {
   const url = await onLoadAttachment?.(message);
-  if (!url) throw new Error('附件載入失敗');
+  if (!url) throw new Error('附件加载失败');
   const link = document.createElement('a');
   link.href = url;
   link.download = message.attachment?.fileName || 'file';

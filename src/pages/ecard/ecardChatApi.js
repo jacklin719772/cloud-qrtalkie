@@ -35,8 +35,8 @@ async function request(path, { method = 'GET', token, body, params, timeoutMs = 
     });
   } catch (error) {
     clearTimeout(timer);
-    if (error?.name === 'AbortError') throw new Error('請求逾時，請檢查網路後重試');
-    throw new Error('網路連線失敗，請重試');
+    if (error?.name === 'AbortError') throw new Error('请求超时，请检查网络后重试');
+    throw new Error('网络连接失败，请重试');
   }
   clearTimeout(timer);
 
@@ -48,7 +48,7 @@ async function request(path, { method = 'GET', token, body, params, timeoutMs = 
   }
 
   if (!response.ok || payload?.success === false) {
-    const error = new Error(payload?.message || `請求失敗（${response.status}）`);
+    const error = new Error(payload?.message || `请求失败（${response.status}）`);
     error.code = payload?.code || null;
     error.status = response.status;
     throw error;
@@ -62,7 +62,7 @@ function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('錄音資料讀取失敗'));
+    reader.onerror = () => reject(new Error('录音数据读取失败'));
     reader.readAsDataURL(blob);
   });
 }
@@ -87,12 +87,12 @@ function uploadWithProgress(path, { token, body, onProgress, timeoutMs = 300000 
       if (xhr.status >= 200 && xhr.status < 300 && payload?.success !== false) {
         resolve(payload?.data ?? payload);
       } else {
-        reject(new Error(payload?.message || `請求失敗（${xhr.status}）`));
+        reject(new Error(payload?.message || `请求失败（${xhr.status}）`));
       }
     };
-    xhr.onerror = () => reject(new Error('網路連線失敗，請重試'));
-    xhr.ontimeout = () => reject(new Error('上傳逾時，請換個網路再試'));
-    xhr.onabort = () => reject(new Error('上傳已取消'));
+    xhr.onerror = () => reject(new Error('网络连接失败，请重试'));
+    xhr.ontimeout = () => reject(new Error('上传超时，请换个网络再试'));
+    xhr.onabort = () => reject(new Error('上传已取消'));
     xhr.send(JSON.stringify(body));
   });
 }
@@ -168,10 +168,10 @@ export const chatApi = {
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
-        else reject(new Error(`下載失敗（${xhr.status}）`));
+        else reject(new Error(`下载失败（${xhr.status}）`));
       };
-      xhr.onerror = () => reject(new Error('網路連線失敗，請重試'));
-      xhr.ontimeout = () => reject(new Error('下載逾時，請換個網路再試'));
+      xhr.onerror = () => reject(new Error('网络连接失败，请重试'));
+      xhr.ontimeout = () => reject(new Error('下载超时，请换个网络再试'));
       xhr.send();
     }),
 
@@ -181,7 +181,7 @@ export const chatApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       credentials: 'same-origin',
     });
-    if (!response.ok) throw new Error(`附件讀取失敗（${response.status}）`);
+    if (!response.ok) throw new Error(`附件读取失败（${response.status}）`);
     return response.blob();
   },
 };

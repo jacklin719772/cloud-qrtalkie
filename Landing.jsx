@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import apiClient from './src/apiClient';
+import { useLandingI18nOptional } from './src/landing/i18n/LandingI18n.jsx';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 export default function Landing({ onLogin, embedded = false, onTrialUnavailable }) {
+  const { t } = useLandingI18nOptional();
   // 使用 React State 控制目前顯示的表單模式：'login', 'signup', 或 'forgot'
   const initialResetToken = new URLSearchParams(window.location.search).get('resetPasswordToken') || '';
   const [authMode, setAuthMode] = useState(initialResetToken ? 'reset' : 'login');
@@ -26,15 +28,15 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
   useEffect(() => {
     if (!trialSignupEnabled && authMode === 'signup') {
       setAuthMode('login');
-      if (onTrialUnavailable) onTrialUnavailable('試用申請暫未開放，請聯繫平台管理員。');
-      else showTimedError('試用申請暫未開放，請聯繫平台管理員。');
+      if (onTrialUnavailable) onTrialUnavailable(t('试用申请暂未开放，请联系平台管理员。'));
+      else showTimedError(t('试用申请暂未开放，请联系平台管理员。'));
     }
   }, [trialSignupEnabled, authMode, onTrialUnavailable]);
   // 點擊「申請試用」：關閉時僅提示，不切換表單
   const handleTrialTabClick = () => {
     if (!trialSignupEnabled) {
-      if (onTrialUnavailable) onTrialUnavailable('試用申請暫未開放，請聯繫平台管理員。');
-      else showTimedError('試用申請暫未開放，請聯繫平台管理員。');
+      if (onTrialUnavailable) onTrialUnavailable(t('试用申请暂未开放，请联系平台管理员。'));
+      else showTimedError(t('试用申请暂未开放，请联系平台管理员。'));
       return;
     }
     changeMode('signup');
@@ -74,13 +76,13 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     const verify = async () => {
       try {
         const result = await apiClient.get(`/auth/verify-email?token=${encodeURIComponent(verifyToken)}`);
-        showTimedSuccess(result.message || '電子郵件驗證成功，請登入。');
+        showTimedSuccess(result.message || t('电子邮箱验证成功，请登录。'));
         // 清除 URL 中的 token
         const url = new URL(window.location);
         url.searchParams.delete('verifyEmailToken');
         window.history.replaceState({}, document.title, url.pathname + url.search);
       } catch (error) {
-        showTimedError(error.response?.data?.message || '驗證失敗，連結可能已過期。');
+        showTimedError(error.response?.data?.message || t('验证失败，链接可能已过期。'));
       }
     };
     verify();
@@ -148,11 +150,11 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     const rememberMe = formData.get('rememberMe') === 'on';
 
     if (!username) {
-      showTimedError('請輸入登入帳號。');
+      showTimedError(t('请输入登录账号。'));
       return;
     }
     if (!password) {
-      showTimedError('請輸入密碼。');
+      showTimedError(t('请输入密码。'));
       return;
     }
 
@@ -191,42 +193,42 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     const acceptedTerms = formData.get('termsConsent') === 'on';
 
     if (!companyName) {
-      showTimedError('請輸入公司名稱。');
+      showTimedError(t('请输入公司名称。'));
       return;
     }
     if (!email) {
-      showTimedError('請輸入管理員信箱。');
+      showTimedError(t('请输入管理员邮箱。'));
       return;
     }
     if (!isValidEmail(email)) {
-      showTimedError('請輸入有效的郵件格式。');
+      showTimedError(t('请输入有效的邮箱格式。'));
       return;
     }
     if (!password) {
-      showTimedError('請輸入密碼。');
+      showTimedError(t('请输入密码。'));
       return;
     }
     if (password.length < 8) {
-      showTimedError('密碼至少需要 8 位字元。');
+      showTimedError(t('密码至少需要 8 位字符。'));
       return;
     }
     if (!confirmPassword) {
-      showTimedError('請再次輸入密碼。');
+      showTimedError(t('请再次输入密码。'));
       return;
     }
     if (password !== confirmPassword) {
-      showTimedError('兩次輸入的密碼不一致。');
+      showTimedError(t('两次输入的密码不一致。'));
       return;
     }
     if (!acceptedTerms) {
-      showTimedError('請先閱讀並同意服務條款與隱私政策。');
+      showTimedError(t('请先阅读并同意服务条款与隐私政策。'));
       return;
     }
 
     setIsLoading(true);
     try {
       const result = await apiClient.post('/auth/register', { companyName, email, password, confirmPassword });
-      showTimedSuccess(result.message || '試用申請已送出，請前往信箱完成驗證。');
+      showTimedSuccess(result.message || t('试用申请已提交，请前往邮箱完成验证。'));
       if (result.devVerificationUrl) {
         setRegisteredEmail(email);
       }
@@ -237,7 +239,7 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
         setRegisteredEmail(serverData.email || email);
         clearMessages();
       } else {
-        showTimedError(serverData.message || '試用申請失敗，請使用系統內未註冊的電子郵件或稍後再試。');
+        showTimedError(serverData.message || t('试用申请失败，请使用系统内未注册的电子邮箱或稍后重试。'));
       }
     } finally {
       setIsLoading(false);
@@ -252,22 +254,22 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     const email = formData.get('email')?.toString().trim();
 
     if (!email) {
-      showTimedError('請輸入管理員信箱。');
+      showTimedError(t('请输入管理员邮箱。'));
       return;
     }
     if (!isValidEmail(email)) {
-      showTimedError('請輸入有效的郵件格式。');
+      showTimedError(t('请输入有效的邮箱格式。'));
       return;
     }
 
     setIsLoading(true);
     try {
       const result = await apiClient.post('/auth/forgot-password', { email });
-      showTimedSuccess(result.message || '已發送密碼重設連結，請檢查您的郵箱。');
+      showTimedSuccess(result.message || t('已发送密码重置链接，请检查您的邮箱。'));
       e.target.reset();
     } catch (error) {
       const serverMessage = error.response?.data?.message || error.message;
-      showTimedError(serverMessage || '無法發送重置郵件，請稍後再試。');
+      showTimedError(serverMessage || t('无法发送重置邮件，请稍后再试。'));
     } finally {
       setIsLoading(false);
     }
@@ -282,15 +284,15 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     const confirmPassword = formData.get('confirmPassword')?.toString() || '';
 
     if (!resetToken) {
-      showTimedError('重置連結無效，請重新申請。');
+      showTimedError(t('重置链接无效，请重新申请。'));
       return;
     }
     if (password.length < 8) {
-      showTimedError('密碼至少需要 8 位字元。');
+      showTimedError(t('密码至少需要 8 位字符。'));
       return;
     }
     if (password !== confirmPassword) {
-      showTimedError('兩次輸入的密碼不一致。');
+      showTimedError(t('两次输入的密码不一致。'));
       return;
     }
 
@@ -300,11 +302,11 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
       setResetToken('');
       window.history.replaceState({}, document.title, window.location.pathname);
       setAuthMode('login');
-      showTimedSuccess(result.message || '密碼已重置，請使用新密碼登入。');
+      showTimedSuccess(result.message || t('密码已重置，请使用新密码登录。'));
       e.target.reset();
     } catch (error) {
       const serverMessage = error.response?.data?.message || error.message;
-      showTimedError(serverMessage || '無法重置密碼，請稍後再試。');
+      showTimedError(serverMessage || t('无法重置密码，请稍后再试。'));
     } finally {
       setIsLoading(false);
     }
@@ -316,9 +318,9 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     setIsResending(true);
     try {
       const result = await apiClient.post('/auth/resend-verification', { email: registeredEmail });
-      showTimedSuccess(result.message || '驗證郵件已重新發送。');
+      showTimedSuccess(result.message || t('验证邮件已重新发送。'));
     } catch (error) {
-      showTimedError(error.response?.data?.message || '重新發送失敗，請稍後再試。');
+      showTimedError(error.response?.data?.message || t('重新发送失败，请稍后再试。'));
     } finally {
       setIsResending(false);
     }
@@ -326,7 +328,7 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
 
   // 動態拉取隱私政策/服務條款
   const handleOpenLegal = async (type) => {
-    const title = type === 'privacy' ? '隱私權政策' : '會員服務條款';
+    const title = type === 'privacy' ? t('隐私权政策') : t('会员服务条款');
     // 注意：這裡假設後端提供了一個免登入的 /public API，請根據實際後端路由調整
     const endpoint = type === 'privacy' ? '/public/settings/privacy-policy' : '/public/settings/terms-of-service';
     
@@ -336,11 +338,11 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
       setLegalModal({ 
         isOpen: true, 
         title, 
-        content: data?.content || '暫無內容，請聯絡管理員。', 
+        content: data?.content || t('暂无内容，请联系管理员。'),
         isLoading: false 
       });
     } catch (error) {
-      setLegalModal({ isOpen: true, title, content: '內容載入失敗，請稍後再試。', isLoading: false });
+      setLegalModal({ isOpen: true, title, content: t('内容加载失败，请稍后再试。'), isLoading: false });
     }
   };
 
@@ -350,7 +352,7 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
     <section className={`landing${embedded ? ' landing--embed' : ''}`} id="landing">
       {loadingPhase !== 'done' && (
         <div className={`landing-loader${loadingPhase === 'fade' ? ' landing-loader--fade' : ''}`}>
-          <img src="/assets/landing-animation.gif" alt="載入中..." onError={(e) => { e.target.style.display = 'none'; }} />
+          <img src="/assets/landing-animation.gif" alt={t('加载中…')} onError={(e) => { e.target.style.display = 'none'; }} />
           <p className="landing-loader-title">Cloud QRTalkie</p>
         </div>
       )}
@@ -367,18 +369,18 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
 
       <main className="hero">
         <div className="hero-copy">
-          <p className="hero-badge">企業級即時通訊雲平台</p>
+          <p className="hero-badge">{t('企业级即时通讯云平台')}</p>
           <h1>
-            私密型企業專屬
-            <span className="gradient">即時通訊系統</span>
+            {t('私密型企业专属')}
+            <span className="gradient">{t('即时通讯系统')}</span>
           </h1>
-          <div className="hero-features" aria-label="核心優勢">
-            <span className="point shield">安全</span>
-            <span className="point flash">高效</span>
-            <span className="point globe">跨終端適配</span>
+          <div className="hero-features" aria-label={t('核心优势')}>
+            <span className="point shield">{t('安全')}</span>
+            <span className="point flash">{t('高效')}</span>
+            <span className="point globe">{t('跨终端适配')}</span>
           </div>
           <p>
-            面向 VoIP、軟電話和 WebRTC 場景，提供租戶註冊、SIP 帳號開通、線上狀態查詢、註冊日誌、問題回饋等自助服務。
+            {t('面向 VoIP、软电话和 WebRTC 场景，提供租户注册、SIP 账号开通、在线状态查询、注册日志、问题反馈等自助服务。')}
           </p>
         </div>
 
@@ -394,10 +396,10 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
           <div className="message-lines"><span></span><span></span><span></span></div>
         </div>
 
-        <div className="auth-panel" aria-label="帳號入口">
+        <div className="auth-panel" aria-label={t('账号入口')}>
           <div className="auth-tabs" role="tablist">
-            <button className={authMode === 'login' ? 'selected' : ''} onClick={() => changeMode('login')}>登入</button>
-            <button className={authMode === 'signup' ? 'selected' : ''} onClick={handleTrialTabClick}>申請試用</button>
+            <button className={authMode === 'login' ? 'selected' : ''} onClick={() => changeMode('login')}>{t('登录')}</button>
+            <button className={authMode === 'signup' ? 'selected' : ''} onClick={handleTrialTabClick}>{t('申请试用')}</button>
           </div>
 
           {authMode === 'login' && (
@@ -405,22 +407,22 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
               {/* 顯示錯誤或成功訊息 */}
               {errorMessage && <p className="form-message" style={{ color: '#d93025', marginBottom: '1rem' }}>{errorMessage}</p>}
               {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
-              
+
               {/* 加入 name 屬性與 required 驗證 */}
-              <label>帳號<input name="username" type="text" placeholder="信箱或 SIP 帳號" required /></label>
-              <label>密碼<input name="password" type="password" placeholder="請輸入密碼" required /></label>
+              <label>{t('账号')}<input name="username" type="text" placeholder={t('邮箱或 SIP 账号')} required /></label>
+              <label>{t('密码')}<input name="password" type="password" placeholder={t('请输入密码')} required /></label>
               <div className="form-row">
-                <label className="checkbox"><input name="rememberMe" type="checkbox" /> 記住我</label>
-                <button type="button" className="link-btn" onClick={() => changeMode('forgot')}>忘記密碼？</button>
+                <label className="checkbox"><input name="rememberMe" type="checkbox" /> {t('记住我')}</label>
+                <button type="button" className="link-btn" onClick={() => changeMode('forgot')}>{t('忘记密码？')}</button>
               </div>
               <button type="submit" className="primary-btn full" disabled={isLoading}>
-                {isLoading ? '登入中...' : '登入'}
+                {isLoading ? t('登录中…') : t('登录')}
               </button>
               <p className="auth-legal-note">
-                確認登錄表明您已閱讀並同意
-                <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>《會員服務條款》</button>
-                和
-                <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>《隱私權政策》</button>
+                {t('登录即表示您已阅读并同意')}
+                <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>{t('《会员服务条款》')}</button>
+                {t('和')}
+                <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>{t('《隐私权政策》')}</button>
               </p>
             </form>
           )}
@@ -430,21 +432,21 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
               <div className="auth-scroll">
                 {errorMessage && <p className="form-message" style={{ color: '#d93025', marginBottom: '1rem' }}>{errorMessage}</p>}
                 {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
-                <label>公司名稱<input name="companyName" placeholder="請輸入公司全稱或簡稱" required /></label>
-                <label>管理員信箱<input name="email" type="email" placeholder="請輸入正確的郵箱地址" required /></label>
-                <label>密碼<input name="password" type="password" placeholder="至少 8 位字元" required minLength={8} /></label>
-                <label>確認密碼<input name="confirmPassword" type="password" placeholder="再次輸入密碼" required minLength={8} /></label>
+                <label>{t('公司名称')}<input name="companyName" placeholder={t('请输入公司全称或简称')} required /></label>
+                <label>{t('管理员邮箱')}<input name="email" type="email" placeholder={t('请输入正确的邮箱地址')} required /></label>
+                <label>{t('密码')}<input name="password" type="password" placeholder={t('至少 8 位字符')} required minLength={8} /></label>
+                <label>{t('确认密码')}<input name="confirmPassword" type="password" placeholder={t('再次输入密码')} required minLength={8} /></label>
               </div>
               <button type="submit" className="primary-btn full" disabled={isLoading}>
-                {isLoading ? '送出中...' : '送出試用申請（需驗證郵件）'}
+                {isLoading ? t('提交中…') : t('提交试用申请（需验证邮箱）')}
               </button>
               {registeredEmail && (
                 <div style={{ marginTop: '16px', padding: '14px 16px', backgroundColor: '#065f46', borderRadius: '8px', border: '1px solid #059669' }}>
-                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; 試用申請已送出！驗證郵件已發送至 {registeredEmail}</p>
-                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '12px' }}>若未收到郵件，可點擊下方按鈕重新發送。</p>
+                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '13px', fontWeight: 600 }}>&#10003; {t('试用申请已提交！验证邮件已发送至 {email}', { email: registeredEmail })}</p>
+                  <p style={{ margin: '0 0 10px', color: '#6ee7b7', fontSize: '12px' }}>{t('若未收到邮件，可点击下方按钮重新发送。')}</p>
                   <button type="button" onClick={handleResendVerification} disabled={isResending}
                     style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#059669', color: '#fff', border: 'none', fontSize: '13px', cursor: 'pointer', fontWeight: 500 }}>
-                    {isResending ? '發送中...' : '重新發送驗證郵件'}
+                    {isResending ? t('发送中…') : t('重新发送验证邮件')}
                   </button>
                   {errorMessage && <p style={{ margin: '10px 0 0', color: '#fca5a5', fontSize: '12px' }}>{errorMessage}</p>}
                   {successMessage && <p style={{ margin: '10px 0 0', color: '#6ee7b7', fontSize: '12px' }}>{successMessage}</p>}
@@ -462,24 +464,24 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
                     setIsResending(true);
                     try {
                       const res = await apiClient.post('/auth/resend-verification', { email });
-                      showTimedSuccess(res.message || '驗證郵件已重新發送。');
+                      showTimedSuccess(res.message || t('验证邮件已重新发送。'));
                     } catch (e) {
-                      showTimedError(e.response?.data?.message || '發送失敗');
+                      showTimedError(e.response?.data?.message || t('发送失败'));
                     } finally {
                       setIsResending(false);
                     }
                   }}
                     style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: '#f59e0b', color: '#111827', border: 'none', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
-                    重新發送驗證郵件
+                    {t('重新发送验证邮件')}
                   </button>
                 </div>
               )}
               <label className="terms-consent">
                 <input id="terms-consent" name="termsConsent" type="checkbox" required />
                 <span>
-                  我已閱讀並同意
-                  <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>會員服務條款</button>、
-                  <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>隱私權政策</button>
+                  {t('我已阅读并同意')}
+                  <button type="button" className="text-link" onClick={() => handleOpenLegal('terms')}>{t('会员服务条款')}</button>、
+                  <button type="button" className="text-link" onClick={() => handleOpenLegal('privacy')}>{t('隐私权政策')}</button>
                 </span>
               </label>
             </form>
@@ -487,30 +489,30 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
 
           {authMode === 'forgot' && (
             <form className="auth-form active" id="forgot-form" onSubmit={handleForgotPassword}>
-              <h2>找回密碼</h2>
-              <p className="muted">輸入管理員信箱，我們將發送密碼重設連結。</p>
+              <h2>{t('找回密码')}</h2>
+              <p className="muted">{t('输入管理员邮箱，我们将发送密码重置链接。')}</p>
               {errorMessage && <p className="form-message" style={{ color: '#d93025', marginBottom: '1rem' }}>{errorMessage}</p>}
               {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
-              <label>信箱<input name="email" type="email" placeholder="admin@company.com" required /></label>
+              <label>{t('邮箱')}<input name="email" type="email" placeholder="admin@company.com" required /></label>
               <button type="submit" className="primary-btn full" disabled={isLoading}>
-                {isLoading ? '發送中...' : '發送重設郵件'}
+                {isLoading ? t('发送中…') : t('发送重置邮件')}
               </button>
-              <button type="button" className="link-btn center" onClick={() => changeMode('login')}>返回登入</button>
+              <button type="button" className="link-btn center" onClick={() => changeMode('login')}>{t('返回登录')}</button>
             </form>
           )}
 
           {authMode === 'reset' && (
             <form className="auth-form active" id="reset-password-form" onSubmit={handleResetPassword}>
-              <h2>重置密碼</h2>
-              <p className="muted">請設定新的管理員登入密碼。</p>
+              <h2>{t('重置密码')}</h2>
+              <p className="muted">{t('请设置新的管理员登录密码。')}</p>
               {errorMessage && <p className="form-message" style={{ color: '#d93025', marginBottom: '1rem' }}>{errorMessage}</p>}
               {successMessage && <p className="form-message" style={{ color: '#1e8e3e', marginBottom: '1rem' }}>{successMessage}</p>}
-              <label>新密碼<input name="password" type="password" placeholder="至少 8 位字元" required minLength={8} /></label>
-              <label>確認新密碼<input name="confirmPassword" type="password" placeholder="再次輸入新密碼" required minLength={8} /></label>
+              <label>{t('新密码')}<input name="password" type="password" placeholder={t('至少 8 位字符')} required minLength={8} /></label>
+              <label>{t('确认新密码')}<input name="confirmPassword" type="password" placeholder={t('再次输入新密码')} required minLength={8} /></label>
               <button type="submit" className="primary-btn full" disabled={isLoading}>
-                {isLoading ? '重置中...' : '重置密碼'}
+                {isLoading ? t('重置中…') : t('重置密码')}
               </button>
-              <button type="button" className="link-btn center" onClick={() => changeMode('login')}>返回登入</button>
+              <button type="button" className="link-btn center" onClick={() => changeMode('login')}>{t('返回登录')}</button>
             </form>
           )}
         </div>
@@ -522,11 +524,11 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
           <div style={{ background: '#111827', borderRadius: '10px', width: 'min(560px, 90vw)', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
             <div style={{ flexShrink: 0, padding: '18px 24px', borderBottom: '1px solid #1f2937', background: '#1a2332', borderRadius: '10px 10px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#f3f4f6' }}>{legalModal.title}</h2>
-              <button style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }} type="button" title="關閉" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>&#10005;</button>
+              <button style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px' }} type="button" title={t('关闭')} onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>&#10005;</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {legalModal.isLoading ? (
-                <p style={{ color: '#9ca3af', textAlign: 'center' }}>內容載入中...</p>
+                <p style={{ color: '#9ca3af', textAlign: 'center' }}>{t('内容加载中…')}</p>
               ) : (
                 <div style={{ color: '#d1d5db', fontSize: '14px', lineHeight: 1.8, overflowWrap: 'break-word' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -536,7 +538,7 @@ export default function Landing({ onLogin, embedded = false, onTrialUnavailable 
               )}
             </div>
             <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', padding: '14px 18px', borderTop: '1px solid #1f2937', background: '#1a2332', borderRadius: '0 0 10px 10px' }}>
-              <button style={{ padding: '8px 28px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }} type="button" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>我知道了</button>
+              <button style={{ padding: '8px 28px', borderRadius: '6px', background: '#3b82f6', color: '#fff', border: 'none', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }} type="button" onClick={() => setLegalModal({ ...legalModal, isOpen: false })}>{t('我知道了')}</button>
             </div>
           </div>
         </div>
