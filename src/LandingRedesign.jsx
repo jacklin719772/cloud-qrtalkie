@@ -158,6 +158,14 @@ const AI_DEMO_QUICK_QUESTIONS = [
   '呼叫中心怎么接入？',
 ];
 
+const SERVICE_QUICK_QUESTIONS = [
+  'QRTalkie 能解决什么问题？',
+  '如何申请试用？',
+  '支持私有化部署吗？',
+  '呼叫中心怎么接入？',
+];
+const SERVICE_DEMO_REPLY = '（演示）在线客服会话功能将在部署后接入。您可以先通过语音、视频或 Web 会议联系我们。';
+
 const AI_ATTACHMENT_MAX = 3;
 const AI_ATTACHMENT_MAX_TOTAL = 15 * 1024 * 1024;
 const AI_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -231,7 +239,7 @@ export default function LandingRedesign() {
   const [trialNotice, setTrialNotice] = useState('');
   const trialNoticeTimer = useRef(null);
   const [footerSettings, setFooterSettings] = useState(FOOTER_DEFAULTS);
-  const [demoLinks, setDemoLinks] = useState({ callcenter: '', building: '' });
+  const [demoLinks, setDemoLinks] = useState({ callcenter: '', building: '', livechat: '' });
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
@@ -243,23 +251,29 @@ export default function LandingRedesign() {
   const [aiError, setAiError] = useState('');
   const [aiNotice, setAiNotice] = useState('');
   const [aiAttachments, setAiAttachments] = useState([]);
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const [serviceMessages, setServiceMessages] = useState([]);
+  const [serviceInput, setServiceInput] = useState('');
+  const [serviceNotice, setServiceNotice] = useState('');
   const aiErrorTimer = useRef(null);
   const aiNoticeTimer = useRef(null);
+  const serviceNoticeTimer = useRef(null);
   const aiListRef = useRef(null);
   const aiFileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen) return undefined;
+    if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen && !serviceOpen) return undefined;
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
-      if (demoEntry) setDemoEntry(null);
+      if (serviceOpen) setServiceOpen(false);
+      else if (demoEntry) setDemoEntry(null);
       else if (aiDemoOpen) setAiDemoOpen(false);
       else if (ecardDemoOpen) setEcardDemoOpen(false);
       else setDemoOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [demoOpen, ecardDemoOpen, demoEntry, aiDemoOpen]);
+  }, [demoOpen, ecardDemoOpen, demoEntry, aiDemoOpen, serviceOpen]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -293,6 +307,7 @@ export default function LandingRedesign() {
     if (trialNoticeTimer.current) window.clearTimeout(trialNoticeTimer.current);
     if (aiErrorTimer.current) window.clearTimeout(aiErrorTimer.current);
     if (aiNoticeTimer.current) window.clearTimeout(aiNoticeTimer.current);
+    if (serviceNoticeTimer.current) window.clearTimeout(serviceNoticeTimer.current);
   }, []);
 
   useEffect(() => {
@@ -317,11 +332,13 @@ export default function LandingRedesign() {
     Promise.all([
       apiClient.get('/public/settings/homepage-callcenter').catch(() => null),
       apiClient.get('/public/settings/homepage-building').catch(() => null),
-    ]).then(([callCenter, building]) => {
+      apiClient.get('/public/settings/homepage-livechat').catch(() => null),
+    ]).then(([callCenter, building, livechat]) => {
       if (cancelled) return;
       setDemoLinks({
         callcenter: callCenter?.settings?.url || '',
         building: building?.settings?.url || '',
+        livechat: livechat?.settings?.url || '',
       });
     });
     return () => { cancelled = true; };
@@ -525,6 +542,30 @@ export default function LandingRedesign() {
     } finally {
       setAiSending(false);
     }
+  };
+
+  const showServiceNotice = (text) => {
+    setServiceNotice(text);
+    if (serviceNoticeTimer.current) window.clearTimeout(serviceNoticeTimer.current);
+    serviceNoticeTimer.current = window.setTimeout(() => setServiceNotice(''), 4000);
+  };
+
+  const openServiceDemo = () => {
+    setDemoOpen(false);
+    setServiceOpen(true);
+    setServiceMessages([]);
+    setServiceInput('');
+    setServiceNotice('');
+  };
+
+  const sendServiceMessage = (text) => {
+    const content = String(text !== undefined ? text : serviceInput).trim();
+    if (!content) return;
+    setServiceMessages((prev) => [...prev, { role: 'user', content }]);
+    setServiceInput('');
+    window.setTimeout(() => {
+      setServiceMessages((prev) => [...prev, { role: 'assistant', content: SERVICE_DEMO_REPLY }]);
+    }, 600);
   };
 
   return (
@@ -799,6 +840,7 @@ export default function LandingRedesign() {
         <div className="qrt-demo-list">
           <button type="button" className="qrt-demo-item" onClick={() => { setDemoOpen(false); setEcardDemoOpen(true); }}><i>📇</i><span>电子名片</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={openAiDemo}><i>🤖</i><span>AI客服</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={openServiceDemo}><i>💬</i><span>线上客服</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('callcenter')}><i>📞</i><span>呼叫中心</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('building')}><i>🏢</i><span>楼宇管理</span><em>›</em></button>
         </div>
@@ -833,7 +875,9 @@ export default function LandingRedesign() {
         >
           <button type="button" className="qrt-demo-entry-close" aria-label="关闭" onClick={() => setDemoEntry(null)}>×</button>
           <div className="qrt-demo-entry-dialog">
-            <img className="qrt-demo-entry-media" src={demoEntryConfig.img} alt={demoEntryConfig.title} />
+            {demoEntryConfig.img && (
+              <img className="qrt-demo-entry-media" src={demoEntryConfig.img} alt={demoEntryConfig.title} />
+            )}
             <div className="qrt-demo-entry-body">
               <h3>{demoEntryConfig.title}</h3>
               <p className="qrt-demo-entry-sub">扫描二维码或点击链接进入在线演示</p>
@@ -953,6 +997,104 @@ export default function LandingRedesign() {
               {aiNotice && <p className="qrt-ai-notice">{aiNotice}</p>}
               {aiError && <p className="qrt-ai-error">{aiError}</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {serviceOpen && (
+        <div
+          className="qrt-service-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="线上客服"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setServiceOpen(false); }}
+        >
+          <button type="button" className="qrt-service-close" aria-label="关闭" onClick={() => setServiceOpen(false)}>×</button>
+          <div className="qrt-service-panel">
+            <aside className="qrt-service-left">
+              <div className="qrt-service-banner" style={{ backgroundImage: "url('/assets/landing/service03.jpg')" }}></div>
+              <div className="qrt-service-profile">
+                <div className="qrt-service-avatar">
+                  <img src="/assets/landing/service-avatar.jpg" alt="客服小雅" />
+                  <span className="qrt-service-status online" title="在线" aria-label="在线"></span>
+                </div>
+                <h2>客服小雅</h2>
+                <p className="qrt-service-role">在线客服专员</p>
+                <p className="qrt-service-note">QRTalkie 官方在线客服</p>
+                <div className="qrt-service-actions">
+                  <button type="button" onClick={() => showServiceNotice('语音呼叫功能即将开放。')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.23a2 2 0 0 1 2.11-.45c.83.32 1.71.54 2.61.66A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                    <span>语音呼叫</span>
+                  </button>
+                  <button type="button" onClick={() => showServiceNotice('视频呼叫功能即将开放。')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="6" width="12" height="12" rx="2" />
+                      <path d="M15 10.5 21 7v10l-6-3.5" />
+                    </svg>
+                    <span>视频呼叫</span>
+                  </button>
+                  <button type="button" onClick={() => showServiceNotice('Web 会议功能即将开放。')}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="4" width="18" height="13" rx="2" />
+                      <path d="M8 21h8M12 17v4" />
+                      <path d="M8 12l2.5-2 2 1.5L16 8" />
+                    </svg>
+                    <span>Web会议</span>
+                  </button>
+                </div>
+              </div>
+            </aside>
+            <section className="qrt-service-chat">
+              <div className="qrt-service-body">
+                {serviceMessages.length === 0 ? (
+                  <div className="qrt-service-welcome">
+                    <svg className="qrt-service-bot" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="12" y="14" width="24" height="20" rx="7" />
+                      <path d="M24 8v6" />
+                      <circle cx="18" cy="24" r="2" fill="currentColor" stroke="none" />
+                      <circle cx="30" cy="24" r="2" fill="currentColor" stroke="none" />
+                      <path d="M20 30h8" />
+                      <path d="M8 22v6M40 22v6" />
+                    </svg>
+                    <h3>Welcome !</h3>
+                    <div className="qrt-service-quote">“</div>
+                    <p className="qrt-service-intro">我是 QRTalkie 在线客服，很高兴为您服务。您可以在这里留言，或通过左侧按钮发起语音、视频与 Web 会议。</p>
+                    <p className="qrt-service-hint">请选择您想了解的问题，或直接输入…</p>
+                    <div className="qrt-service-quick">
+                      {SERVICE_QUICK_QUESTIONS.map((question) => (
+                        <button key={question} type="button" onClick={() => sendServiceMessage(question)}>{question}</button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="qrt-service-messages">
+                    {serviceMessages.map((message, index) => (
+                      <div key={`${message.role}-${index}`} className={`qrt-service-msg ${message.role}`}>{message.content}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <form className="qrt-service-input-row" onSubmit={(e) => { e.preventDefault(); sendServiceMessage(); }}>
+                <input
+                  value={serviceInput}
+                  onChange={(e) => setServiceInput(e.target.value)}
+                  placeholder="输入您的问题…"
+                  maxLength={500}
+                  autoComplete="off"
+                  aria-label="输入问题"
+                />
+                <button type="submit" disabled={!serviceInput.trim()}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 3 10.5 13.5" />
+                    <path d="M21 3 14 21l-3.5-7.5L3 10l18-7z" />
+                  </svg>
+                  <span>发送</span>
+                </button>
+              </form>
+              {serviceNotice && <p className="qrt-service-notice">{serviceNotice}</p>}
+            </section>
           </div>
         </div>
       )}

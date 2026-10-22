@@ -15266,6 +15266,7 @@ app.get("/api/public/settings/homepage-footer", async (request, response) => {
 const HOMEPAGE_DEMO_LINKS = Object.freeze({
   callcenter: { key: "homepage_callcenter", label: "呼叫中心" },
   building: { key: "homepage_building", label: "樓宇管理" },
+  livechat: { key: "homepage_livechat", label: "線上客服" },
 });
 const HOMEPAGE_DEMO_LINK_DEFAULTS = Object.freeze({ url: "" });
 

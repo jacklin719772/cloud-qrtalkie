@@ -21,6 +21,7 @@ const FOOTER_DEFAULTS = {
 const DEMO_LINK_SECTIONS = {
   callcenter: { label: '呼叫中心', path: '/admin/settings/homepage-callcenter', placeholder: 'https://cloud.qrtalkie.org/callcenter?id=...' },
   building: { label: '樓宇管理', path: '/admin/settings/homepage-building', placeholder: 'https://cloud.qrtalkie.org/building?id=...' },
+  livechat: { label: '線上客服', path: '/admin/settings/homepage-livechat', placeholder: 'https://cloud.qrtalkie.org/livechat?id=...' },
 };
 
 const DEMO_LINK_DEFAULTS = {
@@ -161,8 +162,9 @@ export default function HomepageSettings() {
   const [demoLinkForms, setDemoLinkForms] = useState({
     callcenter: { ...DEMO_LINK_DEFAULTS },
     building: { ...DEMO_LINK_DEFAULTS },
+    livechat: { ...DEMO_LINK_DEFAULTS },
   });
-  const [demoLinkLoading, setDemoLinkLoading] = useState({ callcenter: true, building: true });
+  const [demoLinkLoading, setDemoLinkLoading] = useState({ callcenter: true, building: true, livechat: true });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -320,6 +322,7 @@ export default function HomepageSettings() {
                 <option value="footer">頁腳設置</option>
                 <option value="callcenter">呼叫中心設置</option>
                 <option value="building">樓宇管理設置</option>
+                <option value="livechat">線上客服設置</option>
                 <option value="banner" disabled>Banner 設置（即將開放）</option>
                 <option value="blocks" disabled>首頁區塊設置（即將開放）</option>
               </select>
