@@ -162,6 +162,12 @@ const AI_DEMO_QUICK_QUESTIONS = [
   '呼叫中心怎么接入？',
 ];
 
+const AI_DEMO_LIMIT_SECONDS = 180;
+function formatDemoSeconds(value) {
+  const seconds = Math.max(0, Number(value) || 0);
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 const SERVICE_STATUS_FALLBACK = {
   configured: false,
   sip: { state: 'unknown', label: 'SIP 未知', account: '' },
@@ -345,6 +351,8 @@ export default function LandingRedesign() {
   const [aiAttachments, setAiAttachments] = useState([]);
   const [aiVoiceConfig, setAiVoiceConfig] = useState({ available: false, reason: '正在读取配置…' });
   const [aiCall, setAiCall] = useState({ open: false, status: '', muted: false });
+  const [aiDemoSecondsLeft, setAiDemoSecondsLeft] = useState(AI_DEMO_LIMIT_SECONDS);
+  const [aiCallSecondsLeft, setAiCallSecondsLeft] = useState(AI_DEMO_LIMIT_SECONDS);
   const [serviceOpen, setServiceOpen] = useState(false);
   const [serviceNotice, setServiceNotice] = useState('');
   const [serviceProfile, setServiceProfile] = useState(null);
@@ -454,6 +462,43 @@ export default function LandingRedesign() {
     cleanupAiVoiceResources();
     return undefined;
   }, [aiDemoOpen]);
+
+  useEffect(() => {
+    if (!aiDemoOpen) {
+      setAiDemoSecondsLeft(AI_DEMO_LIMIT_SECONDS);
+      return undefined;
+    }
+    if (aiCall.open || aiDemoSecondsLeft <= 0) return undefined;
+    const timer = window.setInterval(() => {
+      setAiDemoSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [aiDemoOpen, aiCall.open, aiDemoSecondsLeft <= 0]);
+
+  useEffect(() => {
+    if (!aiDemoOpen || aiCall.open || aiDemoSecondsLeft > 0) return undefined;
+    showAiNotice('演示时间已到（3 分钟），窗口将自动关闭。');
+    const timer = window.setTimeout(() => setAiDemoOpen(false), 1500);
+    return () => window.clearTimeout(timer);
+  }, [aiDemoOpen, aiCall.open, aiDemoSecondsLeft]);
+
+  useEffect(() => {
+    if (!aiCall.open) {
+      setAiCallSecondsLeft(AI_DEMO_LIMIT_SECONDS);
+      return undefined;
+    }
+    setAiCallSecondsLeft(AI_DEMO_LIMIT_SECONDS);
+    const timer = window.setInterval(() => {
+      setAiCallSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [aiCall.open]);
+
+  useEffect(() => {
+    if (!aiCall.open || aiCallSecondsLeft > 0) return undefined;
+    endAiVoiceCall('演示通话已满 3 分钟，已自动挂断。');
+    return undefined;
+  }, [aiCall.open, aiCallSecondsLeft]);
 
   useEffect(() => {
     const list = aiListRef.current;
@@ -713,6 +758,8 @@ export default function LandingRedesign() {
     setAiError('');
     setAiNotice('');
     setAiSending(false);
+    setAiDemoSecondsLeft(AI_DEMO_LIMIT_SECONDS);
+    setAiCallSecondsLeft(AI_DEMO_LIMIT_SECONDS);
   };
 
   const removeAiAttachment = (id) => {
@@ -1534,6 +1581,12 @@ export default function LandingRedesign() {
           <div className="qrt-ai-demo-dialog">
             <img className="qrt-ai-demo-banner" src="/assets/landing/ai-demo01.jpg" alt="AI客服在线演示" />
             <div className="qrt-ai-chat">
+              <div className="qrt-ai-demo-limit">
+                <span className="qrt-ai-demo-limit-text">演示限时 3 分钟 · 文字聊天与语音通话到时自动结束</span>
+                <span className={`qrt-ai-demo-countdown${aiDemoSecondsLeft <= 30 ? ' is-warning' : ''}`}>
+                  {aiCall.open ? '语音通话中' : `剩余 ${formatDemoSeconds(aiDemoSecondsLeft)}`}
+                </span>
+              </div>
               <div className="qrt-ai-messages" ref={aiListRef}>
                 {aiMessages.map((message, index) => (
                   <div key={`${message.role}-${index}`} className={`qrt-ai-msg ${message.role}`}>
@@ -1636,6 +1689,9 @@ export default function LandingRedesign() {
                 <div className="qrt-service-call-info">
                   <h3>QRTalkie AI</h3>
                   <p>{aiCall.status || '连接中…'}</p>
+                  <p className={`qrt-ai-call-limit${aiCallSecondsLeft <= 30 ? ' is-warning' : ''}`}>
+                    演示通话限时 3 分钟 · 剩余 {formatDemoSeconds(aiCallSecondsLeft)}
+                  </p>
                 </div>
                 <div className="qrt-service-call-actions">
                   <button type="button" onClick={toggleAiMute}>{aiCall.muted ? '取消静音' : '静音'}</button>
