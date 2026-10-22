@@ -15679,6 +15679,174 @@ app.get("/api/public/livechat/status", async (request, response) => {
   }
 });
 
+// 平台首頁 AI 語音問答（主叫方 Web 帳號 + AI 應答方 SIP 帳號）
+const HOMEPAGE_AI_VOICE_DEFAULTS = Object.freeze({ callerWebAccountId: null, aiSipAccountId: null });
+
+function parseHomepageAiVoiceSetting(raw) {
+  if (!raw) return { ...HOMEPAGE_AI_VOICE_DEFAULTS };
+  let parsed;
+  try {
+    parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return { ...HOMEPAGE_AI_VOICE_DEFAULTS };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ...HOMEPAGE_AI_VOICE_DEFAULTS };
+  }
+  const toId = (value) => {
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  };
+  return {
+    callerWebAccountId: toId(parsed.callerWebAccountId),
+    aiSipAccountId: toId(parsed.aiSipAccountId),
+  };
+}
+
+function buildHomepageAiVoiceSettings(body) {
+  return {
+    settings: {
+      callerWebAccountId: parseHomepageAiVoiceSetting(body).callerWebAccountId,
+      aiSipAccountId: parseHomepageAiVoiceSetting(body).aiSipAccountId,
+    },
+  };
+}
+
+async function loadHomepageAiVoiceAccounts(connection, settings) {
+  let callerWebAccount = null;
+  let aiSipAccount = null;
+  if (settings.callerWebAccountId) {
+    const rows = await connection.query(
+      `SELECT u.id, u.username, u.sip_domain AS domain, u.display_name, u.status,
+              u.tenant_id, t.name AS tenant_name
+       FROM web_users u
+       LEFT JOIN tenants t ON t.id = u.tenant_id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [settings.callerWebAccountId],
+    );
+    const row = rows[0] || null;
+    if (row) {
+      callerWebAccount = {
+        id: Number(row.id),
+        username: String(row.username || ""),
+        domain: String(row.domain || ""),
+        displayName: String(row.display_name || ""),
+        status: String(row.status || ""),
+        tenantId: row.tenant_id == null ? null : Number(row.tenant_id),
+        tenantName: String(row.tenant_name || ""),
+      };
+    }
+  }
+  if (settings.aiSipAccountId) {
+    const rows = await connection.query(
+      `SELECT u.id, u.username, u.sip_domain AS domain, u.display_name, u.status,
+              u.recycled_at, u.tenant_id, t.name AS tenant_name
+       FROM sip_users u
+       LEFT JOIN tenants t ON t.id = u.tenant_id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [settings.aiSipAccountId],
+    );
+    const row = rows[0] || null;
+    if (row) {
+      aiSipAccount = {
+        id: Number(row.id),
+        username: String(row.username || ""),
+        domain: String(row.domain || ""),
+        displayName: String(row.display_name || ""),
+        status: String(row.status || ""),
+        recycledAt: row.recycled_at || null,
+        tenantId: row.tenant_id == null ? null : Number(row.tenant_id),
+        tenantName: String(row.tenant_name || ""),
+      };
+    }
+  }
+  return { callerWebAccount, aiSipAccount };
+}
+
+app.get("/api/admin/settings/homepage-ai-voice", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ai_voice' LIMIT 1",
+    );
+    const settings = parseHomepageAiVoiceSetting(rows[0]?.setting_value);
+    const accounts = await loadHomepageAiVoiceAccounts(connection, settings);
+    return response.json({ settings: { ...settings, ...accounts } });
+  } catch (error) {
+    console.error("Failed to get homepage AI voice settings:", error);
+    return response.status(500).json({ message: "讀取 AI 語音問答設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.put("/api/admin/settings/homepage-ai-voice", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+  }
+  const built = buildHomepageAiVoiceSettings(request.body);
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    if (built.settings.callerWebAccountId) {
+      const rows = await connection.query(
+        "SELECT id FROM web_users WHERE id = ? AND status = 'active' LIMIT 1",
+        [built.settings.callerWebAccountId],
+      );
+      if (rows.length === 0) {
+        return response.status(400).json({ message: "所選主叫方 Web 帳號不存在或未啟用。" });
+      }
+    }
+    if (built.settings.aiSipAccountId) {
+      const rows = await connection.query(
+        "SELECT id FROM sip_users WHERE id = ? AND status = 'active' AND recycled_at IS NULL LIMIT 1",
+        [built.settings.aiSipAccountId],
+      );
+      if (rows.length === 0) {
+        return response.status(400).json({ message: "所選 AI 應答方 SIP 帳號不存在或未啟用。" });
+      }
+    }
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('homepage_ai_voice', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [JSON.stringify(built.settings)],
+    );
+    const accounts = await loadHomepageAiVoiceAccounts(connection, built.settings);
+    return response.json({ message: "AI 語音問答設置已儲存。", settings: { ...built.settings, ...accounts } });
+  } catch (error) {
+    console.error("Failed to save homepage AI voice settings:", error);
+    return response.status(500).json({ message: "儲存 AI 語音問答設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.get("/api/public/settings/homepage-ai-voice", async (request, response) => {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ai_voice' LIMIT 1",
+    );
+    const settings = parseHomepageAiVoiceSetting(rows[0]?.setting_value);
+    const accounts = await loadHomepageAiVoiceAccounts(connection, settings);
+    response.setHeader("Cache-Control", "no-store");
+    return response.json({ settings: { ...settings, ...accounts } });
+  } catch (error) {
+    console.error("Failed to get public homepage AI voice settings:", error);
+    return response.status(500).json({ message: "讀取 AI 語音問答設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // 在線演示 AI 客服（公開、無狀態、獨立限流）
 const AI_DEMO_SYSTEM_PROMPT = [
   "你是 QRTalkie 官网的在线演示 AI 客服。",
