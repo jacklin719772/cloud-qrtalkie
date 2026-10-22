@@ -167,8 +167,7 @@ export default function HomepageSettings() {
   const [demoLinkLoading, setDemoLinkLoading] = useState({ callcenter: true, building: true, livechat: true });
   const [livechatAccounts, setLivechatAccounts] = useState([]);
   const [livechatAccountsLoading, setLivechatAccountsLoading] = useState(true);
-  const [aiVoiceForm, setAiVoiceForm] = useState({ callerWebAccountId: '', aiSipAccountId: '' });
-  const [aiVoiceAccounts, setAiVoiceAccounts] = useState({ web: [], sip: [] });
+  const [aiVoiceForm, setAiVoiceForm] = useState({ callerWebAccount: '', aiAnswerAccount: '' });
   const [aiVoiceLoading, setAiVoiceLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -251,25 +250,20 @@ export default function HomepageSettings() {
     if (activeSection !== 'ai-voice') return undefined;
     let cancelled = false;
     setAiVoiceLoading(true);
-    Promise.all([
-      apiClient.get('/admin/settings/homepage-ai-voice').catch(() => null),
-      apiClient.get('/admin/web-accounts').catch(() => null),
-      apiClient.get('/admin/sip-accounts').catch(() => null),
-    ]).then(([settings, web, sip]) => {
-      if (cancelled) return;
-      if (settings?.settings) {
-        setAiVoiceForm({
-          callerWebAccountId: settings.settings.callerWebAccountId ? String(settings.settings.callerWebAccountId) : '',
-          aiSipAccountId: settings.settings.aiSipAccountId ? String(settings.settings.aiSipAccountId) : '',
-        });
-      }
-      setAiVoiceAccounts({
-        web: Array.isArray(web?.accounts) ? web.accounts : [],
-        sip: Array.isArray(sip?.accounts) ? sip.accounts : [],
+    apiClient.get('/admin/settings/homepage-ai-voice')
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.settings) {
+          setAiVoiceForm({
+            callerWebAccount: data.settings.callerWebAccount || '',
+            aiAnswerAccount: data.settings.aiAnswerAccount || '',
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setAiVoiceLoading(false);
       });
-    }).finally(() => {
-      if (!cancelled) setAiVoiceLoading(false);
-    });
     return () => { cancelled = true; };
   }, [activeSection]);
 
@@ -321,13 +315,13 @@ export default function HomepageSettings() {
       setIsSaving(true);
       try {
         const data = await apiClient.put('/admin/settings/homepage-ai-voice', {
-          callerWebAccountId: aiVoiceForm.callerWebAccountId || null,
-          aiSipAccountId: aiVoiceForm.aiSipAccountId || null,
+          callerWebAccount: aiVoiceForm.callerWebAccount,
+          aiAnswerAccount: aiVoiceForm.aiAnswerAccount,
         });
         if (data?.settings) {
           setAiVoiceForm({
-            callerWebAccountId: data.settings.callerWebAccountId ? String(data.settings.callerWebAccountId) : '',
-            aiSipAccountId: data.settings.aiSipAccountId ? String(data.settings.aiSipAccountId) : '',
+            callerWebAccount: data.settings.callerWebAccount || '',
+            aiAnswerAccount: data.settings.aiAnswerAccount || '',
           });
         }
         showMessage('success', data?.message || 'AI 語音問答設置已儲存。');
@@ -380,10 +374,6 @@ export default function HomepageSettings() {
     : activeSection === 'ai-voice' ? aiVoiceLoading
     : DEMO_LINK_SECTIONS[activeSection] ? demoLinkLoading[activeSection] : isLoading;
   const selectedLivechatAccount = livechatAccounts.find((account) => String(account.sipUserId) === String(demoLinkForms.livechat.sipUserId)) || null;
-  const aiVoiceWebOptions = aiVoiceAccounts.web.filter((account) => account.status === 'active');
-  const aiVoiceSipOptions = aiVoiceAccounts.sip.filter((account) => account.status === 'active' && !account.recycledAt);
-  const selectedCallerWebAccount = aiVoiceWebOptions.find((account) => String(account.id) === String(aiVoiceForm.callerWebAccountId)) || null;
-  const selectedAiSipAccount = aiVoiceSipOptions.find((account) => String(account.id) === String(aiVoiceForm.aiSipAccountId)) || null;
 
   return (
     <section className="view active settings-form-page" id="homepage-settings" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -503,53 +493,19 @@ export default function HomepageSettings() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={sectionStyle}>
                   <h3 style={sectionTitleStyle}>AI 語音問答設置</h3>
-                  <label style={labelStyle}>
-                    主叫方 Web 帳號
-                    <select
-                      value={aiVoiceForm.callerWebAccountId}
-                      onChange={(e) => setAiVoiceForm((prev) => ({ ...prev, callerWebAccountId: e.target.value }))}
-                      style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#0f172a', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                    >
-                      <option value="">未選擇</option>
-                      {aiVoiceWebOptions.map((account) => (
-                        <option key={account.id} value={String(account.id)}>
-                          {`${account.displayName || account.username}（${account.username}）${account.tenantName ? ` · ${account.tenantName}` : ''}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {selectedCallerWebAccount && (
-                    <p style={{ margin: 0, color: '#9ca3af', fontSize: '12px' }}>
-                      已選：{selectedCallerWebAccount.displayName || selectedCallerWebAccount.username}（{selectedCallerWebAccount.username}）{selectedCallerWebAccount.tenantName ? ` · ${selectedCallerWebAccount.tenantName}` : ''}
-                    </p>
-                  )}
-                  <label style={labelStyle}>
-                    AI 應答方 SIP 帳號
-                    <select
-                      value={aiVoiceForm.aiSipAccountId}
-                      onChange={(e) => setAiVoiceForm((prev) => ({ ...prev, aiSipAccountId: e.target.value }))}
-                      style={{ height: '40px', padding: '0 12px', borderRadius: '8px', border: '1px solid #374151', background: '#0f172a', color: '#e5e7eb', fontSize: '13px', outline: 'none' }}
-                    >
-                      <option value="">未選擇</option>
-                      {aiVoiceSipOptions.map((account) => (
-                        <option key={account.id} value={String(account.id)}>
-                          {`${account.displayName || account.username}（${account.username}）${account.tenantName ? ` · ${account.tenantName}` : ''}`}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {selectedAiSipAccount && (
-                    <p style={{ margin: 0, color: '#9ca3af', fontSize: '12px' }}>
-                      已選：{selectedAiSipAccount.displayName || selectedAiSipAccount.username}（{selectedAiSipAccount.username}）{selectedAiSipAccount.tenantName ? ` · ${selectedAiSipAccount.tenantName}` : ''}
-                    </p>
-                  )}
-                  {!aiVoiceLoading && aiVoiceWebOptions.length === 0 && (
-                    <p style={{ margin: 0, color: '#f59e0b', fontSize: '12px' }}>暫無可用的 Web 帳號。</p>
-                  )}
-                  {!aiVoiceLoading && aiVoiceSipOptions.length === 0 && (
-                    <p style={{ margin: 0, color: '#f59e0b', fontSize: '12px' }}>暫無可用的 SIP 帳號。</p>
-                  )}
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>主叫方 Web 帳號用於發起 AI 語音問答；AI 應答方為接收呼叫的 SIP 帳號。</p>
+                  <Field
+                    label="主叫方 Web 帳號"
+                    value={aiVoiceForm.callerWebAccount}
+                    onChange={(value) => setAiVoiceForm((prev) => ({ ...prev, callerWebAccount: value }))}
+                    placeholder="例如 9502@pbx.qrtalkie.org"
+                  />
+                  <Field
+                    label="AI 應答方帳號"
+                    value={aiVoiceForm.aiAnswerAccount}
+                    onChange={(value) => setAiVoiceForm((prev) => ({ ...prev, aiAnswerAccount: value }))}
+                    placeholder="例如 9999@pbx.qrtalkie.org"
+                  />
+                  <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>請直接錄入 SIP URI 或帳號。主叫方 Web 帳號用於發起 AI 語音問答；AI 應答方對應目前的 9999 Stasis 分機。</p>
                 </div>
               </div>
             ) : activeSection === 'livechat' ? (
