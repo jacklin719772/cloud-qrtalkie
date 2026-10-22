@@ -15708,6 +15708,104 @@ function buildHomepageAiVoiceSettings(body) {
   };
 }
 
+function parseAiVoiceSipUri(value) {
+  const text = String(value || "").trim().replace(/^sip:/i, "");
+  if (!text) return null;
+  const at = text.indexOf("@");
+  const username = (at >= 0 ? text.slice(0, at) : text).trim();
+  const domain = (at >= 0 ? text.slice(at + 1) : "").trim();
+  if (!username) return null;
+  return {
+    username,
+    domain: domain || String(process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || "").trim(),
+  };
+}
+
+async function checkAiVoiceAvailability(connection) {
+  const rows = await connection.query(
+    "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ai_voice' LIMIT 1",
+  );
+  const settings = parseHomepageAiVoiceSetting(rows[0]?.setting_value);
+  const result = { ...settings, available: false, reason: "", caller: null, aiAnswer: null };
+  if (!settings.callerWebAccount || !settings.aiAnswerAccount) {
+    result.reason = "未配置 AI 語音問答帳號";
+    return result;
+  }
+  const caller = parseAiVoiceSipUri(settings.callerWebAccount);
+  const answer = parseAiVoiceSipUri(settings.aiAnswerAccount);
+  if (!caller || !answer) {
+    result.reason = "帳號格式不正確";
+    return result;
+  }
+  if (String(process.env.ECARD_ASTERISK_WEBRTC_ENABLE_VOICE_CALL || "").toLowerCase() !== "true") {
+    result.reason = "AI 語音呼叫服務未開啟";
+    return result;
+  }
+  const wssUrl = String(process.env.ECARD_ASTERISK_WEBRTC_WSS_URL || "").trim();
+  const sharedPassword = String(process.env.ECARD_ASTERISK_WEBRTC_SHARED_PASSWORD || "").trim();
+  const webrtcDomain = String(process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || "").trim();
+  if (!wssUrl || !sharedPassword || !webrtcDomain) {
+    result.reason = "AI 語音呼叫服務未配置完整";
+    return result;
+  }
+  const callerRows = await connection.query(
+    "SELECT id, username, sip_domain, status FROM web_users WHERE username = ? LIMIT 1",
+    [caller.username],
+  );
+  const callerRow = callerRows[0] || null;
+  if (!callerRow || String(callerRow.status || "").toLowerCase() !== "active") {
+    result.reason = "主叫方 Web 帳號不存在或未啟用";
+    return result;
+  }
+  let answerRow = null;
+  const answerWebRows = await connection.query(
+    "SELECT id, username, sip_domain, status FROM web_users WHERE username = ? LIMIT 1",
+    [answer.username],
+  );
+  if (answerWebRows[0] && String(answerWebRows[0].status || "").toLowerCase() === "active") {
+    answerRow = { ...answerWebRows[0], kind: "web" };
+  } else {
+    const answerSipRows = await connection.query(
+      "SELECT id, username, sip_domain, status, recycled_at FROM sip_users WHERE username = ? LIMIT 1",
+      [answer.username],
+    );
+    if (answerSipRows[0] && String(answerSipRows[0].status || "").toLowerCase() === "active" && !answerSipRows[0].recycled_at) {
+      answerRow = { ...answerSipRows[0], kind: "sip" };
+    }
+  }
+  if (!answerRow) {
+    result.reason = "AI 應答方帳號不存在或未啟用";
+    return result;
+  }
+  result.available = true;
+  result.caller = {
+    username: String(callerRow.username || ""),
+    domain: String(callerRow.sip_domain || caller.domain || webrtcDomain),
+  };
+  result.aiAnswer = {
+    username: String(answerRow.username || ""),
+    domain: String(answerRow.sip_domain || answer.domain || webrtcDomain),
+    kind: answerRow.kind,
+  };
+  return result;
+}
+
+const AI_VOICE_SESSION_WINDOW_MS = 60 * 1000;
+const AI_VOICE_SESSION_MAX = 10;
+const aiVoiceSessionHits = new Map();
+
+function allowAiVoiceSession(ip) {
+  const now = Date.now();
+  const current = (aiVoiceSessionHits.get(ip) || []).filter((time) => now - time < AI_VOICE_SESSION_WINDOW_MS);
+  if (current.length >= AI_VOICE_SESSION_MAX) {
+    aiVoiceSessionHits.set(ip, current);
+    return false;
+  }
+  current.push(now);
+  aiVoiceSessionHits.set(ip, current);
+  return true;
+}
+
 app.get("/api/admin/settings/homepage-ai-voice", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
@@ -15757,11 +15855,53 @@ app.get("/api/public/settings/homepage-ai-voice", async (request, response) => {
     const rows = await connection.query(
       "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ai_voice' LIMIT 1",
     );
+    const availability = await checkAiVoiceAvailability(connection);
     response.setHeader("Cache-Control", "no-store");
-    return response.json({ settings: parseHomepageAiVoiceSetting(rows[0]?.setting_value) });
+    return response.json({ settings: availability });
   } catch (error) {
     console.error("Failed to get public homepage AI voice settings:", error);
     return response.status(500).json({ message: "讀取 AI 語音問答設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 在線 AI 客服語音呼叫會話（使用首頁 AI 語音問答配置）
+app.post("/api/public/ai-voice/call-session", async (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwarded || request.ip || request.socket?.remoteAddress || "unknown";
+  if (!allowAiVoiceSession(ip)) {
+    return response.status(429).json({ success: false, message: "呼叫請求過於頻繁，請稍後再試。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const availability = await checkAiVoiceAvailability(connection);
+    if (!availability.available) {
+      return response.status(400).json({ success: false, message: availability.reason || "AI 語音呼叫暫不可用。" });
+    }
+    const wssUrl = String(process.env.ECARD_ASTERISK_WEBRTC_WSS_URL || "").trim();
+    const sharedPassword = String(process.env.ECARD_ASTERISK_WEBRTC_SHARED_PASSWORD || "").trim();
+    const webrtcDomain = String(process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || "").trim();
+    const sipDomain = String(process.env.ECARD_FLEXISIP_SIP_DOMAIN || availability.aiAnswer.domain || webrtcDomain).trim();
+    return response.json({
+      success: true,
+      data: {
+        webAccount: availability.caller.username,
+        credential: { type: "shared-password", value: sharedPassword },
+        webrtcDomain,
+        wssUrl,
+        targetSipUri: `sip:${availability.aiAnswer.username}@${availability.aiAnswer.domain || webrtcDomain}`,
+        sipDomain,
+        iceServers: parseEcardIceServers(),
+        sipServerPublicIp: String(process.env.ECARD_ASTERISK_WEBRTC_SIP_SERVER_PUBLIC_IP || "").trim(),
+        enableVoice: true,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create AI voice call session:", error);
+    return response.status(500).json({ success: false, message: "AI 語音呼叫會話建立失敗。" });
   } finally {
     if (connection) connection.release();
   }

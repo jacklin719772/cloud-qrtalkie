@@ -214,12 +214,12 @@ function applyServiceCodecPreferences(pc) {
   } catch {}
 }
 
-function bindServiceRemoteAudio(pc) {
+function bindServiceRemoteAudio(pc, elementId = 'serviceRemoteAudio') {
   if (!pc) return;
   try {
     const receiver = pc.getReceivers().find((item) => item.track && item.track.kind === 'audio');
     if (!receiver?.track) return;
-    const audioEl = document.getElementById('serviceRemoteAudio');
+    const audioEl = document.getElementById(elementId);
     if (!audioEl) return;
     audioEl.srcObject = new MediaStream([receiver.track]);
     audioEl.play().catch(() => {});
@@ -343,6 +343,8 @@ export default function LandingRedesign() {
   const [aiError, setAiError] = useState('');
   const [aiNotice, setAiNotice] = useState('');
   const [aiAttachments, setAiAttachments] = useState([]);
+  const [aiVoiceConfig, setAiVoiceConfig] = useState({ available: false, reason: '正在读取配置…' });
+  const [aiCall, setAiCall] = useState({ open: false, status: '', muted: false });
   const [serviceOpen, setServiceOpen] = useState(false);
   const [serviceNotice, setServiceNotice] = useState('');
   const [serviceProfile, setServiceProfile] = useState(null);
@@ -370,6 +372,13 @@ export default function LandingRedesign() {
   const serviceNoticeTimer = useRef(null);
   const aiListRef = useRef(null);
   const aiFileInputRef = useRef(null);
+  const aiUaRef = useRef(null);
+  const aiCurrentCallRef = useRef(null);
+  const aiLocalStreamRef = useRef(null);
+  const aiOriginalSendRef = useRef(null);
+  const aiCallBusyRef = useRef(false);
+  const aiCallTimerRef = useRef(null);
+  const aiEndingRef = useRef(false);
 
   useEffect(() => {
     if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen && !serviceOpen) return undefined;
@@ -418,7 +427,33 @@ export default function LandingRedesign() {
     if (aiErrorTimer.current) window.clearTimeout(aiErrorTimer.current);
     if (aiNoticeTimer.current) window.clearTimeout(aiNoticeTimer.current);
     if (serviceNoticeTimer.current) window.clearTimeout(serviceNoticeTimer.current);
+    cleanupAiVoiceResources();
   }, []);
+
+  useEffect(() => {
+    if (!aiDemoOpen) return undefined;
+    let cancelled = false;
+    setAiVoiceConfig({ available: false, reason: '正在检查 AI 语音配置…' });
+    apiClient.get('/public/settings/homepage-ai-voice')
+      .then((data) => {
+        if (cancelled) return;
+        const settings = data?.settings || {};
+        setAiVoiceConfig({
+          available: Boolean(settings.available),
+          reason: settings.reason || (settings.available ? '' : 'AI 语音问答未配置'),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAiVoiceConfig({ available: false, reason: '无法读取 AI 语音配置' });
+      });
+    return () => { cancelled = true; };
+  }, [aiDemoOpen]);
+
+  useEffect(() => {
+    if (aiDemoOpen) return undefined;
+    cleanupAiVoiceResources();
+    return undefined;
+  }, [aiDemoOpen]);
 
   useEffect(() => {
     const list = aiListRef.current;
@@ -986,6 +1021,147 @@ export default function LandingRedesign() {
     }
   };
 
+  function cleanupAiVoiceResources() {
+    aiEndingRef.current = true;
+    if (aiCallTimerRef.current) {
+      window.clearTimeout(aiCallTimerRef.current);
+      aiCallTimerRef.current = null;
+    }
+    const currentCall = aiCurrentCallRef.current;
+    aiCurrentCallRef.current = null;
+    if (currentCall) {
+      try { currentCall.terminate(); } catch {}
+    }
+    const ua = aiUaRef.current;
+    aiUaRef.current = null;
+    if (ua) {
+      try { ua.stop(); } catch {}
+    }
+    const stream = aiLocalStreamRef.current;
+    aiLocalStreamRef.current = null;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch {}
+      });
+    }
+    aiOriginalSendRef.current = null;
+    const audioEl = document.getElementById('aiRemoteAudio');
+    if (audioEl) audioEl.srcObject = null;
+    aiCallBusyRef.current = false;
+    setAiCall({ open: false, status: '', muted: false });
+  }
+
+  function endAiVoiceCall(message) {
+    cleanupAiVoiceResources();
+    if (message) showAiNotice(message);
+  }
+
+  const updateAiCallStatus = (status) => {
+    setAiCall((prev) => ({ ...prev, status }));
+  };
+
+  const toggleAiMute = () => {
+    const stream = aiLocalStreamRef.current;
+    if (!stream) return;
+    const nextMuted = !aiCall.muted;
+    stream.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; });
+    setAiCall((prev) => ({ ...prev, muted: nextMuted }));
+  };
+
+  const startAiVoiceCall = async () => {
+    if (aiCallBusyRef.current || aiCall.open) return;
+    if (!aiVoiceConfig.available) {
+      showAiNotice(aiVoiceConfig.reason || 'AI 语音问答未配置。');
+      return;
+    }
+    aiCallBusyRef.current = true;
+    aiEndingRef.current = false;
+    setAiCall({ open: true, status: '连接中…', muted: false });
+    let stream = null;
+    try {
+      const session = await apiClient.post('/public/ai-voice/call-session', {}, { timeoutMs: 20000 });
+      if (!session?.success) throw new Error(session?.message || 'AI 语音呼叫暂不可用。');
+      const data = session.data || {};
+      if (!data.webAccount || !data.wssUrl || !data.webrtcDomain || !data.targetSipUri || !data.credential?.value) {
+        throw new Error('呼叫配置不完整。');
+      }
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      aiLocalStreamRef.current = stream;
+      const JsSIP = await loadJsSip();
+      const socket = new JsSIP.WebSocketInterface(data.wssUrl);
+      const ua = new JsSIP.UA({
+        sockets: [socket],
+        uri: `sip:${data.webAccount}@${data.webrtcDomain}`,
+        password: data.credential.value,
+        register: true,
+      });
+      aiUaRef.current = ua;
+      let failed = false;
+      ua.on('registered', () => {
+        if (failed || aiEndingRef.current) return;
+        injectServiceSdpPatch(ua, data.sipServerPublicIp, aiOriginalSendRef);
+        updateAiCallStatus('正在呼叫 AI…');
+        const options = {
+          mediaStream: stream,
+          pcConfig: {
+            iceServers: Array.isArray(data.iceServers) ? data.iceServers : [],
+            iceTransportPolicy: 'all',
+            iceCandidatePoolSize: 0,
+          },
+          rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+          eventHandlers: {
+            progress: () => updateAiCallStatus('正在响铃…'),
+            ringing: () => updateAiCallStatus('正在响铃…'),
+            accepted: () => updateAiCallStatus('通话中'),
+            confirmed: () => updateAiCallStatus('通话中'),
+            failed: () => {
+              if (!aiEndingRef.current) endAiVoiceCall('AI 通话失败，请稍后再试。');
+            },
+            ended: () => {
+              if (!aiEndingRef.current) endAiVoiceCall('通话已结束。');
+            },
+            peerconnection: (event) => {
+              const pc = event.peerconnection;
+              applyServiceCodecPreferences(pc);
+              pc.ontrack = (trackEvent) => {
+                if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc, 'aiRemoteAudio');
+              };
+              pc.oniceconnectionstatechange = () => {
+                if (pc.iceConnectionState === 'connected') bindServiceRemoteAudio(pc, 'aiRemoteAudio');
+                if ((pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') && !aiEndingRef.current) {
+                  endAiVoiceCall('AI 通话连接中断。');
+                }
+              };
+            },
+          },
+        };
+        try {
+          aiCurrentCallRef.current = ua.call(data.targetSipUri, options);
+        } catch {
+          endAiVoiceCall('AI 通话发起失败。');
+        }
+      });
+      ua.on('registrationFailed', () => {
+        failed = true;
+        if (!aiEndingRef.current) endAiVoiceCall('AI 语音连接失败。');
+      });
+      ua.on('disconnected', () => {
+        failed = true;
+        if (!aiEndingRef.current) endAiVoiceCall('AI 语音连接中断。');
+      });
+      ua.start();
+      aiCallTimerRef.current = window.setTimeout(() => {
+        if (!failed && !aiCurrentCallRef.current && !aiEndingRef.current) {
+          endAiVoiceCall('AI 语音连接超时。');
+        }
+      }, 15000);
+    } catch (error) {
+      endAiVoiceCall(error?.message || 'AI 语音呼叫暂不可用。');
+    } finally {
+      aiCallBusyRef.current = false;
+    }
+  };
+
   const serviceAvatar = serviceProfile?.avatarUrl
     ? absoluteDownloadUrl(serviceProfile.avatarUrl)
     : '/assets/landing/service-avatar.jpg';
@@ -1429,10 +1605,10 @@ export default function LandingRedesign() {
                 <button
                   type="button"
                   className="qrt-ai-call-btn"
-                  onClick={() => showAiNotice('语音呼叫演示即将开放，敬请期待。')}
-                  disabled={aiSending}
+                  onClick={startAiVoiceCall}
+                  disabled={aiSending || !aiVoiceConfig.available || aiCall.open}
                   aria-label="语音呼叫"
-                  title="语音呼叫"
+                  title={aiVoiceConfig.available ? '语音呼叫 QRTalkie AI' : (aiVoiceConfig.reason || 'AI 语音问答未配置')}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.66 2.61a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.47-1.23a2 2 0 0 1 2.11-.45c.83.32 1.71.54 2.61.66A2 2 0 0 1 22 16.92z" />
@@ -1443,6 +1619,31 @@ export default function LandingRedesign() {
               {aiError && <p className="qrt-ai-error">{aiError}</p>}
             </div>
           </div>
+          {aiCall.open && (
+            <div className="qrt-service-call-layer" role="dialog" aria-modal="true" aria-label="AI 语音通话">
+              <audio id="aiRemoteAudio" autoPlay playsInline style={{ display: 'none' }}></audio>
+              <div className="qrt-service-call-card">
+                <div className="qrt-service-call-avatar qrt-ai-call-avatar">
+                  <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="12" y="14" width="24" height="20" rx="7" />
+                    <path d="M24 8v6" />
+                    <circle cx="18" cy="24" r="2" fill="currentColor" stroke="none" />
+                    <circle cx="30" cy="24" r="2" fill="currentColor" stroke="none" />
+                    <path d="M20 30h8" />
+                    <path d="M8 22v6M40 22v6" />
+                  </svg>
+                </div>
+                <div className="qrt-service-call-info">
+                  <h3>QRTalkie AI</h3>
+                  <p>{aiCall.status || '连接中…'}</p>
+                </div>
+                <div className="qrt-service-call-actions">
+                  <button type="button" onClick={toggleAiMute}>{aiCall.muted ? '取消静音' : '静音'}</button>
+                  <button type="button" className="is-hangup" onClick={() => endAiVoiceCall('通话已结束。')}>挂断</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
