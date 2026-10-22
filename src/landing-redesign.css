@@ -1463,7 +1463,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-solution-head h3 { font-size: 18px; }
   .qrt-solution-desc { min-height: 0; padding: 16px 20px 18px; }
   .qrt-back-to-top-btn { width: 44px; height: 44px; bottom: 20px; right: 20px; font-size: 18px; }
-  .qrt-footer-content { grid-template-columns: 1fr; gap: 40px; padding: 40px 0 20px 0; text-align: center; }
+  .qrt-footer-content { grid-template-columns: 1fr; gap: 40px; padding: 40px 20px 20px 20px; text-align: center; }
   .qrt-footer-col { text-align: center; display: flex; flex-direction: column; align-items: center; }
   .qrt-footer-col a:hover { padding-left: 0; }
   .qrt-quick-links ul { display: flex; flex-direction: column; gap: 15px; width: 100%; align-items: center; }
@@ -1476,7 +1476,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   }
   .qrt-download-item:last-child { border-bottom: none; }
   .qrt-desktop-download { justify-content: center; width: 80%; max-width: 250px; }
-  .qrt-qr-download-item { flex-direction: row; justify-content: center; align-items: center; gap: 15px; }
+  .qrt-qr-download-item { flex-direction: row; justify-content: flex-start; align-items: center; gap: 15px; width: 100%; }
   .qrt-qr-mini { width: 60px; height: 60px; flex-shrink: 0; }
   .qrt-qr-download-text { text-align: left; }
   .qrt-platform-name { font-size: 14px; margin-bottom: 2px; }
