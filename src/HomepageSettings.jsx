@@ -135,7 +135,11 @@ function formatFileSize(bytes) {
 }
 
 function formatDate(value) {
-  return value ? String(value).slice(0, 10) : '';
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function Field({ label, value, onChange, placeholder, type = 'text' }) {
@@ -431,6 +435,28 @@ export default function HomepageSettings() {
                     { platform: 'ios', label: 'iOS', version: form.iosVersion, url: form.iosDownloadUrl, versionKey: 'iosVersion', urlKey: 'iosDownloadUrl' },
                   ].map((item) => {
                     const versions = versionsFor(item.platform);
+                    const needsManualIosInput = item.platform === 'ios' && versions.length === 0;
+                    const actions = (
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        {item.url && (
+                          <button
+                            type="button"
+                            style={clearButtonStyle}
+                            onClick={() => setForm((prev) => ({ ...prev, [item.urlKey]: '', [item.versionKey]: '' }))}
+                          >
+                            清除
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          style={{ ...getButtonStyle, opacity: versions.length ? 1 : 0.5, cursor: versions.length ? 'pointer' : 'not-allowed' }}
+                          disabled={versions.length === 0}
+                          onClick={() => openVersionPicker(item.platform)}
+                        >
+                          獲取
+                        </button>
+                      </div>
+                    );
                     return (
                       <div key={item.platform} style={downloadRowStyle}>
                         <div style={{ minWidth: 0, flex: 1 }}>
@@ -444,37 +470,22 @@ export default function HomepageSettings() {
                                   ? '暫無已發布版本，可在下方填寫手動連結'
                                   : '暫無已發布版本'}
                           </div>
-                          {item.platform === 'ios' && versions.length === 0 && (
-                            <input
-                              value={form.iosDownloadUrl || ''}
-                              onChange={(e) => update('iosDownloadUrl')(e.target.value)}
-                              placeholder="https://..."
-                              autoComplete="off"
-                              style={{ ...inputStyle, marginTop: '8px' }}
-                              onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
-                              onBlur={(e) => { e.target.style.borderColor = '#374151'; }}
-                            />
+                          {needsManualIosInput && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                              <input
+                                value={form.iosDownloadUrl || ''}
+                                onChange={(e) => update('iosDownloadUrl')(e.target.value)}
+                                placeholder="https://..."
+                                autoComplete="off"
+                                style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: 0 }}
+                                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; }}
+                                onBlur={(e) => { e.target.style.borderColor = '#374151'; }}
+                              />
+                              {actions}
+                            </div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                          {item.url && (
-                            <button
-                              type="button"
-                              style={clearButtonStyle}
-                              onClick={() => setForm((prev) => ({ ...prev, [item.urlKey]: '', [item.versionKey]: '' }))}
-                            >
-                              清除
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            style={{ ...getButtonStyle, opacity: versions.length ? 1 : 0.5, cursor: versions.length ? 'pointer' : 'not-allowed' }}
-                            disabled={versions.length === 0}
-                            onClick={() => openVersionPicker(item.platform)}
-                          >
-                            獲取
-                          </button>
-                        </div>
+                        {!needsManualIosInput && actions}
                       </div>
                     );
                   })}
