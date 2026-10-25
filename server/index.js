@@ -15115,6 +15115,10 @@ const HOMEPAGE_FOOTER_DEFAULTS = Object.freeze({
   brandTitle: "QRTalkie",
   brandSubtitleEn: "Secure Instant Messaging & IoT App",
   brandSubtitleZh: "安全即时通讯与物联网应用",
+  icpNumber: "",
+  icpLink: "",
+  policeNumber: "",
+  policeLink: "",
   address: "台中市西區五權西四街57號3樓",
   email: "qtalkie@gmail.com",
   desktopDownloadUrl: "",
@@ -15156,6 +15160,10 @@ function parseHomepageFooterSetting(raw) {
     brandTitle: text("brandTitle", HOMEPAGE_FOOTER_DEFAULTS.brandTitle, 120) || HOMEPAGE_FOOTER_DEFAULTS.brandTitle,
     brandSubtitleEn: text("brandSubtitleEn", HOMEPAGE_FOOTER_DEFAULTS.brandSubtitleEn, 200),
     brandSubtitleZh: text("brandSubtitleZh", HOMEPAGE_FOOTER_DEFAULTS.brandSubtitleZh, 200),
+    icpNumber: text("icpNumber", HOMEPAGE_FOOTER_DEFAULTS.icpNumber, 120),
+    icpLink: url("icpLink", HOMEPAGE_FOOTER_DEFAULTS.icpLink),
+    policeNumber: text("policeNumber", HOMEPAGE_FOOTER_DEFAULTS.policeNumber, 120),
+    policeLink: url("policeLink", HOMEPAGE_FOOTER_DEFAULTS.policeLink),
     address: text("address", HOMEPAGE_FOOTER_DEFAULTS.address, 300),
     email: normalizeEmail(text("email", HOMEPAGE_FOOTER_DEFAULTS.email, 255)),
     desktopDownloadUrl: url("desktopDownloadUrl", HOMEPAGE_FOOTER_DEFAULTS.desktopDownloadUrl),
@@ -15175,6 +15183,10 @@ function buildHomepageFooterSettings(body) {
     brandTitle: sanitizeString(source.brandTitle, 120),
     brandSubtitleEn: sanitizeString(source.brandSubtitleEn, 200),
     brandSubtitleZh: sanitizeString(source.brandSubtitleZh, 200),
+    icpNumber: sanitizeString(source.icpNumber, 120),
+    icpLink: sanitizeString(source.icpLink, 500),
+    policeNumber: sanitizeString(source.policeNumber, 120),
+    policeLink: sanitizeString(source.policeLink, 500),
     address: sanitizeString(source.address, 300),
     email: sanitizeString(source.email, 255),
     desktopDownloadUrl: sanitizeString(source.desktopDownloadUrl, 500),
@@ -15191,6 +15203,18 @@ function buildHomepageFooterSettings(body) {
   }
   if (settings.email && !isValidEmail(settings.email)) {
     return { error: "請輸入有效的聯絡郵箱。" };
+  }
+  if ((settings.icpNumber && !settings.icpLink) || (!settings.icpNumber && settings.icpLink)) {
+    return { error: "備案號與備案號鏈接需同時填寫。" };
+  }
+  if (settings.icpLink && !/^https?:\/\//i.test(settings.icpLink)) {
+    return { error: "請輸入有效的備案號鏈接（http/https）。" };
+  }
+  if ((settings.policeNumber && !settings.policeLink) || (!settings.policeNumber && settings.policeLink)) {
+    return { error: "公安備案號與公安備案號鏈接需同時填寫。" };
+  }
+  if (settings.policeLink && !/^https?:\/\//i.test(settings.policeLink)) {
+    return { error: "請輸入有效的公安備案號鏈接（http/https）。" };
   }
   for (const key of ["desktopDownloadUrl", "androidDownloadUrl", "iosDownloadUrl", "privacyUrl"]) {
     if (!isSafeHomepageUrl(settings[key])) {

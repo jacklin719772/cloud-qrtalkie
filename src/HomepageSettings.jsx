@@ -6,6 +6,10 @@ const FOOTER_DEFAULTS = {
   brandTitle: 'QRTalkie',
   brandSubtitleEn: 'Secure Instant Messaging & IoT App',
   brandSubtitleZh: '安全即时通讯与物联网应用',
+  icpNumber: '',
+  icpLink: '',
+  policeNumber: '',
+  policeLink: '',
   address: '台中市西區五權西四街57號3樓',
   email: 'qtalkie@gmail.com',
   desktopDownloadUrl: '',
@@ -416,6 +420,10 @@ export default function HomepageSettings() {
                     <Field label="品牌標題" value={form.brandTitle} onChange={update('brandTitle')} placeholder="例如 QRTalkie" />
                     <Field label="英文副標題" value={form.brandSubtitleEn} onChange={update('brandSubtitleEn')} placeholder="Secure Instant Messaging & IoT App" />
                     <Field label="中文副標題" value={form.brandSubtitleZh} onChange={update('brandSubtitleZh')} placeholder="安全即时通讯与物联网应用" />
+                    <Field label="網站備案號（可選）" value={form.icpNumber} onChange={update('icpNumber')} placeholder="例如 遼ICP備2026018334號-1" />
+                    <Field label="備案號鏈接（可選）" value={form.icpLink} onChange={update('icpLink')} placeholder="https://www.icpbacx.com/search/qrtalkie.cn" />
+                    <Field label="公安備案號（可選）" value={form.policeNumber} onChange={update('policeNumber')} placeholder="例如 遼公網安備 21010202000123號" />
+                    <Field label="公安備案號鏈接（可選）" value={form.policeLink} onChange={update('policeLink')} placeholder="https://beian.mps.gov.cn/#/query/webSearch?code=..." />
                   </div>
                 </div>
 

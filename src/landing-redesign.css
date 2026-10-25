@@ -413,6 +413,9 @@ body.qrt-modal-open { overflow: hidden !important; }
 .qrt-footer-col ul li { margin-bottom: 12px; }
 .qrt-footer-col a { color: #e5e7eb; transition: all 0.3s; cursor: pointer; }
 .qrt-footer-col a:hover { color: #a5f3fc; padding-left: 5px; }
+.qrt-footer-icp { margin-top: 8px; }
+.qrt-footer-icp a { color: #9ca3af; font-size: 13px; }
+.qrt-footer-icp a:hover { color: #a5f3fc; padding-left: 0; }
 .qrt-contact-info p { white-space: nowrap; }
 .qrt-download-item { margin-bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; }
 .qrt-download-item:last-child { margin-bottom: 0; }

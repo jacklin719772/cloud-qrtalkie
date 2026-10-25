@@ -134,6 +134,10 @@ const FOOTER_DEFAULTS = {
   brandTitle: 'QRTalkie',
   brandSubtitleEn: 'Secure Instant Messaging & IoT App',
   brandSubtitleZh: '安全即时通讯与物联网应用',
+  icpNumber: '',
+  icpLink: '',
+  policeNumber: '',
+  policeLink: '',
   address: '台中市西區五權西四街57號3樓',
   email: 'qtalkie@gmail.com',
   desktopDownloadUrl: '',
@@ -1454,6 +1458,16 @@ function LandingRedesignContent() {
             <h3>{footerSettings.brandTitle}</h3>
             <p>{footerSettings.brandSubtitleEn}</p>
             <p>{t(footerSettings.brandSubtitleZh)}</p>
+            {footerSettings.icpNumber && footerSettings.icpLink ? (
+              <p className="qrt-footer-icp">
+                <a href={footerSettings.icpLink} target="_blank" rel="noopener noreferrer">{footerSettings.icpNumber}</a>
+              </p>
+            ) : null}
+            {footerSettings.policeNumber && footerSettings.policeLink ? (
+              <p className="qrt-footer-icp">
+                <a href={footerSettings.policeLink} target="_blank" rel="noopener noreferrer">{footerSettings.policeNumber}</a>
+              </p>
+            ) : null}
           </div>
           <div className="qrt-footer-col qrt-quick-links">
             <h4>{t('快速链接')}</h4>
