@@ -24,6 +24,17 @@ const DEFAULT_TIMEOUT_RULES = [
     timeoutMs: 120000,
   },
   {
+    // 單條 SIP 新增/編輯可能包含頭像上傳與 AM/vCard 同步，10 秒默認超時不夠
+    method: 'post',
+    path: '/admin/sip-accounts',
+    timeoutMs: 300000,
+  },
+  {
+    method: 'put',
+    path: '/admin/sip-accounts/:id',
+    timeoutMs: 300000,
+  },
+  {
     // 批量新增逐條呼叫 Flexisip（200 條實測約 3 分鐘），10 秒默認超時不夠
     method: 'post',
     path: '/admin/sip-accounts/batch',

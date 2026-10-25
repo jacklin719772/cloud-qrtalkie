@@ -880,6 +880,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         confirmPassword: '',
         role: account.role || 'user',
         status: account.status || 'active',
+        lifecycle: account.lifecycle || '',
         phone: account.phone || '',
         email: account.email || '',
         company: '',
@@ -1138,13 +1139,14 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     // 编辑模式：检测是否有字段变化（仅比较可编辑字段）
     if (viewMode === 'edit' && editingOriginal) {
-      const changedFields = ['displayName', 'email', 'phone'];
-      const hasChanges = changedFields.some(field => {
+      const changedFields = ['displayName', 'email', 'phone', 'company', 'jobTitle'];
+      const hasFieldChanges = changedFields.some(field => {
         const a = String(editingOriginal[field] ?? '').trim();
         const b = String(formData[field] ?? '').trim();
         return a !== b;
       });
-      if (!hasChanges) {
+      const hasAvatarChanges = Boolean(formAvatar.dataUrl) || formAvatar.removed;
+      if (!hasFieldChanges && !hasAvatarChanges) {
         setFormMessage({ type: 'info', text: '沒有可儲存的修改。' });
         setTimeout(() => setFormMessage({ type: '', text: '' }), 2000);
         return;
@@ -1168,7 +1170,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         await apiClient.put(`/admin/sip-accounts/${formData.id}`, editPayload);
         setFormMessage({ type: 'success', text: '帳號更新成功！' });
       } else {
-        await apiClient.post('/admin/sip-accounts', formData);
+        const createPayload = { ...formData };
+        if (formAvatar.dataUrl) createPayload.avatarDataUrl = formAvatar.dataUrl;
+        await apiClient.post('/admin/sip-accounts', createPayload);
         setFormMessage({ type: 'success', text: '帳號儲存成功！' });
       }
       setTimeout(() => {
@@ -1364,10 +1368,31 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>狀態 <RequiredMark /></span>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                  </select>
+                  {viewMode === 'edit' ? (
+                    <>
+                      <input
+                        value={
+                          {
+                            active: '啟用中',
+                            inventory: '庫存（未分配）',
+                            disabled: '已停用',
+                            expired: '已過期',
+                            recycled: '已回收',
+                            pending: '待審核',
+                            rejected: '已拒絕',
+                          }[formData.lifecycle] || (formData.status === 'active' ? '啟用中' : '已停用')
+                        }
+                        readOnly
+                        style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1f2937', outline: 'none', backgroundColor: '#1a2332', color: '#9ca3af', cursor: 'not-allowed' }}
+                      />
+                      <small style={{ color: '#6b7280', fontSize: '11px' }}>狀態請使用列表中的啟用/停用操作變更。</small>
+                    </>
+                  ) : (
+                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #374151', outline: 'none', backgroundColor: '#1a2332', color: '#e5e7eb' }} onFocus={e => e.target.style.borderColor = '#3b82f6'} onBlur={e => e.target.style.borderColor = '#374151'}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  )}
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <span style={{ fontSize: '14px', fontWeight: 500, color: '#9ca3af' }}>手機號碼</span>

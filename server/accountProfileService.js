@@ -19,7 +19,8 @@ const flexisipDbPool = mariadb.createPool({
 });
 
 export const AVATAR_DIR = "/opt/saas/uploads/avatars";
-export const AVATAR_URL_PREFIX = "https://cloud.qrtalkie.org/api/avatars/";
+const AVATAR_BASE_URL = String(process.env.APP_URL || "").replace(/\/+$/, "");
+export const AVATAR_URL_PREFIX = AVATAR_BASE_URL ? `${AVATAR_BASE_URL}/api/avatars/` : "/api/avatars/";
 
 export function vcardEscape(value) {
   return String(value).replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,");

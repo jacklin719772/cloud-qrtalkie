@@ -9068,6 +9068,7 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
   const status = payload.status || 'active';
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
+  const avatarDataUrl = typeof payload.avatarDataUrl === "string" ? payload.avatarDataUrl : "";
 
   // ── 步骤 1-2: 参数校验 ──
   if (!username || !domain || !password) {
@@ -9260,6 +9261,20 @@ app.post("/api/admin/sip-accounts", requireAdmin, async (request, response) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [Number(userRes.insertId), extUsername, extDomain, extPassword, realm, registrar, outboundProxy, protocol],
       );
+    }
+
+    const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : '';
+    let avatarUrl = '';
+    if (avatarDataUrl) {
+      avatarUrl = await saveAccountAvatar(username, avatarDataUrl);
+      await connection.query(`UPDATE sip_users SET avatar_url = ? WHERE id = ?`, [avatarUrl, Number(userRes.insertId)]);
+    }
+    if (avatarUrl || payload.company !== undefined || payload.jobTitle !== undefined) {
+      const vcardUpdates = { displayName, phone: normalizedPhone };
+      if (avatarUrl) vcardUpdates.photoUrl = avatarUrl;
+      if (payload.company !== undefined) vcardUpdates.company = String(payload.company || '').trim();
+      if (payload.jobTitle !== undefined) vcardUpdates.jobTitle = String(payload.jobTitle || '').trim();
+      await mergeAccountVcard(username, domain, vcardUpdates);
     }
 
     await connection.commit();
@@ -10131,7 +10146,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
   const displayName = String(payload.displayName || "").trim();
   const password = String(payload.password || "");
   const role = payload.role === "admin" ? "admin" : "user";
-  const status = payload.status || 'active';
+  const requestedStatus = String(payload.status || '').trim();
   const phone = String(payload.phone || "").trim();
   const email = String(payload.email || "").trim();
   // 賬號資料卡字段（與 App 聯繫人編輯頁同一存儲；presence 判斷避免誤清空）
@@ -10169,6 +10184,8 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
       connection.release();
       return response.status(409).json({ message: "已經分配給租戶的帳號不允許編輯。" });
     }
+
+    const status = requestedStatus || account.status || 'active';
 
     // 禁止修改 username/domain（仅当与数据库值不同时才拒绝）
     const reqUsername = String(payload.username ?? '').trim();
@@ -10226,7 +10243,7 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 
     // ── Flexisip sync（非 local_only 帳號，且 display_name/email/phone 有变化）──
     const needsFlexisipSync = account.sync_status !== 'local_only' && (
-      changedFields.some(f => ['display_name', 'email', 'phone'].includes(f))
+      changedFields.some(f => ['display_name', 'email', 'phone', 'status'].includes(f))
     );
 
     if (needsFlexisipSync) {
@@ -10253,10 +10270,11 @@ app.put("/api/admin/sip-accounts/:id", requireAdmin, async (request, response) =
 
         try {
           await flexisipUpdateAccount(flexisipAccountId, flexisipPayload);
-          // updateAccount 可能重置状态，根据本地 status 恢复
-          if (account.status === 'active') {
+          // updateAccount 可能重置状态；只有已分配有效权益且本次为 active 才激活
+          const shouldActivate = status === 'active' && Number(lifecycleInfo?.has_active_entitlement) === 1;
+          if (shouldActivate) {
             await flexisipActivateAccount(flexisipAccountId);
-          } else if (account.status === 'inactive' || account.status === 'disabled') {
+          } else {
             await flexisipDeactivateAccount(flexisipAccountId);
           }
         } catch (flexisipErr) {
@@ -26991,7 +27009,7 @@ app.post("/api/external-api/account-avatar", async (request, response) => {
     const fileName = sipAccount + "-" + fileId + ".png";
     writeFileSync(path.join(avatarDir, fileName), buf);
 
-    const avatarUrl = "https://cloud.qrtalkie.org/api/avatars/" + fileName;
+    const avatarUrl = `${String(appUrl).replace(/\/+$/, "")}/api/avatars/` + fileName;
     let connection;
     try {
       connection = await pool.getConnection();
