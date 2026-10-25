@@ -114,7 +114,7 @@ export async function pauseTrialAssignment(connection, { trialId, sipUserId }) {
   if (account?.username) {
     await connection.query(
       "DELETE FROM push_devices WHERE sip_username = ? AND sip_domain = ?",
-      [account.username, account.sip_domain || "sip.qrtalkie.org"],
+      [account.username, account.sip_domain || process.env.SIP_DOMAIN || ""],
     );
   }
   await connection.query(
@@ -217,7 +217,7 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
   if (account?.username) {
     await connection.query(
       "DELETE FROM push_devices WHERE sip_username = ? AND sip_domain = ?",
-      [account.username, account.sip_domain || "sip.qrtalkie.org"],
+      [account.username, account.sip_domain || process.env.SIP_DOMAIN || ""],
     );
   }
   await connection.query(

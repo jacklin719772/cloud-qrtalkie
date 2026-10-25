@@ -2,13 +2,12 @@ import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, use
 import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import apiClient from './apiClient';
-
-const defaultSipDomain = import.meta.env.VITE_WEBRTC_DOMAIN || 'pbx.qrtalkie.org';
+import { getDomainConfig } from './domainConfig';
 
 const emptyWebAccountForm = {
   id: null,
   username: '',
-  domain: defaultSipDomain,
+  domain: '',
   displayName: '',
   password: 'Lin1971wn719772',
   confirmPassword: 'Lin1971wn719772',
@@ -47,6 +46,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const [viewMode, setViewMode] = useState('list');
   const [viewingAccount, setViewingAccount] = useState(null);
   const [formData, setFormData] = useState(emptyWebAccountForm);
+  const [defaultSipDomain, setDefaultSipDomain] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
   const [openDropdownId, setOpenDropdownId] = useState(null);
@@ -188,6 +188,19 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    getDomainConfig().then((config) => {
+      if (active && config.webrtcDomain) setDefaultSipDomain(config.webrtcDomain);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!defaultSipDomain) return;
+    setFormData((prev) => (prev.domain ? prev : { ...prev, domain: defaultSipDomain }));
+  }, [defaultSipDomain]);
+
+  useEffect(() => {
     onModeChange?.(viewMode);
   }, [onModeChange, viewMode]);
 
@@ -299,7 +312,7 @@ const WebAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   }
 
   function resetForm() {
-    setFormData(emptyWebAccountForm);
+    setFormData({ ...emptyWebAccountForm, domain: defaultSipDomain });
     setFormMessage({ type: '', text: '' });
   }
 

@@ -516,13 +516,13 @@ export default function HomepageSettings() {
                     label="主叫方 Web 帳號"
                     value={aiVoiceForm.callerWebAccount}
                     onChange={(value) => setAiVoiceForm((prev) => ({ ...prev, callerWebAccount: value }))}
-                    placeholder="例如 9502@pbx.qrtalkie.org"
+                    placeholder="例如 9502@目前的PBX域名"
                   />
                   <Field
                     label="AI 應答方帳號"
                     value={aiVoiceForm.aiAnswerAccount}
                     onChange={(value) => setAiVoiceForm((prev) => ({ ...prev, aiAnswerAccount: value }))}
-                    placeholder="例如 9999@pbx.qrtalkie.org"
+                    placeholder="例如 9999@目前的PBX域名"
                   />
                   <p style={{ margin: 0, color: '#6b7280', fontSize: '12px' }}>請直接錄入 SIP URI 或帳號。主叫方 Web 帳號用於發起 AI 語音問答；AI 應答方對應目前的 9999 Stasis 分機。</p>
                 </div>

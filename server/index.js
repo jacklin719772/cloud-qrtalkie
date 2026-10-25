@@ -189,8 +189,10 @@ app.set("etag", false);
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const port = Number(process.env.API_PORT || 3001);
 const appUrl = process.env.APP_URL || "http://127.0.0.1:5173";
-const sipDomain = process.env.SIP_DOMAIN || "sip.qrtalkie.org";
-const webrtcDomain = process.env.WEBRTC_DOMAIN || process.env.webrtc_domain || "pbx.qrtalkie.org";
+let sipDomain = "";
+let webrtcDomain = "";
+let sipDomainSource = "unresolved";
+let webrtcDomainSource = "unresolved";
 const callCenterBaseUrl = process.env.CALL_CENTER_BASE_URL || appUrl;
 const accessBaseUrl = process.env.ACCESS_BASE_URL || appUrl;
 const couponCurrencyCodes = new Set(["TWD", "CNY", "USD", "EUR"]);
@@ -208,6 +210,97 @@ function discoverApacheSite(prefix) {
 function hostFromUrl(value) {
   try { return new URL(String(value || "")).hostname; } catch { return ""; }
 }
+function normalizeDomainValue(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  try {
+    if (raw.includes("://")) return new URL(raw).hostname.replace(/\.$/, "");
+  } catch {}
+  return raw.replace(/^\.+|\.+$/g, "").split("/")[0].split(":")[0];
+}
+function deriveBaseDomain(host) {
+  const normalized = normalizeDomainValue(host);
+  if (!normalized || !normalized.includes(".") || normalized === "localhost" || /^\d+(\.\d+){3}$/.test(normalized)) return "";
+  const labels = normalized.split(".");
+  const prefixes = new Set(["cloud", "www", "console", "app", "portal", "sip", "pbx"]);
+  if (labels.length > 1 && prefixes.has(labels[0])) labels.shift();
+  return labels.join(".");
+}
+function deriveDomainFallback(prefix) {
+  const base = deriveBaseDomain(hostFromUrl(appUrl));
+  return base ? `${prefix}.${base}` : "";
+}
+async function discoverFlexisipSipDomain() {
+  try {
+    const rows = await flexisipDbPool.query("SELECT domain FROM spaces ORDER BY id ASC");
+    const domains = [...new Set(rows.map((row) => normalizeDomainValue(row.domain)).filter(Boolean))];
+    if (domains.length === 0) return null;
+    const envValue = normalizeDomainValue(process.env.SIP_DOMAIN);
+    return {
+      domain: envValue && domains.includes(envValue) ? envValue : domains[0],
+      source: "flexisip",
+    };
+  } catch (error) {
+    console.warn("[Domain] Flexisip spaces lookup failed:", error?.message || error);
+    return null;
+  }
+}
+async function resolveDomainConfig() {
+  const envSip = normalizeDomainValue(process.env.SIP_DOMAIN);
+  const envWebrtc = normalizeDomainValue(process.env.WEBRTC_DOMAIN || process.env.webrtc_domain);
+  const flexisip = await discoverFlexisipSipDomain();
+  const discoveredSip = discoverApacheSite("sip");
+  const discoveredPbx = discoverApacheSite("pbx");
+
+  if (flexisip?.domain) {
+    sipDomain = flexisip.domain;
+    sipDomainSource = flexisip.source;
+  } else if (discoveredSip.domain) {
+    sipDomain = normalizeDomainValue(discoveredSip.domain);
+    sipDomainSource = "apache";
+  } else if (envSip) {
+    sipDomain = envSip;
+    sipDomainSource = "env";
+  } else {
+    sipDomain = deriveDomainFallback("sip");
+    sipDomainSource = sipDomain ? "derived" : "unresolved";
+  }
+
+  if (discoveredPbx.domain) {
+    webrtcDomain = normalizeDomainValue(discoveredPbx.domain);
+    webrtcDomainSource = "apache";
+  } else if (envWebrtc) {
+    webrtcDomain = envWebrtc;
+    webrtcDomainSource = "env";
+  } else {
+    webrtcDomain = deriveDomainFallback("pbx");
+    webrtcDomainSource = webrtcDomain ? "derived" : "unresolved";
+  }
+
+  healthSipDomain = sipDomain;
+  console.log(`[Domain] sip=${sipDomain || "(unresolved)"} source=${sipDomainSource} | pbx=${webrtcDomain || "(unresolved)"} source=${webrtcDomainSource}`);
+  if (!sipDomain) {
+    console.error("[Domain] SIP domain unresolved; account creation will be blocked until SIP_DOMAIN is configured.");
+  }
+  if (!webrtcDomain) {
+    console.error("[Domain] PBX/WebRTC domain unresolved; web account creation will be blocked until WEBRTC_DOMAIN is configured.");
+  }
+}
+async function reconcileSystemTenantDomain() {
+  if (!sipDomain) return;
+  const trialDomain = normalizeDomainValue(process.env.TRIAL_SIP_DOMAIN) || sipDomain;
+  try {
+    const result = await pool.query(
+      "UPDATE tenants SET sip_domain = ? WHERE is_system = 1 AND (sip_domain = '' OR sip_domain = 'trial.qrtalkie.org')",
+      [trialDomain]
+    );
+    if (Number(result.affectedRows || 0) > 0) {
+      console.log(`[Domain] system tenant sip_domain set to ${trialDomain}`);
+    }
+  } catch (error) {
+    console.error("[Domain] system tenant domain reconciliation failed:", error?.message || error);
+  }
+}
 const discoveredLime = discoverApacheSite("lime");
 const discoveredFts = discoverApacheSite("fts");
 const discoveredAccount = discoverApacheSite("account");
@@ -218,7 +311,7 @@ const limeDomain = process.env.LIME_DOMAIN || discoveredLime.domain;
 const ftsDomain = process.env.FTS_DOMAIN || discoveredFts.domain;
 const accountDomain = process.env.ACCOUNT_DOMAIN || hostFromUrl(process.env.FLEXISIP_ACCOUNT_MANAGER_BASE_URL || "") || discoveredAccount.domain;
 const sslCheckDomain = process.env.SSL_CHECK_DOMAIN || hostFromUrl(appUrl);
-const healthSipDomain = process.env.SIP_DOMAIN || "";
+let healthSipDomain = "";
 const asteriskLogDir = process.env.ASTERISK_LOG_DIR || "/var/log/asterisk";
 const flexisipLogDir = process.env.FLEXISIP_LOG_DIR || "/var/opt/belledonne-communications/log/flexisip";
 const aiComposeProject = process.env.AI_COMPOSE_PROJECT || "asterisk-ai-voice-agent";
@@ -1677,7 +1770,7 @@ app.post("/api/ai/provider-config", async (request, response) => {
 
 app.post("/api/auth/sip-provision", async (request, response) => {
   const username = String(request.body.username || "").trim().toLowerCase();
-  const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
+  const domain = String(request.body.domain || "").trim() || sipDomain;
 
   if (!username) {
     return response.status(400).json({ success: false, message: "請輸入使用者名稱。" });
@@ -1779,7 +1872,7 @@ app.post("/api/auth/change-password", async (request, response) => {
   const username = String(request.body.username || "").trim().toLowerCase();
   const oldPassword = String(request.body.oldPassword || "").trim();
   const newPassword = String(request.body.newPassword || "").trim();
-  const domain = String(request.body.domain || "").trim() || "sip.qrtalkie.org";
+  const domain = String(request.body.domain || "").trim() || sipDomain;
 
   if (!username || !oldPassword || !newPassword) {
     return response.status(400).json({ success: false, message: "請填寫所有欄位。" });
@@ -9734,7 +9827,7 @@ async function releaseSipAccount(accountId, mode = "reclaim") {
         `DELETE FROM push_devices
          WHERE sip_user_id = ?
             OR (sip_username = ? AND (sip_domain = ? OR sip_domain = '' OR sip_domain IS NULL))`,
-        [target.id, target.username, target.sip_domain || "sip.qrtalkie.org"],
+        [target.id, target.username, target.sip_domain || sipDomain],
       );
 
       await connection.query("DELETE FROM ai_bot_sessions WHERE owner_sip_user_id = ?", [target.id]);
@@ -9754,7 +9847,7 @@ async function releaseSipAccount(accountId, mode = "reclaim") {
 
       await connection.query(
         "DELETE FROM account_contacts_backup WHERE username = ? AND domain = ?",
-        [target.username, target.sip_domain || "sip.qrtalkie.org"],
+        [target.username, target.sip_domain || sipDomain],
       );
 
       await connection.commit();
@@ -14386,7 +14479,7 @@ app.get("/api/tenant/ecard-accounts/:sipUserId/ecard/qrcode", requireAdmin, asyn
 // GET /api/desktop/ecard?username=<sip_username>&domain=<sip_domain>
 app.get("/api/desktop/ecard", async (request, response) => {
   const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
-  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+  const domain = sanitizeString(String(request.query.domain || sipDomain).trim(), 64);
 
   if (!username) {
     return response.status(400).json({ success: false, message: "缺少 username 參數" });
@@ -14416,7 +14509,7 @@ app.get("/api/desktop/ecard", async (request, response) => {
 // 认证模式与 /api/desktop/ecard 一致：username + domain 免认证查询
 app.get("/api/desktop/ecard-settings", async (request, response) => {
   const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
-  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+  const domain = sanitizeString(String(request.query.domain || sipDomain).trim(), 64);
   if (!username) {
     return response.status(400).json({ success: false, message: "缺少 username 參數" });
   }
@@ -14485,7 +14578,7 @@ app.get("/api/desktop/ecard-settings", async (request, response) => {
 // GET /api/desktop/ecard-styles — 租户模板/背景字典（含图片 URL，供设置页渲染）
 app.get("/api/desktop/ecard-styles", async (request, response) => {
   const username = sanitizeString(String(request.query.username || "").trim().toLowerCase(), 64);
-  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org").trim(), 64);
+  const domain = sanitizeString(String(request.query.domain || sipDomain).trim(), 64);
   if (!username) {
     return response.status(400).json({ success: false, message: "缺少 username 參數" });
   }
@@ -15297,6 +15390,11 @@ app.put("/api/admin/settings/homepage-footer", requireAdmin, async (request, res
   } finally {
     if (connection) connection.release();
   }
+});
+
+app.get("/api/public/config", (_request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  return response.json({ sipDomain, webrtcDomain });
 });
 
 app.get("/api/public/settings/homepage-footer", async (request, response) => {
@@ -16249,7 +16347,7 @@ app.get("/api/public/settings/trial-signup", async (request, response) => {
 // GET /api/public/lime/status - 查詢用戶 LIME 加密密鑰是否就緒
 app.get("/api/public/lime/status", async (request, response) => {
   const username = sanitizeString(String(request.query.username || ""), 64);
-  const domain = sanitizeString(String(request.query.domain || "sip.qrtalkie.org"), 64);
+  const domain = sanitizeString(String(request.query.domain || sipDomain), 64);
 
   if (!username) {
     return response.status(400).json({ code: -1, message: "缺少 username 參數" });
@@ -24699,7 +24797,7 @@ app.get("/api/admin/flexisip/remote-accounts-not-local", requireAdmin, async (re
     const localFlexisipIds = new Set();
     for (const r of localRows) {
       if (r.flexisip_account_id) localFlexisipIds.add(String(r.flexisip_account_id));
-      const sipUri = r.sip_uri || `sip:${r.username}@${r.sip_domain || 'sip.qrtalkie.org'}`;
+      const sipUri = r.sip_uri || `sip:${r.username}@${r.sip_domain || sipDomain}`;
       localSipUris.add(sipUri);
     }
 
@@ -24847,8 +24945,8 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
       }
 
       const username = remoteAcc.username || (remoteAcc.sip ? remoteAcc.sip.replace(/^sip:/, '').split('@')[0] : '');
-      const sipDomain = remoteAcc.domain || (remoteAcc.sip ? remoteAcc.sip.split('@')[1] || 'sip.qrtalkie.org' : 'sip.qrtalkie.org');
-      const sipUri = remoteAcc.sip || `sip:${username}@${sipDomain}`;
+      const remoteSipDomain = remoteAcc.domain || (remoteAcc.sip ? remoteAcc.sip.split('@')[1] || sipDomain : sipDomain);
+      const sipUri = remoteAcc.sip || `sip:${username}@${remoteSipDomain}`;
       const activated = !!(remoteAcc.activated === true || remoteAcc.activated === 1 || remoteAcc.activated === '1');
       const accStatus = activated ? 'active' : 'disabled';
       const accSyncStatus = activated ? 'active' : 'disabled';
@@ -24857,11 +24955,11 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
         // Check if already exists locally
         const [existing] = await connection.query(
           `SELECT id FROM sip_users WHERE flexisip_account_id = ? OR sip_uri = ? OR (username = ? AND sip_domain = ?) LIMIT 1`,
-          [String(accId), sipUri, username, sipDomain]
+          [String(accId), sipUri, username, remoteSipDomain]
         );
         if (existing) {
           results.fail++;
-          results.errors.push(`${username}@${sipDomain}: 該帳號已存在於本地資料庫`);
+          results.errors.push(`${username}@${remoteSipDomain}: 該帳號已存在於本地資料庫`);
           continue;
         }
 
@@ -24876,7 +24974,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), NOW())`,
           [
             username,
-            sipDomain,
+            remoteSipDomain,
             hashedPassword,
             remoteAcc.display_name || '',
             remoteAcc.email || '',
@@ -24893,7 +24991,7 @@ app.post("/api/admin/flexisip/import-remote-accounts", requireAdmin, async (requ
         results.success++;
       } catch (err) {
         results.fail++;
-        results.errors.push(`${username}@${sipDomain}: ${err.message || '導入失敗'}`);
+        results.errors.push(`${username}@${remoteSipDomain}: ${err.message || '導入失敗'}`);
       }
     }
 
@@ -26876,7 +26974,7 @@ app.post("/api/external-api/get-staff-info", async (request, response) => {
 // POST /api/external-api/account-avatar — 上传账号头像（JSON base64）
 app.post("/api/external-api/account-avatar", async (request, response) => {
   const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
-  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || sipDomain;
   const imageBase64 = String((request.body && request.body.imageBase64) || "");
   if (!sipAccount) {
     return response.status(400).json({ success: false, message: "Missing sipAccount" });
@@ -26917,7 +27015,7 @@ app.post("/api/external-api/account-avatar", async (request, response) => {
 // GET /api/external-api/account-avatar?sipAccount= — 查询头像 URL（无则 null）
 app.get("/api/external-api/account-avatar", async (request, response) => {
   const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
-  const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+  const domain = sanitizeString(String(request.query.domain || ""), 255) || sipDomain;
   if (!sipAccount) {
     return response.status(400).json({ success: false, message: "Missing sipAccount" });
   }
@@ -26944,7 +27042,7 @@ app.post("/api/external-api/account-avatars", async (request, response) => {
   if (Array.isArray(body.sipAccounts)) {
     sipAccounts = body.sipAccounts.map((x) => sanitizeString(String(x), 120)).filter(Boolean).slice(0, 500);
   }
-  const domain = sanitizeString(String(request.query.domain || body.domain || ""), 255) || "sip.qrtalkie.org";
+  const domain = sanitizeString(String(request.query.domain || body.domain || ""), 255) || sipDomain;
   if (!sipAccounts.length) {
     return response.status(400).json({ success: false, message: "Missing sipAccounts" });
   }
@@ -26973,7 +27071,7 @@ app.post("/api/external-api/account-avatars", async (request, response) => {
 app.post("/api/external-api/account-display-name", async (request, response) => {
   const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
   const displayName = String((request.body && request.body.displayName) || "").trim().slice(0, 120);
-  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+  const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || sipDomain;
   if (!sipAccount) {
     return response.status(400).json({ success: false, message: "Missing sipAccount" });
   }
@@ -27004,7 +27102,7 @@ app.post("/api/external-api/account-display-name", async (request, response) => 
 // GET /api/external-api/account-vcard?sipAccount= — 读取账号 vCard（无则空字段）
 app.get("/api/external-api/account-vcard", async (request, response) => {
 	const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
-	const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+	const domain = sanitizeString(String(request.query.domain || ""), 255) || sipDomain;
 	if (!sipAccount) {
 		return response.status(400).json({ success: false, message: "Missing sipAccount" });
 	}
@@ -27027,7 +27125,7 @@ app.get("/api/external-api/account-vcard", async (request, response) => {
 // POST /api/external-api/account-vcard — 合并式更新账号 vCard（只增）
 app.post("/api/external-api/account-vcard", async (request, response) => {
 	const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
-	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || sipDomain;
 	if (!sipAccount) {
 		return response.status(400).json({ success: false, message: "Missing sipAccount" });
 	}
@@ -27082,7 +27180,7 @@ app.post("/api/external-api/account-vcard", async (request, response) => {
 // POST /api/external-api/account-contacts-backup — 整包覆盖保存
 app.post("/api/external-api/account-contacts-backup", async (request, response) => {
 	const sipAccount = sanitizeString(String(request.query.sipAccount || (request.body && request.body.sipAccount) || ""), 120);
-	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || "sip.qrtalkie.org";
+	const domain = sanitizeString(String(request.query.domain || (request.body && request.body.domain) || ""), 255) || sipDomain;
 	const payload = request.body && request.body.payload;
 	if (!sipAccount) {
 		return response.status(400).json({ success: false, message: "Missing sipAccount" });
@@ -27118,7 +27216,7 @@ app.post("/api/external-api/account-contacts-backup", async (request, response) 
 // GET /api/external-api/account-contacts-backup?sipAccount= — 读取整包（无则空对象）
 app.get("/api/external-api/account-contacts-backup", async (request, response) => {
 	const sipAccount = sanitizeString(String(request.query.sipAccount || ""), 120);
-	const domain = sanitizeString(String(request.query.domain || ""), 255) || "sip.qrtalkie.org";
+	const domain = sanitizeString(String(request.query.domain || ""), 255) || sipDomain;
 	if (!sipAccount) {
 		return response.status(400).json({ success: false, message: "Missing sipAccount" });
 	}
@@ -27785,6 +27883,17 @@ try {
   await ensureFinanceSchema();
 } catch (error) {
   console.error("Failed to ensure finance schema:", error?.message || error);
+}
+
+try {
+  await resolveDomainConfig();
+} catch (error) {
+  console.error("[Domain] resolution failed:", error?.message || error);
+}
+try {
+  await reconcileSystemTenantDomain();
+} catch (error) {
+  console.error("[Domain] system tenant reconciliation failed:", error?.message || error);
 }
 
 const httpServer = app.listen(port, () => {

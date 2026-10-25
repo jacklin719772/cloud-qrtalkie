@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo, useRef, forwardRef, useImperativeH
 import { createPortal } from 'react-dom';
 import { Download, Upload, Plus, UserPlus, Trash2, UserMinus, Search, RefreshCw } from 'lucide-react';
 import apiClient from './apiClient';
-
-const defaultSipDomain = import.meta.env.VITE_SIP_DOMAIN || import.meta.env.SIP_DOMAIN || 'sip.qrtalkie.org';
+import { getDomainConfig } from './domainConfig';
 
 const emptyAccountForm = {
   id: null,
   username: '',
   displayName: '',
-  domain: defaultSipDomain,
+  domain: '',
   password: '12345678',
   confirmPassword: '12345678',
   role: 'user',
@@ -53,6 +52,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   const dropdownMenuRef = useRef(null);
 
   const [formData, setFormData] = useState(emptyAccountForm);
+  const [defaultSipDomain, setDefaultSipDomain] = useState('');
   const [formAvatar, setFormAvatar] = useState({ preview: '', dataUrl: '', removed: false });
   const [isSaving, setIsSaving] = useState(false);
   const [formMessage, setFormMessage] = useState({ type: '', text: '' });
@@ -299,7 +299,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   useImperativeHandle(ref, () => ({
     returnToList: () => {
       setViewMode('list');
-      setFormData(emptyAccountForm);
+      setFormData({ ...emptyAccountForm, domain: defaultSipDomain });
       setFormAvatar({ preview: '', dataUrl: '', removed: false });
       setFormMessage({ type: '', text: '' });
       setImportStep(1);
@@ -312,7 +312,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     handleExportCsv,
     startImport: () => { setViewMode('import'); setImportStep(1); setParsedData([]); },
     startServerImport,
-    startAdd: () => { setViewMode('add'); setFormData(emptyAccountForm); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); },
+    startAdd: () => { setViewMode('add'); setFormData({ ...emptyAccountForm, domain: defaultSipDomain }); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); },
     startBatchAdd: openBatchAddModal,
     openReclaimDialog,
     handleBatchUnassign,
@@ -326,6 +326,19 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
   useEffect(() => {
     loadAccounts();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    getDomainConfig().then((config) => {
+      if (active && config.sipDomain) setDefaultSipDomain(config.sipDomain);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!defaultSipDomain) return;
+    setFormData((prev) => (prev.domain ? prev : { ...prev, domain: defaultSipDomain }));
+  }, [defaultSipDomain]);
 
   async function loadAccounts() {
     setIsLoading(true);
@@ -679,7 +692,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
         setFormMessage({ type: 'success', text: '帳號建立成功！' });
         setTimeout(async () => {
           setViewMode('list');
-          setFormData(emptyAccountForm);
+          setFormData({ ...emptyAccountForm, domain: defaultSipDomain });
           setFormAvatar({ preview: '', dataUrl: '', removed: false });
           setEditingOriginal(null);
           await loadAccounts();
@@ -1160,7 +1173,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
       }
       setTimeout(() => {
         setViewMode('list');
-        setFormData(emptyAccountForm);
+        setFormData({ ...emptyAccountForm, domain: defaultSipDomain });
         setFormAvatar({ preview: '', dataUrl: '', removed: false });
         setFormMessage({ type: '', text: '' });
         loadAccounts();
@@ -1419,7 +1432,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             </div>
             <div style={{ flexShrink: 0, padding: '16px 24px', borderTop: '1px solid #1f2937', backgroundColor: '#1a2332', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {formMessage.text && <p style={{ marginRight: 'auto', margin: 0, alignSelf: 'center', fontSize: '11px', color: formMessage.type === 'error' ? '#ef4444' : '#10b981' }}>{formMessage.text}</p>}
-              <button type="button" onClick={() => { setViewMode('list'); setFormData(emptyAccountForm); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
+              <button type="button" onClick={() => { setViewMode('list'); setFormData({ ...emptyAccountForm, domain: defaultSipDomain }); setFormAvatar({ preview: '', dataUrl: '', removed: false }); setFormMessage({ type: '', text: '' }); }} disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#1a2332', color: '#e5e7eb', color: '#9ca3af', border: '1px solid #1f2937', fontSize: '11px', fontWeight: 500 }}>取消</button>
               <button type="submit" disabled={isSaving} style={{ padding: '8px 24px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', fontSize: '11px', fontWeight: 500 }}>{isSaving ? '儲存中...' : (viewMode === 'edit' ? '儲存修改' : '提交登記')}</button>
             </div>
           </form>

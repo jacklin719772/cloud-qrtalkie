@@ -51,7 +51,7 @@ export function normalizeAccount(value) {
 }
 
 export function normalizeDomain(value) {
-  const domain = String(value ?? (process.env.FLEXISIP_DEFAULT_DOMAIN || "sip.qrtalkie.org")).trim().toLowerCase();
+  const domain = String(value ?? (process.env.SIP_DOMAIN || process.env.FLEXISIP_DEFAULT_DOMAIN || "")).trim().toLowerCase();
   if (!DOMAIN_PATTERN.test(domain)) {
     throw new SipAccountStatusError("domain 格式不合法。", { code: "SIP_DOMAIN_INVALID" });
   }

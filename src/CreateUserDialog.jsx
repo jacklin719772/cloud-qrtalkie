@@ -16,7 +16,7 @@ const CreateUserDialog = forwardRef((props, ref) => {
         </div>
         <div className="user-form-grid">
           <label><span className="field-label">使用者名稱 <b>*</b></span><input id="new-username" placeholder="使用者名稱" required /></label>
-          <label><span className="field-label">域名</span><select id="sip-domain-select"><option>sip.qrtalkie.org</option></select></label>
+          <label><span className="field-label">域名</span><select id="sip-domain-select"><option value="">自動取得</option></select></label>
           <label><span className="field-label">顯示名稱</span><input placeholder="John Doe" /></label>
           <span></span>
           <label><span className="field-label">密碼 <b>*</b></span><input type="password" placeholder="密碼" required /><small>填寫以變更</small></label>

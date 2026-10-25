@@ -219,7 +219,7 @@ export async function getRegistrationStatusForAccounts(accounts, options = {}) {
   const normalizedAccounts = accounts.map((account) => ({
     ...account,
     username: String(account.username || "").trim(),
-    domain: String(account.domain || options.domain || "sip.qrtalkie.org").trim().toLowerCase(),
+    domain: String(account.domain || options.domain || process.env.SIP_DOMAIN || "").trim().toLowerCase(),
   }));
   const nowSeconds = Math.floor(Date.now() / 1000);
   const keyByAccount = new Map();
@@ -303,7 +303,7 @@ async function scanRegistrarAccountKeys() {
 
 // 帳號清單以 DB 為準時使用：一次掃描 Redis，回傳 username@domain → 註冊狀態。
 export async function getRegistrarStatusMap(options = {}) {
-  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const defaultDomain = String(options.domain || process.env.SIP_DOMAIN || "").trim().toLowerCase();
   const nowSeconds = Math.floor(Date.now() / 1000);
   const accountKeys = await scanRegistrarAccountKeys();
   const redisResults = await readRegistrarKeysBatched(accountKeys);
@@ -328,7 +328,7 @@ export async function getRegistrarStatusMap(options = {}) {
 }
 
 export async function discoverAccountsFromRedis(options = {}) {
-  const defaultDomain = String(options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const defaultDomain = String(options.domain || process.env.SIP_DOMAIN || "").trim().toLowerCase();
   const includeContacts = Boolean(options.includeContacts);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
@@ -368,7 +368,7 @@ export async function discoverAccountsFromRedis(options = {}) {
 
 export async function getAccountRegistrationDetail(username, domain, options = {}) {
   const normalizedUsername = String(username || "").trim();
-  const normalizedDomain = String(domain || options.domain || "sip.qrtalkie.org").trim().toLowerCase();
+  const normalizedDomain = String(domain || options.domain || process.env.SIP_DOMAIN || "").trim().toLowerCase();
   if (!normalizedUsername || !DOMAIN_PATTERN.test(normalizedDomain)) {
     throw new FlexisipRegistrationStatusError("Invalid account detail input.", {
       code: "INVALID_ACCOUNT_DETAIL_INPUT",

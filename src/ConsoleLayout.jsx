@@ -1764,7 +1764,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128203; 欄位說明</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — SIP 帳號的登入名稱，用於 SIP 註冊。新增後不可修改。（必填，純數字）</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，預設為 sip.qrtalkie.org。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>域名</strong> — SIP 服務域名，依目前部署自動取得。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名</strong> — 來電顯示的名稱，預設與用戶名相同。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>密碼</strong> — SIP 註冊密碼，至少 6 個字元。新增時必填，編輯時留空則不修改。（批量新增與導入服務器賬號預設密碼均為 12345678，導入路徑可透過環境變數 SIP_IMPORT_DEFAULT_PASSWORD 自訂）</li>
                   <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
@@ -1834,7 +1834,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>用戶名</strong> — WebRTC 分機號，純數字，建立後不可修改。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>顯示名稱</strong> — 來電顯示名稱，顯示在被呼叫設備上。可透過編輯功能修改。</li>
-                  <li><strong style={{ color: "#e5e7eb" }}>Domain</strong> — SIP 域名，預設為 pbx.qrtalkie.org。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>Domain</strong> — SIP 域名，依目前部署自動取得。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>角色</strong> — User（一般用戶）或 Admin（管理員）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>狀態</strong> — Active（啟用）或 Inactive（停用）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>租戶</strong> — 該帳號所屬的租戶，未分配時顯示「未分配」。</li>
