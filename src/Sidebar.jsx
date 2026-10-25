@@ -11,6 +11,7 @@ import {
   RadioTower,
   Settings,
   Shield,
+  ShieldAlert,
   TicketPercent,
   UserCheck,
   Package,
@@ -304,6 +305,16 @@ export default function Sidebar({ currentView, isCollapsed, onViewChange, onLogo
           >
             <Download className="nav-icon" size={20} aria-hidden="true" />
             {!isCollapsed && <span>App 版本管理</span>}
+          </button>
+          <button
+            className={`nav-item ${currentView === 'system-initialization' ? 'active' : ''}`}
+            type="button"
+            title={isCollapsed ? '數據初始化' : undefined}
+            aria-label="數據初始化"
+            onClick={() => onViewChange('system-initialization')}
+          >
+            <ShieldAlert className="nav-icon" size={20} aria-hidden="true" />
+            {!isCollapsed && <span>數據初始化</span>}
           </button>
         </>)}
 

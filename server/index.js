@@ -35,6 +35,21 @@ import { queueLoginEmailChangeCode, queuePasswordResetEmail, queueVerificationEm
 import { startScheduler } from "./scheduler.js";
 import { ensureBackupSchema, startBackup, listBackups, getBackupById, getBackupFilePath, deleteBackup, getBackupSettings } from "./backupService.js";
 import {
+  verifySystemInitializationAdmin,
+  buildSystemInitializationPreview,
+  startInitializationBackup,
+  getInitializationBackupJob,
+  getInitializationBackupJobByDownloadToken,
+  publicInitializationBackupJob,
+  markInitializationBackupDownloaded,
+  deleteInitializationBackupJob,
+  startSystemInitialization,
+  getSystemInitializationRun,
+  deleteInitializationBackupFile,
+  isSystemInitializationRunning,
+  getSystemInitializationState,
+} from "./systemInitializationService.js";
+import {
   ensureTenantSubAdminSchema,
   listTenantSubAdmins,
   createTenantSubAdmin,
@@ -236,6 +251,21 @@ app.use((request, response, next) => {
   response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (request.method === "OPTIONS") return response.sendStatus(204);
   return next();
+});
+app.use((request, response, next) => {
+  if (!isSystemInitializationRunning()) return next();
+  if (request.path.startsWith("/api/platform/system-initialization/")) return next();
+  const businessPaths = [
+    "/api/",
+    "/community-images",
+    "/call-center-images",
+    "/ecard-images",
+    "/ai-attachments",
+    "/payment-proofs",
+    "/avatars",
+  ];
+  if (!businessPaths.some((prefix) => request.path.startsWith(prefix))) return next();
+  return response.status(503).json({ success: false, message: "系統正在初始化，請稍後再試。" });
 });
 app.use("/payment-proofs", express.static(paymentProofsDir));
 app.use("/payment-method-icons", express.static(paymentMethodIconsDir));
@@ -21410,6 +21440,138 @@ app.delete("/api/platform/backups/:id", requireAdmin, async (request, response) 
     return response.json({ success: true, message: "備份已刪除。" });
   } catch (error) {
     return response.status(error?.statusCode || 500).json({ success: false, message: error?.message || "刪除備份失敗。" });
+  }
+});
+
+// ── 數據初始化（僅限指定超級管理員；只清理 SaaS 資料） ──
+function requireInitializationSuperAdmin(request, response, next) {
+  if (request.admin.accountType !== "platform" || request.admin.platformRole !== "super_admin") {
+    return response.status(403).json({ success: false, message: "只有平台超級管理員可以執行數據初始化。" });
+  }
+  if (String(request.admin.email || "").trim().toLowerCase() !== getSystemInitializationState().targetAdminEmail) {
+    return response.status(403).json({ success: false, message: "只有指定的初始化超級管理員可以執行數據初始化。" });
+  }
+  return next();
+}
+
+function sendInitializationError(response, error, fallbackMessage) {
+  return response.status(error?.statusCode || 500).json({
+    success: false,
+    code: error?.code || "SYSTEM_INIT_FAILED",
+    message: error?.message || fallbackMessage,
+  });
+}
+
+app.get("/api/platform/system-initialization", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  return response.json({ success: true, data: getSystemInitializationState() });
+});
+
+app.get("/api/platform/system-initialization/preview", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  try {
+    const preview = await buildSystemInitializationPreview();
+    return response.json({ success: true, data: { preview } });
+  } catch (error) {
+    console.error("[SystemInit] preview failed:", error?.message || error);
+    return sendInitializationError(response, error, "讀取初始化預覽失敗。");
+  }
+});
+
+app.post("/api/platform/system-initialization/verify", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  try {
+    const result = await verifySystemInitializationAdmin({
+      email: request.body?.email,
+      password: request.body?.password,
+    });
+    return response.json({ success: true, data: result });
+  } catch (error) {
+    return sendInitializationError(response, error, "驗證失敗。");
+  }
+});
+
+app.post("/api/platform/system-initialization/backups", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  try {
+    const job = await startInitializationBackup({
+      adminId: request.admin.id,
+      token: request.body?.token,
+    });
+    return response.status(202).json({ success: true, data: job, message: "初始化備份已開始。" });
+  } catch (error) {
+    return sendInitializationError(response, error, "建立初始化備份失敗。");
+  }
+});
+
+app.get("/api/platform/system-initialization/backups/:id", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  const job = getInitializationBackupJob(request.params.id);
+  if (!job || Number(job.adminId) !== Number(request.admin.id)) {
+    return response.status(404).json({ success: false, message: "初始化備份不存在。" });
+  }
+  return response.json({ success: true, data: publicInitializationBackupJob(job) });
+});
+
+app.delete("/api/platform/system-initialization/backups/:id", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  try {
+    await deleteInitializationBackupJob({ adminId: request.admin.id, id: request.params.id });
+    return response.json({ success: true, message: "初始化備份已刪除。" });
+  } catch (error) {
+    return sendInitializationError(response, error, "刪除初始化備份失敗。");
+  }
+});
+
+app.get("/api/platform/system-initialization/backups/:id/download", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  const job = getInitializationBackupJob(request.params.id);
+  if (!job || Number(job.adminId) !== Number(request.admin.id)) {
+    return response.status(404).json({ success: false, message: "初始化備份不存在。" });
+  }
+  if (job.status !== "success" || !existsSync(job.filePath)) {
+    return response.status(404).json({ success: false, message: "初始化備份檔案不存在或尚未完成。" });
+  }
+  response.setHeader("Cache-Control", "no-store");
+  const isFullDownload = request.method === "GET" && !request.headers.range;
+  return response.download(job.filePath, job.filename, (error) => {
+    if (!error && isFullDownload) markInitializationBackupDownloaded(job.id);
+  });
+});
+
+app.get("/api/platform/system-initialization/download/:token", async (request, response) => {
+  const job = getInitializationBackupJobByDownloadToken(request.params.token);
+  if (!job || job.status !== "success" || !existsSync(job.filePath)) {
+    return response.status(404).json({ success: false, message: "初始化備份不存在或下載連結已過期。" });
+  }
+  response.setHeader("Cache-Control", "no-store");
+  const isFullDownload = request.method === "GET" && !request.headers.range;
+  return response.download(job.filePath, job.filename, (error) => {
+    if (!error && isFullDownload) markInitializationBackupDownloaded(job.id);
+  });
+});
+
+app.post("/api/platform/system-initialization/execute", requireAdmin, requireInitializationSuperAdmin, async (request, response) => {
+  try {
+    const run = await startSystemInitialization({
+      adminId: request.admin.id,
+      email: request.admin.email,
+      token: request.body?.token,
+      backupId: request.body?.backupId,
+      confirmationText: request.body?.confirmationText,
+      backupConfirmed: Boolean(request.body?.backupConfirmed),
+    });
+    return response.status(202).json({ success: true, data: run, message: "數據初始化已開始。" });
+  } catch (error) {
+    return sendInitializationError(response, error, "啟動數據初始化失敗。");
+  }
+});
+
+app.get("/api/platform/system-initialization/runs/:runId", async (request, response) => {
+  const run = getSystemInitializationRun(request.params.runId, request.query?.token);
+  if (!run) return response.status(404).json({ success: false, message: "初始化記錄不存在。" });
+  return response.json({ success: true, data: run });
+});
+
+app.delete("/api/platform/system-initialization/runs/:runId/backup", async (request, response) => {
+  try {
+    await deleteInitializationBackupFile(request.params.runId, request.query?.token);
+    return response.json({ success: true, message: "伺服器上的初始化備份已刪除。" });
+  } catch (error) {
+    return sendInitializationError(response, error, "刪除初始化備份失敗。");
   }
 });
 

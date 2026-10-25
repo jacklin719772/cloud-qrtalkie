@@ -18,8 +18,10 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BACKUP_ROOT = process.env.BACKUP_DIR || "/opt/backups/qrtalkie";
 const PASSWORD_PREFIX = process.env.BACKUP_PASSWORD_PREFIX || "";
 const RETENTION_DAYS = Math.max(1, Number(process.env.BACKUP_RETENTION_DAYS || 7));
@@ -30,6 +32,19 @@ const SYSTEM_DATABASES = new Set(["information_schema", "performance_schema", "s
 
 let activeBackup = null;
 let scheduledTimer = null;
+let backupSuspended = false;
+
+export function setBackupSuspended(value) {
+  backupSuspended = Boolean(value);
+}
+
+export function isBackupActive() {
+  return Boolean(activeBackup);
+}
+
+export function getBackupPasswordForDate(passwordDate) {
+  return backupPassword(passwordDate);
+}
 
 function getTimeParts(date = new Date()) {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -207,116 +222,187 @@ async function sha256File(filePath) {
   return hash.digest("hex");
 }
 
-async function runBackupJob(record) {
-  const tempDir = await mkdtemp(path.join(BACKUP_ROOT, ".tmp-"));
-  const buildDir = path.join(tempDir, "build");
+async function buildBackupPayload({ buildDir, version, filename, includeSaasData = false }) {
   const databasesDir = path.join(buildDir, "databases");
   const configsDir = path.join(buildDir, "configs");
-  const finalTmpZip = path.join(BACKUP_ROOT, `.${record.filename}`);
-  const finalZip = path.join(BACKUP_ROOT, record.filename);
-  let connection;
-  try {
-    await mkdir(databasesDir, { recursive: true });
-    await mkdir(configsDir, { recursive: true });
-    connection = await pool.getConnection();
+  await mkdir(databasesDir, { recursive: true });
+  await mkdir(configsDir, { recursive: true });
 
-    const databases = await listDatabases();
+  const connection = await pool.getConnection();
+  let databases = [];
+  try {
+    databases = await listDatabases();
     for (const database of databases) {
       await dumpDatabase(connection, database, path.join(databasesDir, `${database}.sql.gz`));
     }
+  } finally {
+    connection.release();
+  }
 
-    // Asterisk：完整配置目录（含账号配置、证书、keys 等）
-    await tarPaths(path.join(configsDir, "asterisk-config.tar.gz"), [
-      "etc/asterisk",
-      "etc/freepbx.conf",
-      "etc/amportal.conf",
-    ]);
-    // Flexisip：主配置、APNs/Firebase 凭证等
-    await tarPaths(path.join(configsDir, "flexisip-config.tar.gz"), ["etc/flexisip"]);
-    // 系统相关配置
-    await tarPaths(path.join(configsDir, "system-config.tar.gz"), [
-      "etc/apache2",
-      "etc/mysql",
-      "etc/redis/redis.conf",
-      "etc/turnserver.conf",
-      "etc/default/coturn",
-      "etc/mosquitto",
-      "etc/letsencrypt",
-      "etc/systemd/system",
-      "etc/cron.d",
-      "etc/crontab",
-    ]);
-    // Lime / File Transfer Server / Account Manager 配置与 SaaS 环境
-    await tarPaths(path.join(configsDir, "apps-config.tar.gz"), [
-      "opt/belledonne-communications/share/lime-server",
-      "opt/belledonne-communications/share/flexisip-http-file-transfer-server",
-      "etc/flexisip-account-manager",
-      "opt/belledonne-communications/share/flexisip-account-manager/flexiapi/config",
-      "opt/saas/.env",
-      "opt/saas/.env.example",
-      "opt/saas/package.json",
-      "opt/saas/package-lock.json",
-    ]);
+  // Asterisk：完整配置目录（含账号配置、证书、keys 等）
+  await tarPaths(path.join(configsDir, "asterisk-config.tar.gz"), [
+    "etc/asterisk",
+    "etc/freepbx.conf",
+    "etc/amportal.conf",
+  ]);
+  // Flexisip：主配置、APNs/Firebase 凭证等
+  await tarPaths(path.join(configsDir, "flexisip-config.tar.gz"), ["etc/flexisip"]);
+  // 系统相关配置
+  await tarPaths(path.join(configsDir, "system-config.tar.gz"), [
+    "etc/apache2",
+    "etc/mysql",
+    "etc/redis/redis.conf",
+    "etc/turnserver.conf",
+    "etc/default/coturn",
+    "etc/mosquitto",
+    "etc/letsencrypt",
+    "etc/systemd/system",
+    "etc/cron.d",
+    "etc/crontab",
+  ]);
+  // Lime / File Transfer Server / Account Manager 配置与 SaaS 环境
+  const projectRel = path.relative("/", PROJECT_ROOT).replace(/\\/g, "/");
+  await tarPaths(path.join(configsDir, "apps-config.tar.gz"), [
+    "opt/belledonne-communications/share/lime-server",
+    "opt/belledonne-communications/share/flexisip-http-file-transfer-server",
+    "etc/flexisip-account-manager",
+    "opt/belledonne-communications/share/flexisip-account-manager/flexiapi/config",
+    `${projectRel}/.env`,
+    `${projectRel}/.env.example`,
+    `${projectRel}/package.json`,
+    `${projectRel}/package-lock.json`,
+  ]);
 
-    // 所有環境文件：/opt、/etc 下的 .env/*.env，以及 /etc/default、profile 等
-    const envFiles = [...new Set([
-      ...(await collectEnvFiles("/opt", 5)),
-      ...(await collectEnvFiles("/etc", 3)),
-      "etc/default",
-      "etc/environment",
-      "etc/profile",
-      "etc/profile.d",
-      "etc/bash.bashrc",
-    ])];
-    await tarPaths(path.join(configsDir, "env-files.tar.gz"), envFiles);
+  // 所有環境文件：/opt、/etc 下的 .env/*.env，以及 /etc/default、profile 等
+  const envFiles = [...new Set([
+    ...(await collectEnvFiles("/opt", 5)),
+    ...(await collectEnvFiles("/etc", 3)),
+    "etc/default",
+    "etc/environment",
+    "etc/profile",
+    "etc/profile.d",
+    "etc/bash.bashrc",
+  ])];
+  await tarPaths(path.join(configsDir, "env-files.tar.gz"), envFiles);
 
-    // AI Docker：compose YAML、config/*.yaml、.env*、Dockerfile
-    const aiConfigPaths = await collectAiDockerConfig();
-    await tarPaths(path.join(configsDir, "ai-docker-config.tar.gz"), aiConfigPaths);
+  // AI Docker：compose YAML、config/*.yaml、.env*、Dockerfile
+  const aiConfigPaths = await collectAiDockerConfig();
+  await tarPaths(path.join(configsDir, "ai-docker-config.tar.gz"), aiConfigPaths);
 
-    // Redis 注册缓存（能通过 redis-cli 导出则导出，否则复制现有 RDB）
-    const redisDump = path.join(configsDir, "redis-dump.rdb");
-    try {
-      await run("redis-cli", ["--rdb", redisDump]);
-    } catch {
-      try { await copyFile("/var/lib/redis/dump.rdb", redisDump); } catch {}
-    }
+  // Redis 注册缓存（能通过 redis-cli 导出则导出，否则复制现有 RDB）
+  const redisDump = path.join(configsDir, "redis-dump.rdb");
+  try {
+    await run("redis-cli", ["--rdb", redisDump]);
+  } catch {
+    try { await copyFile("/var/lib/redis/dump.rdb", redisDump); } catch {}
+  }
 
-    const files = await collectFiles(buildDir);
-    let saasCommit = "";
-    try { saasCommit = (await run("git", ["-C", "/opt/saas", "rev-parse", "HEAD"])).stdout.trim(); } catch {}
-    let mariadbVersion = "";
-    try { mariadbVersion = (await run("mariadb-dump", ["--version"])).stdout.trim(); } catch {}
-    let asteriskVersion = "";
-    try { asteriskVersion = (await run("asterisk", ["-V"])).stdout.trim(); } catch {}
+  if (includeSaasData) {
+    const saasDataDir = path.join(buildDir, "saas-data");
+    await mkdir(saasDataDir, { recursive: true });
+    await tarPaths(path.join(saasDataDir, "assets.tar.gz"), [`${projectRel}/assets`]);
+    await tarPaths(path.join(saasDataDir, "uploads.tar.gz"), [`${projectRel}/uploads`]);
+    await writeFile(
+      path.join(buildDir, "RESTORE.txt"),
+      [
+        "QRTalkie 初始化前備份還原步驟",
+        "",
+        "1. 解壓備份（密碼 = BACKUP_PASSWORD_PREFIX + 檔名中的日期 YYYYMMDD）：",
+        "   unzip -P <密碼> <備份檔名>.zip -d /root/qrtalkie-restore",
+        "2. 停止服務：systemctl stop saas",
+        "3. 還原資料庫：cd /root/qrtalkie-restore && for f in databases/*.sql.gz; do zcat \"$f\" | mariadb; done",
+        "4. 還原 SaaS 檔案：tar -xzf saas-data/assets.tar.gz -C / && tar -xzf saas-data/uploads.tar.gz -C /",
+        "5. 如需還原系統設定：tar -xzf configs/system-config.tar.gz -C /（會覆寫 /etc 下對應設定）",
+        "6. 啟動服務：systemctl start saas",
+        "7. 校驗檔案：sha256sum -c SHA256SUMS",
+        "",
+        "manifest.json 內含備份時的資料庫清單、檔案清單與版本資訊。",
+      ].join("\n") + "\n",
+      { mode: 0o600 }
+    );
+  }
 
-    const manifest = {
-      version: record.version,
-      filename: record.filename,
-      createdAt: new Date().toISOString(),
-      timezone: TIMEZONE,
-      databases,
-      files,
-      versions: { saasCommit, mariadbVersion, asteriskVersion },
-    };
-    await writeFile(path.join(buildDir, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
-    const sums = [];
-    for (const file of files) sums.push(`${await sha256File(path.join(buildDir, file.path))}  ${file.path}`);
-    await writeFile(path.join(buildDir, "SHA256SUMS"), sums.join("\n") + "\n", { mode: 0o600 });
+  const files = await collectFiles(buildDir);
+  let saasCommit = "";
+  try { saasCommit = (await run("git", ["-C", PROJECT_ROOT, "rev-parse", "HEAD"])).stdout.trim(); } catch {}
+  let mariadbVersion = "";
+  try { mariadbVersion = (await run("mariadb-dump", ["--version"])).stdout.trim(); } catch {}
+  let asteriskVersion = "";
+  try { asteriskVersion = (await run("asterisk", ["-V"])).stdout.trim(); } catch {}
 
-    const password = backupPassword(record.password_date);
+  const manifest = {
+    version,
+    filename,
+    createdAt: new Date().toISOString(),
+    timezone: TIMEZONE,
+    includeSaasData,
+    databases,
+    files,
+    versions: { saasCommit, mariadbVersion, asteriskVersion },
+  };
+  await writeFile(path.join(buildDir, "manifest.json"), JSON.stringify(manifest, null, 2), { mode: 0o600 });
+  const sums = [];
+  for (const file of files) sums.push(`${await sha256File(path.join(buildDir, file.path))}  ${file.path}`);
+  await writeFile(path.join(buildDir, "SHA256SUMS"), sums.join("\n") + "\n", { mode: 0o600 });
+
+  return { databases, files, manifest };
+}
+
+export async function createFullBackupArchive({
+  outputDir,
+  filename,
+  version,
+  passwordDate,
+  includeSaasData = false,
+}) {
+  if (!PASSWORD_PREFIX) {
+    const error = new Error("備份下載密碼前綴未配置（BACKUP_PASSWORD_PREFIX）。");
+    error.code = "BACKUP_PASSWORD_NOT_CONFIGURED";
+    throw error;
+  }
+  const safeName = path.basename(String(filename || ""));
+  if (!safeName || safeName !== filename || !safeName.endsWith(".zip")) {
+    throw new Error("備份檔名不合法。");
+  }
+  const targetDir = path.resolve(outputDir);
+  await mkdir(targetDir, { recursive: true, mode: 0o700 });
+  const tempDir = await mkdtemp(path.join(targetDir, ".tmp-"));
+  const buildDir = path.join(tempDir, "build");
+  const finalTmpZip = path.join(targetDir, `.${safeName}`);
+  const finalZip = path.join(targetDir, safeName);
+  try {
+    await mkdir(buildDir, { recursive: true });
+    await buildBackupPayload({ buildDir, version, filename: safeName, includeSaasData });
+    const password = backupPassword(passwordDate);
     await run("zip", ["-q", "-r", "-P", password, finalTmpZip, "."], { cwd: buildDir });
     await rename(finalTmpZip, finalZip);
-
     const zipStat = await stat(finalZip);
     const sha256 = await sha256File(finalZip);
+    return { filePath: finalZip, filename: safeName, sizeBytes: zipStat.size, sha256, password };
+  } finally {
+    try { await rm(tempDir, { recursive: true, force: true }); } catch {}
+    try { await unlink(finalTmpZip); } catch {}
+  }
+}
+
+async function runBackupJob(record) {
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const result = await createFullBackupArchive({
+      outputDir: BACKUP_ROOT,
+      filename: record.filename,
+      version: record.version,
+      passwordDate: record.password_date,
+      includeSaasData: false,
+    });
     await connection.query(
       "UPDATE backup_records SET status='success', size_bytes=?, sha256=?, finished_at=NOW(), error_message=NULL WHERE id=?",
-      [zipStat.size, sha256, record.id]
+      [result.sizeBytes, result.sha256, record.id]
     );
     await pruneOldBackups(connection, record.id);
-    console.log(`[Backup] success: ${record.filename} (${zipStat.size} bytes)`);
-    return { ...record, status: "success", size_bytes: zipStat.size, sha256 };
+    console.log(`[Backup] success: ${record.filename} (${result.sizeBytes} bytes)`);
+    return { ...record, status: "success", size_bytes: result.sizeBytes, sha256: result.sha256 };
   } catch (error) {
     try {
       if (connection) {
@@ -330,8 +416,6 @@ async function runBackupJob(record) {
     throw error;
   } finally {
     if (connection) connection.release();
-    try { await rm(tempDir, { recursive: true, force: true }); } catch {}
-    try { await unlink(finalTmpZip); } catch {}
   }
 }
 
@@ -349,6 +433,12 @@ async function pruneOldBackups(connection, keepId) {
 
 export async function startBackup({ type = "manual", adminId = null } = {}) {
   await ensureBackupSchema();
+  if (backupSuspended) {
+    const error = new Error("系統初始化進行中，暫停備份。");
+    error.code = "BACKUP_SUSPENDED";
+    error.statusCode = 409;
+    throw error;
+  }
   if (activeBackup) {
     const error = new Error("備份正在進行中，請稍後再試。");
     error.code = "BACKUP_IN_PROGRESS";
@@ -439,7 +529,7 @@ export async function deleteBackup(id) {
 }
 
 export async function runScheduledBackupIfDue() {
-  if (!ENABLED) return;
+  if (!ENABLED || backupSuspended) return;
   try {
     await ensureBackupSchema();
     const parts = getTimeParts();

@@ -48,6 +48,7 @@ import AppReleases from './AppReleases';
 import PlatformDashboard from './PlatformDashboard';
 import TenantDashboard from './TenantDashboard';
 import BackupManagement from './BackupManagement';
+import SystemInitialization from './SystemInitialization';
 const viewTitles = {
   dashboard: '控制台首頁',
   'backup-management': '數據備份',
@@ -85,6 +86,7 @@ const viewTitles = {
   'order-detail': '訂單詳情',
   'platform-admin-management': '管理員設定',
   'app-releases': 'App 版本管理',
+  'system-initialization': '數據初始化',
   'dashboard-platform': 'QRTalkie Cloud 平臺概覽',
   'analytics': '統計分析',
 };
@@ -954,7 +956,7 @@ export default function ConsoleLayout({ onLogout }) {
         userType={userType}
       />
 
-      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management', 'finance-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'trial-ecard-generate', 'tenant-account-ecard', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'dashboard', 'users', 'backup-management'].includes(currentView) ? 'domain-home-mode' : ''}`}>
+      <main className={`main ${['tenant', 'offline-account', 'plans', 'plans-add', 'plan-management', 'payment-methods', 'discount-data', 'addons', 'tenant-coupon-management', 'finance-management'].includes(currentView) ? 'tenant-mode' : ''} ${currentView === 'payment-methods' ? 'payment-methods-mode' : ''} ${['discount-data', 'addons', 'plans', 'plans-add', 'plan-management', 'tenant', 'e-business-card'].includes(currentView) ? 'discount-data-mode' : ''} ${currentView === 'addons' ? 'addon-data-mode' : ''} ${currentView === 'tenant-coupon-management' ? 'tenant-coupon-mode' : ''} ${['trial-management', 'trial-ecard-generate', 'tenant-account-ecard', 'device-management', 'tenant-account-management', 'contact-books', 'ecard-styles-management', 'call-center', 'call-center-add', 'call-center-inquiries', 'access-control'].includes(currentView) ? 'device-management-mode' : ''} ${['domain', 'order-detail', 'purchase-plan', 'registrations', 'platform-admin-management', 'app-releases', 'system-initialization', 'dashboard', 'users', 'backup-management'].includes(currentView) ? 'domain-home-mode' : ''}`}>
         <header className="page-heading" style={{ display: ['e-business-card', 'call-center-add', 'trial-ecard-generate', 'tenant-account-ecard'].includes(currentView) || (currentView === 'ecard-styles-management' && ecardGenerationMode === 'add') ? 'none' : 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box', ...(currentView === 'plans' ? { marginTop: '-12px' } : {}), ...(['app-releases', 'platform-admin-management'].includes(currentView) ? { marginBottom: '18px' } : {}) }}>
           <h1 id="page-title">{
             currentView === 'dashboard' && identity?.admin?.accountType === 'platform' ? 'QRTalkie Cloud 平臺概覽' :
@@ -968,6 +970,9 @@ export default function ConsoleLayout({ onLogout }) {
         <div className="main-scroll">
           {currentView === 'dashboard' && <PlatformDashboard />}
           {currentView === 'backup-management' && <BackupManagement />}
+          {currentView === 'system-initialization' && identity?.admin?.platformRole === 'super_admin' && (
+            <SystemInitialization onLogout={onLogout} />
+          )}
           {currentView === 'analytics' && <Analytics tenantId={identity?.admin?.tenantId || identity?.tenant?.id} isPlatformAdmin={identity?.admin?.accountType === 'platform'} />}
           {currentView === 'users' && <TenantDashboard onNavigate={setCurrentView} />}
           {currentView === 'registrations' && (

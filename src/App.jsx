@@ -1,8 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import LandingRedesign from './LandingRedesign';
-import ConsoleLayout from './ConsoleLayout';
 import apiClient from './apiClient';
-import ECardVisitorPage from './pages/ecard/ECardVisitorPage';
+
+const ConsoleLayout = lazy(() => import('./ConsoleLayout'));
+const ECardVisitorPage = lazy(() => import('./pages/ecard/ECardVisitorPage'));
+
+const lazyFallback = (
+  <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#94a3b8', background: '#0b1220' }}>
+    載入中...
+  </div>
+);
+
+class LazyLoadBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('頁面資源載入失敗:', error);
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0b1220', color: '#cbd5e1' }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '14px' }}>頁面資源載入失敗，可能是網路中斷。</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{ height: '38px', padding: '0 18px', border: 0, borderRadius: '8px', background: '#2563eb', color: '#fff', cursor: 'pointer' }}
+            >
+              重新載入
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function consumeHandoffToken() {
   try {
@@ -107,7 +149,11 @@ export default function App() {
   const publicEcardSlug = routeInfo.slug;
 
   if (publicEcardSlug) {
-    return <ECardVisitorPage slug={publicEcardSlug} />;
+    return (
+      <LazyLoadBoundary>
+        <Suspense fallback={lazyFallback}><ECardVisitorPage slug={publicEcardSlug} /></Suspense>
+      </LazyLoadBoundary>
+    );
   }
 
   if (isInitializing) {
@@ -118,13 +164,17 @@ export default function App() {
   return (
     <div className="app-container">
       {isLoggedIn ? (
-        <ConsoleLayout onLogout={() => {
-          localStorage.removeItem('qrtalkieAdminToken');
-          localStorage.removeItem('qrtalkieUserType');
-          sessionStorage.removeItem('qrtalkieAdminToken');
-          sessionStorage.removeItem('qrtalkieUserType');
-          setIsLoggedIn(false);
-        }} />
+        <LazyLoadBoundary>
+          <Suspense fallback={lazyFallback}>
+            <ConsoleLayout onLogout={() => {
+              localStorage.removeItem('qrtalkieAdminToken');
+              localStorage.removeItem('qrtalkieUserType');
+              sessionStorage.removeItem('qrtalkieAdminToken');
+              sessionStorage.removeItem('qrtalkieUserType');
+              setIsLoggedIn(false);
+            }} />
+          </Suspense>
+        </LazyLoadBoundary>
       ) : (
         <LandingRedesign />
       )}
