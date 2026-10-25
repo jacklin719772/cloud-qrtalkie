@@ -27,6 +27,7 @@ const AI_MODEL_NAME = String(process.env.AI_MODEL_NAME || "gpt-4o-mini");
 const AI_MODEL_TIMEOUT_MS = Math.max(5000, parseInt(String(process.env.AI_MODEL_TIMEOUT_MS || "30000"), 10) || 30000);
 const AI_MODEL_MAX_TOKENS = Math.max(100, parseInt(String(process.env.AI_MODEL_MAX_TOKENS || "2000"), 10) || 2000);
 const AI_MODEL_TEMPERATURE = Math.min(2, Math.max(0, parseFloat(String(process.env.AI_MODEL_TEMPERATURE || "0.7")) || 0.7));
+const AI_MODEL_EXTRA_BODY = parseExtraBody(process.env.AI_MODEL_EXTRA_BODY || "");
 
 // 在线演示 AI 客服：可单独配置模型，未配置的项回退到主模型
 const AI_DEMO_ENABLED = String(process.env.AI_DEMO_ENABLED || "true").toLowerCase() !== "false";
@@ -72,7 +73,7 @@ function resolveConfig(overrides = {}) {
         timeoutMs: overrides.timeoutMs || AI_MODEL_TIMEOUT_MS,
         maxTokens: overrides.maxTokens || AI_MODEL_MAX_TOKENS,
         temperature: overrides.temperature !== undefined ? overrides.temperature : AI_MODEL_TEMPERATURE,
-        extraBody: overrides.extraBody !== undefined ? overrides.extraBody : null,
+        extraBody: overrides.extraBody !== undefined ? overrides.extraBody : AI_MODEL_EXTRA_BODY,
     };
 }
 
