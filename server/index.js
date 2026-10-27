@@ -16565,6 +16565,23 @@ app.get("/api/public/lime/status", async (request, response) => {
   }
 });
 
+// 租戶套餐有效期：已審核訂單或有效期內的試用帳號，取較晚者
+async function getTenantPlanExpiresAt(connection, tenantId) {
+  const rows = await connection.query(
+    `SELECT DATE_FORMAT(MAX(expires_at), '%Y-%m-%d') AS expires_at
+     FROM (
+       SELECT expires_at FROM billing_orders
+       WHERE tenant_id = ? AND order_status = 'review_approved'
+       UNION ALL
+       SELECT expires_at FROM trial_assignments
+       WHERE owner_tenant_id = ? AND status = 'active'
+         AND started_at <= CURDATE() AND expires_at >= CURDATE()
+     ) plan_dates`,
+    [tenantId, tenantId]
+  );
+  return rows[0]?.expires_at || null;
+}
+
 // GET /api/call-centers - 租戶取得呼叫中心配置列表
 app.get("/api/call-centers", requireAdmin, async (request, response) => {
   if (request.admin.accountType === 'platform' || !request.admin.tenantId) {
@@ -16600,13 +16617,8 @@ app.get("/api/call-centers", requireAdmin, async (request, response) => {
   try {
     connection = await pool.getConnection();
 
-    // 0. 取得该租戶的套餐有效期并检查是否过期，若过期则自动停用
-    const planRows = await connection.query(`
-      SELECT DATE_FORMAT(MAX(expires_at), '%Y-%m-%d') as tenant_expires_at
-      FROM billing_orders
-      WHERE tenant_id = ? AND order_status = 'review_approved'
-    `, [request.admin.tenantId]);
-    const tenantExpiresAt = planRows[0]?.tenant_expires_at || null;
+    // 0. 取得该租戶的套餐有效期（含試用帳號）并检查是否过期，若过期则自动停用
+    const tenantExpiresAt = await getTenantPlanExpiresAt(connection, request.admin.tenantId);
 
     let isExpired = true;
     if (tenantExpiresAt) {
@@ -16841,12 +16853,7 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
     connection = await pool.getConnection();
 
     if (status === 'active') {
-      const planRows = await connection.query(`
-        SELECT DATE_FORMAT(MAX(expires_at), '%Y-%m-%d') as tenant_expires_at
-        FROM billing_orders
-        WHERE tenant_id = ? AND order_status = 'review_approved'
-      `, [request.admin.tenantId]);
-      const tenantExpiresAt = planRows[0]?.tenant_expires_at || null;
+      const tenantExpiresAt = await getTenantPlanExpiresAt(connection, request.admin.tenantId);
 
       let isExpired = true;
       if (tenantExpiresAt) {
@@ -16859,7 +16866,7 @@ app.put("/api/call-centers/:id/status", requireAdmin, async (request, response) 
         }
       }
       if (isExpired) {
-        return response.status(403).json({ code: -1, message: "套餐已過期，無法啟用。" });
+        return response.status(403).json({ code: -1, message: "套餐或試用已過期，無法啟用。" });
       }
     }
 
@@ -17303,22 +17310,17 @@ app.get("/callcenter", async (request, response) => {
       return response.status(404).send("<h2 style='text-align:center;margin-top:20vh;'>404 Not Found</h2><p style='text-align:center;'>該呼叫中心不存在或已停用。</p>");
     }
 
-    // 检查呼叫中心所属租戶套餐是否有效
-    const planRows = await connection.query(`
-      SELECT DATE_FORMAT(MAX(expires_at), '%Y-%m-%d') as tenant_expires_at
-      FROM billing_orders
-      WHERE tenant_id = ? AND order_status = 'review_approved'
-    `, [cc.tenant_id]);
-    
-    const tenantExpiresAt = planRows[0]?.tenant_expires_at || null;
+    // 检查呼叫中心所属租戶套餐是否有效（已審核訂單或有效期內試用帳號）
+    const tenantExpiresAt = await getTenantPlanExpiresAt(connection, cc.tenant_id);
+
     if (tenantExpiresAt) {
       const expiresDate = new Date(`${tenantExpiresAt}T00:00:00Z`);
       const today = new Date();
       if (expiresDate.getTime() < today.getTime()) {
-         return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：企業套餐已過期。</p>");
+         return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：企業套餐或試用已過期。</p>");
       }
     } else {
-       return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：該企業未開通有效套餐。</p>");
+       return response.status(403).send("<h2 style='text-align:center;margin-top:20vh;color:red;'>403 Forbidden</h2><p style='text-align:center;'>服務不可用：該企業未開通有效套餐或試用。</p>");
     }
 
     const categoriesRows = await connection.query(`SELECT * FROM call_center_categories WHERE call_center_id = ? ORDER BY sort_order ASC`, [cc.id]);
