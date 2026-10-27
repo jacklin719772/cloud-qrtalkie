@@ -323,6 +323,7 @@ const paymentMethodIconsDir = path.join(projectRoot, "assets/payment-method-icon
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
 const callCenterImagesDir = path.join(projectRoot, "assets/call-center-images");
 const aiAttachmentsDir = path.join(projectRoot, "assets/ai-attachments");
+const homepageImagesDir = path.join(projectRoot, "uploads/homepage");
 const ASTERISK_PATHS = (() => { try { return getAsteriskPathConfig(); } catch { return {}; } })();
 const WEBRTC_RUNTIME = (() => { try { return getWebrtcRuntimeConfig(); } catch { return {}; } })();
 const ECARD_CALL_SESSION_TTL_MS = 120000;
@@ -1830,7 +1831,8 @@ app.post("/api/auth/sip-provision", async (request, response) => {
     // Schedule cleanup after 10 minutes
     setTimeout(function() { try { unlinkSync(filePath); } catch(e) {} }, 600000);
 
-    const appProvisionUrl = "https://cloud.qrtalkie.org/api/provisioning/" + fileName;
+    const appBaseUrl = String(appUrl || "").replace(/\/+$/, "");
+    const appProvisionUrl = `${appBaseUrl}/api/provisioning/` + fileName;
 
     return response.json({
       success: true,
@@ -5075,12 +5077,24 @@ app.get("/api/admin/tenants/with-active-sip", requireAdmin, async (request, resp
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(
-      `SELECT DISTINCT t.id, t.name,
-              (SELECT MAX(su.service_expires_at) FROM sip_users su WHERE su.tenant_id = t.id AND su.status = 'active' AND (su.service_expires_at IS NULL OR su.service_expires_at > NOW())) AS latest_sip_expiry
+      `SELECT t.id, t.name, MAX(x.expiry) AS latest_sip_expiry
        FROM tenants t
-       INNER JOIN sip_users su2 ON su2.tenant_id = t.id AND su2.status = 'active'
-         AND (su2.service_expires_at IS NULL OR su2.service_expires_at > NOW())
+       INNER JOIN (
+         SELECT tenant_id, MAX(service_expires_at) AS expiry
+         FROM sip_users
+         WHERE status = 'active'
+           AND (service_expires_at IS NULL OR service_expires_at > NOW())
+         GROUP BY tenant_id
+         UNION ALL
+         SELECT owner_tenant_id AS tenant_id, MAX(expires_at) AS expiry
+         FROM trial_assignments
+         WHERE status = 'active'
+           AND started_at <= CURDATE()
+           AND expires_at >= CURDATE()
+         GROUP BY owner_tenant_id
+       ) x ON x.tenant_id = t.id
        WHERE t.status = 'active' AND t.is_system = 0
+       GROUP BY t.id, t.name
        ORDER BY t.name`
     );
     response.json({
@@ -15366,6 +15380,165 @@ function buildHomepageFooterSettings(body) {
   return { settings };
 }
 
+const HOMEPAGE_ECARD_DEMO_PREFIX = "/api/homepage-images/";
+const HOMEPAGE_ECARD_DEMO_MAX_BYTES = 10 * 1024 * 1024;
+
+function parseHomepageEcardDemoSetting(raw) {
+  if (!raw) return { imageUrl: "" };
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return { imageUrl: typeof parsed?.imageUrl === "string" ? parsed.imageUrl.trim() : "" };
+  } catch {
+    return { imageUrl: "" };
+  }
+}
+
+async function removeHomepageImageByUrl(imageUrl) {
+  const value = String(imageUrl || "");
+  if (!value.startsWith(HOMEPAGE_ECARD_DEMO_PREFIX)) return;
+  const name = value.slice(HOMEPAGE_ECARD_DEMO_PREFIX.length);
+  if (!name || name.includes("/") || name.includes("\\") || name.startsWith(".")) return;
+  try { await unlink(path.join(homepageImagesDir, name)); } catch {}
+}
+
+function detectHomepageImageType(buf) {
+  if (buf.length >= 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "png";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpg";
+  if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "webp";
+  return "";
+}
+
+app.get("/api/homepage-images/:file", (request, response) => {
+  const name = String(request.params.file || "");
+  if (!name || name.includes("/") || name.includes("\\") || name.startsWith(".")) {
+    return response.status(404).end();
+  }
+  const filePath = path.join(homepageImagesDir, name);
+  if (!existsSync(filePath)) return response.status(404).end();
+  response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  return response.sendFile(filePath);
+});
+
+app.get("/api/admin/settings/homepage-ecard-demo", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ecard_demo' LIMIT 1",
+    );
+    return response.json({ settings: parseHomepageEcardDemoSetting(rows[0]?.setting_value) });
+  } catch (error) {
+    console.error("Failed to get homepage ecard demo settings:", error);
+    return response.status(500).json({ message: "讀取電子名片演示設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.put("/api/admin/settings/homepage-ecard-demo", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+  }
+  const imageUrl = String(request.body?.imageUrl || "").trim();
+  if (imageUrl) {
+    if (!imageUrl.startsWith(HOMEPAGE_ECARD_DEMO_PREFIX)) {
+      return response.status(400).json({ message: "無效的圖片地址。" });
+    }
+    const name = imageUrl.slice(HOMEPAGE_ECARD_DEMO_PREFIX.length);
+    if (!name || name.includes("/") || name.includes("\\") || !existsSync(path.join(homepageImagesDir, name))) {
+      return response.status(400).json({ message: "圖片不存在，請重新上傳。" });
+    }
+  }
+  let connection;
+  let previousUrl = "";
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ecard_demo' LIMIT 1",
+    );
+    previousUrl = parseHomepageEcardDemoSetting(rows[0]?.setting_value).imageUrl;
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('homepage_ecard_demo', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [JSON.stringify({ imageUrl })],
+    );
+    if (previousUrl && previousUrl !== imageUrl) await removeHomepageImageByUrl(previousUrl);
+    return response.json({ message: imageUrl ? "電子名片演示圖已儲存。" : "已恢復預設演示圖。", settings: { imageUrl } });
+  } catch (error) {
+    console.error("Failed to save homepage ecard demo settings:", error);
+    return response.status(500).json({ message: "儲存電子名片演示設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.post("/api/admin/settings/homepage-ecard-demo/upload", requireAdmin, async (request, response) => {
+  if (request.admin.accountType !== "platform") {
+    return response.status(403).json({ message: "只有平臺管理員可以修改首頁設置。" });
+  }
+  const raw = String(request.body?.imageBase64 || "");
+  if (!raw) return response.status(400).json({ message: "請選擇要上傳的圖片。" });
+  const match = raw.match(/^data:image\/(?:png|jpe?g|webp);base64,(.+)$/is);
+  const base64 = match ? match[1] : raw;
+  const buf = Buffer.from(base64.replace(/\s+/g, ""), "base64");
+  if (!buf.length) return response.status(400).json({ message: "圖片內容無效。" });
+  if (buf.length > HOMEPAGE_ECARD_DEMO_MAX_BYTES) {
+    return response.status(400).json({ message: "圖片過大，上限 10MB。" });
+  }
+  const ext = detectHomepageImageType(buf);
+  if (!ext) return response.status(400).json({ message: "僅支援 PNG、JPG、WebP 圖片。" });
+
+  const fileName = `ecard-demo-${Date.now()}-${randomBytes(4).toString("hex")}.${ext}`;
+  let connection;
+  let previousUrl = "";
+  try {
+    await mkdir(homepageImagesDir, { recursive: true });
+    await writeFile(path.join(homepageImagesDir, fileName), buf, { mode: 0o644 });
+    const imageUrl = `${HOMEPAGE_ECARD_DEMO_PREFIX}${fileName}`;
+
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ecard_demo' LIMIT 1",
+    );
+    previousUrl = parseHomepageEcardDemoSetting(rows[0]?.setting_value).imageUrl;
+    await connection.query(
+      `INSERT INTO system_settings (setting_key, setting_value)
+       VALUES ('homepage_ecard_demo', ?)
+       ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)`,
+      [JSON.stringify({ imageUrl })],
+    );
+    if (previousUrl && previousUrl !== imageUrl) await removeHomepageImageByUrl(previousUrl);
+    return response.json({ message: "電子名片演示圖已上傳。", settings: { imageUrl } });
+  } catch (error) {
+    try { await unlink(path.join(homepageImagesDir, fileName)); } catch {}
+    console.error("Failed to upload homepage ecard demo image:", error);
+    return response.status(500).json({ message: "上傳電子名片演示圖失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+app.get("/api/public/settings/homepage-ecard-demo", async (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const rows = await connection.query(
+      "SELECT setting_value FROM system_settings WHERE setting_key = 'homepage_ecard_demo' LIMIT 1",
+    );
+    return response.json({ settings: parseHomepageEcardDemoSetting(rows[0]?.setting_value) });
+  } catch (error) {
+    console.error("Failed to get public homepage ecard demo settings:", error);
+    return response.status(500).json({ message: "讀取電子名片演示設置失敗。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 app.get("/api/admin/settings/homepage-footer", requireAdmin, async (request, response) => {
   if (request.admin.accountType !== "platform") {
     return response.status(403).json({ message: "只有平臺管理員可以讀取首頁設置。" });
@@ -19975,7 +20148,7 @@ app.post("/api/admin/releases/upload", requireAdmin, async (request, response) =
           code: 0,
           data: {
             url,
-            fullUrl: `https://cloud.qrtalkie.org${url}`,
+            fullUrl: `${String(appUrl).replace(/\/+$/, "")}${url}`,
             filename,
             fileSize: fileBuffer.length,
             sha256,
@@ -26141,7 +26314,9 @@ app.post("/api/ai/chat/sessions/:id/messages", requireSipUser, async (request, r
 
     if (result.error) {
       const statusCode = result.error === "AI_SESSION_NOT_FOUND" ? 404
-        : result.error === "AI_EMPTY_MESSAGE" ? 400 : 500;
+        : result.error === "AI_EMPTY_MESSAGE" ? 400
+        : ["AI_VISION_UNSUPPORTED", "AI_TOO_MANY_IMAGES", "AI_IMAGE_READ_FAILED"].includes(result.error) ? 400
+        : 500;
       return response.status(statusCode).json({ ok: false, error: result.error, message: result.message });
     }
 

@@ -359,6 +359,7 @@ function LandingRedesignContent() {
   const [qrModal, setQrModal] = useState(null);
   const [demoOpen, setDemoOpen] = useState(false);
   const [ecardDemoOpen, setEcardDemoOpen] = useState(false);
+  const [ecardDemoImage, setEcardDemoImage] = useState('/assets/landing/ecard-demo01.png');
   const [demoEntry, setDemoEntry] = useState(null);
   const [aiDemoOpen, setAiDemoOpen] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
@@ -532,6 +533,17 @@ function LandingRedesignContent() {
         if (!cancelled && data?.settings) {
           setFooterSettings({ ...FOOTER_DEFAULTS, ...data.settings });
         }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.get('/public/settings/homepage-ecard-demo')
+      .then((data) => {
+        const imageUrl = String(data?.settings?.imageUrl || '').trim();
+        if (!cancelled && imageUrl) setEcardDemoImage(imageUrl);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -1585,7 +1597,16 @@ function LandingRedesignContent() {
         >
           <button type="button" className="qrt-ecard-demo-close" aria-label={t('关闭')} onClick={() => setEcardDemoOpen(false)}>×</button>
           <figure className="qrt-ecard-demo-figure">
-            <img src="/assets/landing/ecard-demo01.png" alt={t('电子名片演示')} />
+            <img
+              src={ecardDemoImage}
+              alt={t('电子名片演示')}
+              onError={(event) => {
+                const img = event.currentTarget;
+                if (img.dataset.fallbackApplied) return;
+                img.dataset.fallbackApplied = '1';
+                img.src = '/assets/landing/ecard-demo01.png';
+              }}
+            />
             <figcaption>{t('扫描图中二维码，体验电子名片')}</figcaption>
           </figure>
         </div>

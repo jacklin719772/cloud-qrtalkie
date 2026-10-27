@@ -56,11 +56,12 @@ function getMergedStyle(key, layoutFields, styleFields, localStyles) {
   const style = Object.assign({}, base, localStyles[key] || {});
   const borderRadiusRaw = layout.borderRadius != null ? String(layout.borderRadius) : "";
   const borderRadiusPct = borderRadiusRaw.endsWith("%") ? parseFloat(borderRadiusRaw) / 100 : -1;
+  const logoScale = key === "companyLogo" ? 1.2 : 1;
   return {
     x: num(layout.x, 0),
     y: num(layout.y, 0),
-    w: num(layout.width, 0),
-    h: num(layout.height, 0),
+    w: Math.round(num(layout.width, 0) * logoScale),
+    h: Math.round(num(layout.height, 0) * logoScale),
     borderRadiusPct,
     borderRadius: num(layout.borderRadius, 0),
     objectFit: layout.objectFit || "cover",
@@ -158,11 +159,13 @@ function drawImageField(ctx, s, img, fallbackText) {
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(s.x, s.y, s.w, s.h);
     if (fallbackText) {
-      ctx.font = `400 ${Math.min(s.w, s.h) * 0.3}px "Noto Sans CJK SC"`;
+      const fallback = String(fallbackText);
+      const fontScale = fallback.length > 1 ? 0.16 : 0.3;
+      ctx.font = `400 ${Math.max(12, Math.min(s.w, s.h) * fontScale)}px "Noto Sans CJK SC"`;
       ctx.fillStyle = "#cbd5e1";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(fallbackText, s.x + s.w / 2, s.y + s.h / 2);
+      ctx.fillText(fallback, s.x + s.w / 2, s.y + s.h / 2);
     }
   }
   ctx.restore();
@@ -311,7 +314,7 @@ async function renderEcard(options) {
         drawText(ctx, s, valueFor(key));
         break;
       case "image":
-        drawImageField(ctx, s, images[key], key === "companyLogo" ? "LOGO" : "");
+        drawImageField(ctx, s, images[key], key === "companyLogo" || key === "avatar" ? "未設置" : "");
         break;
       case "shape":
         drawShape(ctx, s, borderColor);

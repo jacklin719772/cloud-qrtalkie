@@ -22,6 +22,8 @@ const FOOTER_DEFAULTS = {
   privacyUrl: '#',
 };
 
+const ECARD_DEMO_DEFAULT_IMAGE = '/assets/landing/ecard-demo01.png';
+
 const DEMO_LINK_SECTIONS = {
   callcenter: { label: '呼叫中心', path: '/admin/settings/homepage-callcenter', placeholder: 'https://cloud.qrtalkie.org/callcenter?id=...' },
   building: { label: '樓宇管理', path: '/admin/settings/homepage-building', placeholder: 'https://cloud.qrtalkie.org/building?id=...' },
@@ -182,6 +184,10 @@ export default function HomepageSettings() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [releases, setReleases] = useState([]);
   const [picker, setPicker] = useState({ platform: '', selectedId: null });
+  const [ecardDemoSettings, setEcardDemoSettings] = useState({ imageUrl: '' });
+  const [ecardDemoLoading, setEcardDemoLoading] = useState(false);
+  const [ecardDemoFile, setEcardDemoFile] = useState({ dataUrl: '', name: '' });
+  const ecardDemoFileRef = useRef(null);
   const messageTimerRef = useRef(null);
 
   const showMessage = (type, text) => {
@@ -275,6 +281,25 @@ export default function HomepageSettings() {
     return () => { cancelled = true; };
   }, [activeSection]);
 
+  useEffect(() => {
+    if (activeSection !== 'ecard-demo') return undefined;
+    let cancelled = false;
+    setEcardDemoLoading(true);
+    setEcardDemoFile({ dataUrl: '', name: '' });
+    if (ecardDemoFileRef.current) ecardDemoFileRef.current.value = '';
+    apiClient.get('/admin/settings/homepage-ecard-demo')
+      .then((data) => {
+        if (!cancelled) setEcardDemoSettings({ imageUrl: data?.settings?.imageUrl || '' });
+      })
+      .catch((err) => {
+        if (!cancelled) showMessage('error', err.message || '讀取電子名片演示設置失敗。');
+      })
+      .finally(() => {
+        if (!cancelled) setEcardDemoLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeSection]);
+
   const update = (key) => (value) => setForm((prev) => ({ ...prev, [key]: value }));
 
   const versionsFor = (platform) => releases
@@ -316,9 +341,65 @@ export default function HomepageSettings() {
     showMessage('success', `已選擇 ${selectedRelease.platform === 'windows' ? 'Windows' : selectedRelease.platform} v${selectedRelease.version}，請儲存更改。`);
   };
 
+  const handleEcardDemoFile = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp'].includes(file.type)) {
+      showMessage('error', '僅支援 PNG、JPG、WebP 圖片。');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showMessage('error', '圖片過大，上限 10MB。');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setEcardDemoFile({ dataUrl: String(reader.result || ''), name: file.name });
+    reader.onerror = () => showMessage('error', '讀取圖片失敗。');
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetEcardDemo = async () => {
+    if (!window.confirm('確定恢復為系統預設的電子名片演示圖？')) return;
+    setIsSaving(true);
+    try {
+      const data = await apiClient.put('/admin/settings/homepage-ecard-demo', { imageUrl: '' });
+      setEcardDemoSettings({ imageUrl: '' });
+      setEcardDemoFile({ dataUrl: '', name: '' });
+      if (ecardDemoFileRef.current) ecardDemoFileRef.current.value = '';
+      showMessage('success', data?.message || '已恢復預設演示圖。');
+    } catch (err) {
+      showMessage('error', err.message || '恢復預設演示圖失敗。');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (isSaving) return;
+    if (activeSection === 'ecard-demo') {
+      if (!ecardDemoFile.dataUrl) {
+        showMessage('info', '請先選擇要上傳的圖片，或使用「恢復預設」。');
+        return;
+      }
+      setIsSaving(true);
+      try {
+        const data = await apiClient.post('/admin/settings/homepage-ecard-demo/upload', {
+          imageBase64: ecardDemoFile.dataUrl,
+        });
+        setEcardDemoSettings({ imageUrl: data?.settings?.imageUrl || '' });
+        setEcardDemoFile({ dataUrl: '', name: '' });
+        if (ecardDemoFileRef.current) ecardDemoFileRef.current.value = '';
+        showMessage('success', data?.message || '電子名片演示圖已上傳。');
+      } catch (err) {
+        showMessage('error', err.message || '上傳電子名片演示圖失敗。');
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
     if (activeSection === 'ai-voice') {
       setIsSaving(true);
       try {
@@ -380,6 +461,7 @@ export default function HomepageSettings() {
   const sectionLoading = activeSection === 'livechat'
     ? (demoLinkLoading.livechat || livechatAccountsLoading)
     : activeSection === 'ai-voice' ? aiVoiceLoading
+    : activeSection === 'ecard-demo' ? ecardDemoLoading
     : DEMO_LINK_SECTIONS[activeSection] ? demoLinkLoading[activeSection] : isLoading;
   const selectedLivechatAccount = livechatAccounts.find((account) => String(account.sipUserId) === String(demoLinkForms.livechat.sipUserId)) || null;
 
@@ -399,6 +481,7 @@ export default function HomepageSettings() {
                 <option value="callcenter">呼叫中心設置</option>
                 <option value="building">樓宇管理設置</option>
                 <option value="livechat">線上客服設置</option>
+                <option value="ecard-demo">電子名片演示</option>
                 <option value="ai-voice">AI 語音問答</option>
                 <option value="banner" disabled>Banner 設置（即將開放）</option>
                 <option value="blocks" disabled>首頁區塊設置（即將開放）</option>
@@ -411,7 +494,7 @@ export default function HomepageSettings() {
             {activeSection === 'footer' && isLoading ? (
               <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入頁腳設置中...</p>
             ) : activeSection !== 'footer' && sectionLoading ? (
-              <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入{activeSection === 'ai-voice' ? 'AI 語音問答' : (DEMO_LINK_SECTIONS[activeSection]?.label || '')}設置中...</p>
+              <p style={{ color: '#9ca3af', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>載入{activeSection === 'ai-voice' ? 'AI 語音問答' : activeSection === 'ecard-demo' ? '電子名片演示' : (DEMO_LINK_SECTIONS[activeSection]?.label || '')}設置中...</p>
             ) : activeSection === 'footer' ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={sectionStyle}>
@@ -505,6 +588,53 @@ export default function HomepageSettings() {
                   <div style={gridStyle}>
                     <Field label="版權文字" value={form.copyright} onChange={update('copyright')} placeholder="© 2026 QRTalkie. All Rights Reserved." />
                     <Field label="隱私政策連結" value={form.privacyUrl} onChange={update('privacyUrl')} placeholder="https://... 或 /privacy-terms/" />
+                  </div>
+                </div>
+              </div>
+            ) : activeSection === 'ecard-demo' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={sectionStyle}>
+                  <h3 style={sectionTitleStyle}>電子名片演示設置</h3>
+                  <p style={{ margin: 0, color: '#9ca3af', fontSize: '13px', lineHeight: 1.7 }}>
+                    設定官網「在線演示 → 電子名片」彈窗中的圖片。未設定或圖片失效時自動使用系統預設圖。
+                  </p>
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>當前 / 預覽</div>
+                      <img
+                        src={ecardDemoFile.dataUrl || ecardDemoSettings.imageUrl || ECARD_DEMO_DEFAULT_IMAGE}
+                        alt="電子名片演示預覽"
+                        style={{ width: '320px', maxWidth: '100%', borderRadius: '10px', border: '1px solid #374151', background: '#0b1220', display: 'block' }}
+                      />
+                    </div>
+                    <div style={{ flex: '1 1 280px', minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <label style={labelStyle}>
+                        選擇圖片（PNG / JPG / WebP，上限 10MB）
+                        <input
+                          ref={ecardDemoFileRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={handleEcardDemoFile}
+                          style={{ ...inputStyle, height: 'auto', padding: '8px 12px', lineHeight: 1.5 }}
+                        />
+                      </label>
+                      {ecardDemoFile.name && (
+                        <p style={{ margin: 0, color: '#93c5fd', fontSize: '12px' }}>已選擇：{ecardDemoFile.name}，點擊右下角「儲存更改」上傳。</p>
+                      )}
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={handleResetEcardDemo}
+                          disabled={isSaving || (!ecardDemoSettings.imageUrl && !ecardDemoFile.dataUrl)}
+                          style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #374151', background: '#1f2937', color: '#9ca3af', cursor: isSaving ? 'not-allowed' : 'pointer', fontSize: '13px', opacity: isSaving ? 0.6 : 1 }}
+                        >
+                          恢復預設
+                        </button>
+                      </div>
+                      <p style={{ margin: 0, color: '#6b7280', fontSize: '12px', lineHeight: 1.7 }}>
+                        建議使用清晰的原圖，保留二維碼可掃描；服務端不壓縮、不縮放。上傳後立即保存到首頁設置。
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1917,6 +1917,8 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         }
         #trial-management-modal .tm-field input:focus,
         #trial-management-modal .tm-field select:focus { border-color: #3b82f6; }
+        #trial-management-modal .tm-field input[type="date"] { color-scheme: light; }
+        #trial-management-modal .tm-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
         #trial-management-modal .tm-field input:disabled { color: #9ca3af; background: #0d1526; }
         /* 覆蓋瀏覽器自動填充的白底（新建租戶的電話/密碼被 Chrome 記憶填充時） */
         #trial-management-modal .tm-field input:-webkit-autofill,

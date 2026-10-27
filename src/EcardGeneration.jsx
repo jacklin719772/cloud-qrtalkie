@@ -88,6 +88,29 @@ const mockEcardAccounts = [
   }
 ];
 
+const COMPANY_LOGO_SCALE = 1.2;
+
+function EcardImageField({ src, fallbackText, style, alt }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+  if (!src || failed) {
+    return (
+      <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', color: '#cbd5e1', fontSize: '14px', fontWeight: 600 }}>
+        {fallbackText}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      crossOrigin="anonymous"
+      style={{ ...style, objectFit: style.objectFit || 'cover' }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelfServiceBack, trialContext, onTrialBack, accountContext, onAccountBack }, ref) => {
   const isSelfService = !!selfServiceSipUserId;
   const isTrialMode = !!trialContext;
@@ -157,6 +180,11 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const [previewSize, setPreviewSize] = useState(null);
   const [avatarDataUrl, setAvatarDataUrl] = useState('');
   const [logoDataUrl, setLogoDataUrl] = useState('');
+  const [avatarPreviewFailed, setAvatarPreviewFailed] = useState(false);
+  const [logoPreviewFailed, setLogoPreviewFailed] = useState(false);
+
+  useEffect(() => { setAvatarPreviewFailed(false); }, [avatarDataUrl]);
+  useEffect(() => { setLogoPreviewFailed(false); }, [logoDataUrl]);
   const [scale, setScale] = useState(1);
   const viewportRef = useRef(null);
   const ecardCanvasRef = useRef(null);
@@ -228,11 +256,15 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
       ...extraStyle
     };
 
+    const layoutWidth = typeof layout.width === 'number' ? layout.width : Number.parseFloat(layout.width);
+    const layoutHeight = typeof layout.height === 'number' ? layout.height : Number.parseFloat(layout.height);
+    const logoWidth = key === 'companyLogo' && Number.isFinite(layoutWidth) ? Math.round(layoutWidth * COMPANY_LOGO_SCALE) : layout.width;
+    const logoHeight = key === 'companyLogo' && Number.isFinite(layoutHeight) ? Math.round(layoutHeight * COMPANY_LOGO_SCALE) : layout.height;
     if (layout.x !== undefined || layout.y !== undefined) {
       if (layout.x !== undefined) merged.left = typeof layout.x === 'number' ? `${layout.x}px` : layout.x;
       if (layout.y !== undefined) merged.top = typeof layout.y === 'number' ? `${layout.y}px` : layout.y;
-      if (layout.width !== undefined) merged.width = typeof layout.width === 'number' ? `${layout.width}px` : layout.width;
-      if (layout.height !== undefined) merged.height = typeof layout.height === 'number' ? `${layout.height}px` : layout.height;
+      if (logoWidth !== undefined) merged.width = typeof logoWidth === 'number' ? `${logoWidth}px` : logoWidth;
+      if (logoHeight !== undefined) merged.height = typeof logoHeight === 'number' ? `${logoHeight}px` : logoHeight;
       if (layout.borderRadius !== undefined) merged.borderRadius = typeof layout.borderRadius === 'number' ? `${layout.borderRadius}px` : layout.borderRadius;
       if (layout.objectFit !== undefined) merged.objectFit = layout.objectFit;
     }
@@ -277,14 +309,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
   const renderImageField = (key, src, fallbackText, visible = true) => {
     if (!visible || !isVisible(key, visible)) return null;
     const style = getMergedStyle(key);
-    if (src) {
-      return <img src={src} alt={key} crossOrigin="anonymous" style={{ ...style, objectFit: style.objectFit || 'cover' }} />;
-    }
-    return (
-      <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)', color: '#cbd5e1' }}>
-        {fallbackText}
-      </div>
-    );
+    return <EcardImageField src={src} fallbackText={fallbackText} style={style} alt={key} />;
   };
 
   const renderShapeField = (key, visible = true) => {
@@ -1684,15 +1709,15 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                   </button>
                 </div>
               <div className="ecard-media-layout" style={{ marginTop: '16px' }}>
-                <label className="ecard-upload-area" style={{ overflow: 'hidden', padding: avatarDataUrl ? 0 : undefined }}>
+                <label className="ecard-upload-area" style={{ overflow: 'hidden', padding: avatarDataUrl && !avatarPreviewFailed ? 0 : undefined }}>
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, setAvatarDataUrl)} />
-                  {avatarDataUrl ? (
-                    <img src={avatarDataUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {avatarDataUrl && !avatarPreviewFailed ? (
+                    <img src={avatarDataUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarPreviewFailed(true)} />
                   ) : (
                     <>
                       <UploadCloud size={24} />
-                      <span>點击上傳头像</span>
-                      <small>建议尺寸 512×512</small>
+                      <span>未設置</span>
+                      <small>{avatarDataUrl ? '圖片已失效，點擊重新上傳' : '點擊上傳頭像（建議 512×512）'}</small>
                     </>
                   )}
                 </label>
@@ -1713,15 +1738,15 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
               <div className="ecard-form-group">
                 <h4 className="ecard-form-title">公司信息</h4>
                 <div className="ecard-media-layout">
-                  <label className="ecard-upload-area" style={{ overflow: 'hidden', padding: logoDataUrl ? 0 : undefined }}>
+                  <label className="ecard-upload-area" style={{ overflow: 'hidden', padding: logoDataUrl && !logoPreviewFailed ? 0 : undefined }}>
                     <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, setLogoDataUrl)} />
-                    {logoDataUrl ? (
-                      <img src={logoDataUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px', boxSizing: 'border-box' }} />
+                    {logoDataUrl && !logoPreviewFailed ? (
+                      <img src={logoDataUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '8px', boxSizing: 'border-box' }} onError={() => setLogoPreviewFailed(true)} />
                     ) : (
                       <>
                         <UploadCloud size={24} />
-                        <span>點击上傳Logo</span>
-                        <small>建议尺寸 512×512</small>
+                        <span>未設置</span>
+                        <small>{logoDataUrl ? '圖片已失效，點擊重新上傳' : '點擊上傳 Logo（建議 512×512）'}</small>
                       </>
                     )}
                   </label>
@@ -1938,7 +1963,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1e1e1e 0%, #111 100%)', zIndex: 0 }} />
                       )}
 
-                      {renderImageField('avatar', avatarDataUrl, cardData.name?.charAt(0) || '张')}
+                      {renderImageField('avatar', avatarDataUrl, '未設置')}
                       {renderTextField('name', cardData.name)}
                       {renderTextField('title', titleText)}
                       {renderShapeField('decorLine')}
@@ -1957,7 +1982,7 @@ const EcardGeneration = forwardRef(({ onModeChange, selfServiceSipUserId, onSelf
                       {renderImageField('qrCenterLogo', null, null, showQrCode)}
                       {renderTextField('qrCaption', cardData.qrDesc, showQrCode && localDisplayConfig.showQrCodeDesc)}
 
-                      {showCompanyInfo && renderImageField('companyLogo', logoDataUrl, 'LOGO')}
+                      {showCompanyInfo && renderImageField('companyLogo', logoDataUrl, '未設置')}
                       {showCompanyInfo && renderTextField('companyNameCn', cardData.companyZh)}
                       {showCompanyInfo && renderTextField('companyNameEn', cardData.companyEn, localDisplayConfig.showEnCompanyName)}
                       {showCompanyInfo && renderShapeField('companyDivider')}

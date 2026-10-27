@@ -18,6 +18,48 @@ const AI_ATTACH_TEXT_EXTS = new Set(["txt", "md", "markdown", "csv", "json", "lo
 const AI_ATTACH_TEXT_MAX = 20000;
 const AI_ASSETS_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets");
 
+// v2.2：图片多模态。模型是否支持图片由环境变量显式声明，避免对未知模型盲发 image_url。
+const AI_IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "webp", "bmp"]);
+const AI_IMAGE_MIME = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    bmp: "image/bmp",
+};
+const AI_IMAGE_MAX_COUNT = 4;
+const AI_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+function isVisionEnabled() {
+    return String(process.env.AI_MODEL_SUPPORTS_VISION || "").trim().toLowerCase() === "true";
+}
+
+function isImageAttachment(att) {
+    if (String(att?.kind || "").toLowerCase() === "image") return true;
+    const ext = (String(att?.filename || "").split(".").pop() || "").toLowerCase();
+    return AI_IMAGE_EXTS.has(ext);
+}
+
+/// 读取图片附件并转成 OpenAI 兼容的 data URL；读不到/超限的跳过
+async function loadImageDataUrls(attachments) {
+    const urls = [];
+    for (const att of attachments.slice(0, AI_IMAGE_MAX_COUNT)) {
+        const key = String(att?.key || "").slice(0, 255);
+        if (!key || !key.startsWith("/ai-attachments/") || key.includes("..")) continue;
+        const ext = (String(att?.filename || "").split(".").pop() || "").toLowerCase();
+        const mime = AI_IMAGE_MIME[ext];
+        if (!mime) continue;
+        try {
+            const buffer = await readFile(path.join(AI_ASSETS_ROOT, key));
+            if (buffer.length === 0 || buffer.length > AI_IMAGE_MAX_BYTES) continue;
+            urls.push(`data:${mime};base64,${buffer.toString("base64")}`);
+        } catch (error) {
+            console.warn("[aiBotService] 图片读取失败:", att?.filename || key, error?.message || error);
+        }
+    }
+    return urls;
+}
+
 /// 提取单个附件的文本（docx 解 zip 取 document.xml 去标签；文本类直接读；其余返回空）
 async function extractOneAttachmentText(key, ext) {
     const diskPath = path.join(AI_ASSETS_ROOT, key);
@@ -290,6 +332,21 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     );
     if (!session) return { error: "AI_SESSION_NOT_FOUND", message: "會話不存在" };
 
+    // v2.2：图片附件先做能力判断。模型不支持时明确报错，不静默降级成文件名。
+    const imageAttachments = attachments.filter(isImageAttachment);
+    if (imageAttachments.length > 0) {
+        if (!isVisionEnabled()) {
+            return { error: "AI_VISION_UNSUPPORTED", message: "目前 AI 模型不支援圖片分析，請改用文字或文件（PDF/Word/TXT）。" };
+        }
+        if (imageAttachments.length > AI_IMAGE_MAX_COUNT) {
+            return { error: "AI_TOO_MANY_IMAGES", message: `一次最多分析 ${AI_IMAGE_MAX_COUNT} 張圖片。` };
+        }
+    }
+    const imageDataUrls = imageAttachments.length > 0 ? await loadImageDataUrls(imageAttachments) : [];
+    if (imageAttachments.length > 0 && imageDataUrls.length === 0) {
+        return { error: "AI_IMAGE_READ_FAILED", message: "圖片讀取失敗，請重新上傳後再試。" };
+    }
+
     // Save user message（记录 id 供附件关联）
     const userMsgResult = await connection.query(
         `INSERT INTO ai_bot_messages (session_id, role, content, message_type, status) VALUES (?, 'user', ?, 'text', 'completed')`,
@@ -316,8 +373,8 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
     // v2：检索/搜索注入（可选字段；未就绪/失败自动降级为普通对话）
     let finalUserContent = trimmed;
     const injectedParts = [];
-    // v2.1（只增）：附件文本提取并入用户消息（模型可据此回答；图片/不支持格式仅标注文件名）
-    const attachmentTexts = await extractAttachmentTexts(attachments);
+    // v2.1（只增）：附件文本提取并入用户消息（图片由多模态路径处理，不在此生成占位文本）
+    const attachmentTexts = await extractAttachmentTexts(attachments.filter((att) => !isImageAttachment(att)));
     if (attachmentTexts.length > 0) {
         finalUserContent = (trimmed ? `${trimmed}\n\n` : "") + `以下是用户上传的附件内容：\n${attachmentTexts.join("\n\n")}`;
     }
@@ -334,11 +391,29 @@ export async function sendMessage(sessionId, sipUserId, content, connection, opt
         finalUserContent = `${injectedParts.join("\n\n")}\n\n以上是可能相關的參考資料，僅供參考：如與用戶問題無關請忽略，直接按用戶要求回答；如相關請參考並標註來源。\n\n[用戶問題]\n${finalUserContent}`;
     }
 
+    // 多模态内容：文本 + 图片 data URL（仅当 AI_MODEL_SUPPORTS_VISION=true 且图片读取成功）
+    let userContent = finalUserContent;
+    if (imageDataUrls.length > 0) {
+        const parts = [{ type: "text", text: finalUserContent || "請分析以下圖片。" }];
+        for (const url of imageDataUrls) {
+            parts.push({ type: "image_url", image_url: { url } });
+        }
+        userContent = parts;
+    }
+
     // Build context
     const messages = await buildContextMessages(sipUserId, sessionId, connection, options);
-    // 注入后的用户消息覆盖历史中的原样消息（保证模型看到的是带参考资料/附件内容的版本）
-    if (finalUserContent !== trimmed) {
-        messages.push({ role: "user", content: finalUserContent });
+    // 用最终内容替换当前用户消息，避免插入附件/参考资料后重复追加一条用户消息
+    if (Array.isArray(userContent) || finalUserContent !== trimmed) {
+        let replaced = false;
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+            if (messages[i].role === "user") {
+                messages[i] = { role: "user", content: userContent };
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) messages.push({ role: "user", content: userContent });
     }
 
     // Call AI（v2：可选 tools 循环）

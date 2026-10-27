@@ -35,6 +35,12 @@ const DEFAULT_TIMEOUT_RULES = [
     timeoutMs: 300000,
   },
   {
+    // 首頁電子名片演示圖上傳可能較大，10 秒默認超時不夠
+    method: 'post',
+    path: '/admin/settings/homepage-ecard-demo/upload',
+    timeoutMs: 300000,
+  },
+  {
     // 批量新增逐條呼叫 Flexisip（200 條實測約 3 分鐘），10 秒默認超時不夠
     method: 'post',
     path: '/admin/sip-accounts/batch',
