@@ -196,6 +196,12 @@ export async function reclaimTrialAssignment(connection, { trialId, sipUserId })
     [sipUserId, reservedTenantId || 0],
   );
 
+  // 门禁房间：解除绑定，避免账号回收再分配后，原租户房间仍指向该账号
+  await connection.query(
+    "UPDATE access_rooms SET sip_user_id = NULL WHERE sip_user_id = ?",
+    [sipUserId],
+  );
+
   // ③ AI：刪除試用開通的行；其餘來源（歷史授予）僅禁用；該帳號 API Key 全刪
   await connection.query(
     "DELETE FROM ai_bot_account_entitlements WHERE sip_user_id = ? AND notes = '試用開通'",

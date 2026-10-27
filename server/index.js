@@ -422,7 +422,7 @@ app.post("/api/access/room-call-session", async (request, response) => {
 
     // Get room with SIP account
     const [room] = await connection.query(
-      `SELECT r.id, r.room_number, r.tenant_id, s.username AS sip_account
+      `SELECT r.id, r.room_number, r.tenant_id, r.sip_user_id, s.username AS sip_account
        FROM access_rooms r
        LEFT JOIN sip_users s ON s.id = r.sip_user_id
        WHERE r.id = ? AND r.tenant_id = ? LIMIT 1`,
@@ -431,15 +431,20 @@ app.post("/api/access/room-call-session", async (request, response) => {
     if (!room || !room.sip_account) return response.status(404).json({ success: false, message: "該房間未配置SIP帳號" });
 
     // Get web account for this SIP user
+    // 試用帳號的 Web 權益掛在保留試用租戶下，不能按房間租戶過濾；按 sip_user_id 查，
+    // 若存在多筆有效權益則優先房間所屬租戶那一筆
     const [webRow] = await connection.query(
       `SELECT wu.username FROM tenant_web_account_entitlements ent
        JOIN web_users wu ON wu.id = ent.web_user_id
-       WHERE ent.sip_user_id = (SELECT id FROM sip_users WHERE username = ? AND tenant_id = ? LIMIT 1)
-         AND ent.tenant_id = ? AND ent.status = 'active' LIMIT 1`,
-      [room.sip_account, room.tenant_id, room.tenant_id]
+       WHERE ent.sip_user_id = ? AND ent.status = 'active'
+       ORDER BY (ent.tenant_id = ?) DESC, ent.id ASC LIMIT 1`,
+      [room.sip_user_id, room.tenant_id]
     );
+    if (!webRow?.username) {
+      return response.status(409).json({ success: false, message: "該房間未配置 Web 帳號，無法呼叫" });
+    }
 
-    const webAccount = webRow?.username || `guest_${room.sip_account}`;
+    const webAccount = webRow.username;
     const targetSipUri = `sip:${room.sip_account}@${sipDomainValue}`;
     const iceServers = parseEcardIceServers();
 
@@ -602,7 +607,7 @@ app.get("/access/visitor", async (request, response) => {
                 wu.username AS web_username
          FROM access_rooms r
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
-         LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
+         LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.status = 'active' AND ent.tenant_id IN (r.tenant_id, s.tenant_id)
          LEFT JOIN web_users wu ON wu.id = ent.web_user_id
          WHERE r.building_id IN (?) AND r.tenant_id = ? AND (r.sip_user_id IS NULL OR s.status = 'active') ORDER BY r.room_number`,
         [bIds, community.tenant_id]
@@ -702,7 +707,7 @@ app.get("/access/:slug", async (request, response) => {
                 wu.username AS web_username
          FROM access_rooms r
          LEFT JOIN sip_users s ON s.id = r.sip_user_id
-         LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.tenant_id = r.tenant_id AND ent.status = 'active'
+         LEFT JOIN tenant_web_account_entitlements ent ON ent.sip_user_id = s.id AND ent.status = 'active' AND ent.tenant_id IN (r.tenant_id, s.tenant_id)
          LEFT JOIN web_users wu ON wu.id = ent.web_user_id
          WHERE r.building_id IN (?) AND r.tenant_id = ? AND (r.sip_user_id IS NULL OR s.status = 'active') ORDER BY r.room_number`,
         [bIds, community.tenant_id]
@@ -18699,6 +18704,48 @@ app.get("/api/sip-account/status", async (request, response) => {
   }
 });
 
+// 门禁房间可分配的 SIP 账号：本租户订阅权益内的账号，或本租户名下有效期内的试用账号
+async function findAccessibleSipUserForTenant(connection, tenantId, sipUserId) {
+  const rows = await connection.query(
+    `SELECT su.id, su.username, su.display_name, su.tenant_id
+       FROM sip_users su
+       LEFT JOIN tenant_sip_account_entitlements ent
+         ON ent.sip_user_id = su.id
+        AND ent.tenant_id = ?
+        AND ent.status = 'active'
+       LEFT JOIN (
+         SELECT sip_user_id
+         FROM trial_assignments
+         WHERE owner_tenant_id = ?
+           AND status = 'active'
+           AND started_at <= CURDATE()
+           AND expires_at >= CURDATE()
+         GROUP BY sip_user_id
+       ) ta ON ta.sip_user_id = su.id
+       WHERE su.id = ?
+         AND su.status = 'active'
+         AND (
+           (ent.id IS NOT NULL AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW()))
+           OR ta.sip_user_id IS NOT NULL
+         )
+       LIMIT 1`,
+    [tenantId, tenantId, sipUserId]
+  );
+  return rows[0] || null;
+}
+
+// 试用账号的 Web 权益挂在保留试用租户下，因此同时按账号自身 tenant_id 匹配
+async function hasActiveWebAccountForSipUser(connection, tenantId, sipUser) {
+  const rows = await connection.query(
+    `SELECT 1 FROM tenant_web_account_entitlements
+     WHERE sip_user_id = ? AND status = 'active'
+       AND tenant_id IN (?, ?)
+     LIMIT 1`,
+    [sipUser.id, tenantId, sipUser.tenant_id]
+  );
+  return rows.length > 0;
+}
+
 // GET /api/sip-users/available - 獲取租戶可用的 SIP 用戶（已啟用且在有效期內）
 app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
   if (!request.admin.tenantId) {
@@ -18719,33 +18766,45 @@ app.get("/api/sip-users/available", requireAdmin, async (request, response) => {
         scopeSql = "AND 1=0";
       }
     }
+    const roomId = Number(request.query.roomId) || 0;
     const rows = await connection.query(
       `SELECT su.id, su.username, su.sip_domain, su.display_name, su.email,
               su.phone_number, su.status,
-              COALESCE(ent.service_expires_at, su.service_expires_at) AS service_expires_at,
+              COALESCE(ent.service_expires_at, ta.expires_at, su.service_expires_at) AS service_expires_at,
               r2.id AS current_room_id,
-              wu.username AS web_username
+              (SELECT wu.username
+                 FROM tenant_web_account_entitlements we
+                 JOIN web_users wu ON wu.id = we.web_user_id
+                WHERE we.sip_user_id = su.id
+                  AND we.status = 'active'
+                  AND we.tenant_id IN (?, su.tenant_id)
+                LIMIT 1) AS web_username
        FROM sip_users su
        LEFT JOIN tenant_sip_account_entitlements ent
          ON ent.sip_user_id = su.id
         AND ent.tenant_id = ?
         AND ent.status = 'active'
+       LEFT JOIN (
+         SELECT sip_user_id, MAX(expires_at) AS expires_at
+         FROM trial_assignments
+         WHERE owner_tenant_id = ?
+           AND status = 'active'
+           AND started_at <= CURDATE()
+           AND expires_at >= CURDATE()
+         GROUP BY sip_user_id
+       ) ta ON ta.sip_user_id = su.id
        LEFT JOIN access_rooms r2 ON r2.sip_user_id = su.id
-       LEFT JOIN tenant_web_account_entitlements we
-         ON we.sip_user_id = su.id
-        AND we.tenant_id = ?
-        AND we.status = 'active'
-       LEFT JOIN web_users wu ON wu.id = we.web_user_id
        WHERE su.status = 'active'
          AND (
            (ent.id IS NOT NULL
              AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())
              AND (r2.id IS NULL OR r2.id = ?))
+           OR (ta.sip_user_id IS NOT NULL AND (r2.id IS NULL OR r2.id = ?))
            OR r2.id = ?
          )
          ${scopeSql}
        ORDER BY su.username`,
-      [request.admin.tenantId, request.admin.tenantId, Number(request.query.roomId) || 0, Number(request.query.roomId) || 0, ...scopeParams]
+      [request.admin.tenantId, request.admin.tenantId, request.admin.tenantId, roomId, roomId, roomId, ...scopeParams]
     );
     const list = rows.map(r => ({
       id: Number(r.id),
@@ -18801,26 +18860,12 @@ app.put("/api/access-rooms/:id/assign-sip", requireAdmin, async (request, respon
     }
 
     if (sipUserId) {
-      const [sipUser] = await connection.query(
-        `SELECT su.id, su.username
-           FROM sip_users su
-           JOIN tenant_sip_account_entitlements ent
-             ON ent.sip_user_id = su.id
-            AND ent.tenant_id = ?
-            AND ent.status = 'active'
-          WHERE su.id = ?
-            AND su.status = 'active'
-            AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())`,
-        [request.admin.tenantId, sipUserId]
-      );
+      const sipUser = await findAccessibleSipUserForTenant(connection, request.admin.tenantId, sipUserId);
       if (!sipUser) return response.status(400).json({ message: "SIP 使用者不存在或已停用/過期。" });
 
-      const [web] = await connection.query(
-        `SELECT 1 FROM tenant_web_account_entitlements
-         WHERE sip_user_id = ? AND tenant_id = ? AND status = 'active' LIMIT 1`,
-        [sipUserId, request.admin.tenantId]
-      );
-      if (!web) return response.status(400).json({ message: "該 SIP 帳號未配置 Web 帳號，無法分配。" });
+      if (!(await hasActiveWebAccountForSipUser(connection, request.admin.tenantId, sipUser))) {
+        return response.status(400).json({ message: "該 SIP 帳號未配置 Web 帳號，無法分配。" });
+      }
 
       const [conflict] = await connection.query(
         "SELECT id, room_number, tenant_id FROM access_rooms WHERE sip_user_id = ? AND id != ? LIMIT 1",
@@ -18898,30 +18943,14 @@ app.post("/api/access-rooms", requireAdmin, async (request, response) => {
       return response.status(404).json({ message: "樓宇不存在。" });
     }
 
-    // SIP 帳號必須是租戶有效權益內的可用帳號，且已配置 Web 帳號
-    const [sipUser] = await connection.query(
-      `SELECT su.id, su.username, su.display_name
-         FROM sip_users su
-         JOIN tenant_sip_account_entitlements ent
-           ON ent.sip_user_id = su.id
-          AND ent.tenant_id = ?
-          AND ent.status = 'active'
-        WHERE su.id = ?
-          AND su.status = 'active'
-          AND (ent.service_expires_at IS NULL OR ent.service_expires_at > NOW())`,
-      [request.admin.tenantId, sipUserId]
-    );
+    // SIP 帳號必須是本租戶的訂閱權益或有效期內試用帳號，且已配置 Web 帳號
+    const sipUser = await findAccessibleSipUserForTenant(connection, request.admin.tenantId, sipUserId);
     if (!sipUser) {
       await connection.rollback();
       return response.status(400).json({ message: "SIP 帳號不存在、已停用或已過期。" });
     }
 
-    const [web] = await connection.query(
-      `SELECT 1 FROM tenant_web_account_entitlements
-       WHERE sip_user_id = ? AND tenant_id = ? AND status = 'active' LIMIT 1`,
-      [sipUserId, request.admin.tenantId]
-    );
-    if (!web) {
+    if (!(await hasActiveWebAccountForSipUser(connection, request.admin.tenantId, sipUser))) {
       await connection.rollback();
       return response.status(400).json({ message: "該 SIP 帳號未配置 Web 帳號，無法分配。" });
     }
