@@ -101,22 +101,33 @@ async function handleDeviceMessage(topic, text) {
   try {
     const message = JSON.parse(text);
     if (message && message.type === "status") {
-      const lock = await findLockByTopic(topic);
-      if (!lock) return;
+      // 状态按物理设备 IMEI 归属：同一 IMEI 可对应多条业务记录（多个 UUID）
+      const imei = String(message.IMEI || "").trim();
+      const locks = imei ? await findLocksByImei(imei) : await findLocksByTopic(topic);
+      if (!locks.length) return;
       const online = message.online === true;
-      statusCache.set(lock, { online, updatedAt: new Date() });
-      console.log(`[deviceMqtt] Status: lock=${lock} online=${online}`);
+      const updatedAt = new Date();
+      for (const lock of locks) {
+        statusCache.set(lock, { online, updatedAt });
+      }
+      console.log(
+        `[deviceMqtt] Status: imei=${imei || "-"} topic=${topic} devices=${locks.length} online=${online}`
+      );
       return;
     }
     if (message && message.Replytype !== undefined) {
-      // 开锁响应：任意消息也视为设备在线；路由到待决开锁请求
-      const locks = await findLocksByTopic(topic);
+      // 开锁响应：任意消息也视为设备在线；优先按 IMEI 归属，缺失时按主题兼容
+      const imei = String(message.IMEI || "").trim();
+      let locks = imei ? await findLocksByImei(imei) : [];
+      if (!locks.length) locks = await findLocksByTopic(topic);
       for (const lock of locks) {
         statusCache.set(lock, { online: true, updatedAt: new Date() });
       }
       const ok = String(message.status || "").toUpperCase() === "OK";
-      resolvePendingUnlock(topic, ok, String(message.status || ""));
-      console.log(`[deviceMqtt] Unlock response: topic=${topic} status=${message.status}`);
+      resolvePendingUnlock(topic, imei, ok, String(message.status || ""));
+      console.log(
+        `[deviceMqtt] Unlock response: imei=${imei || "-"} topic=${topic} devices=${locks.length} status=${message.status}`
+      );
       return;
     }
   } catch {
@@ -125,23 +136,41 @@ async function handleDeviceMessage(topic, text) {
 }
 
 let lockByTopicCache = null;
+let locksByImeiCache = null;
 let lockByTopicCacheTime = 0;
+
+function parseDeviceImei(publishTopic) {
+  try {
+    const payload = JSON.parse(String(publishTopic || ""));
+    return String(payload?.IMEI || "").trim();
+  } catch {
+    return "";
+  }
+}
 
 async function loadLockTopicCache() {
   const now = Date.now();
-  if (lockByTopicCache && now - lockByTopicCacheTime <= 60000) return;
-  const newCache = new Map();
+  if (lockByTopicCache && locksByImeiCache && now - lockByTopicCacheTime <= 60000) return;
+  const byTopic = new Map();
+  const byImei = new Map();
   let connection;
   try {
     connection = await pool.getConnection();
     const rows = await connection.query(
-      `SELECT device_uuid, subscribe_topic FROM gate_devices WHERE subscribe_topic IS NOT NULL AND subscribe_topic <> ''`
+      `SELECT device_uuid, subscribe_topic, publish_topic
+       FROM gate_devices
+       WHERE subscribe_topic IS NOT NULL AND subscribe_topic <> ''`
     );
     for (const row of rows) {
-      if (!newCache.has(row.subscribe_topic)) newCache.set(row.subscribe_topic, []);
-      newCache.get(row.subscribe_topic).push(row.device_uuid);
+      if (!byTopic.has(row.subscribe_topic)) byTopic.set(row.subscribe_topic, []);
+      byTopic.get(row.subscribe_topic).push(row.device_uuid);
+      const imei = parseDeviceImei(row.publish_topic);
+      if (!imei) continue;
+      if (!byImei.has(imei)) byImei.set(imei, []);
+      byImei.get(imei).push(row.device_uuid);
     }
-    lockByTopicCache = newCache;
+    lockByTopicCache = byTopic;
+    locksByImeiCache = byImei;
     lockByTopicCacheTime = now;
   } catch (error) {
     console.error("[deviceMqtt] Topic lookup error:", error?.message || error);
@@ -150,15 +179,14 @@ async function loadLockTopicCache() {
   }
 }
 
-async function findLockByTopic(topic) {
-  await loadLockTopicCache();
-  const locks = lockByTopicCache.get(topic);
-  return locks && locks.length ? locks[0] : null;
-}
-
 async function findLocksByTopic(topic) {
   await loadLockTopicCache();
   return lockByTopicCache.get(topic) || [];
+}
+
+async function findLocksByImei(imei) {
+  await loadLockTopicCache();
+  return locksByImeiCache.get(imei) || [];
 }
 
 // ---- 开锁指令（方案 B 中转） ----
@@ -167,9 +195,12 @@ async function findLocksByTopic(topic) {
 const pendingUnlocks = new Map();
 const UNLOCK_TIMEOUT_MS = 10000;
 
-function resolvePendingUnlock(topic, ok, status) {
+function resolvePendingUnlock(topic, imei, ok, status) {
   for (const [lockId, pending] of pendingUnlocks) {
-    if (pending.topic !== topic) continue;
+    const matches = imei
+      ? (pending.imei ? pending.imei === imei : pending.topic === topic)
+      : pending.topic === topic;
+    if (!matches) continue;
     clearTimeout(pending.timer);
     pendingUnlocks.delete(lockId);
     pending.resolve({ ok, status });
@@ -195,6 +226,7 @@ async function unlockDevice(lockId) {
 
     console.log(`[deviceMqtt] Unlock publish: topic=${device.relay_id} payload=${device.publish_topic}`);
     client.publish(device.relay_id, device.publish_topic, { qos: 0 });
+    const imei = parseDeviceImei(device.publish_topic);
 
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
@@ -202,7 +234,7 @@ async function unlockDevice(lockId) {
         console.log(`[deviceMqtt] Unlock timeout: lockId=${lockId}`);
         resolve({ ok: false, reason: "timeout" });
       }, UNLOCK_TIMEOUT_MS);
-      pendingUnlocks.set(lockId, { resolve, topic: device.subscribe_topic, timer });
+      pendingUnlocks.set(lockId, { resolve, topic: device.subscribe_topic, imei, timer });
     });
   } catch (error) {
     console.error("[deviceMqtt] Unlock error:", error?.message || error);
@@ -243,6 +275,7 @@ async function testDevice(lockId) {
     const startedAt = Date.now();
     console.log(`[deviceMqtt] Test publish: topic=${device.relay_id} payload=${device.publish_topic}`);
     client.publish(device.relay_id, device.publish_topic, { qos: 0 });
+    const imei = parseDeviceImei(device.publish_topic);
 
     const pendingKey = `test:${lockId}`;
     return await new Promise((resolve) => {
@@ -265,6 +298,7 @@ async function testDevice(lockId) {
           elapsedMs: Date.now() - startedAt,
         }),
         topic: device.subscribe_topic,
+        imei,
         timer,
       });
     });
