@@ -153,11 +153,12 @@ async function scanExpiredSipAccounts(connection) {
 
   const title = 'SIP 帳號已過期';
   for (const row of rows) {
-    // Mark entitlement as expired
-    await connection.query(
-      "UPDATE tenant_sip_account_entitlements SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    // Mark entitlement as expired（复查日期，避免并发延期后被旧扫描结果打回）
+    const expireResult = await connection.query(
+      "UPDATE tenant_sip_account_entitlements SET status = 'expired', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'active' AND service_expires_at < CURDATE()",
       [row.entitlement_id]
     );
+    if (Number(expireResult?.affectedRows || 0) === 0) continue;
 
     // 試用帳號（系統租戶）：狀態照常置 expired，停止/回收走試用通道
     if (Number(row.tenant_is_system) === 1) continue;
@@ -302,10 +303,10 @@ async function scanExpiredTrials(connection) {
       try {
         await connection.beginTransaction();
         const [locked] = await connection.query(
-          "SELECT id, status FROM trial_assignments WHERE id = ? FOR UPDATE",
+          "SELECT id, status, DATEDIFF(expires_at, CURDATE()) AS days_left FROM trial_assignments WHERE id = ? FOR UPDATE",
           [Number(row.id)],
         );
-        if (!locked || (locked.status !== "active" && locked.status !== "paused")) {
+        if (!locked || (locked.status !== "active" && locked.status !== "paused") || Number(locked.days_left) > -8) {
           await connection.rollback();
           continue;
         }

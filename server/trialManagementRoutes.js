@@ -13,7 +13,7 @@ import { sendTrialNotificationEmail } from "./email.js";
 import { assignContactListToAccount, unassignContactListFromAccount } from "./flexisipContactBookClient.js";
 import { hashPassword } from "./security.js";
 import { readAccountVcard, mergeAccountVcard, saveAccountAvatar } from "./accountProfileService.js";
-import { activateTrialAccountInFlexisip, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment } from "./trialService.js";
+import { activateTrialAccountInFlexisip, extendTrialAssignment, getReservedTrialTenantId, pauseTrialAssignment, reclaimTrialAssignment, resumeTrialAssignment, setFlexisipActivated } from "./trialService.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ecardImagesDir = path.join(projectRoot, "assets/ecard-images");
@@ -1108,6 +1108,110 @@ export function registerTrialManagementRoutes(app, { requireAdmin }) {
       if (connection) await connection.rollback().catch(() => {});
       console.error("Failed to resume trial assignment:", error);
       return response.status(500).json({ message: "恢復試用操作失敗。" });
+    } finally {
+      if (connection) connection.release();
+    }
+  });
+
+  // 延長試用（僅平台管理員；批量由前端逐條調用本接口）
+  app.post("/api/admin/trials/:id/extend", requireAdmin, async (request, response) => {
+    const trialId = Number(request.params.id);
+    if (!Number.isInteger(trialId) || trialId <= 0) {
+      return response.status(400).json({ code: "TRIAL_EXTEND_ID_INVALID", message: "試用記錄編號無效。" });
+    }
+    if (request.admin.accountType !== "platform") {
+      return response.status(403).json({ code: "TRIAL_EXTEND_FORBIDDEN", message: "只有平臺管理員可以延長試用。" });
+    }
+    const expiresAt = String(request.body?.expiresAt || "").trim();
+    if (!isDateString(expiresAt)) {
+      return response.status(400).json({ code: "TRIAL_EXTEND_DATE_INVALID", message: "請選擇有效的結束日期。" });
+    }
+    if (expiresAt < todayDate()) {
+      return response.status(400).json({ code: "TRIAL_EXTEND_DATE_INVALID", message: "新的結束日期不能早於今天。" });
+    }
+
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+
+      const rows = await connection.query(
+        `SELECT ta.id, ta.status, ta.sip_user_id, ta.owner_tenant_id, ta.ai_enabled,
+                DATE_FORMAT(ta.expires_at, '%Y-%m-%d') AS expires_date,
+                u.username
+         FROM trial_assignments ta
+         JOIN sip_users u ON u.id = ta.sip_user_id
+         WHERE ta.id = ?
+         FOR UPDATE`,
+        [trialId],
+      );
+      const trial = rows[0];
+      if (!trial) {
+        await connection.rollback();
+        return response.status(404).json({ code: "TRIAL_EXTEND_NOT_FOUND", message: "找不到試用記錄。" });
+      }
+      if (trial.status !== "active" && trial.status !== "paused") {
+        await connection.rollback();
+        return response.status(409).json({ code: "TRIAL_EXTEND_STATUS_INVALID", message: "該試用已轉正或已回收，無法延期。" });
+      }
+      const oldExpiresAt = String(trial.expires_date || "").slice(0, 10);
+      if (!oldExpiresAt || expiresAt <= oldExpiresAt) {
+        await connection.rollback();
+        return response.status(400).json({ code: "TRIAL_EXTEND_NOT_LATER", message: "新的結束日期必須晚於目前到期日。" });
+      }
+
+      const paused = trial.status === "paused";
+      if (!paused) {
+        try {
+          await setFlexisipActivated(Number(trial.sip_user_id), true, connection);
+        } catch (flexisipError) {
+          await connection.rollback();
+          console.error("Failed to extend trial (AM step):", flexisipError);
+          if (flexisipError?.code === "FLEXISIP_MAPPING_MISMATCH") {
+            return response.status(409).json({ code: "TRIAL_EXTEND_AM_MAPPING_MISMATCH", message: "帳號在通訊核心的映射異常，無法安全延期，請聯繫技術處理。" });
+          }
+          return response.status(502).json({ code: "TRIAL_EXTEND_AM_FAILED", message: "帳號在通訊核心（AM）啟用確認失敗，延期已取消，請稍後重試。" });
+        }
+      }
+
+      await extendTrialAssignment(connection, {
+        trialId,
+        sipUserId: Number(trial.sip_user_id),
+        oldExpiresAt,
+        newExpiresAt: expiresAt,
+        paused,
+      });
+
+      const [callCenterRow] = await connection.query(
+        "SELECT COUNT(*) AS cnt FROM call_centers WHERE tenant_id = ? AND status = 'disabled'",
+        [Number(trial.owner_tenant_id)],
+      );
+
+      await connection.commit();
+      console.log(JSON.stringify({
+        src: "trial-extend",
+        ts: new Date().toISOString(),
+        adminId: request.admin.id,
+        trialId,
+        username: trial.username || "",
+        oldExpiresAt,
+        newExpiresAt: expiresAt,
+        paused,
+      }));
+      return response.json({
+        message: `試用帳號 ${trial.username || trial.sip_user_id} 已延長至 ${expiresAt}。`,
+        data: {
+          oldExpiresAt,
+          expiresAt,
+          status: trial.status,
+          restoredFromExpired: oldExpiresAt < todayDate(),
+          callCentersDisabled: Number(callCenterRow?.cnt || 0),
+        },
+      });
+    } catch (error) {
+      if (connection) await connection.rollback().catch(() => {});
+      console.error("Failed to extend trial assignment:", error);
+      return response.status(500).json({ code: "TRIAL_EXTEND_FAILED", message: "延長試用操作失敗。" });
     } finally {
       if (connection) connection.release();
     }

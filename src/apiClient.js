@@ -58,6 +58,12 @@ const DEFAULT_TIMEOUT_RULES = [
     path: '/admin/web-accounts/:id',
     timeoutMs: 120000,
   },
+  {
+    // 單條試用延期包含 AM 啟用確認，10 秒默認超時不夠
+    method: 'post',
+    path: '/admin/trials/:id/extend',
+    timeoutMs: 60000,
+  },
 ];
 
 function parseTimeoutRules() {

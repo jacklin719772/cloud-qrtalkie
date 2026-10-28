@@ -152,6 +152,83 @@ export async function resumeTrialAssignment(connection, { trialId, sipUserId }) 
   );
 }
 
+// 延長試用：同步所有到期字段；AM 激活由呼叫方在寫入前確認（暫停中的不啟用）。
+// 呼叫方負責事務、行鎖與「新日期 > 舊日期」校驗。
+export async function extendTrialAssignment(connection, { trialId, sipUserId, oldExpiresAt, newExpiresAt, paused }) {
+  const reservedTenantId = await getReservedTrialTenantId(connection);
+  if (!reservedTenantId) {
+    const error = new Error("系統保留試用租戶缺失");
+    error.code = "TRIAL_RESERVED_TENANT_MISSING";
+    throw error;
+  }
+  const oldDate = String(oldExpiresAt || "").slice(0, 10);
+
+  await connection.query(
+    "UPDATE trial_assignments SET expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    [newExpiresAt, trialId],
+  );
+  await connection.query(
+    "UPDATE sip_users SET service_expires_at = ? WHERE id = ?",
+    [newExpiresAt, sipUserId],
+  );
+  await connection.query(
+    `UPDATE tenant_sip_account_entitlements
+        SET service_expires_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE sip_user_id = ? AND tenant_id = ?`,
+    [newExpiresAt, sipUserId, reservedTenantId || 0],
+  );
+  await connection.query(
+    `UPDATE tenant_web_account_entitlements
+        SET service_expires_at = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE sip_user_id = ? AND tenant_id = ?`,
+    [newExpiresAt, sipUserId, reservedTenantId || 0],
+  );
+  await connection.query(
+    `UPDATE web_users w
+       JOIN tenant_web_account_entitlements e ON e.web_user_id = w.id
+       SET w.service_expires_at = ?
+     WHERE e.sip_user_id = ? AND e.tenant_id = ?`,
+    [newExpiresAt, sipUserId, reservedTenantId || 0],
+  );
+
+  if (!paused) {
+    await connection.query(
+      `UPDATE tenant_sip_account_entitlements
+          SET status = 'active', updated_at = CURRENT_TIMESTAMP
+        WHERE sip_user_id = ? AND tenant_id = ? AND status IN ('active', 'inactive', 'expired')`,
+      [sipUserId, reservedTenantId || 0],
+    );
+    await connection.query(
+      `UPDATE tenant_web_account_entitlements
+          SET status = 'active', updated_at = CURRENT_TIMESTAMP
+        WHERE sip_user_id = ? AND tenant_id = ? AND status IN ('active', 'inactive', 'expired')`,
+      [sipUserId, reservedTenantId || 0],
+    );
+  }
+
+  if (oldDate) {
+    await connection.query(
+      `UPDATE ai_bot_account_entitlements
+          SET expires_at = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE sip_user_id = ? AND notes = '試用開通'
+          AND expires_at IS NOT NULL AND expires_at <= ?`,
+      [`${newExpiresAt} 23:59:59`, sipUserId, `${oldDate} 23:59:59`],
+    );
+    await connection.query(
+      `UPDATE tenant_ecards
+          SET valid_to = ?, updated_at = NOW()
+        WHERE sip_user_id = ? AND valid_to IS NOT NULL AND valid_to <= ?`,
+      [newExpiresAt, sipUserId, oldDate],
+    );
+  }
+
+  // 清掉舊週期的提醒去重，讓新到期日仍能觸發 7 天提醒/到期提醒
+  await connection.query(
+    "DELETE FROM trial_notification_log WHERE trial_assignment_id = ? AND kind IN ('expiring_7d', 'expired')",
+    [trialId],
+  );
+}
+
 // 回收（完整清理）：帳號回初始形態 + 清 AI 權限/Key + 停用 Ecard + 清推送設備/會話
 // 手动「立即回庫」与到期自动回收共用此逻辑
 export async function reclaimTrialAssignment(connection, { trialId, sipUserId }) {

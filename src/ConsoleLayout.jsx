@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, Recycle, ShoppingCart, RefreshCw, HelpCircle } from 'lucide-react';
+import { Plus, Download, Upload, UserPlus, UserMinus, Trash2, Recycle, ShoppingCart, RefreshCw, HelpCircle, CalendarPlus } from 'lucide-react';
 import Sidebar from './Sidebar';
 import Analytics from './Analytics';
 import Topbar from './Topbar';
@@ -609,14 +609,24 @@ export default function ConsoleLayout({ onLogout }) {
       return (
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {identity?.admin?.accountType === 'platform' ? (
-            <button
-              className="primary-btn"
-              type="button"
-              onClick={() => trialManagementRef.current?.openAssign()}
-              style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
-            >
-              <Plus size={14} /> 添加試用
-            </button>
+            <>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.openAssign()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                <Plus size={14} /> 添加試用
+              </button>
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={() => trialManagementRef.current?.extendSelected()}
+                style={{ ...actionBaseStyle, background: 'linear-gradient(90deg, #2563eb 0%, #06b6d4 100%)', border: '0', boxShadow: '0 6px 14px rgba(37, 99, 235, 0.22)' }}
+              >
+                <CalendarPlus size={14} /> 延長試用
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -1511,6 +1521,7 @@ export default function ConsoleLayout({ onLogout }) {
                 <h3 style={{ color: "#60a5fa", fontSize: "14px", marginBottom: "8px" }}>&#128295; 頁頭按鈕</h3>
                 <ul style={{ color: "#9ca3af", margin: 0, paddingLeft: "16px", display: "flex", flexDirection: "column", gap: "6px" }}>
                   <li><strong style={{ color: "#e5e7eb" }}>添加試用（平台管理員）</strong> — 選擇歸屬租戶（可現場新建租戶）與試用週期（預設 1 個月）；先填「新增試用帳號數量」，再從庫存勾選 SIP 帳號（顯示配對的 Web 帳號），可指定代理商（名錄中啟用項）與增值服務（預設全選）。保存成功後續接「Ecard 設置」為該批帳號生成電子名片。</li>
+                  <li><strong style={{ color: "#e5e7eb" }}>延長試用（平台管理員）</strong> — 勾選一個或多個試用帳號後，選擇新的結束日期批量延期；僅延長到期日早於新日期的帳號，已暫停的試用只改日期、恢復後生效，已轉正/已回收的會跳過。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量停用（租戶管理員）</strong> — 對勾選的試用批量暫停（同「暫停試用」，逐條執行並彙總結果）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>批量啟用（租戶管理員）</strong> — 對勾選的已暫停試用批量恢復（同「恢復試用」，已到期的會失敗計數）。</li>
                   <li><strong style={{ color: "#e5e7eb" }}>重置密碼（租戶管理員）</strong> — 對勾選的試用批量重置密碼：先做合規性檢查（本地孤兒類賬號阻斷、已過期自動剔除並提示）；可勾選「重置成功後發送通知郵件」，逐個賬號核對/修改收件郵箱與文案後先重置、成功再發信。</li>

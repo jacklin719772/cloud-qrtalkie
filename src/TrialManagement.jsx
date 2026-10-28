@@ -24,6 +24,12 @@ function addMonthsMinusOneDay(value, months) {
   return d.toISOString().slice(0, 10);
 }
 
+function addDaysToDateStr(value, days) {
+  const d = new Date(`${String(value).slice(0, 10)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 const PHASE_META = {
   active: { label: '試用中', color: '#4ade80', bg: '#0d2818' },
   expiring: { label: '即將到期', color: '#fbbf24', bg: '#3b2e11' },
@@ -96,6 +102,10 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
   const [openActionsId, setOpenActionsId] = useState(null);
   // 列表多選（為後續「正式購買」選號打基礎；跨頁保留，全選作用於當前頁）
   const [selectedTrialIds, setSelectedTrialIds] = useState([]);
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendIds, setExtendIds] = useState([]);
+  const [extendDate, setExtendDate] = useState('');
+  const [extendMessage, setExtendMessage] = useState({ type: '', text: '' });
   const [reclaimConfirm, setReclaimConfirm] = useState({ open: false, trial: null });
   const [aiEntitlementAccount, setAiEntitlementAccount] = useState(null);
   const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
@@ -193,6 +203,12 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     const timer = setTimeout(() => setFormMessage({ type: '', text: '' }), 5000);
     return () => clearTimeout(timer);
   }, [formMessage]);
+
+  useEffect(() => {
+    if (!extendMessage.text) return undefined;
+    const timer = setTimeout(() => setExtendMessage({ type: '', text: '' }), 5000);
+    return () => clearTimeout(timer);
+  }, [extendMessage]);
 
   useEffect(() => {
     if (!aiEntitlementMessage.text) return undefined;
@@ -556,6 +572,7 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     batchPauseSelected: () => batchTrialAction('end'),
     batchResumeSelected: () => batchTrialAction('resume'),
     batchResetPassword: () => handleBatchResetPassword(),
+    extendSelected: () => openExtendDialog(),
     startFormalPurchase,
   }));
 
@@ -595,6 +612,67 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
     });
     setSelectedTrialIds([]);
     loadTrials();
+  }
+
+  // 批量延期：選擇日期後逐條調用延期接口，成功/跳過/失敗分別彙總
+  function openExtendDialog() {
+    if (selectedTrialIds.length === 0) {
+      setMessage({ type: 'error', text: '請先勾選要延長的試用帳號。' });
+      return;
+    }
+    if (selectedTrialIds.length > 100) {
+      setMessage({ type: 'error', text: '單次最多延長 100 個試用帳號，請分批操作。' });
+      return;
+    }
+    setExtendIds([...selectedTrialIds]);
+    setExtendDate(addDaysToDateStr(todayStr(), 7));
+    setExtendMessage({ type: '', text: '' });
+    setExtendOpen(true);
+  }
+
+  async function submitExtendDialog() {
+    const date = String(extendDate || '').trim();
+    if (!date || date < todayStr()) {
+      setExtendMessage({ type: 'error', text: '請選擇今天或以後的結束日期。' });
+      return;
+    }
+    if (extendIds.length === 0) return;
+    const ids = [...extendIds];
+    setExtendOpen(false);
+    let ok = 0;
+    let skipped = 0;
+    const failed = [];
+    let hasDisabledCallCenters = false;
+    for (let i = 0; i < ids.length; i += 1) {
+      setMessage({ type: '', text: `批量延期中… (${i + 1}/${ids.length})` });
+      try {
+        const res = await apiClient.post(`/admin/trials/${ids[i]}/extend`, { expiresAt: date });
+        ok += 1;
+        if (Number(res?.data?.callCentersDisabled || 0) > 0) hasDisabledCallCenters = true;
+      } catch (error) {
+        if (error?.code === 'TRIAL_EXTEND_NOT_LATER' || error?.code === 'TRIAL_EXTEND_STATUS_INVALID') {
+          skipped += 1;
+        } else {
+          failed.push({ id: ids[i], message: error?.message || '延期失敗' });
+        }
+      }
+    }
+    setExtendIds([]);
+    setSelectedTrialIds([]);
+    loadTrials();
+    const failedText = failed.length
+      ? `失敗：${failed.slice(0, 5).map((item) => {
+        const name = trials.find((trial) => trial.id === item.id)?.username || `#${item.id}`;
+        return `${name}（${item.message}）`;
+      }).join('、')}${failed.length > 5 ? ' 等' : ''}。`
+      : '';
+    const callCenterText = hasDisabledCallCenters
+      ? '部分租戶有呼叫中心處於停用狀態，如需使用請由租戶管理員重新啟用。'
+      : '';
+    setMessage({
+      type: failed.length > 0 ? 'error' : 'success',
+      text: `批量延期完成：成功 ${ok} 個，跳過 ${skipped} 個${skipped ? '（已轉正/已回收或原到期日更晚）' : ''}${failed.length ? `，失敗 ${failed.length} 個` : ''}。${failedText}${callCenterText}`,
+    });
   }
 
   // 正式購買：校驗選擇後交給上層進入購買流程（選擇隨購買上下文攜帶）
@@ -3058,6 +3136,45 @@ const TrialManagement = forwardRef(({ isPlatform = true, tenantName = '', onOpen
         onClose={() => setContactBookTarget(null)}
         onSave={saveTrialAccountContactBook}
       />
+
+      {extendOpen && createPortal(
+        <div id="trial-management-modal">
+        <div className="tm-modal">
+          <div className="tm-modal-panel" style={{ width: '480px' }}>
+            <div className="tm-modal-head">
+              <h3>批量延長試用</h3>
+              <button className="tm-btn" type="button" onClick={() => setExtendOpen(false)}>關閉</button>
+            </div>
+            <div className="tm-modal-body">
+              <div style={{ color: '#e5e7eb', fontSize: '13px' }}>
+                已選擇 <strong>{extendIds.length}</strong> 個試用帳號
+              </div>
+              <div className="tm-field">
+                <label>新的結束日期</label>
+                <input type="date" value={extendDate} onChange={(e) => setExtendDate(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {[7, 30, 90].map((days) => (
+                  <button key={days} className="tm-btn" type="button" onClick={() => setExtendDate(addDaysToDateStr(todayStr(), days))}>
+                    +{days} 天
+                  </button>
+                ))}
+              </div>
+              <span className="tm-hint">僅延長目前到期日早於新日期的帳號；到期日已晚於新日期的會自動跳過。</span>
+              <span className="tm-hint">已暫停的試用只修改到期日，恢復後才生效；已轉正或已回收的會被跳過。</span>
+              {extendMessage.text && (
+                <div className={`tm-toast ${extendMessage.type || 'error'}`}>{extendMessage.text}</div>
+              )}
+            </div>
+            <div className="tm-modal-foot">
+              <button className="tm-btn" type="button" onClick={() => setExtendOpen(false)}>取消</button>
+              <button className="tm-btn primary" type="button" onClick={submitExtendDialog}>確認延期</button>
+            </div>
+          </div>
+        </div>
+        </div>,
+        document.body
+      )}
 
       {reclaimConfirm.open && reclaimConfirm.trial && createPortal(
         <div id="trial-management-modal">
