@@ -696,6 +696,7 @@ function getGatewayConfig() {
       appKey: trimText(process.env.JPUSH_APP_KEY, 255),
       masterSecret: trimText(process.env.JPUSH_MASTER_SECRET, 255),
       apiUrl: trimText(process.env.JPUSH_API_URL, 255) || "https://api.jpush.cn/v3/push",
+      vivoCallbackId: trimText(process.env.JPUSH_VIVO_CALLBACK_ID, 64),
     },
   };
 }
@@ -1336,6 +1337,21 @@ class JPushProvider extends BasePushProvider {
           huawei: {
             importance: "HIGH",
             category: "IM",
+          },
+        },
+      };
+    }
+
+    // vivo 新回执：极光通过 callback_id 关联 vivo 控制台配置的回执地址
+    const vivoCallbackId = trimText(this.config.jpush?.vivoCallbackId || "", 64);
+    if (vivoCallbackId) {
+      descriptor.options = {
+        ...descriptor.options,
+        third_party_channel: {
+          ...(descriptor.options?.third_party_channel || {}),
+          vivo: {
+            ...(descriptor.options?.third_party_channel?.vivo || {}),
+            callback_id: vivoCallbackId,
           },
         },
       };
