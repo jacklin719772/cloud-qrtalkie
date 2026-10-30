@@ -96,6 +96,19 @@ function apnsTokenCacheKey(token) {
   return createHash("sha256").update(String(token || "")).digest("hex");
 }
 
+// iOS 客户端注册的 pn-prid 可能是 "<remote token>:remote&<voip token>:voip" 组合格式，
+// 按推送类型取对应 token 并去掉环境后缀，兼容单一 token 形式
+function normalizeApnsDeviceToken(raw, providerName) {
+  const value = trimText(raw, 4096);
+  if (!value) return "";
+  const wantVoip = providerName === "apns.voip";
+  const parts = value.split("&").map((part) => part.trim()).filter(Boolean);
+  const stripSuffix = (token) => token.replace(/:(remote|voip)$/i, "");
+  if (parts.length === 1) return stripSuffix(parts[0]);
+  const preferred = parts.find((part) => part.toLowerCase().endsWith(wantVoip ? ":voip" : ":remote"));
+  return stripSuffix(preferred || parts[0]);
+}
+
 function resolveApnsHost(config, context) {
   const forcedHost = trimText(context?.__apnsForceHost || "", 128);
   if (forcedHost) return forcedHost;
@@ -158,7 +171,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
     throw error;
   }
 
-  const deviceToken = trimText(context.tokenValue, 4096);
+  const deviceToken = normalizeApnsDeviceToken(context.tokenValue, providerName);
   if (!deviceToken) {
     const error = new Error("APNS device token missing.");
     error.code = "APNS_TOKEN_MISSING";
