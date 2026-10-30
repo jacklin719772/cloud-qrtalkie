@@ -83,7 +83,24 @@ function isApnsSandboxTarget(context) {
   return appId.endsWith(".dev");
 }
 
+// token → APNs 环境缓存：首次按生产发送，BadDeviceToken 时自动改用另一环境并记住结果
+const apnsTokenHostCache = new Map();
+const APNS_TOKEN_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const APNS_TOKEN_CACHE_MAX = 5000;
+
+function apnsAlternateHost(host) {
+  return host === "api.sandbox.push.apple.com" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+}
+
+function apnsTokenCacheKey(token) {
+  return createHash("sha256").update(String(token || "")).digest("hex");
+}
+
 function resolveApnsHost(config, context) {
+  const forcedHost = trimText(context?.__apnsForceHost || "", 128);
+  if (forcedHost) return forcedHost;
+  const cachedEntry = apnsTokenHostCache.get(apnsTokenCacheKey(context?.tokenValue));
+  if (cachedEntry && Date.now() < cachedEntry.expiresAt) return cachedEntry.host;
   const env = trimText(config.apns?.environment || process.env.APNS_ENV || "production", 32).toLowerCase();
   if (env === "sandbox" || env === "development" || env === "dev") {
     return "api.sandbox.push.apple.com";
@@ -347,6 +364,28 @@ async function sendApnsLiveNotification(context, config, providerName) {
   let parsedReason = null;
   if (!isSuccess && responseBody) {
     try { const j = JSON.parse(responseBody); parsedReason = j.reason || null; } catch {}
+  }
+
+  if (isSuccess) {
+    apnsTokenHostCache.set(apnsTokenCacheKey(deviceToken), { host, expiresAt: Date.now() + APNS_TOKEN_CACHE_TTL_MS });
+    if (apnsTokenHostCache.size > APNS_TOKEN_CACHE_MAX) {
+      const oldestKey = apnsTokenHostCache.keys().next().value;
+      apnsTokenHostCache.delete(oldestKey);
+    }
+  } else if (response.statusCode === 400 && parsedReason === "BadDeviceToken" && !context.__apnsRetryAttempted) {
+    // token 环境不匹配（沙盒 token 发到生产端点，或反之）：换另一环境重试一次，并按 token 记住结果
+    const retryHost = apnsAlternateHost(host);
+    console.log(JSON.stringify({
+      src: "apns-host-retry",
+      statusCode: response.statusCode,
+      reason: parsedReason,
+      from: host,
+      to: retryHost,
+      tokenMasked,
+      event: context.event,
+      timestamp: new Date().toISOString(),
+    }));
+    return sendApnsLiveNotification({ ...context, __apnsForceHost: retryHost, __apnsRetryAttempted: true }, config, providerName);
   }
 
   const logPayload = {
