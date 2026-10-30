@@ -121,9 +121,7 @@ function apnsAlertSenderLabel(context) {
 }
 
 function apnsAlertTitle(context) {
-  if (context?.event === "call") return "Incoming call";
-  if (/^sips?:chatroom-/i.test(trimText(context?.fromUri || "", 512))) return "Group message";
-  return "New message";
+  return context?.event === "call" ? "Incoming call" : "New message";
 }
 
 function resolveApnsHost(config, context) {
