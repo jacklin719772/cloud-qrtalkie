@@ -21,6 +21,10 @@ function trimText(value, maxLength = 255) {
   return text.slice(0, maxLength);
 }
 
+function isFcmDelegateMode(config) {
+  return String(config?.fcm?.delivery || "").toLowerCase() === "delegate" && Boolean(config?.fcm?.delegateUrl);
+}
+
 function safeJson(value) {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "string") return value;
@@ -473,6 +477,39 @@ async function getFcmAccessToken(config) {
 }
 
 async function sendFcmLiveNotification(context, config) {
+  const message = {
+    token: context.tokenValue,
+    data: {
+      // Customer Assistant（additive）：type=ca_message 时附带会话与访客标识
+      ...(context.caMessage
+        ? {
+            type: "ca_message",
+            conversation_id: context.caMessage.conversationId || "",
+            visitor_id: context.caMessage.visitorId || "",
+            visitor_name: context.caMessage.visitorName || "",
+            unread: String(context.caMessage.unread ?? ""),
+          }
+        : {}),
+      event: context.event,
+      call_id: context.callId || "",
+      msgid: context.msgid || "",
+      from_uri: context.fromUri || "",
+      to_uri: context.toUri || "",
+      uid: context.uid || "",
+      sound: context.sound || "",
+      sip_username: context.device?.sip_username || "",
+      sip_domain: context.device?.sip_domain || "",
+      package_name: context.device?.package_name || "",
+    },
+    android: {
+      priority: "HIGH",
+    },
+  };
+
+  if (isFcmDelegateMode(config)) {
+    return sendFcmViaDelegate(context, config, message);
+  }
+
   const serviceAccount = await parseServiceAccountJsonFile(config.fcm.serviceAccountPath);
   if (!serviceAccount || !serviceAccount.project_id) {
     const error = new Error("FCM project id missing.");
@@ -482,36 +519,6 @@ async function sendFcmLiveNotification(context, config) {
   }
 
   const { accessToken } = await getFcmAccessToken(config);
-  const payload = {
-    message: {
-      token: context.tokenValue,
-      data: {
-        // Customer Assistant（additive）：type=ca_message 时附带会话与访客标识
-        ...(context.caMessage
-          ? {
-              type: "ca_message",
-              conversation_id: context.caMessage.conversationId || "",
-              visitor_id: context.caMessage.visitorId || "",
-              visitor_name: context.caMessage.visitorName || "",
-              unread: String(context.caMessage.unread ?? ""),
-            }
-          : {}),
-        event: context.event,
-        call_id: context.callId || "",
-        msgid: context.msgid || "",
-        from_uri: context.fromUri || "",
-        to_uri: context.toUri || "",
-        uid: context.uid || "",
-        sound: context.sound || "",
-        sip_username: context.device?.sip_username || "",
-        sip_domain: context.device?.sip_domain || "",
-        package_name: context.device?.package_name || "",
-      },
-      android: {
-        priority: "HIGH",
-      },
-    },
-  };
 
   const response = await fetch(`https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`, {
     method: "POST",
@@ -519,7 +526,7 @@ async function sendFcmLiveNotification(context, config) {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ message }),
   });
 
   const text = await response.text().catch(() => "");
@@ -538,6 +545,91 @@ async function sendFcmLiveNotification(context, config) {
   };
 }
 
+async function sendFcmViaDelegate(context, config, message) {
+  const url = String(config.fcm.delegateUrl || "");
+  const relayToken = String(config.fcm.delegateToken || "");
+  const timeoutMs = Number(config.fcm.delegateTimeoutMs || 5000);
+  let delegateHost = "";
+  try {
+    delegateHost = new URL(url).host;
+  } catch {}
+
+  const body = {
+    v: 1,
+    request_id: randomUUID(),
+    token: context.tokenValue,
+    event: context.event,
+    call_id: context.callId || "",
+    msgid: context.msgid || "",
+    from_uri: context.fromUri || "",
+    to_uri: context.toUri || "",
+    uid: context.uid || "",
+    sound: context.sound || "",
+    sip_username: context.device?.sip_username || "",
+    sip_domain: context.device?.sip_domain || "",
+    package_name: context.device?.package_name || "",
+  };
+  if (context.caMessage) {
+    body.ca = {
+      conversation_id: context.caMessage.conversationId || "",
+      visitor_id: context.caMessage.visitorId || "",
+      visitor_name: context.caMessage.visitorName || "",
+      unread: context.caMessage.unread ?? "",
+    };
+  }
+
+  // message 参数保留给后续扩展（当前转发服务按字段自行构造 FCM 消息）
+  void message;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-relay-token": relayToken,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    const text = await response.text().catch(() => "");
+    let parsed = {};
+    try {
+      parsed = JSON.parse(text);
+    } catch {}
+    const ok = response.ok && parsed?.ok !== false;
+    return {
+      ok,
+      status: ok ? "success" : "failed",
+      provider: "fcm",
+      providerResponse: {
+        delivery_mode: "delegate",
+        delegate_host: delegateHost,
+        http_status: response.status,
+        fcm_error: parsed?.fcm_error || "",
+        error_code: parsed?.error || "",
+        response_body_present: Boolean(text),
+        response_body_length: text.length,
+      },
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: "failed",
+      provider: "fcm",
+      providerResponse: {
+        delivery_mode: "delegate",
+        delegate_host: delegateHost,
+        error_code: error?.name === "AbortError" ? "DELEGATE_TIMEOUT" : "DELEGATE_REQUEST_FAILED",
+        error_message: String(error?.message || "").slice(0, 255),
+      },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function canLiveSendProvider(providerName, config) {
   const provider = normalizeProvider(providerName);
   if (!config.liveTest?.enabled) return false;
@@ -548,7 +640,10 @@ function canLiveSendProvider(providerName, config) {
     }
     return Boolean(config.apns?.keyPath && config.apns?.keyId && config.apns?.teamId);
   }
-  if (provider === "fcm") return Boolean(config.fcm?.liveTestEnabled && config.fcm?.enabled && config.fcm?.serviceAccountPath);
+  if (provider === "fcm") {
+    if (isFcmDelegateMode(config)) return true;
+    return Boolean(config.fcm?.liveTestEnabled && config.fcm?.enabled && config.fcm?.serviceAccountPath);
+  }
   if (provider === "jpush") return Boolean(config.jpush?.enabled && config.jpush?.liveTestEnabled && config.jpush?.appKey && config.jpush?.masterSecret && config.jpush?.apiUrl);
   return false;
 }
@@ -689,6 +784,10 @@ function getGatewayConfig() {
       enabled: toBool(process.env.FCM_ENABLED, false),
       liveTestEnabled: toBool(process.env.FCM_LIVE_TEST_ENABLED, false),
       serviceAccountPath: trimText(process.env.FCM_SERVICE_ACCOUNT_PATH, 1024),
+      delivery: (trimText(process.env.PUSH_FCM_DELIVERY, 16) || "local").toLowerCase(),
+      delegateUrl: trimText(process.env.PUSH_FCM_DELEGATE_URL, 1024),
+      delegateToken: trimText(process.env.PUSH_FCM_DELEGATE_TOKEN, 512),
+      delegateTimeoutMs: Number(process.env.PUSH_FCM_DELEGATE_TIMEOUT_MS || 5000),
     },
     jpush: {
       enabled: toBool(process.env.JPUSH_ENABLED, false),
@@ -1112,12 +1211,17 @@ class FcmProvider extends BasePushProvider {
 
   isConfigured() {
     const { fcm } = this.config;
+    if (isFcmDelegateMode(this.config)) return true;
     return Boolean(fcm.enabled && fcm.serviceAccountPath);
   }
 
   getConfigWarnings() {
     const { fcm } = this.config;
     const warnings = [];
+    if (isFcmDelegateMode(this.config)) {
+      if (!fcm.delegateToken) warnings.push("FCM_DELEGATE_TOKEN_MISSING");
+      return warnings;
+    }
     if (!fcm.enabled) warnings.push("FCM_DISABLED");
     if (!fcm.serviceAccountPath) warnings.push("FCM_SERVICE_ACCOUNT_PATH_MISSING");
     return warnings;
