@@ -1,0 +1,15 @@
+[Unit]
+Description=FCM Relay Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/saas/fcm-relay
+EnvironmentFile=/opt/fcm-relay/.env
+ExecStart=/usr/bin/node /opt/saas/fcm-relay/server.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
