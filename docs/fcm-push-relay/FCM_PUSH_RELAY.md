@@ -94,6 +94,28 @@ WantedBy=multi-user.target
 - 状态检查：`systemctl is-active fcm-relay`
 - 日志：`journalctl -u fcm-relay -n 100 --no-pager`
 
+### 4.2.1 首次启动与日常启停
+
+首次部署（单元文件与环境文件就位后）：
+
+```bash
+sudo cp /opt/saas/deployment/fcm-relay.service /etc/systemd/system/fcm-relay.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now fcm-relay     # 设置开机自启并立即启动
+sudo systemctl is-active fcm-relay       # 期望输出 active
+curl -s http://127.0.0.1:3100/healthz    # 期望 {"ok":true,"service":"fcm-relay"}
+```
+
+日常启停：
+
+```bash
+sudo systemctl start fcm-relay
+sudo systemctl stop fcm-relay
+sudo systemctl restart fcm-relay
+sudo systemctl status fcm-relay
+systemctl is-enabled fcm-relay            # 确认开机自启
+```
+
 ### 4.3 环境变量（`/opt/fcm-relay/.env`）
 
 | 变量 | 说明 |
@@ -245,7 +267,41 @@ systemctl is-active saas
 3. 前端有改动：服务器上 `npm run build`（`sudo bash -lc "cd /opt/saas && npm run build"`）；
 4. 后端有改动：`systemctl restart saas`（重启前先通知）。
 
-转发服务更新：
+### 7.1 首次部署转发服务（新机器）
+
+前置：该机器能访问 Google FCM，并已从 GitHub 拉取仓库到 `/opt/saas`。
+
+```bash
+# 1) 拉取转发服务代码与单元文件
+sudo git -C /opt/saas fetch origin
+sudo git -C /opt/saas checkout origin/master -- fcm-relay deployment
+
+# 2) 创建环境文件（权限 600，密钥勿入库）
+sudo mkdir -p /opt/fcm-relay
+sudo bash -c 'umask 077; cat > /opt/fcm-relay/.env <<EOF
+PORT=3100
+RELAY_TOKEN=$(openssl rand -hex 32)
+FCM_SERVICE_ACCOUNT_PATH=/etc/flexisip/firebase/<服务账号>.json
+FCM_TIMEOUT_MS=10000
+EOF'
+sudo chmod 600 /opt/fcm-relay/.env
+
+# 3) 安装并启动 systemd 服务（开机自启）
+sudo cp /opt/saas/deployment/fcm-relay.service /etc/systemd/system/fcm-relay.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now fcm-relay
+systemctl is-active fcm-relay
+curl -s http://127.0.0.1:3100/healthz
+
+# 4) 配置 Apache 域名与证书（示例）
+#    /etc/apache2/sites-available/fcm.qrtalkie.org.conf 内 ProxyPass / http://127.0.0.1:3100/
+sudo a2ensite fcm.qrtalkie.org && sudo systemctl reload apache2
+sudo certbot --apache -d fcm.qrtalkie.org --redirect
+```
+
+首次部署后，把 `RELAY_TOKEN` 同步到需要委托的服务器（见第 6 节）。
+
+### 7.2 更新转发服务
 
 ```bash
 sudo git -C /opt/saas fetch origin
