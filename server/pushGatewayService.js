@@ -109,6 +109,17 @@ function normalizeApnsDeviceToken(raw, providerName) {
   return stripSuffix(preferred || parts[0]);
 }
 
+// 横幅显示名：优先 from_name；否则取 SIP URI 的用户名部分（去掉参数与域名）；chatroom 等系统地址不显示
+function apnsAlertSenderLabel(context) {
+  const name = trimText(context?.fromName || "", 128);
+  if (name) return name;
+  const rawUri = trimText(context?.fromUri || "", 512);
+  if (!rawUri) return "";
+  const user = rawUri.replace(/^sips?:/i, "").split(";")[0].split("@")[0].trim();
+  if (!user || /^chatroom-/i.test(user)) return "";
+  return user;
+}
+
 function resolveApnsHost(config, context) {
   const forcedHost = trimText(context?.__apnsForceHost || "", 128);
   if (forcedHost) return forcedHost;
@@ -181,11 +192,12 @@ async function sendApnsLiveNotification(context, config, providerName) {
 
   const host = resolveApnsHost(config, context);
   const path = `/3/device/${deviceToken}`;
+  const alertSender = apnsAlertSenderLabel(context);
   let payload = providerName === "apns.voip"
     ? {
         aps: {
-          alert: context.fromUri
-            ? { title: "Incoming Call", body: context.fromUri.replace("sip:", "").split("@")[0] }
+          alert: alertSender
+            ? { title: "Incoming Call", body: alertSender }
             : "Incoming Call",
           "content-available": 1,
           sound: context.sound || "",
@@ -203,7 +215,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
     : {
         aps: {
           alert: (context.event === "call" ? "Incoming call" : "New message")
-            + (context.fromUri ? (" - " + context.fromUri) : ""),
+            + (alertSender ? (" - " + alertSender) : ""),
           badge: 1,
           sound: context.sound || "default",
           "content-available": 1,
