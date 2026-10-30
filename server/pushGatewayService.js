@@ -120,6 +120,12 @@ function apnsAlertSenderLabel(context) {
   return user;
 }
 
+function apnsAlertTitle(context) {
+  if (context?.event === "call") return "Incoming call";
+  if (/^sips?:chatroom-/i.test(trimText(context?.fromUri || "", 512))) return "Group message";
+  return "New message";
+}
+
 function resolveApnsHost(config, context) {
   const forcedHost = trimText(context?.__apnsForceHost || "", 128);
   if (forcedHost) return forcedHost;
@@ -214,8 +220,7 @@ async function sendApnsLiveNotification(context, config, providerName) {
       }
     : {
         aps: {
-          alert: (context.event === "call" ? "Incoming call" : "New message")
-            + (alertSender ? (" - " + alertSender) : ""),
+          alert: apnsAlertTitle(context) + (alertSender ? (" - " + alertSender) : ""),
           badge: 1,
           sound: context.sound || "default",
           "content-available": 1,
