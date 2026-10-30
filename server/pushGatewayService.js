@@ -2649,10 +2649,7 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
   });
 
   app.post("/api/push/devices/register", jsonParser, async (request, response) => {
-    if (!isGatewayRequestAuthorized(request)) {
-      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
-    }
-
+    // 客户端接口：设备注册由 App 直接调用，不能携带服务端密钥，因此不做网关密钥校验
     const payload = request.body || {};
     let connection;
     try {
@@ -2683,10 +2680,7 @@ export function registerPushGatewayRoutes(app, { requireAdmin } = {}) {
   });
 
   app.post("/api/push/devices/unregister", jsonParser, async (request, response) => {
-    if (!isGatewayRequestAuthorized(request)) {
-      return response.status(401).json({ success: false, code: "PUSH_GATEWAY_UNAUTHORIZED", message: "Unauthorized." });
-    }
-
+    // 客户端接口：设备注销由 App 直接调用，不能携带服务端密钥，因此不做网关密钥校验
       const payload = request.body || {};
       let connection;
       try {
