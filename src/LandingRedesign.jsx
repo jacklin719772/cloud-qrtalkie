@@ -169,6 +169,7 @@ const AI_DEMO_QUICK_QUESTIONS = [
 ];
 
 const AI_DEMO_LIMIT_SECONDS = 180;
+const AI_ICE_DISCONNECT_GRACE_MS = 8000;
 function formatDemoSeconds(value) {
   const seconds = Math.max(0, Number(value) || 0);
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
@@ -199,7 +200,8 @@ async function loadJsSip() {
 
 function injectServiceSdpPatch(uaInstance, serverIp, originalSendRef) {
   if (!uaInstance?.transport || !serverIp || originalSendRef.current) return;
-  originalSendRef.current = uaInstance.transport.send;
+  const originalSend = uaInstance.transport.send;
+  originalSendRef.current = originalSend;
   uaInstance.transport.send = function patchedSend(...args) {
     if (args[0]?.body) {
       let body = args[0].body;
@@ -210,7 +212,7 @@ function injectServiceSdpPatch(uaInstance, serverIp, originalSendRef) {
         args[0].body = body;
       }
     }
-    return originalSendRef.current.apply(this, args);
+    return originalSend.apply(this, args);
   };
 }
 
@@ -407,6 +409,7 @@ function LandingRedesignContent() {
   const aiOriginalSendRef = useRef(null);
   const aiCallBusyRef = useRef(false);
   const aiCallTimerRef = useRef(null);
+  const aiIceGraceTimerRef = useRef(null);
   const aiEndingRef = useRef(false);
 
   useEffect(() => {
@@ -1135,6 +1138,10 @@ function LandingRedesignContent() {
       window.clearTimeout(aiCallTimerRef.current);
       aiCallTimerRef.current = null;
     }
+    if (aiIceGraceTimerRef.current) {
+      window.clearTimeout(aiIceGraceTimerRef.current);
+      aiIceGraceTimerRef.current = null;
+    }
     const currentCall = aiCurrentCallRef.current;
     aiCurrentCallRef.current = null;
     if (currentCall) {
@@ -1235,8 +1242,31 @@ function LandingRedesignContent() {
                 if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc, 'aiRemoteAudio');
               };
               pc.oniceconnectionstatechange = () => {
-                if (pc.iceConnectionState === 'connected') bindServiceRemoteAudio(pc, 'aiRemoteAudio');
-                if ((pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') && !aiEndingRef.current) {
+                const iceState = pc.iceConnectionState;
+                if (iceState === 'connected' || iceState === 'completed') {
+                  if (aiIceGraceTimerRef.current) {
+                    window.clearTimeout(aiIceGraceTimerRef.current);
+                    aiIceGraceTimerRef.current = null;
+                  }
+                  bindServiceRemoteAudio(pc, 'aiRemoteAudio');
+                  return;
+                }
+                if (iceState === 'disconnected') {
+                  if (!aiIceGraceTimerRef.current && !aiEndingRef.current) {
+                    aiIceGraceTimerRef.current = window.setTimeout(() => {
+                      aiIceGraceTimerRef.current = null;
+                      if (!aiEndingRef.current && (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed')) {
+                        endAiVoiceCall(t('AI 通话连接中断。'));
+                      }
+                    }, AI_ICE_DISCONNECT_GRACE_MS);
+                  }
+                  return;
+                }
+                if (iceState === 'failed' && !aiEndingRef.current) {
+                  if (aiIceGraceTimerRef.current) {
+                    window.clearTimeout(aiIceGraceTimerRef.current);
+                    aiIceGraceTimerRef.current = null;
+                  }
                   endAiVoiceCall(t('AI 通话连接中断。'));
                 }
               };
