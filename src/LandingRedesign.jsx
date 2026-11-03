@@ -407,6 +407,7 @@ function LandingRedesignContent() {
   const aiCurrentCallRef = useRef(null);
   const aiLocalStreamRef = useRef(null);
   const aiOriginalSendRef = useRef(null);
+  const aiTempPcRef = useRef(null);
   const aiCallBusyRef = useRef(false);
   const aiCallTimerRef = useRef(null);
   const aiIceGraceTimerRef = useRef(null);
@@ -1134,6 +1135,11 @@ function LandingRedesignContent() {
 
   function cleanupAiVoiceResources() {
     aiEndingRef.current = true;
+    const tempPc = aiTempPcRef.current;
+    aiTempPcRef.current = null;
+    if (tempPc) {
+      try { tempPc.onicecandidate = null; tempPc.close(); } catch {}
+    }
     if (aiCallTimerRef.current) {
       window.clearTimeout(aiCallTimerRef.current);
       aiCallTimerRef.current = null;
@@ -1202,6 +1208,28 @@ function LandingRedesignContent() {
       }
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       aiLocalStreamRef.current = stream;
+      // ecard 同款：先建临时 PC 预热 ICE/TURN，避免 JsSIP 等 gathering 完成才发 INVITE
+      try {
+        const warmPc = new RTCPeerConnection({ iceServers: Array.isArray(data.iceServers) ? data.iceServers : [] });
+        aiTempPcRef.current = warmPc;
+        stream.getTracks().forEach((track) => warmPc.addTrack(track, stream));
+        const warmOffer = await warmPc.createOffer();
+        await warmPc.setLocalDescription(warmOffer);
+        await new Promise((resolve) => {
+          let done = false;
+          let timer = null;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            if (timer) window.clearTimeout(timer);
+            resolve();
+          };
+          timer = window.setTimeout(finish, 1500);
+          warmPc.onicecandidate = (event) => {
+            if (event.candidate && /typ (relay|srflx)/.test(event.candidate.candidate || '')) finish();
+          };
+        });
+      } catch {}
       const JsSIP = await loadJsSip();
       const socket = new JsSIP.WebSocketInterface(data.wssUrl);
       const ua = new JsSIP.UA({
@@ -1225,6 +1253,9 @@ function LandingRedesignContent() {
           },
           rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
           eventHandlers: {
+            icecandidate: (event) => {
+              if (!aiEndingRef.current && event.candidate) event.ready();
+            },
             progress: () => updateAiCallStatus(t('正在响铃…')),
             ringing: () => updateAiCallStatus(t('正在响铃…')),
             accepted: () => updateAiCallStatus(t('通话中')),
@@ -1239,9 +1270,11 @@ function LandingRedesignContent() {
               const pc = event.peerconnection;
               applyServiceCodecPreferences(pc);
               pc.ontrack = (trackEvent) => {
+                if (aiEndingRef.current) return;
                 if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc, 'aiRemoteAudio');
               };
               pc.oniceconnectionstatechange = () => {
+                if (aiEndingRef.current) return;
                 const iceState = pc.iceConnectionState;
                 if (iceState === 'connected' || iceState === 'completed') {
                   if (aiIceGraceTimerRef.current) {
