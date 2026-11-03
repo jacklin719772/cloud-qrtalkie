@@ -391,6 +391,7 @@ function LandingRedesignContent() {
   const serviceLocalVideoRef = useRef(null);
   const serviceKeyframeKickRef = useRef(null);
   const serviceOriginalSendRef = useRef(null);
+  const serviceTempPcRef = useRef(null);
   const serviceCallBusyRef = useRef(false);
   const serviceRegNameRef = useRef(null);
   const serviceChat = useVisitorChat(serviceProfile?.ecardSlug || '');
@@ -923,6 +924,11 @@ function LandingRedesignContent() {
   };
 
   function cleanupServiceCallResources() {
+    const tempPc = serviceTempPcRef.current;
+    serviceTempPcRef.current = null;
+    if (tempPc) {
+      try { tempPc.onicecandidate = null; tempPc.close(); } catch {}
+    }
     if (serviceKeyframeKickRef.current) {
       window.clearInterval(serviceKeyframeKickRef.current);
       serviceKeyframeKickRef.current = null;
@@ -1008,6 +1014,28 @@ function LandingRedesignContent() {
       }
     }
     serviceLocalStreamRef.current = stream;
+    // ecard/AI 同款：先建临时 PC 预热 ICE/TURN，避免 JsSIP 等 gathering 完成才发 INVITE
+    try {
+      const warmPc = new RTCPeerConnection({ iceServers: Array.isArray(callSession.iceServers) ? callSession.iceServers : [] });
+      serviceTempPcRef.current = warmPc;
+      stream.getTracks().forEach((track) => warmPc.addTrack(track, stream));
+      const warmOffer = await warmPc.createOffer();
+      await warmPc.setLocalDescription(warmOffer);
+      await new Promise((resolve) => {
+        let done = false;
+        let timer = null;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          if (timer) window.clearTimeout(timer);
+          resolve();
+        };
+        timer = window.setTimeout(finish, 1500);
+        warmPc.onicecandidate = (event) => {
+          if (event.candidate && /typ (relay|srflx)/.test(event.candidate.candidate || '')) finish();
+        };
+      });
+    } catch {}
     setServiceCall({ ...SERVICE_CALL_DEFAULT, open: true, video: withVideo, status: t('呼叫中…') });
     const ua = serviceUaRef.current;
     const options = {
@@ -1019,6 +1047,9 @@ function LandingRedesignContent() {
       },
       rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: withVideo },
       eventHandlers: {
+        icecandidate: (event) => {
+          if (event.candidate && serviceCurrentCallRef.current) event.ready();
+        },
         progress: () => updateServiceCallStatus(t('正在响铃…')),
         ringing: () => updateServiceCallStatus(t('正在响铃…')),
         accepted: () => updateServiceCallStatus(t('通话中')),
@@ -1030,12 +1061,14 @@ function LandingRedesignContent() {
           applyServiceCodecPreferences(pc);
           if (withVideo) tuneServiceVideoSender(pc, serviceKeyframeKickRef);
           pc.ontrack = (trackEvent) => {
+            if (!serviceCurrentCallRef.current) return;
             if (trackEvent.track.kind === 'video' && serviceRemoteVideoRef.current) {
               serviceRemoteVideoRef.current.srcObject = new MediaStream([trackEvent.track]);
             }
             if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc);
           };
           pc.oniceconnectionstatechange = () => {
+            if (!serviceCurrentCallRef.current) return;
             if (pc.iceConnectionState === 'connected') bindServiceRemoteAudio(pc);
             if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
               endServiceCall(t('通话中断。'));
