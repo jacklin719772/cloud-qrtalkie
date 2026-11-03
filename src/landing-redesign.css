@@ -1106,7 +1106,7 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-service-call-local { right: 10px; bottom: 72px; width: 96px; height: 72px; }
   .qrt-service-call-actions button { min-width: 64px; height: 38px; padding: 0 12px; font-size: 11px; }
   .qrt-service-chat.is-chatting { padding: 6px; }
-  .qrt-service-register { padding: 4px 2px; }
+  .qrt-service-register { padding: 4px 2px; justify-content: flex-start; overflow-y: auto; }
   .qrt-service-register h3 { font-size: 18px; }
   .qrt-service-register-intro { margin-bottom: 14px; font-size: 12px; }
   .qrt-service-register-form { grid-template-columns: 1fr; gap: 10px; }
