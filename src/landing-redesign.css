@@ -1128,6 +1128,105 @@ body.qrt-modal-open { overflow: hidden !important; }
   .qrt-service-welcome h3 { margin-bottom: 14px; font-size: 19px; }
   .qrt-service-hint { margin: 14px 0 12px; }
 }
+.qrt-ivr-card {
+  position: relative;
+  width: min(520px, 94vw);
+  max-height: 92vh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.qrt-ivr-close { top: 10px; right: 10px; z-index: 4; }
+.qrt-ivr-banner {
+  flex: 0 0 auto;
+  height: 150px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.qrt-ivr-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(30, 39, 51, 0) 40%, #1e2733 100%);
+}
+.qrt-ivr-body { display: flex; flex-direction: column; gap: 10px; padding: 18px 22px 22px; }
+.qrt-ivr-body h3 { margin: 0; color: #f8fafc; font-size: 22px; font-weight: 700; }
+.qrt-ivr-sub { margin: 0; color: #8fa3b5; font-size: 12px; }
+.qrt-ivr-statuses { display: flex; flex-wrap: wrap; gap: 8px; }
+.qrt-ivr-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 9px; border: 1px solid #46525f; border-radius: 999px;
+  color: #cbd5e1; font-size: 12px;
+}
+.qrt-ivr-pill i { width: 6px; height: 6px; border-radius: 50%; background: #64748b; }
+.qrt-ivr-pill.is-online { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.12); }
+.qrt-ivr-pill.is-online i { background: #22c55e; }
+.qrt-ivr-pill.is-offline { color: #fca5a5; border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.1); }
+.qrt-ivr-pill.is-offline i { background: #ef4444; }
+.qrt-ivr-note { margin: 0; color: #fbbf24; font-size: 12px; }
+.qrt-ivr-start {
+  height: 44px; margin-top: 4px;
+  border: 1px solid #5aa7e0; border-radius: 10px;
+  background: linear-gradient(120deg, #2563eb 0%, #38bdf8 100%);
+  color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.qrt-ivr-start:disabled { opacity: 0.5; cursor: not-allowed; }
+.qrt-ivr-call-head { padding: 26px 20px 8px; text-align: center; }
+.qrt-ivr-call-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 64px; height: 64px; margin: 0 auto 10px;
+  border-radius: 50%; background: #253247; color: #5aa7e0; font-size: 30px;
+}
+.qrt-ivr-call-head h3 { margin: 0; color: #f8fafc; font-size: 20px; font-weight: 700; }
+.qrt-ivr-call-status { margin: 6px 0 0; color: #5aa7e0; font-size: 13px; }
+.qrt-ivr-call-status.is-connected { color: #6ee7b7; }
+.qrt-ivr-hint { margin: 8px 0 12px; text-align: center; color: #c7d2dd; font-size: 13px; }
+.qrt-ivr-keypad {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+  width: min(300px, 100%); margin: 0 auto; padding: 0 20px 12px;
+}
+.qrt-ivr-keypad button {
+  height: 54px;
+  border: 1px solid #46525f; border-radius: 12px;
+  background: rgba(72, 130, 180, 0.12); color: #eef4fa;
+  font-size: 20px; cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.1s ease;
+}
+.qrt-ivr-keypad button:hover { border-color: #5aa7e0; background: rgba(72, 130, 180, 0.22); }
+.qrt-ivr-keypad button:active { transform: scale(0.97); }
+.qrt-ivr-digit { font-weight: 600; }
+.qrt-ivr-transfer {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 92px; margin: 0 20px 12px;
+  color: #5aa7e0; font-size: 14px; text-align: center;
+}
+.qrt-ivr-actions {
+  display: flex; justify-content: center; gap: 10px;
+  padding: 12px 20px 20px;
+}
+.qrt-ivr-actions button {
+  min-width: 88px; height: 40px; padding: 0 16px;
+  border: 1px solid #46525f; border-radius: 999px;
+  background: #303a44; color: #e2e8f0; font-size: 12px; cursor: pointer;
+}
+.qrt-ivr-actions button:hover { border-color: #5aa7e0; }
+.qrt-ivr-actions button.is-hangup { background: #dc2626; border-color: #ef4444; color: #fff; }
+@media (max-width: 900px) {
+  .qrt-ivr-layer { padding: 0; }
+  .qrt-ivr-card { width: 100vw; height: 100dvh; max-height: none; border-radius: 0; border: none; }
+  .qrt-ivr-banner { height: 120px; }
+  .qrt-ivr-body { padding: 14px 16px 18px; }
+  .qrt-ivr-keypad { width: 100%; padding: 0 12px 10px; gap: 7px; }
+  .qrt-ivr-keypad button { height: 56px; }
+  .qrt-ivr-actions { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+  .qrt-ivr-close { top: 8px; right: 8px; }
+}
+
 .qrt-back-to-top-btn {
   position: fixed; bottom: 40px; right: 40px; width: 50px; height: 50px;
   background-color: #1e3a8a; color: #fff; border: none; border-radius: 50%;

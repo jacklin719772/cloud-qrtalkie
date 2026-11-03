@@ -16255,6 +16255,125 @@ app.post("/api/public/ai-voice/call-session", async (request, response) => {
   }
 });
 
+const IVR_DEMO_ENABLED = String(process.env.IVR_DEMO_ENABLED || "").toLowerCase() === "true";
+const IVR_DEMO_TARGET = String(process.env.IVR_DEMO_TARGET || "8888").trim();
+const IVR_DEMO_SALES_USER = String(process.env.IVR_DEMO_SALES_USER || "50010013").trim();
+const IVR_DEMO_AFTERSALES_USER = String(process.env.IVR_DEMO_AFTERSALES_USER || "131314").trim();
+const IVR_DEMO_SIP_DOMAIN = String(process.env.IVR_DEMO_SIP_DOMAIN || process.env.ECARD_FLEXISIP_SIP_DOMAIN || "sip.qrtalkie.org").trim();
+const IVR_DEMO_HEALTH_URL = String(process.env.IVR_DEMO_HEALTH_URL || "http://127.0.0.1:18080/health").trim();
+let ivrDemoStatusCache = { at: 0, data: null };
+
+async function fetchIvrDemoHealth() {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1500);
+    const response = await fetch(IVR_DEMO_HEALTH_URL, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getIvrDemoStatus() {
+  if (!IVR_DEMO_ENABLED) {
+    return {
+      available: false,
+      serviceOnline: false,
+      reason: "语音客服演示未开启",
+      sales: { state: "unknown", online: false, busy: false },
+      afterSales: { state: "unknown", online: false, busy: false },
+    };
+  }
+  const [health, salesResult, afterSalesResult] = await Promise.all([
+    fetchIvrDemoHealth(),
+    getSipAccountStatus({ account: IVR_DEMO_SALES_USER, domain: IVR_DEMO_SIP_DOMAIN }).catch(() => null),
+    getSipAccountStatus({ account: IVR_DEMO_AFTERSALES_USER, domain: IVR_DEMO_SIP_DOMAIN }).catch(() => null),
+  ]);
+  const serviceOnline = Boolean(health && health.ok);
+  const online = (result) => Boolean(result && (result.state === "online_idle" || result.state === "online_busy"));
+  const stateOf = (result) => (result && result.state) || "unknown";
+  return {
+    available: serviceOnline,
+    serviceOnline,
+    reason: serviceOnline ? "" : "语音客服服务暂不可用",
+    sales: {
+      state: stateOf(salesResult),
+      online: online(salesResult),
+      busy: Boolean(salesResult && salesResult.state === "online_busy"),
+    },
+    afterSales: {
+      state: stateOf(afterSalesResult),
+      online: online(afterSalesResult),
+      busy: Boolean(afterSalesResult && afterSalesResult.state === "online_busy"),
+    },
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+app.get("/api/public/ivr-demo/status", async (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  const now = Date.now();
+  if (ivrDemoStatusCache.data && now - ivrDemoStatusCache.at < 5000) {
+    return response.json({ success: true, data: ivrDemoStatusCache.data });
+  }
+  try {
+    const data = await getIvrDemoStatus();
+    ivrDemoStatusCache = { at: now, data };
+    return response.json({ success: true, data });
+  } catch (error) {
+    console.error("Failed to get IVR demo status:", error);
+    return response.status(500).json({ success: false, message: "读取语音客服状态失败。" });
+  }
+});
+
+app.post("/api/public/ivr-demo/call-session", async (request, response) => {
+  response.setHeader("Cache-Control", "no-store");
+  const forwarded = String(request.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const ip = forwarded || request.ip || request.socket?.remoteAddress || "unknown";
+  if (!allowAiVoiceSession(ip)) {
+    return response.status(429).json({ success: false, message: "呼叫请求过于频繁，请稍后再试。" });
+  }
+  if (!IVR_DEMO_ENABLED) {
+    return response.status(400).json({ success: false, message: "语音客服演示未开启。" });
+  }
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    const availability = await checkAiVoiceAvailability(connection);
+    if (!availability.available) {
+      return response.status(400).json({ success: false, message: availability.reason || "语音客服暂不可用。" });
+    }
+    const wssUrl = String(process.env.ECARD_ASTERISK_WEBRTC_WSS_URL || "").trim();
+    const sharedPassword = String(process.env.ECARD_ASTERISK_WEBRTC_SHARED_PASSWORD || "").trim();
+    const webrtcDomain = String(process.env.ECARD_ASTERISK_WEBRTC_DOMAIN || "").trim();
+    if (!wssUrl || !sharedPassword || !webrtcDomain) {
+      return response.status(500).json({ success: false, message: "语音客服呼叫配置不完整。" });
+    }
+    return response.json({
+      success: true,
+      data: {
+        webAccount: availability.caller.username,
+        credential: { type: "shared-password", value: sharedPassword },
+        webrtcDomain,
+        wssUrl,
+        targetSipUri: `sip:${IVR_DEMO_TARGET}@${webrtcDomain}`,
+        sipDomain: String(process.env.ECARD_FLEXISIP_SIP_DOMAIN || webrtcDomain).trim(),
+        iceServers: parseEcardIceServers(),
+        sipServerPublicIp: String(process.env.ECARD_ASTERISK_WEBRTC_SIP_SERVER_PUBLIC_IP || "").trim(),
+        enableVoice: true,
+        showKeypad: true,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create IVR demo call session:", error);
+    return response.status(500).json({ success: false, message: "语音客服呼叫会话建立失败。" });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 // 在線演示 AI 客服（公開、無狀態、獨立限流）
 const AI_DEMO_SYSTEM_PROMPT = [
   "你是 QRTalkie 官网的在线演示 AI 客服。",

@@ -413,12 +413,43 @@ function LandingRedesignContent() {
   const aiCallTimerRef = useRef(null);
   const aiIceGraceTimerRef = useRef(null);
   const aiEndingRef = useRef(false);
+  const [ivrOpen, setIvrOpen] = useState(false);
+  const [ivrStatus, setIvrStatus] = useState({
+    loading: true,
+    available: false,
+    serviceOnline: false,
+    reason: '',
+    sales: { online: false, busy: false, state: 'unknown' },
+    afterSales: { online: false, busy: false, state: 'unknown' },
+  });
+  const [ivrCall, setIvrCall] = useState({
+    open: false,
+    status: '',
+    connected: false,
+    transferring: false,
+    ended: false,
+    muted: false,
+    duration: 0,
+    lastDigit: '',
+  });
+  const ivrUaRef = useRef(null);
+  const ivrCallSessionRef = useRef(null);
+  const ivrCurrentCallRef = useRef(null);
+  const ivrLocalStreamRef = useRef(null);
+  const ivrOriginalSendRef = useRef(null);
+  const ivrTempPcRef = useRef(null);
+  const ivrBusyRef = useRef(false);
+  const ivrEndingRef = useRef(false);
+  const ivrConnectedRef = useRef(false);
+  const ivrDurationTimerRef = useRef(null);
+  const ivrCallTimerRef = useRef(null);
 
   useEffect(() => {
-    if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen && !serviceOpen) return undefined;
+    if (!demoOpen && !ecardDemoOpen && !demoEntry && !aiDemoOpen && !serviceOpen && !ivrOpen) return undefined;
     const onKey = (event) => {
       if (event.key !== 'Escape') return;
       if (serviceOpen) setServiceOpen(false);
+      else if (ivrOpen) { cleanupIvrResources(); setIvrOpen(false); }
       else if (demoEntry) setDemoEntry(null);
       else if (aiDemoOpen) setAiDemoOpen(false);
       else if (ecardDemoOpen) setEcardDemoOpen(false);
@@ -426,7 +457,7 @@ function LandingRedesignContent() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [demoOpen, ecardDemoOpen, demoEntry, aiDemoOpen, serviceOpen]);
+  }, [demoOpen, ecardDemoOpen, demoEntry, aiDemoOpen, serviceOpen, ivrOpen]);
 
   useEffect(() => {
     if (carouselPaused) return undefined;
@@ -525,6 +556,33 @@ function LandingRedesignContent() {
     endAiVoiceCall(t('演示通话已满 3 分钟，已自动挂断。'));
     return undefined;
   }, [aiCall.open, aiCallSecondsLeft]);
+
+  useEffect(() => {
+    if (!ivrOpen) return undefined;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const res = await apiClient.get('/public/ivr-demo/status');
+        const data = res?.data || res;
+        if (!cancelled && data) setIvrStatus({ ...data, loading: false });
+      } catch {
+        if (!cancelled) {
+          setIvrStatus((prev) => ({
+            ...prev,
+            loading: false,
+            available: false,
+            reason: t('语音服务暂不可用，请稍后再试'),
+          }));
+        }
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [ivrOpen]);
 
   useEffect(() => {
     const list = aiListRef.current;
@@ -1366,6 +1424,294 @@ function LandingRedesignContent() {
     }
   };
 
+  function cleanupIvrResources() {
+    ivrEndingRef.current = true;
+    ivrConnectedRef.current = false;
+    if (ivrDurationTimerRef.current) {
+      window.clearInterval(ivrDurationTimerRef.current);
+      ivrDurationTimerRef.current = null;
+    }
+    if (ivrCallTimerRef.current) {
+      window.clearTimeout(ivrCallTimerRef.current);
+      ivrCallTimerRef.current = null;
+    }
+    const currentCall = ivrCurrentCallRef.current;
+    ivrCurrentCallRef.current = null;
+    if (currentCall) {
+      try { currentCall.terminate(); } catch {}
+    }
+    const ua = ivrUaRef.current;
+    ivrUaRef.current = null;
+    if (ua) {
+      try { ua.stop(); } catch {}
+    }
+    const tempPc = ivrTempPcRef.current;
+    ivrTempPcRef.current = null;
+    if (tempPc) {
+      try { tempPc.onicecandidate = null; tempPc.close(); } catch {}
+    }
+    const stream = ivrLocalStreamRef.current;
+    ivrLocalStreamRef.current = null;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try { track.stop(); } catch {}
+      });
+    }
+    ivrOriginalSendRef.current = null;
+    ivrBusyRef.current = false;
+    const audioEl = document.getElementById('ivrRemoteAudio');
+    if (audioEl) audioEl.srcObject = null;
+  }
+
+  function endIvrCall(message) {
+    cleanupIvrResources();
+    setIvrCall((prev) => ({
+      ...prev,
+      open: true,
+      connected: false,
+      transferring: false,
+      ended: true,
+      muted: false,
+      lastDigit: '',
+      status: message || t('通话已结束'),
+    }));
+  }
+
+  const closeIvrDemo = () => {
+    cleanupIvrResources();
+    setIvrOpen(false);
+    setIvrCall({
+      open: false,
+      status: '',
+      connected: false,
+      transferring: false,
+      ended: false,
+      muted: false,
+      duration: 0,
+      lastDigit: '',
+    });
+  };
+
+  const openIvrDemo = () => {
+    if (ivrCall.open) return;
+    cleanupIvrResources();
+    setDemoOpen(false);
+    setIvrOpen(true);
+    setIvrCall({
+      open: false,
+      status: '',
+      connected: false,
+      transferring: false,
+      ended: false,
+      muted: false,
+      duration: 0,
+      lastDigit: '',
+    });
+    setIvrStatus((prev) => ({ ...prev, loading: true }));
+  };
+
+  function markIvrConnected() {
+    if (ivrEndingRef.current) return;
+    if (ivrCallTimerRef.current) {
+      window.clearTimeout(ivrCallTimerRef.current);
+      ivrCallTimerRef.current = null;
+    }
+    if (ivrConnectedRef.current) return;
+    ivrConnectedRef.current = true;
+    setIvrCall((prev) => ({ ...prev, status: t('通话中'), connected: true, ended: false }));
+    if (!ivrDurationTimerRef.current) {
+      const startedAt = Date.now();
+      ivrDurationTimerRef.current = window.setInterval(() => {
+        setIvrCall((prev) => (
+          prev.connected && !prev.ended
+            ? { ...prev, duration: Math.floor((Date.now() - startedAt) / 1000) }
+            : prev
+        ));
+      }, 1000);
+    }
+  }
+
+  const startIvrVoiceCall = async () => {
+    if (ivrBusyRef.current) return;
+    if (!ivrStatus.available) {
+      setIvrCall((prev) => ({
+        ...prev,
+        open: true,
+        ended: true,
+        status: ivrStatus.reason || t('语音服务暂不可用，请稍后再试'),
+      }));
+      return;
+    }
+    ivrBusyRef.current = true;
+    ivrEndingRef.current = false;
+    ivrConnectedRef.current = false;
+    setIvrCall({
+      open: true,
+      status: t('正在连接语音服务…'),
+      connected: false,
+      transferring: false,
+      ended: false,
+      muted: false,
+      duration: 0,
+      lastDigit: '',
+    });
+    let stream = null;
+    try {
+      const session = await apiClient.post('/public/ivr-demo/call-session', {}, { timeoutMs: 20000 });
+      if (!session?.success) throw new Error(session?.message || t('语音服务暂不可用，请稍后再试'));
+      const data = session.data || {};
+      if (!data.webAccount || !data.wssUrl || !data.webrtcDomain || !data.targetSipUri || !data.credential?.value) {
+        throw new Error(t('呼叫配置不完整。'));
+      }
+      ivrCallSessionRef.current = data;
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      ivrLocalStreamRef.current = stream;
+
+      try {
+        const warmPc = new RTCPeerConnection({ iceServers: Array.isArray(data.iceServers) ? data.iceServers : [] });
+        ivrTempPcRef.current = warmPc;
+        stream.getTracks().forEach((track) => warmPc.addTrack(track, stream));
+        const warmOffer = await warmPc.createOffer();
+        await warmPc.setLocalDescription(warmOffer);
+        await new Promise((resolve) => {
+          let done = false;
+          let timer = null;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            if (timer) window.clearTimeout(timer);
+            resolve();
+          };
+          timer = window.setTimeout(finish, 1500);
+          warmPc.onicecandidate = (event) => {
+            if (event.candidate && /typ (relay|srflx)/.test(event.candidate.candidate || '')) finish();
+          };
+        });
+      } catch {}
+
+      const JsSIP = await loadJsSip();
+      const socket = new JsSIP.WebSocketInterface(data.wssUrl);
+      const ua = new JsSIP.UA({
+        sockets: [socket],
+        uri: `sip:${data.webAccount}@${data.webrtcDomain}`,
+        password: data.credential.value,
+        register: true,
+      });
+      ivrUaRef.current = ua;
+      let failed = false;
+
+      ua.on('registered', () => {
+        if (failed || ivrEndingRef.current) return;
+        injectServiceSdpPatch(ua, data.sipServerPublicIp, ivrOriginalSendRef);
+        setIvrCall((prev) => ({ ...prev, status: t('正在呼叫…') }));
+        const options = {
+          mediaStream: stream,
+          pcConfig: {
+            iceServers: Array.isArray(data.iceServers) ? data.iceServers : [],
+            iceTransportPolicy: 'all',
+            iceCandidatePoolSize: 0,
+          },
+          rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+          eventHandlers: {
+            icecandidate: (event) => {
+              if (!ivrEndingRef.current && event.candidate) event.ready();
+            },
+            progress: () => setIvrCall((prev) => ({ ...prev, status: t('正在呼叫…') })),
+            ringing: () => setIvrCall((prev) => ({ ...prev, status: t('正在呼叫…') })),
+            accepted: () => markIvrConnected(),
+            confirmed: () => markIvrConnected(),
+            failed: () => {
+              if (!ivrEndingRef.current) endIvrCall(t('呼叫失败，请稍后再试。'));
+            },
+            ended: () => {
+              if (!ivrEndingRef.current) endIvrCall(t('通话已结束'));
+            },
+            peerconnection: (event) => {
+              const pc = event.peerconnection;
+              applyServiceCodecPreferences(pc);
+              pc.ontrack = (trackEvent) => {
+                if (ivrEndingRef.current) return;
+                if (trackEvent.track.kind === 'audio') bindServiceRemoteAudio(pc, 'ivrRemoteAudio');
+              };
+              pc.oniceconnectionstatechange = () => {
+                if (ivrEndingRef.current) return;
+                const iceState = pc.iceConnectionState;
+                if (iceState === 'connected' || iceState === 'completed') {
+                  bindServiceRemoteAudio(pc, 'ivrRemoteAudio');
+                  return;
+                }
+                if (iceState === 'failed') {
+                  endIvrCall(t('通话连接中断。'));
+                }
+              };
+            },
+          },
+        };
+        try {
+          ivrCurrentCallRef.current = ua.call(data.targetSipUri, options);
+        } catch {
+          endIvrCall(t('呼叫失败，请稍后再试。'));
+        }
+      });
+
+      ua.on('registrationFailed', () => {
+        failed = true;
+        if (!ivrEndingRef.current) endIvrCall(t('语音服务连接失败，请稍后再试。'));
+      });
+      ua.on('disconnected', () => {
+        failed = true;
+        if (!ivrEndingRef.current) endIvrCall(t('语音服务连接中断。'));
+      });
+      ua.start();
+      ivrCallTimerRef.current = window.setTimeout(() => {
+        if (!ivrEndingRef.current && !ivrConnectedRef.current) {
+          endIvrCall(t('呼叫超时，请稍后再试。'));
+        }
+      }, 15000);
+    } catch (error) {
+      endIvrCall(error?.message || t('语音服务暂不可用，请稍后再试'));
+    } finally {
+      ivrBusyRef.current = false;
+    }
+  };
+
+  const sendIvrDtmf = (digit) => {
+    if (!ivrCall.connected || ivrCall.transferring || ivrCall.ended) return;
+    const currentCall = ivrCurrentCallRef.current;
+    if (!currentCall) return;
+    try {
+      currentCall.sendDTMF(String(digit));
+    } catch {
+      return;
+    }
+    if (digit === '1' || digit === '2') {
+      const label = digit === '1' ? t('销售') : t('售后');
+      setIvrCall((prev) => ({
+        ...prev,
+        lastDigit: digit,
+        transferring: true,
+        status: t('正在为您转接{label}…', { label }),
+      }));
+    } else {
+      setIvrCall((prev) => ({ ...prev, lastDigit: digit, status: t('已发送 {digit}', { digit }) }));
+    }
+  };
+
+  const toggleIvrMute = () => {
+    const stream = ivrLocalStreamRef.current;
+    if (!stream) return;
+    const nextMuted = !ivrCall.muted;
+    stream.getAudioTracks().forEach((track) => { track.enabled = !nextMuted; });
+    setIvrCall((prev) => ({ ...prev, muted: nextMuted }));
+  };
+
+  const formatIvrDuration = (seconds) => {
+    const total = Math.max(0, Number(seconds) || 0);
+    const minutes = Math.floor(total / 60);
+    const remain = total % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(remain).padStart(2, '0')}`;
+  };
+
   const serviceAvatar = serviceProfile?.avatarUrl
     ? absoluteDownloadUrl(serviceProfile.avatarUrl)
     : '/assets/landing/service-avatar.jpg';
@@ -1677,6 +2023,7 @@ function LandingRedesignContent() {
           <button type="button" className="qrt-demo-item" onClick={() => { setDemoOpen(false); setEcardDemoOpen(true); }}><i>📇</i><span>{t('电子名片')}</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={openAiDemo}><i>🤖</i><span>{t('AI客服')}</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={openServiceDemo}><i>💬</i><span>{t('线上客服')}</span><em>›</em></button>
+          <button type="button" className="qrt-demo-item" onClick={openIvrDemo}><i>🎧</i><span>{t('语音客服')}</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('callcenter')}><i>📞</i><span>{t('呼叫中心')}</span><em>›</em></button>
           <button type="button" className="qrt-demo-item" onClick={() => openDemoLink('building')}><i>🏢</i><span>{t('楼宇管理')}</span><em>›</em></button>
         </div>
@@ -2083,6 +2430,73 @@ function LandingRedesignContent() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {ivrOpen && (
+        <div className="qrt-service-call-layer qrt-ivr-layer" role="dialog" aria-modal="true" aria-label={t('语音客服')}>
+          <audio id="ivrRemoteAudio" autoPlay playsInline style={{ display: 'none' }}></audio>
+          <div className="qrt-service-call-card qrt-ivr-card">
+            {!ivrCall.open ? (
+              <>
+                <button type="button" className="qrt-service-close qrt-ivr-close" aria-label={t('关闭')} onClick={closeIvrDemo}>×</button>
+                <div className="qrt-ivr-banner" style={{ backgroundImage: "url('/assets/landing/ivr-demo-banner.jpg')" }}></div>
+                <div className="qrt-ivr-body">
+                  <h3>{t('语音客服')}</h3>
+                  <p className="qrt-ivr-sub">{t('按键转接演示')}</p>
+                  <div className="qrt-ivr-statuses">
+                    <span className={`qrt-ivr-pill ${ivrStatus.serviceOnline ? 'is-online' : 'is-offline'}`}><i />{ivrStatus.serviceOnline ? t('语音客服在线') : t('服务维护中')}</span>
+                    <span className={`qrt-ivr-pill ${ivrStatus.sales?.online ? 'is-online' : 'is-offline'}`}><i />{t('销售')}{ivrStatus.sales?.online ? t('在线') : t('离线')}</span>
+                    <span className={`qrt-ivr-pill ${ivrStatus.afterSales?.online ? 'is-online' : 'is-offline'}`}><i />{t('售后')}{ivrStatus.afterSales?.online ? t('在线') : t('离线')}</span>
+                  </div>
+                  {ivrStatus.reason && <p className="qrt-ivr-note">{ivrStatus.reason}</p>}
+                  <button type="button" className="qrt-ivr-start" onClick={startIvrVoiceCall} disabled={ivrStatus.loading || !ivrStatus.available}>
+                    {ivrStatus.loading ? t('正在读取状态…') : t('开始呼叫')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="qrt-ivr-call-head">
+                  <div className="qrt-ivr-call-icon">🎧</div>
+                  <h3>{t('语音客服')}</h3>
+                  <p className={`qrt-ivr-call-status${ivrCall.connected ? ' is-connected' : ''}`}>
+                    {ivrCall.status || t('呼叫中…')}
+                    {ivrCall.connected && !ivrCall.ended ? ` ${formatIvrDuration(ivrCall.duration)}` : ''}
+                  </p>
+                </div>
+                {ivrCall.connected && !ivrCall.transferring && !ivrCall.ended && (
+                  <>
+                    <p className="qrt-ivr-hint">{t('按 1 转销售 · 2 转售后 · 3 重听')}</p>
+                    <div className="qrt-ivr-keypad">
+                      {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+                        <button key={digit} type="button" onClick={() => sendIvrDtmf(digit)}>
+                          <span className="qrt-ivr-digit">{digit}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {ivrCall.transferring && (
+                  <div className="qrt-ivr-transfer">{ivrCall.status}</div>
+                )}
+                <div className="qrt-ivr-actions">
+                  {ivrCall.connected && !ivrCall.ended && (
+                    <button type="button" onClick={toggleIvrMute}>{ivrCall.muted ? t('取消静音') : t('静音')}</button>
+                  )}
+                  {!ivrCall.ended && (
+                    <button type="button" className="is-hangup" onClick={() => endIvrCall(t('通话已结束'))}>{t('挂断')}</button>
+                  )}
+                  {ivrCall.ended && (
+                    <>
+                      <button type="button" onClick={startIvrVoiceCall}>{t('重新呼叫')}</button>
+                      <button type="button" className="is-hangup" onClick={closeIvrDemo}>{t('关闭')}</button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
