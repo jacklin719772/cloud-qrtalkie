@@ -1908,23 +1908,72 @@ app.post("/api/auth/change-password", async (request, response) => {
         return response.status(401).json({ success: false, message: "舊密碼不正確。" });
       }
 
-      const newHash = await hashPassword(newPassword);
-      await connection.query(`UPDATE sip_users SET password_hash = ? WHERE id = ?`, [newHash, sipUser.id]);
-
+      // 读取 AM 当前状态：PUT 会把 activated 重置为 false，更新后必须恢复激活
+      let amCurrent = null;
       if (sipUser.flexisip_account_id) {
         try {
-          await flexisipUpdateAccount(sipUser.flexisip_account_id, {
-            password: newPassword,
-            algorithm: "SHA-256",
-          });
+          amCurrent = await flexisipGetAccount(sipUser.flexisip_account_id);
+        } catch (e) {
+          amCurrent = null;
+        }
+      }
+      const amWasActivated = amCurrent ? amCurrent.activated === true : true;
+
+      // AM 的 PUT 要求 username，且必须带上现有字段，否则会被清空
+      const buildAmPasswordPayload = (pwd) => ({
+        username: (amCurrent && amCurrent.username) || sipUser.username,
+        display_name: (amCurrent && amCurrent.display_name) ?? sipUser.display_name ?? null,
+        email: (amCurrent && amCurrent.email) ?? sipUser.email ?? null,
+        phone: (amCurrent && amCurrent.phone) ?? sipUser.phone_number ?? null,
+        password: pwd,
+        algorithm: "SHA-256",
+      });
+
+      // 改 AM 密码并恢复原有激活状态（PUT 会把 activated 重置为 false）
+      const applyAmPassword = async (pwd) => {
+        await flexisipUpdateAccount(sipUser.flexisip_account_id, buildAmPasswordPayload(pwd));
+        if (amWasActivated) {
+          await flexisipActivateAccount(sipUser.flexisip_account_id);
+        }
+      };
+
+      // 1) 先改 Flexisip AM（SIP 实际鉴权源）：失败则回滚 AM 并返回错误，SaaS 不动
+      if (sipUser.flexisip_account_id) {
+        try {
+          await applyAmPassword(newPassword);
           console.log(`[auth/change-password] synced to Flexisip accountId=${sipUser.flexisip_account_id}`);
         } catch (err) {
           console.error(`[auth/change-password] Flexisip sync failed:`, err?.message || err);
+          try {
+            await applyAmPassword(oldPassword);
+          } catch (rollbackErr) {
+            console.error(`[auth/change-password] Flexisip sync rollback failed:`, rollbackErr?.message || rollbackErr);
+          }
+          return response.status(502).json({ success: false, message: "同步 Flexisip 失敗，密碼未變更。" });
         }
+      }
+
+      // 2) 再改 SaaS 密码：失败则回滚 Flexisip，保证 SaaS 与 AM 一致
+      try {
+        const newHash = await hashPassword(newPassword);
+        await connection.query(`UPDATE sip_users SET password_hash = ? WHERE id = ?`, [newHash, sipUser.id]);
+      } catch (err) {
+        console.error(`[auth/change-password] SaaS update failed, rolling back Flexisip:`, err?.message || err);
+        if (sipUser.flexisip_account_id) {
+          try {
+            await applyAmPassword(oldPassword);
+            return response.status(500).json({ success: false, message: "密碼更新失敗，已回滾。" });
+          } catch (rollbackErr) {
+            console.error(`[auth/change-password] Flexisip rollback failed:`, rollbackErr?.message || rollbackErr);
+            return response.status(500).json({ success: false, message: "密碼更新失敗且回滾失敗，請聯繫管理員。" });
+          }
+        }
+        return response.status(500).json({ success: false, message: "密碼更新失敗，已回滾。" });
       }
 
       return response.json({ success: true, message: "密碼已更新。" });
     }
+
 
     // 2. sip_users 中没有 → 查 Flexisip Account Manager
     const sip = `${username}@${domain}`;
