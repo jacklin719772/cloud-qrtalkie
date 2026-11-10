@@ -144,6 +144,8 @@ import {
   sendProvisioningEmail as flexisipSendProvisioningEmail,
   getAccountProvisionLink as flexisipGetProvisionLink,
   sendResetPasswordEmail as flexisipSendResetPasswordEmail,
+  addAccountContact as flexisipAddAccountContact,
+  removeAccountContact as flexisipRemoveAccountContact,
 } from "./flexisipAccountManagerClient.js";
 import { hardDeleteLocalSipUser } from "./sipUserLocalDelete.js";
 import { hardDeleteLocalWebUsers } from "./webUserLocalDelete.js";
@@ -27486,6 +27488,110 @@ app.post("/api/external-api/account-display-name", async (request, response) => 
     console.error("[account-display-name] failed:", error?.message || error);
     return response.status(502).json({ success: false, message: "Failed to update display name" });
   }
+});
+
+// ── external-api 联系人管理（同域）：把同域 SIP 账号添加/删除为当前登录账号的 AM 个人联系人 ──
+// 单次写入 + 错误码映射：不预检账号存在性，AM 对目标账号不存在返回 404，直接映射为 account_not_found
+
+function parseContactSipTarget(raw, fallbackDomain) {
+	const text = String(raw || "").trim();
+	if (!text) return null;
+	const cleaned = text.replace(/^sips?:/i, "").replace(/[;?].*$/, "").trim();
+	const at = cleaned.lastIndexOf("@");
+	const username = (at >= 0 ? cleaned.slice(0, at) : cleaned).trim();
+	const domain = (at >= 0 ? cleaned.slice(at + 1) : String(fallbackDomain || "")).trim();
+	if (!username || !domain) return null;
+	if (!/^[A-Za-z0-9._-]+$/.test(username)) return null;
+	return { username, domain: domain.toLowerCase(), sip: `${username}@${domain.toLowerCase()}` };
+}
+
+async function resolveMySipUser(request) {
+	const conn = await pool.getConnection();
+	try {
+		const rows = await conn.query("SELECT username, sip_domain FROM sip_users WHERE id = ? LIMIT 1", [request.admin.id]);
+		return rows[0] || null;
+	} finally {
+		conn.release();
+	}
+}
+
+async function resolveAmAccountId(sip) {
+	const account = await searchAccountBySip(sip);
+	return account && (account.id || (account.data && account.data.id)) || null;
+}
+
+// POST /api/external-api/account-contacts/add {contactSip} — 添加同域账号为当前账号的个人联系人
+app.post("/api/external-api/account-contacts/add", requireSipUser, async (request, response) => {
+	try {
+		const me = await resolveMySipUser(request);
+		if (!me || !me.username) return response.status(401).json({ success: false, code: "unauthorized", message: "Session expired." });
+		const meDomain = String(me.sip_domain || sipDomain || "").toLowerCase();
+		const target = parseContactSipTarget(request.body && request.body.contactSip, meDomain);
+		if (!target) return response.status(400).json({ success: false, code: "invalid_target", message: "Invalid contact SIP address." });
+		if (target.domain !== meDomain) {
+			return response.status(400).json({ success: false, code: "not_same_domain", message: "Only same-domain accounts can be added on the server." });
+		}
+		const meAccountId = await resolveAmAccountId(`${me.username}@${meDomain}`);
+		if (!meAccountId) return response.status(502).json({ success: false, code: "add_failed", message: "Account Manager error." });
+
+		let targetAccountId = null;
+		try {
+			targetAccountId = await resolveAmAccountId(target.sip);
+		} catch (error) {
+			if (error instanceof FlexisipAccountManagerError && error.status === 404) {
+				return response.status(404).json({ success: false, code: "account_not_found", message: "该账号不存在" });
+			}
+			throw error;
+		}
+		if (!targetAccountId) return response.status(404).json({ success: false, code: "account_not_found", message: "该账号不存在" });
+
+		await flexisipAddAccountContact(meAccountId, targetAccountId);
+		return response.json({ success: true, data: { contactSip: target.sip } });
+	} catch (error) {
+		console.error("[account-contacts/add] failed:", error && error.message ? error.message : error);
+		return response.status(502).json({ success: false, code: "add_failed", message: "Failed to add contact." });
+	}
+});
+
+// POST /api/external-api/account-contacts/remove {contactSip} — 从当前账号的个人联系人中移除同域账号
+app.post("/api/external-api/account-contacts/remove", requireSipUser, async (request, response) => {
+	try {
+		const me = await resolveMySipUser(request);
+		if (!me || !me.username) return response.status(401).json({ success: false, code: "unauthorized", message: "Session expired." });
+		const meDomain = String(me.sip_domain || sipDomain || "").toLowerCase();
+		const target = parseContactSipTarget(request.body && request.body.contactSip, meDomain);
+		if (!target) return response.status(400).json({ success: false, code: "invalid_target", message: "Invalid contact SIP address." });
+		if (target.domain !== meDomain) {
+			return response.status(400).json({ success: false, code: "not_same_domain", message: "Only same-domain accounts can be managed on the server." });
+		}
+		const meAccountId = await resolveAmAccountId(`${me.username}@${meDomain}`);
+		if (!meAccountId) return response.status(502).json({ success: false, code: "remove_failed", message: "Account Manager error." });
+
+		let targetAccountId = null;
+		try {
+			targetAccountId = await resolveAmAccountId(target.sip);
+		} catch (error) {
+			if (error instanceof FlexisipAccountManagerError && error.status === 404) {
+				return response.json({ success: true, data: { contactSip: target.sip, removed: false } });
+			}
+			throw error;
+		}
+		if (!targetAccountId) return response.json({ success: true, data: { contactSip: target.sip, removed: false } });
+
+		try {
+			await flexisipRemoveAccountContact(meAccountId, targetAccountId);
+		} catch (error) {
+			// AM 对“未关联”的移除返回 404：视为已移除，保持幂等
+			if (error instanceof FlexisipAccountManagerError && error.status === 404) {
+				return response.json({ success: true, data: { contactSip: target.sip, removed: false } });
+			}
+			throw error;
+		}
+		return response.json({ success: true, data: { contactSip: target.sip, removed: true } });
+	} catch (error) {
+		console.error("[account-contacts/remove] failed:", error && error.message ? error.message : error);
+		return response.status(502).json({ success: false, code: "remove_failed", message: "Failed to remove contact." });
+	}
 });
 
 // ── account-vcard：账号 vCard 读取/合并更新（AM vcards_storage 直连，只增）──

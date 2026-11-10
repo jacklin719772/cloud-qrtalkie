@@ -121,6 +121,18 @@ export function getAccountDevices(id) {
   return request("GET", `/accounts/${encodeURIComponent(id)}/devices`);
 }
 
+export function getAccountContacts(id) {
+  return request("GET", `/accounts/${encodeURIComponent(id)}/contacts`);
+}
+
+export function addAccountContact(accountId, contactId) {
+  return request("POST", `/accounts/${encodeURIComponent(accountId)}/contacts/${encodeURIComponent(contactId)}`);
+}
+
+export function removeAccountContact(accountId, contactId) {
+  return request("DELETE", `/accounts/${encodeURIComponent(accountId)}/contacts/${encodeURIComponent(contactId)}`);
+}
+
 export function searchAccountBySip(sip) {
   return request("GET", `/accounts/${encodeURIComponent(sip)}/search`);
 }
