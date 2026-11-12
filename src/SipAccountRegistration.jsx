@@ -108,7 +108,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
   // AI 授权弹窗
   const [aiEntitlementAccount, setAiEntitlementAccount] = useState(null);
-  const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
+  const [aiEntitlementForm, setAiEntitlementForm] = useState({ enabled: false, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
   const [aiEntitlementLoading, setAiEntitlementLoading] = useState(false);
   const [aiEntitlementSaving, setAiEntitlementSaving] = useState(false);
   const [aiEntitlementMessage, setAiEntitlementMessage] = useState({ type: '', text: '' });
@@ -979,7 +979,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
 
     if (action === 'ai_entitlement') {
       setAiEntitlementAccount(account);
-      setAiEntitlementForm({ enabled: true, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
+      setAiEntitlementForm({ enabled: false, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
       setAiEntitlementMessage({ type: '', text: '' });
       setAiEntitlementLoading(true);
       try {
@@ -992,6 +992,9 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
             expires_at: result.expires_at ? result.expires_at.substring(0, 10) : '',
             notes: result.notes || '',
           });
+        } else {
+          // 無授權記錄（已取消或從未授權）：開關必須顯示為未啟用
+          setAiEntitlementForm({ enabled: false, daily_limit: 50, monthly_limit: '', expires_at: '', notes: '' });
         }
       } catch (err) {
         // 沒有授權記錄，使用預設值
@@ -1063,6 +1066,7 @@ const SipAccountRegistration = forwardRef(({ onModeChange }, ref) => {
     setAiEntitlementMessage({ type: '', text: '' });
     try {
       await apiClient.delete(`/admin/sip-accounts/${aiEntitlementAccount.id}/ai-entitlement`);
+      setAiEntitlementForm((prev) => ({ ...prev, enabled: false }));
       setAiEntitlementMessage({ type: 'success', text: 'AI 授權已取消！' });
       setTimeout(() => setAiEntitlementAccount(null), 1200);
     } catch (err) {
