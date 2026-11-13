@@ -1630,6 +1630,8 @@ app.post("/api/auth/login", async (request, response) => {
 // POST /api/auth/sip-provision - App 端获取 provisioning 下载链接
 // 输入: { username, domain }  App 已通过 SIP REGISTER 在 Flexisip 验证密码，此处无需重复验证
 // POST /api/auth/ai-login - AI Assistant token (no tenant/entitlement check)
+// 注意：此 token 同時供同域聯繫人增刪 / Web meet / 檢舉等使用，故不在此校驗辦公助手權限；
+// 辦公助手權限由 GET /api/ai/entitlement 單獨探測（見下方）。
 app.post("/api/auth/ai-login", async (request, response) => {
   const username = (request.body.username || "").trim();
   const password = String(request.body.password || "");
@@ -27121,6 +27123,29 @@ app.get("/api/ai/capabilities", requireSipUser, async (_request, response) => {
   } catch (error) {
     console.error("Failed to get AI capabilities:", error);
     return response.status(500).json({ message: "獲取能力清單失敗" });
+  }
+});
+
+// GET /api/ai/entitlement — 辦公助手開通狀態探測（進入辦公助手前調用；未開通/已過期/停用返回對應 403/503）
+app.get("/api/ai/entitlement", requireSipUser, async (request, response) => {
+  const sipUserId = request.admin.id;
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await ensureAiAllowed(sipUserId, connection);
+    return response.json({ ok: true });
+  } catch (error) {
+    if (error instanceof AiError) {
+      // 配額類（429，當日/當月次數用盡）不阻擋進入辦公助手，實際調用時才計費；僅權限類（403/503）攔截
+      if (error.statusCode === 429) {
+        return response.json({ ok: true });
+      }
+      return response.status(error.statusCode).json(error.toJSON());
+    }
+    console.error("[ai-entitlement] error:", error?.message || error);
+    return response.status(500).json({ message: "獲取辦公助手狀態失敗" });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
