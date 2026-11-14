@@ -28226,7 +28226,7 @@ app.get("/api/public/releases/check", async (request, response) => {
     if (!latest) return response.json({ update: false, message: "暫無已釋出的版本" });
     const currentCode = parseVersionCode(currentVersion);
     if (latest.version_code > currentCode) {
-      return response.json({ update: true, version: latest.version, versionCode: latest.version_code, url: latest.download_url, fileSize: latest.file_size, sha256: latest.sha256, notes: latest.release_notes || "" });
+      return response.json(bigIntSafe({ update: true, version: latest.version, versionCode: latest.version_code, url: latest.download_url, fileSize: latest.file_size, sha256: latest.sha256, notes: latest.release_notes || "" }));
     }
     return response.json({ update: false, message: "已是最新版本" });
   } catch (error) {
